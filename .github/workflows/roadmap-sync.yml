@@ -1,0 +1,84 @@
+name: Roadmap sync
+
+on:
+  milestone:
+    types: [created, edited, closed, opened, deleted]
+  issues:
+    types: [opened, closed, reopened, deleted, milestoned, demilestoned]
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
+concurrency:
+  group: roadmap-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    if: github.repository == 'Klim-101/the-race'
+    runs-on: ubuntu-latest
+    env:
+      SYNC_BRANCH: chore/roadmap-sync
+      ROADMAP_PATH: docs/public/ROADMAP.md
+    steps:
+      - name: Check out default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Render progress table
+        id: render
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { renderRoadmap } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/render-roadmap.mjs`);
+            const changed = await renderRoadmap({
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              roadmapPath: process.env.ROADMAP_PATH,
+              today: new Date().toISOString().slice(0, 10),
+            });
+            core.setOutput('changed', String(changed));
+
+      - name: Open and merge roadmap pull request
+        if: steps.render.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -C "$SYNC_BRANCH"
+          git add "$ROADMAP_PATH"
+          git commit -s -m 'chore(repo): sync roadmap progress'
+          # Credentials are passed to this single git invocation via -c, matching what actions/checkout
+          # does with persist-credentials, instead of writing the token into .git/config for the job.
+          auth_header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.https://github.com/.extraheader="$auth_header" push --force origin "$SYNC_BRANCH"
+
+          pr_number=$(gh pr list --head "$SYNC_BRANCH" --state open --json number --jq '.[0].number')
+          if [ -z "$pr_number" ]; then
+            gh pr create --base "$DEFAULT_BRANCH" --head "$SYNC_BRANCH" \
+              --title 'chore(repo): sync roadmap progress' \
+              --body 'Automated update of the roadmap progress table from milestones.'
+          fi
+          # The change touches only the generated section of the roadmap, so it needs no review.
+          # A private repository on the free plan has no branch protection, so there are no required
+          # checks to wait for and `--auto` would be refused; switch to `--auto` with P6-03.
+          gh pr merge "$SYNC_BRANCH" --squash --delete-branch
