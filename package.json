@@ -4,6 +4,7 @@
   "description": "the RACE (Run Across a Changing Earth): a text roguelike whose world is rebuilt every day from world news.",
   "type": "module",
   "license": "Apache-2.0",
+  "packageManager": "npm@11.16.0",
   "workspaces": [
     "packages/*"
   ],
@@ -13,13 +14,23 @@
   "scripts": {
     "build": "npm run build --workspaces",
     "typecheck": "npm run typecheck --workspaces",
-    "test": "npm run test --workspaces",
-    "test:coverage": "npm run test:coverage --workspaces"
+    "lint": "node scripts/check-llm-denylist.mjs && eslint . && prettier --check .",
+    "lint:fix": "eslint . --fix && prettier --write .",
+    "licenses:check": "node scripts/check-licenses.mjs",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@types/node": "26.6.5",
     "@vitest/coverage-v8": "5.0.5",
+    "eslint": "10.13.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.13.0",
+    "license-checker-rseidelsohn": "5.0.1",
+    "prettier": "3.9.10",
     "typescript": "6.0.3",
+    "typescript-eslint": "8.71.2",
     "vitest": "5.0.5"
   }
 }

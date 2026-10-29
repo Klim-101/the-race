@@ -12,7 +12,9 @@ export const MIN_EVIDENCE_CHAINS = 2;
 export function checkSolution(detectiveCase: DetectiveCase, hero: Hero, obtainable: Obtainable): CaseIssue[] {
   const { evidenceChains, motiveDeductionId } = detectiveCase.solution;
   const { culpritId } = detectiveCase.truth;
-  const redHerringIds = new Set(detectiveCase.clues.filter((clue) => clue.isRedHerring).map((clue) => clue.id));
+  const redHerringIds = new Set(
+    detectiveCase.clues.filter((clue) => clue.isRedHerring).map((clue) => clue.id),
+  );
   const culpritClueIds = new Set(
     detectiveCase.clues.filter((clue) => clue.pointsTo.includes(culpritId)).map((clue) => clue.id),
   );
@@ -68,7 +70,8 @@ export function checkSolution(detectiveCase: DetectiveCase, hero: Hero, obtainab
     issues.push({
       code: 'no-chain-without-untrained-skill',
       path: 'solution.evidenceChains',
-      message: 'Every chain needs a check in a skill the hero has no points in; add a chain this hero can follow.',
+      message:
+        'Every chain needs a check in a skill the hero has no points in; add a chain this hero can follow.',
     });
   }
 

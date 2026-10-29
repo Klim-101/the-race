@@ -8,13 +8,13 @@ import type { Hero } from '../../src/hero.js';
  * Chain 0 needs only observation; chain 1 needs charm the default hero lacks.
  */
 export function buildCheeseCase(): Record<string, unknown> & {
-  locations: Array<Record<string, unknown>>;
-  clues: Array<Record<string, unknown>>;
-  suspects: Array<Record<string, unknown> & { lies: Array<Record<string, unknown>> }>;
-  deductions: Array<Record<string, unknown>>;
-  truth: Record<string, unknown> & { timeline: Array<Record<string, unknown>> };
+  locations: Record<string, unknown>[];
+  clues: Record<string, unknown>[];
+  suspects: (Record<string, unknown> & { lies: Record<string, unknown>[] })[];
+  deductions: Record<string, unknown>[];
+  truth: Record<string, unknown> & { timeline: Record<string, unknown>[] };
   solution: { motiveDeductionId: string; evidenceChains: string[][] };
-  clock: { days: number; worldEvents: Array<Record<string, unknown>> };
+  clock: { days: number; worldEvents: Record<string, unknown>[] };
 } {
   return {
     schemaVersion: 1,
@@ -111,7 +111,9 @@ export function buildCheeseCase(): Record<string, unknown> & {
         persona: 'A cheerful baker with flour up to the elbows.',
         secret: 'She owes the town for an oven she cannot pay for.',
         alibi: 'Says she was asleep at home all night.',
-        lies: [{ id: 'baker-asleep', statement: 'I never left my house last night.', brokenBy: ['cart-tracks'] }],
+        lies: [
+          { id: 'baker-asleep', statement: 'I never left my house last night.', brokenBy: ['cart-tracks'] },
+        ],
       },
       {
         id: 'rival',

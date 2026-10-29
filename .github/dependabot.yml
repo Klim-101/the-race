@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # Actions are pinned to commit SHAs; Dependabot keeps the pins and version comments current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # Wait after a release before proposing it, so a compromised or yanked release is caught upstream.
+    cooldown:
+      default-days: 10
+    groups:
+      github-actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci
+
+  # The root directory covers every packages/* workspace through the root lockfile.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 10
+    groups:
+      npm-dependencies:
+        patterns: ['*']
+    commit-message:
+      prefix: build
+    ignore:
+      # typescript-eslint pins a TypeScript peer range; a TypeScript major waits for it.
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']

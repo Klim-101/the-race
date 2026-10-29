@@ -16,7 +16,10 @@ export function checkReferences(detectiveCase: DetectiveCase): CaseIssue[] {
 
 function checkUniqueIds(detectiveCase: DetectiveCase): CaseIssue[] {
   const entities: IdentifiedEntity[] = [
-    ...detectiveCase.locations.map((location, index) => ({ id: location.id, path: `locations[${String(index)}].id` })),
+    ...detectiveCase.locations.map((location, index) => ({
+      id: location.id,
+      path: `locations[${String(index)}].id`,
+    })),
     ...detectiveCase.clues.map((clue, index) => ({ id: clue.id, path: `clues[${String(index)}].id` })),
     ...detectiveCase.suspects.flatMap((suspect, suspectIndex) => [
       { id: suspect.id, path: `suspects[${String(suspectIndex)}].id` },
@@ -25,7 +28,10 @@ function checkUniqueIds(detectiveCase: DetectiveCase): CaseIssue[] {
         path: `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}].id`,
       })),
     ]),
-    ...detectiveCase.deductions.map((deduction, index) => ({ id: deduction.id, path: `deductions[${String(index)}].id` })),
+    ...detectiveCase.deductions.map((deduction, index) => ({
+      id: deduction.id,
+      path: `deductions[${String(index)}].id`,
+    })),
   ];
   const seenIds = new Set<string>();
   const issues: CaseIssue[] = [];
@@ -45,13 +51,19 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
   const deductionIds = new Set(detectiveCase.deductions.map((deduction) => deduction.id));
   const issues: CaseIssue[] = [];
   const expect = (knownIds: ReadonlySet<string>, kind: string, id: string, path: string): void => {
-    if (!knownIds.has(id)) issues.push({ code: 'unknown-reference', path, message: `Unknown ${kind} "${id}".` });
+    if (!knownIds.has(id))
+      issues.push({ code: 'unknown-reference', path, message: `Unknown ${kind} "${id}".` });
   };
 
   expect(locationIds, 'location', detectiveCase.startLocationId, 'startLocationId');
   detectiveCase.locations.forEach((location, index) => {
     location.connections.forEach((id, connectionIndex) => {
-      expect(locationIds, 'location', id, `locations[${String(index)}].connections[${String(connectionIndex)}]`);
+      expect(
+        locationIds,
+        'location',
+        id,
+        `locations[${String(index)}].connections[${String(connectionIndex)}]`,
+      );
     });
     if (location.access.kind === 'clue') {
       expect(clueIds, 'clue', location.access.clueId, `locations[${String(index)}].access.clueId`);

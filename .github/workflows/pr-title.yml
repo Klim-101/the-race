@@ -1,0 +1,75 @@
+name: Pull request title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  # Dependabot always capitalizes its generated summary ("Bump the x group..."), which the
+  # subjectPattern below rejects. Lowercasing it here, instead of exempting Dependabot from the
+  # check, keeps every squash commit title compliant without a special case in the check itself.
+  # This edit goes through the default GITHUB_TOKEN, whose own writes never trigger a new workflow
+  # run (GitHub's loop-prevention rule) -- conventional-commit below depends on this job instead of
+  # relying on a second trigger, and amannn/action-semantic-pull-request always re-fetches the pull
+  # request via the API rather than trusting the (possibly stale) event payload, so by the time it
+  # runs the title this job just wrote is what it sees.
+  normalize-dependabot-title:
+    # `github.actor` is whoever caused this specific run (a maintainer re-running jobs would
+    # spoof it); the pull request's own recorded author is the value that can't be forged this
+    # way.
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Lowercase the summary after the Conventional Commits prefix
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const title = context.payload.pull_request.title;
+            const match = title.match(/^([a-z]+(?:\([a-z-]+\))?: )([A-Z])(.*)$/);
+            if (!match) return;
+            const [, prefix, firstLetter, rest] = match;
+            const normalized = `${prefix}${firstLetter.toLowerCase()}${rest}`;
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              title: normalized,
+            });
+
+  conventional-commit:
+    needs: normalize-dependabot-title
+    # normalize-dependabot-title's own `if` skips it for a non-Dependabot PR; a skipped dependency
+    # would otherwise skip this job too, so this check must still run on every other PR.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      # The squash commit title is taken from the pull request title, so it must follow Conventional Commits.
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            refactor
+            test
+            perf
+            build
+            ci
+            chore
+          scopes: |
+            engine
+            mcp
+            agents
+            adapters
+            content
+            repo
+          requireScope: false
+          subjectPattern: ^[a-z].*[^.]$
+          subjectPatternError: 'The summary must start with a lowercase letter and must not end with a period.'

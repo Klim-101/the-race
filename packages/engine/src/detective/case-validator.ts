@@ -19,12 +19,12 @@ export interface CaseValidationContext {
   readonly hero: Hero;
   readonly locale: Locale;
   /** Names taken from the source headlines; none of them may survive into the mirror world. */
-  readonly realNames: ReadonlyArray<string>;
+  readonly realNames: readonly string[];
 }
 
 export type CaseValidationResult =
   | { readonly isValid: true; readonly detectiveCase: DetectiveCase }
-  | { readonly isValid: false; readonly issues: ReadonlyArray<CaseIssue> };
+  | { readonly isValid: false; readonly issues: readonly CaseIssue[] };
 
 /** Accepts a generated case only when this hero can actually solve it; otherwise lists every issue. */
 export function validateCase(input: unknown, context: CaseValidationContext): CaseValidationResult {

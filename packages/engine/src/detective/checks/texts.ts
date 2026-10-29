@@ -19,7 +19,7 @@ interface NarrativeText {
 export function checkTexts(
   detectiveCase: DetectiveCase,
   locale: Locale,
-  realNames: ReadonlyArray<string>,
+  realNames: readonly string[],
 ): CaseIssue[] {
   const issues: CaseIssue[] = [];
   if (detectiveCase.locale !== locale) {
@@ -32,7 +32,11 @@ export function checkTexts(
   for (const { path, text } of collectNarrativeTexts(detectiveCase)) {
     const realName = findRealName(text, realNames);
     if (realName !== undefined) {
-      issues.push({ code: 'real-name', path, message: `Replace the real-world name "${realName}" with its mirror-world name.` });
+      issues.push({
+        code: 'real-name',
+        path,
+        message: `Replace the real-world name "${realName}" with its mirror-world name.`,
+      });
     }
     if (!isInLocaleScript(text, locale)) {
       issues.push({ code: 'wrong-script', path, message: `Write this text in "${locale}".` });
@@ -61,7 +65,9 @@ function collectNarrativeTexts(detectiveCase: DetectiveCase): NarrativeText[] {
         at(`suspects[${String(index)}].lies[${String(lieIndex)}].statement`, lie.statement),
       ),
     ]),
-    ...detectiveCase.deductions.map((deduction, index) => at(`deductions[${String(index)}].insight`, deduction.insight)),
+    ...detectiveCase.deductions.map((deduction, index) =>
+      at(`deductions[${String(index)}].insight`, deduction.insight),
+    ),
     at('truth.motive', truth.motive),
     at('truth.method', truth.method),
     ...truth.timeline.map((entry, index) => at(`truth.timeline[${String(index)}].action`, entry.action)),

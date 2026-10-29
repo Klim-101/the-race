@@ -8,7 +8,7 @@ const MAX_ENDING_LETTERS = 3;
 const RUSSIAN_ENDING = /[аеиоуыэюяйь]+$/u;
 
 /** Returns the first real-world name that appears in the text, or `undefined` when none does. */
-export function findRealName(text: string, realNames: ReadonlyArray<string>): string | undefined {
+export function findRealName(text: string, realNames: readonly string[]): string | undefined {
   const normalizedText = normalize(text);
   return realNames.find((name) => {
     const normalizedName = normalize(name.trim());

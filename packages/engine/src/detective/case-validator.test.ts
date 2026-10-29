@@ -40,7 +40,10 @@ describe('validateCase', () => {
 
       const result = validateCase(detectiveCase, context());
 
-      expect(result).toMatchObject({ isValid: false, issues: [{ code: 'duplicate-id', path: 'deductions[0].id' }] });
+      expect(result).toMatchObject({
+        isValid: false,
+        issues: [{ code: 'duplicate-id', path: 'deductions[0].id' }],
+      });
     });
 
     it('rejects a duplicated lie id', () => {
@@ -130,7 +133,12 @@ describe('validateCase', () => {
       detectiveCase.locations[3]!.access = { kind: 'skill', check: { skill: 'charm', difficulty: 25 } };
 
       expect(issueCodes(detectiveCase)).toEqual(
-        expect.arrayContaining(['unreachable-location', 'unobtainable-clue', 'unobtainable-evidence', 'unobtainable-motive']),
+        expect.arrayContaining([
+          'unreachable-location',
+          'unobtainable-clue',
+          'unobtainable-evidence',
+          'unobtainable-motive',
+        ]),
       );
     });
   });

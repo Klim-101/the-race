@@ -70,7 +70,7 @@ function canEnter(access: LocationAccess, canPass: CheckPolicy, clueIds: Readonl
   }
 }
 
-function buildNeighbors(locations: ReadonlyArray<Location>): Map<string, Set<string>> {
+function buildNeighbors(locations: readonly Location[]): Map<string, Set<string>> {
   const neighborsById = new Map<string, Set<string>>();
   const link = (fromId: string, toId: string): void => {
     const neighbors = neighborsById.get(fromId) ?? new Set<string>();
