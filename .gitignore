@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Private planning notes never leave the machine.
+dev/private/
+
+# Player saves and runtime data.
+.race/
