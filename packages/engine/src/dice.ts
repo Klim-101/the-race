@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export const D20_SIDES = 20;
+export const CRITICAL_SUCCESS_DIE = 20;
+export const CRITICAL_FAILURE_DIE = 1;
 
 /** A seeded random source. Its whole state is one 32-bit integer, so a save can store it and resume. */
 export interface Rng {
@@ -60,11 +62,16 @@ export interface SkillCheckResult<Skill extends string = string> {
   modifier: number;
   total: number;
   difficulty: number;
+  /** A natural 20 always succeeds and a natural 1 always fails, whatever the total. */
+  critical: 'success' | 'failure' | null;
   success: boolean;
+  /** The state of the dice before this roll: with it the same roll can be replayed. */
+  rngState: number;
 }
 
 /**
- * d20 + skill + modifier against a difficulty; meeting it exactly is a success.
+ * d20 + skill + modifier against a difficulty; meeting it exactly is a success, except that a natural
+ * 20 always succeeds and a natural 1 always fails.
  * The modifier is a situational bonus or penalty, such as a hidden trait firing.
  */
 export function rollCheck<Skill extends string>(
@@ -73,9 +80,11 @@ export function rollCheck<Skill extends string>(
   check: { readonly skill: Skill; readonly difficulty: number },
   modifier = 0,
 ): SkillCheckResult<Skill> {
+  const rngState = rng.state();
   const die = rng.roll(D20_SIDES);
   const skillLevel = skills[check.skill];
   const total = die + skillLevel + modifier;
+  const critical = die === CRITICAL_SUCCESS_DIE ? 'success' : die === CRITICAL_FAILURE_DIE ? 'failure' : null;
   return {
     skill: check.skill,
     die,
@@ -83,6 +92,8 @@ export function rollCheck<Skill extends string>(
     modifier,
     total,
     difficulty: check.difficulty,
-    success: total >= check.difficulty,
+    critical,
+    success: critical === null ? total >= check.difficulty : critical === 'success',
+    rngState,
   };
 }

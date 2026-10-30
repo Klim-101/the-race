@@ -15,8 +15,9 @@ export const D20_MAX = 20;
  */
 export type CheckPolicy = (check: SkillCheck, situations: readonly TraitTrigger[]) => boolean;
 
-// Only modifiers count here. The auto-discovery of a photographic memory needs a failed first look,
-// so a case is never allowed to lean on it.
+// Two rules of the dice are deliberately left out. A natural 20 always succeeds at the table, but a case
+// may not lean on a lucky roll, so only the best total counts. The auto-discovery of a photographic
+// memory needs a failed first look, so a case may not lean on that either.
 /** A natural 20 plus the skill level and the traits' modifier reaches the difficulty. */
 export function canEverPass(hero: DetectiveHero, traits: readonly Trait[]): CheckPolicy {
   return (check, situations) =>

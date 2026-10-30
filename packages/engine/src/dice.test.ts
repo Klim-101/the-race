@@ -5,6 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { buildHero } from '../test/fixtures/cheese-case.js';
 import { createRng, D20_SIDES, restoreRng, rollCheck } from './dice.js';
 
+/** A seed whose first d20 roll is `die`, so a test can pick the roll it needs. */
+function seedRolling(die: number): number {
+  for (let seed = 0; ; seed += 1) {
+    if (createRng(seed).roll(D20_SIDES) === die) return seed;
+  }
+}
+
 const sequence = (seed: string | number, length: number): number[] => {
   const rng = createRng(seed);
   return Array.from({ length }, () => rng.roll(D20_SIDES));
@@ -81,13 +88,43 @@ describe('rollCheck', () => {
   });
 
   it('succeeds when the total meets the difficulty exactly and fails one below', () => {
-    const die = createRng('edge').roll(D20_SIDES);
-    const exact = die + skills.charm;
+    const seed = seedRolling(10);
+    const exact = 10 + skills.charm;
 
-    expect(rollCheck(createRng('edge'), skills, { skill: 'charm', difficulty: exact }).success).toBe(true);
-    expect(rollCheck(createRng('edge'), skills, { skill: 'charm', difficulty: exact + 1 }).success).toBe(
-      false,
-    );
+    expect(rollCheck(createRng(seed), skills, { skill: 'charm', difficulty: exact }).success).toBe(true);
+    expect(rollCheck(createRng(seed), skills, { skill: 'charm', difficulty: exact + 1 }).success).toBe(false);
+  });
+
+  it('treats a natural 20 as a critical success even against an impossible difficulty', () => {
+    const result = rollCheck(createRng(seedRolling(20)), skills, { skill: 'charm', difficulty: 30 }, -5);
+
+    expect(result.total).toBeLessThan(30);
+    expect(result.critical).toBe('success');
+    expect(result.success).toBe(true);
+  });
+
+  it('treats a natural 1 as a critical failure even against a trivial difficulty', () => {
+    const result = rollCheck(createRng(seedRolling(1)), skills, { skill: 'logic', difficulty: 1 }, 10);
+
+    expect(result.total).toBeGreaterThanOrEqual(1);
+    expect(result.critical).toBe('failure');
+    expect(result.success).toBe(false);
+  });
+
+  it('marks no other die as critical', () => {
+    for (let die = 2; die < D20_SIDES; die += 1) {
+      expect(
+        rollCheck(createRng(seedRolling(die)), skills, { skill: 'logic', difficulty: 10 }).critical,
+      ).toBe(null);
+    }
+  });
+
+  it('records the state before the roll so that the roll can be replayed', () => {
+    const rng = createRng('replay');
+    rng.roll(D20_SIDES);
+    const result = rollCheck(rng, skills, { skill: 'tech', difficulty: 10 });
+
+    expect(restoreRng(result.rngState).roll(D20_SIDES)).toBe(result.die);
   });
 
   it('consumes exactly one die per check', () => {
