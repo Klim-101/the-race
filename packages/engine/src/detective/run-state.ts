@@ -9,7 +9,9 @@ import {
   RULESET_VERSION,
   RUN_SCHEMA_VERSION,
   advanceClock,
+  statusOfEndReason,
   runBaseShape,
+  type EndReason,
   type RunClock,
   type RunStatus,
 } from '../run.js';
@@ -43,6 +45,8 @@ export const DetectiveRunStateSchema = z
     insightIds: z.array(EntityIdSchema),
     /** Lies of suspects that the hero has broken; the suspect has given that ground for good. */
     concededLieIds: z.array(EntityIdSchema).default([]),
+    /** Places that a scheduled event has closed; the hero cannot enter them any more. */
+    closedLocationIds: z.array(EntityIdSchema).default([]),
   })
   .superRefine((run, context) => {
     if (!isCaseSealIntact(run)) {
@@ -50,6 +54,14 @@ export const DetectiveRunStateSchema = z
         code: 'custom',
         path: ['caseSeal'],
         message: 'The case does not match its seal: it was changed after it was accepted.',
+      });
+    }
+    // A save from before reasons were recorded may end without one, but a reason must agree with the status.
+    if (run.endReason !== null && statusOfEndReason(run.endReason) !== run.status) {
+      context.addIssue({
+        code: 'custom',
+        path: ['endReason'],
+        message: `The end reason "${run.endReason}" does not fit the status "${run.status}".`,
       });
     }
     const known = (path: string, ids: readonly string[], valid: ReadonlySet<string>): void => {
@@ -70,6 +82,7 @@ export const DetectiveRunStateSchema = z
       run.concededLieIds,
       new Set(run.case.suspects.flatMap(({ lies }) => lies.map(({ id }) => id))),
     );
+    known('closedLocationIds', run.closedLocationIds, locationIds);
     known('revealedTraitIds', run.revealedTraitIds, new Set(run.traits.map(({ id }) => id)));
   });
 export type DetectiveRunState = z.infer<typeof DetectiveRunStateSchema>;
@@ -95,6 +108,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     clock: { day: 1, minute: 0 },
     reputation: MAX_REPUTATION,
     status: 'active',
+    endReason: null,
     archetype: DETECTIVE.id,
     hero: input.hero,
     traits: input.traits,
@@ -107,6 +121,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     foundClueIds: [],
     insightIds: [],
     concededLieIds: [],
+    closedLocationIds: [],
   });
 }
 
@@ -200,9 +215,28 @@ export function endTurn(run: DetectiveRunState, rng: Rng): DetectiveRunState {
   return { ...run, turn: run.turn + 1, rngState: rng.state() };
 }
 
-export function endRun(run: DetectiveRunState, status: Exclude<RunStatus, 'active'>): DetectiveRunState {
+/** Ends the run. The reason says why, and it must be one that leads to this status. */
+export function endRun(
+  run: DetectiveRunState,
+  status: Exclude<RunStatus, 'active'>,
+  endReason: EndReason | null = null,
+): DetectiveRunState {
   assertActive(run);
-  return { ...run, status };
+  if (endReason !== null && statusOfEndReason(endReason) !== status) {
+    throw new RangeError(`The end reason "${endReason}" does not lead to the status "${status}".`);
+  }
+  return { ...run, status, endReason };
+}
+
+/** Closes a place for good: a scheduled event of the case does this, never the player. */
+export function closeLocation(run: DetectiveRunState, locationId: string): DetectiveRunState {
+  assertActive(run);
+  requireId(
+    'location',
+    locationId,
+    run.case.locations.map(({ id }) => id),
+  );
+  return { ...run, closedLocationIds: addOnce(run.closedLocationIds, locationId) };
 }
 
 /** What the player and the narrator may know. It leaves out the truth, the solution and unrevealed traits. */
@@ -214,6 +248,8 @@ export interface DetectiveRunView {
   readonly status: RunStatus;
   readonly clock: RunClock & { readonly totalDays: number };
   readonly reputation: number;
+  /** What the world has done so far, as the player was told: events whose day has come. */
+  readonly news: readonly string[];
   readonly hero: DetectiveHero;
   readonly hiddenTraitCount: number;
   readonly revealedTraits: readonly Trait[];
@@ -256,6 +292,9 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     status: run.status,
     clock: { ...run.clock, totalDays: detectiveCase.clock.days },
     reputation: run.reputation,
+    news: detectiveCase.clock.worldEvents
+      .filter(({ day }) => day <= run.clock.day)
+      .map(({ description }) => description),
     hero: run.hero,
     hiddenTraitCount: run.traits.length - run.revealedTraitIds.length,
     revealedTraits: run.traits.filter(({ id }) => run.revealedTraitIds.includes(id)),
