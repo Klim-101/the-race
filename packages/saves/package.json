@@ -1,0 +1,22 @@
+{
+  "name": "@the-race/saves",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Save and resume runs: atomic files under .race/ and a resume summary built from the public view.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@the-race/engine": "0.0.0"
+  }
+}
