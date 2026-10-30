@@ -16,7 +16,8 @@ import {
 import { modifierSources } from './condition.js';
 import { settleClock } from './clock.js';
 import { InterrogateIntentSchema, resolveInterrogate, type InterrogationOutcome } from './interrogation.js';
-import { buildNeighbors, closedSources } from './obtainability.js';
+import { buildNeighbors } from './obtainability.js';
+import { closedSourcesOf, isLocationClosed } from './random-events.js';
 import {
   changeReputation,
   endTurn,
@@ -172,7 +173,7 @@ function locationById(detectiveCase: DetectiveCase, id: string): Location {
 
 /** Clues of a place that are still hidden and that the hero's traits do not shut out. */
 function hiddenClues(run: DetectiveRunState, locationId: string): Clue[] {
-  const closed = closedSources(run.traits);
+  const closed = closedSourcesOf(run);
   return run.case.clues.filter(
     (clue) =>
       clue.locationId === locationId &&
@@ -238,7 +239,7 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
     return refuse('not-adjacent', `"${locationId}" is not next to the hero's place.`);
   }
 
-  if (run.closedLocationIds.includes(locationId)) {
+  if (isLocationClosed(run, locationId)) {
     return refuse('location-closed', `"${locationId}" has been closed.`);
   }
   const destination = locationById(detectiveCase, locationId);

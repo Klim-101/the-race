@@ -78,5 +78,8 @@ function collectNarrativeTexts(detectiveCase: DetectiveCase): NarrativeText[] {
     ...detectiveCase.clock.worldEvents.map((event, index) =>
       at(`clock.worldEvents[${String(index)}].description`, event.description),
     ),
+    ...(detectiveCase.randomEvents ?? []).map((event, index) =>
+      at(`randomEvents[${String(index)}].description`, event.description),
+    ),
   ];
 }

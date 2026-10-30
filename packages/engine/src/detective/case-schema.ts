@@ -143,6 +143,89 @@ export const WorldEventSchema = z.object({
 });
 export type WorldEvent = z.infer<typeof WorldEventSchema>;
 
+/** Conditions a random event may put on the hero; none of them implies violence, so `injured` is left out. */
+export const RANDOM_EVENT_CONDITIONS = ['shaken', 'exhausted'] as const;
+export const MAX_RANDOM_EVENT_MINUTES = 120;
+export const MAX_RANDOM_EVENT_NERVES = 2;
+export const MAX_RANDOM_EVENTS = 40;
+
+/**
+ * What a random event does. The vocabulary is closed on purpose: an event can move the world or the hero's
+ * day, and it can never touch the truth, the solution or the content of a clue, nor hurt anyone.
+ * - `flavor`: only news;
+ * - `location-closes`: the place cannot be entered while the event lasts;
+ * - `suspect-moves`: the suspect can be found at another place while the event lasts;
+ * - `source-closes`: a source of information is shut to the hero while the event lasts;
+ * - `time-lost`: the hero loses minutes of the day;
+ * - `nerves-cost`: the hero loses points of nerves, never the last one;
+ * - `condition`: a timed condition falls on the hero.
+ */
+export const RandomEventEffectSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('flavor') }),
+  z.object({ kind: z.literal('location-closes'), locationId: EntityIdSchema }),
+  z.object({ kind: z.literal('suspect-moves'), suspectId: EntityIdSchema, locationId: EntityIdSchema }),
+  z.object({ kind: z.literal('source-closes'), source: InformationSourceSchema }),
+  z.object({ kind: z.literal('time-lost'), minutes: z.int().min(15).max(MAX_RANDOM_EVENT_MINUTES) }),
+  z.object({ kind: z.literal('nerves-cost'), points: z.int().min(1).max(MAX_RANDOM_EVENT_NERVES) }),
+  z.object({ kind: z.literal('condition'), condition: z.enum(RANDOM_EVENT_CONDITIONS) }),
+]);
+export type RandomEventEffect = z.infer<typeof RandomEventEffectSchema>;
+
+/**
+ * How long an effect lasts. `until-day` ends it as that day begins; `permanent` never ends. The effects
+ * that happen once (`flavor`, `time-lost`, `nerves-cost`, `condition`) are `instant`, and only they are.
+ */
+export const RandomEventDurationSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('instant') }),
+  z.object({ kind: z.literal('until-day'), day: z.int().min(2) }),
+  z.object({ kind: z.literal('permanent') }),
+]);
+export type RandomEventDuration = z.infer<typeof RandomEventDurationSchema>;
+
+/** Whether an effect changes the world for a while, rather than happening once. */
+export function isLastingEffect(effect: RandomEventEffect): boolean {
+  return (
+    effect.kind === 'location-closes' || effect.kind === 'suspect-moves' || effect.kind === 'source-closes'
+  );
+}
+
+export const RandomEventSchema = z
+  .object({
+    id: EntityIdSchema,
+    /** What the player is told. No violence and no death; the validator checks it. */
+    description: NarrativeTextSchema,
+    /** Its share among the events that fit the moment. */
+    weight: z.int().min(1).max(10),
+    /** Tones it fits; empty means every tone. */
+    tones: z.array(ToneSchema).default([]),
+    /** The first day it can happen, and the last (`null` for no last day). */
+    fromDay: z.int().min(1).default(1),
+    untilDay: z.int().min(1).nullable().default(null),
+    /** Hero traits that make it likelier, by trigger. The engine reads the traits; the generator never sees them. */
+    traitTriggers: z.array(TraitTriggerSchema).default([]),
+    effect: RandomEventEffectSchema,
+    duration: RandomEventDurationSchema,
+  })
+  .superRefine((event, context) => {
+    if (isLastingEffect(event.effect) === (event.duration.kind === 'instant')) {
+      context.addIssue({
+        code: 'custom',
+        path: ['duration'],
+        message: isLastingEffect(event.effect)
+          ? 'An effect that changes the world lasts until a day or for good.'
+          : 'An effect that happens once is instant.',
+      });
+    }
+    if (event.untilDay !== null && event.untilDay < event.fromDay) {
+      context.addIssue({
+        code: 'custom',
+        path: ['untilDay'],
+        message: 'The last day comes before the first.',
+      });
+    }
+  });
+export type RandomEvent = z.infer<typeof RandomEventSchema>;
+
 export const ClockSchema = z.object({
   days: z.int().min(1).max(14),
   worldEvents: z.array(WorldEventSchema),
@@ -164,5 +247,10 @@ export const DetectiveCaseSchema = z.object({
   truth: TruthSchema,
   solution: SolutionSchema,
   clock: ClockSchema,
+  /**
+   * The pool the night draws from. Optional rather than defaulted: a default would write `[]` into every
+   * case and change the seal of the cases accepted before the pool existed.
+   */
+  randomEvents: z.array(RandomEventSchema).max(MAX_RANDOM_EVENTS).optional(),
 });
 export type DetectiveCase = z.infer<typeof DetectiveCaseSchema>;

@@ -34,6 +34,10 @@ import { DetectiveCaseSchema, EntityIdSchema, type DetectiveCase, type Location 
 import { buildNeighbors } from './obtainability.js';
 import { CASE_SEAL_PATTERN, isCaseSealIntact, sealCase } from './seal.js';
 
+/** A random event that has happened, and the day it happened on. */
+export const DrawnEventSchema = z.object({ eventId: EntityIdSchema, day: z.int().min(1) });
+export type DrawnEvent = z.infer<typeof DrawnEventSchema>;
+
 /**
  * Everything about one detective run. It holds the secrets of the case and the hero's hidden traits, so
  * it never goes to the narrator or the player as it is: they get `viewRun`.
@@ -62,6 +66,8 @@ export const DetectiveRunStateSchema = z
     condition: HeroConditionSchema.default(() => initialCondition()),
     /** Places that a scheduled event has closed; the hero cannot enter them any more. */
     closedLocationIds: z.array(EntityIdSchema).default([]),
+    /** Random events the night has drawn, with the day of each; the pool of the case holds what they are. */
+    drawnEvents: z.array(DrawnEventSchema).default([]),
   })
   .superRefine((run, context) => {
     if (!isCaseSealIntact(run)) {
@@ -98,6 +104,11 @@ export const DetectiveRunStateSchema = z
       new Set(run.case.suspects.flatMap(({ lies }) => lies.map(({ id }) => id))),
     );
     known('closedLocationIds', run.closedLocationIds, locationIds);
+    known(
+      'drawnEvents',
+      run.drawnEvents.map(({ eventId }) => eventId),
+      new Set((run.case.randomEvents ?? []).map(({ id }) => id)),
+    );
     known('revealedTraitIds', run.revealedTraitIds, new Set(run.traits.map(({ id }) => id)));
   });
 export type DetectiveRunState = z.infer<typeof DetectiveRunStateSchema>;
@@ -138,6 +149,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     concededLieIds: [],
     condition: initialCondition(),
     closedLocationIds: [],
+    drawnEvents: [],
   });
 }
 
@@ -268,6 +280,17 @@ export function closeLocation(run: DetectiveRunState, locationId: string): Detec
   return { ...run, closedLocationIds: addOnce(run.closedLocationIds, locationId) };
 }
 
+/** Writes down that a random event of the case's pool has happened today; its effects are applied elsewhere. */
+export function recordDrawnEvent(run: DetectiveRunState, eventId: string): DetectiveRunState {
+  assertActive(run);
+  requireId(
+    'random event',
+    eventId,
+    (run.case.randomEvents ?? []).map(({ id }) => id),
+  );
+  return { ...run, drawnEvents: [...run.drawnEvents, { eventId, day: run.clock.day }] };
+}
+
 /** What the player and the narrator may know. It leaves out the truth, the solution and unrevealed traits. */
 export interface DetectiveRunView {
   readonly title: string;
@@ -316,6 +339,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     name: requireLocation(detectiveCase, id).name,
     visited: run.visitedLocationIds.includes(id),
   }));
+  const pool = detectiveCase.randomEvents ?? [];
   return {
     title: detectiveCase.title,
     premise: detectiveCase.premise,
@@ -328,7 +352,12 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     warnings: warningsOfMeters(meterReadings(run)),
     news: detectiveCase.clock.worldEvents
       .filter(({ day }) => day <= run.clock.day)
-      .map(({ description }) => description),
+      .map(({ description }) => description)
+      .concat(
+        run.drawnEvents.flatMap(({ eventId }) =>
+          pool.filter(({ id }) => id === eventId).map(({ description }) => description),
+        ),
+      ),
     hero: run.hero,
     hiddenTraitCount: run.traits.length - run.revealedTraitIds.length,
     revealedTraits: run.traits.filter(({ id }) => run.revealedTraitIds.includes(id)),

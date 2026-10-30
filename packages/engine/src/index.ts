@@ -22,6 +22,7 @@ export * from './detective/actions.js';
 export * from './detective/interrogation.js';
 export * from './detective/verdict.js';
 export * from './detective/clock.js';
+export * from './detective/random-events.js';
 export * from './detective/event-log.js';
 export { sealCase, isCaseSealIntact, assertCaseSealIntact } from './detective/seal.js';
 export {
