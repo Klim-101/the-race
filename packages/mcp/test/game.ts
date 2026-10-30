@@ -34,7 +34,12 @@ export async function call(
   context: ServerContext,
 ): Promise<{ isError: boolean; body: Record<string, unknown> }> {
   const result = await tool.run(args, context);
-  return { isError: result.isError === true, body: result.structuredContent ?? {} };
+  // A failure carries its error as text only; a success carries structured content.
+  const text = (result.content[0] as { text: string } | undefined)?.text ?? '{}';
+  return {
+    isError: result.isError === true,
+    body: result.structuredContent ?? (JSON.parse(text) as Record<string, unknown>),
+  };
 }
 
 export const HERO_CHOICES = {

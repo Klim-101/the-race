@@ -78,11 +78,16 @@ describe('serveStdio', () => {
     await peer.initialize();
     const reply = await peer.request('tools/call', { name: 'refusing', arguments: { id: 'x' } });
     expect(reply.error).toBeUndefined();
-    expect(reply.result).toMatchObject({
-      isError: true,
-      structuredContent: {
-        error: { code: 'no-run', message: 'There is no run.', remediation: 'Start one.' },
-      },
+    const result = reply.result as {
+      isError?: boolean;
+      structuredContent?: unknown;
+      content: { text: string }[];
+    };
+    expect(result.isError).toBe(true);
+    // Plain text only: structured content would be checked against the output schema by the client.
+    expect(result.structuredContent).toBeUndefined();
+    expect(JSON.parse(result.content[0]?.text ?? '')).toEqual({
+      error: { code: 'no-run', message: 'There is no run.', remediation: 'Start one.' },
     });
   });
 
