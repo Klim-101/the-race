@@ -15,7 +15,7 @@ export const runNew = defineTool({
     'Starts a new run: it picks a seed and a theme and waits for the player to make a hero. Call it only when ' +
     'the player asks for a new run and run_view reports no run in progress. It is refused with the code ' +
     '"run-in-progress" while a run is active: resume it with run_view, or end it with run_give_up if the ' +
-    "player wants to stop. Pass the player's language as `locale`, and a `seed` only if the player gave one. " +
+    "player wants to stop. Pass the player's language as `locale`: exactly the two letters ru or en, whatever the player calls it, and a `seed` only if the player gave one. " +
     'It changes nothing about a finished run, and calling it again before the hero exists simply starts over ' +
     'with a fresh seed. The result is what the player may choose from when making the hero: the skills and the ' +
     'points to spend on them (all of them, no more, no skill above `maxSkillLevel`), ready-made builds of those ' +
