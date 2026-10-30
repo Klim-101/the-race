@@ -12,6 +12,7 @@ import {
   type Location,
   type SkillCheck,
 } from './case-schema.js';
+import { InterrogateIntentSchema, resolveInterrogate, type InterrogationOutcome } from './interrogation.js';
 import { buildNeighbors, closedSources } from './obtainability.js';
 import {
   changeReputation,
@@ -32,6 +33,8 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('move'), locationId: EntityIdSchema }),
   /** A thorough search of the place: every hidden clue gets a check. */
   z.object({ kind: z.literal('search') }),
+  /** Question a suspect of the place, showing clues that may break their lies. */
+  InterrogateIntentSchema,
 ]);
 export type Intent = z.infer<typeof IntentSchema>;
 
@@ -46,7 +49,15 @@ export const FAILED_ENTRY_MINUTES = 10;
 export const CRITICAL_FAILURE_REPUTATION = 1;
 
 export type RefusalCode =
-  'invalid-intent' | 'run-over' | 'unknown-location' | 'already-here' | 'not-adjacent' | 'locked';
+  | 'invalid-intent'
+  | 'run-over'
+  | 'unknown-location'
+  | 'already-here'
+  | 'not-adjacent'
+  | 'locked'
+  | 'unknown-suspect'
+  | 'suspect-elsewhere'
+  | 'clue-not-found';
 
 /** Why an intent was not carried out. Nothing changed and no time passed. */
 export interface Refusal {
@@ -76,11 +87,12 @@ export type Outcome =
       readonly foundClueIds: readonly string[];
       readonly minutes: number;
       readonly consequences: readonly Consequence[];
-    };
+    }
+  | InterrogationOutcome;
 
 /** The full record of a check, for the engine's own log: it does name what was being checked. */
 export interface CheckDetail {
-  readonly subject: { readonly kind: 'clue' | 'location'; readonly id: string };
+  readonly subject: { readonly kind: 'clue' | 'location' | 'suspect'; readonly id: string };
   /** `'auto'`: found without a roll, as by a photographic memory. */
   readonly result: SkillCheckResult | 'auto';
 }
@@ -264,6 +276,8 @@ export function resolveIntent(run: DetectiveRunState, input: unknown, rng: Rng):
       return resolveSearch(run, rng);
     case 'move':
       return resolveMove(run, rng, intent.locationId);
+    case 'interrogate':
+      return resolveInterrogate(run, intent, rng);
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
     default:
       return assertNever(intent);
