@@ -4,6 +4,7 @@
 export * from './locale.js';
 export * from './archetype.js';
 export * from './hero.js';
+export * from './assemble-hero.js';
 export * from './dice.js';
 export * from './traits.js';
 export * from './detective/archetype.js';
