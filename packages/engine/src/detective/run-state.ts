@@ -68,6 +68,8 @@ export const DetectiveRunStateSchema = z
     closedLocationIds: z.array(EntityIdSchema).default([]),
     /** Random events the night has drawn, with the day of each; the pool of the case holds what they are. */
     drawnEvents: z.array(DrawnEventSchema).default([]),
+    /** Found clues whose reading was garbled by fatigue; each must be read again before it is used as proof. */
+    garbledClueIds: z.array(EntityIdSchema).default([]),
   })
   .superRefine((run, context) => {
     if (!isCaseSealIntact(run)) {
@@ -103,6 +105,7 @@ export const DetectiveRunStateSchema = z
       run.concededLieIds,
       new Set(run.case.suspects.flatMap(({ lies }) => lies.map(({ id }) => id))),
     );
+    known('garbledClueIds', run.garbledClueIds, new Set(run.case.clues.map(({ id }) => id)));
     known('closedLocationIds', run.closedLocationIds, locationIds);
     known(
       'drawnEvents',
@@ -150,6 +153,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     condition: initialCondition(),
     closedLocationIds: [],
     drawnEvents: [],
+    garbledClueIds: [],
   });
 }
 
@@ -319,6 +323,8 @@ export interface DetectiveRunView {
     readonly id: string;
     readonly locationId: string;
     readonly description: string;
+    /** Read badly: the clue counts as found, but it has to be read again before it is used as proof. */
+    readonly garbled: boolean;
   }[];
   readonly insights: readonly { readonly id: string; readonly insight: string }[];
 }
@@ -365,7 +371,12 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     suspects: detectiveCase.suspects.map(({ id, name, persona }) => ({ id, name, persona })),
     clues: detectiveCase.clues
       .filter(({ id }) => run.foundClueIds.includes(id))
-      .map(({ id, locationId, description }) => ({ id, locationId, description })),
+      .map(({ id, locationId, description }) => ({
+        id,
+        locationId,
+        description,
+        garbled: run.garbledClueIds.includes(id),
+      })),
     insights: detectiveCase.deductions
       .filter(({ id }) => run.insightIds.includes(id))
       .map(({ id, insight }) => ({ id, insight })),

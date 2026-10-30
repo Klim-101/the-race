@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { Rng } from '../dice.js';
 import { statusOfEndReason } from '../run.js';
 import { EntityIdSchema, type Truth } from './case-schema.js';
+import { GARBLED_REFUSAL_MESSAGE, anyGarbled } from './fatigue.js';
 import { addInsight, endRun, endTurn, spendTime, type DetectiveRunState } from './run-state.js';
 import { assertCaseSealIntact } from './seal.js';
 
@@ -34,7 +35,7 @@ export const DEDUCE_MINUTES = 10;
 export const FAILED_DEDUCTION_MINUTES = 20;
 
 export type VerdictRefusalCode =
-  'invalid-intent' | 'run-over' | 'unknown-suspect' | 'not-found' | 'no-insight';
+  'invalid-intent' | 'run-over' | 'unknown-suspect' | 'not-found' | 'no-insight' | 'garbled-clue';
 
 /** Why an intent was not carried out. Nothing changed and no time passed. */
 export interface VerdictRefusal {
@@ -54,7 +55,7 @@ export type DeduceOutcome =
       readonly kind: 'deduce';
       readonly result: 'nothing';
       readonly minutes: number;
-      readonly consequences: readonly ['time-lost'];
+      readonly consequences: readonly ('time-lost' | 'mishap')[];
     };
 
 export type DeduceResolution =
@@ -100,6 +101,8 @@ export function deduce(run: DetectiveRunState, input: unknown, rng: Rng): Deduce
   if (link.size < 2 || [...link].some((id) => !run.foundClueIds.includes(id))) {
     return refuse('not-found', 'A link needs two different clues the hero has found.');
   }
+
+  if (anyGarbled(run, [...link])) return refuse('garbled-clue', GARBLED_REFUSAL_MESSAGE);
 
   const match = run.case.deductions.find(
     (deduction) =>
@@ -156,6 +159,7 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
   if (evidenceClueIds.some((id) => !run.foundClueIds.includes(id))) {
     return refuse('not-found', 'Only clues the hero has found can be laid out as evidence.');
   }
+  if (anyGarbled(run, evidenceClueIds)) return refuse('garbled-clue', GARBLED_REFUSAL_MESSAGE);
   if (motiveInsightId !== null && !run.insightIds.includes(motiveInsightId)) {
     return refuse('no-insight', 'The hero has made no such deduction.');
   }
