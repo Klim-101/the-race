@@ -41,6 +41,8 @@ export const DetectiveRunStateSchema = z
     foundClueIds: z.array(EntityIdSchema),
     /** Deductions the hero has made. */
     insightIds: z.array(EntityIdSchema),
+    /** Lies of suspects that the hero has broken; the suspect has given that ground for good. */
+    concededLieIds: z.array(EntityIdSchema).default([]),
   })
   .superRefine((run, context) => {
     if (!isCaseSealIntact(run)) {
@@ -63,6 +65,11 @@ export const DetectiveRunStateSchema = z
     known('searchedLocationIds', run.searchedLocationIds, locationIds);
     known('foundClueIds', run.foundClueIds, new Set(run.case.clues.map(({ id }) => id)));
     known('insightIds', run.insightIds, new Set(run.case.deductions.map(({ id }) => id)));
+    known(
+      'concededLieIds',
+      run.concededLieIds,
+      new Set(run.case.suspects.flatMap(({ lies }) => lies.map(({ id }) => id))),
+    );
     known('revealedTraitIds', run.revealedTraitIds, new Set(run.traits.map(({ id }) => id)));
   });
 export type DetectiveRunState = z.infer<typeof DetectiveRunStateSchema>;
@@ -99,6 +106,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     searchedLocationIds: [],
     foundClueIds: [],
     insightIds: [],
+    concededLieIds: [],
   });
 }
 
