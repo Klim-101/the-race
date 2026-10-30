@@ -1,0 +1,301 @@
+{
+  "schemaVersion": 1,
+  "locale": "en",
+  "crimeType": "financial",
+  "tone": "wry",
+  "title": "The Leaked Memo of Larkspur",
+  "premise": "At nine o'clock on a Monday the shares of the Larkspur Tea Company, the pride of Port Amberly in The Draft, fall by a third. The reason is a leaked internal memo announcing a recall of 'unsafe' tea, which the company swears it never wrote. By lunchtime the price has crept back, and someone has bought a very large block at the bottom. The exchange board wants to know who is richer today than they should be.",
+  "startLocationId": "exchange-floor",
+  "locations": [
+    {
+      "id": "exchange-floor",
+      "name": "Port Amberly Exchange floor",
+      "description": "A marble hall full of brokers shouting numbers at one another with great confidence and very little proof. The chalkboard of prices is still smudged where Larkspur fell.",
+      "connections": ["press-room", "larkspur-hq", "teahouse"],
+      "access": { "kind": "open" },
+      "situations": ["crowd"]
+    },
+    {
+      "id": "press-room",
+      "name": "Financial press room",
+      "description": "A cramped newsroom where five journalists share two telephones and one opinion. The memo was slid under this door before dawn.",
+      "connections": ["exchange-floor", "print-shop"],
+      "access": { "kind": "open" }
+    },
+    {
+      "id": "print-shop",
+      "name": "Inkwell print shop",
+      "description": "A small printer behind the press room that smells of solvent and toast. The owner prints everything from wedding invitations to share certificates and remembers all of it.",
+      "connections": ["press-room"],
+      "access": { "kind": "open" }
+    },
+    {
+      "id": "larkspur-hq",
+      "name": "Larkspur headquarters",
+      "description": "A tea company's offices in the colours of strong tea: brown carpets, beige walls and a receptionist who offers visitors a cup and a form to sign for it.",
+      "connections": ["exchange-floor", "records-vault", "server-room"],
+      "access": { "kind": "open" }
+    },
+    {
+      "id": "records-vault",
+      "name": "Shareholder records vault",
+      "description": "A windowless basement closet of ledgers, where the lights switch off if you stand still for too long. The door needs a pass, and there is barely room for two people and a ledger.",
+      "connections": ["larkspur-hq"],
+      "access": { "kind": "clue", "clueId": "vault-pass" },
+      "situations": ["confined-space"]
+    },
+    {
+      "id": "server-room",
+      "name": "Company server room",
+      "description": "A refrigerated cupboard of blinking boxes, protected by a password that the whole IT department knows and denies knowing.",
+      "connections": ["larkspur-hq"],
+      "access": { "kind": "skill", "check": { "skill": "tech", "difficulty": 12 } },
+      "situations": ["digital-evidence"]
+    },
+    {
+      "id": "teahouse",
+      "name": "The Brindle Leaf teahouse",
+      "description": "A family teahouse by the exchange's back door, with chipped cups, honest prices and a tilting sign that has been about to fall for three decades.",
+      "connections": ["exchange-floor"],
+      "access": { "kind": "open" }
+    }
+  ],
+  "clues": [
+    {
+      "id": "vault-pass",
+      "locationId": "larkspur-hq",
+      "description": "A plastic pass marked 'Records, temporary' hangs on the receptionist's hook, apparently there for anyone who asks politely.",
+      "discovery": null,
+      "pointsTo": [],
+      "isRedHerring": false
+    },
+    {
+      "id": "paper-stock",
+      "locationId": "print-shop",
+      "description": "The printer recognises the memo's paper: a watermarked letterhead stock Larkspur discontinued years ago. Only the investor relations department still holds a box of it, and someone from there bought toner here last week.",
+      "discovery": { "skill": "perception", "difficulty": 10 },
+      "pointsTo": ["investor-relations"],
+      "isRedHerring": false
+    },
+    {
+      "id": "trade-ledger",
+      "locationId": "records-vault",
+      "description": "The share register shows a shell company, Fennel Gate Holdings, buying four hundred thousand Larkspur shares twenty minutes after the drop. Its registered address is a teahouse, and its signature is a very bad forgery of an aunt's.",
+      "discovery": { "skill": "reasoning", "difficulty": 12 },
+      "situations": ["financial-documents"],
+      "pointsTo": ["investor-relations"],
+      "isRedHerring": false
+    },
+    {
+      "id": "journalist-source",
+      "locationId": "press-room",
+      "description": "The reporter who got the memo, talked gently out of her professional pride, admits it came from a woman who insisted the story run before the market opened and who sounded rehearsed.",
+      "discovery": { "skill": "social", "difficulty": 11 },
+      "pointsTo": ["investor-relations"],
+      "isRedHerring": false
+    },
+    {
+      "id": "broker-gossip",
+      "locationId": "exchange-floor",
+      "description": "An old friend on the floor lets slip that the Fennel Gate orders were telephoned by a voice that kept apologising to the keyboard. 'The same voice does the company's quarterly announcements,' she adds.",
+      "discovery": { "skill": "contacts", "difficulty": 10 },
+      "pointsTo": ["investor-relations"],
+      "isRedHerring": false
+    },
+    {
+      "id": "memo-metadata",
+      "locationId": "press-room",
+      "description": "The leaked memo's hidden file properties name the machine it was written on: 'IR-04'. A little checking at reception shows that is the desk of the head of investor relations.",
+      "discovery": { "skill": "tech", "difficulty": 11 },
+      "situations": ["digital-evidence"],
+      "pointsTo": ["investor-relations"],
+      "isRedHerring": false
+    },
+    {
+      "id": "clerk-confession",
+      "locationId": "teahouse",
+      "description": "The teahouse cashier, a cousin of someone important, is wound up tightly and crumbles under firm questions: she signed a stack of papers last week 'for family business' without reading them.",
+      "discovery": { "skill": "pressure", "difficulty": 11 },
+      "pointsTo": ["investor-relations"],
+      "isRedHerring": false
+    },
+    {
+      "id": "mortgage-notice",
+      "locationId": "teahouse",
+      "description": "Pinned behind the till: a final notice that the teahouse's mortgage is due in full by Friday, with a daughter's name written beneath the sum in worried pencil.",
+      "discovery": { "skill": "reasoning", "difficulty": 11 },
+      "situations": ["financial-documents"],
+      "pointsTo": ["investor-relations"],
+      "isRedHerring": false
+    },
+    {
+      "id": "deleted-draft",
+      "locationId": "server-room",
+      "description": "In the mail server's trash folder lives an unsent draft titled 'recall_memo_FINAL_v7'. It was saved from the head of investor relations' account at midnight on Sunday.",
+      "discovery": { "skill": "tech", "difficulty": 12 },
+      "situations": ["digital-evidence"],
+      "pointsTo": ["investor-relations"],
+      "isRedHerring": false
+    },
+    {
+      "id": "big-short-slip",
+      "locationId": "exchange-floor",
+      "description": "A trader's order slip shows an enormous bet against Larkspur placed on Friday, days before the leak. Nobody will say whose money it was.",
+      "discovery": { "skill": "perception", "difficulty": 9 },
+      "pointsTo": ["trader"],
+      "isRedHerring": true
+    },
+    {
+      "id": "pigeon-receipt",
+      "locationId": "larkspur-hq",
+      "description": "A crumpled receipt in the finance director's wastebasket: a very large wager on a racing pigeon called Dividend, placed at the hour of the board dinner.",
+      "discovery": { "skill": "perception", "difficulty": 10 },
+      "pointsTo": ["cfo"],
+      "isRedHerring": true
+    },
+    {
+      "id": "champagne-bill",
+      "locationId": "press-room",
+      "description": "A bill for three bottles of champagne, paid in cash on the morning of the leak, tucked in a journalist's coat pocket.",
+      "discovery": null,
+      "pointsTo": ["journalist"],
+      "isRedHerring": true
+    }
+  ],
+  "suspects": [
+    {
+      "id": "investor-relations",
+      "name": "Ottoline Vance",
+      "persona": "The head of investor relations at Larkspur: a polished, soft-spoken woman who can say 'no comment' in forty-two flattering ways and apologises to machines.",
+      "secret": "Her family's teahouse is a week from foreclosure. She forged the memo, bought the shares cheap through a shell company in her aunt's name, and planned to sell as the price recovered.",
+      "alibi": "Says she was at home on Sunday night and learned of the memo from the morning papers like everyone else.",
+      "lies": [
+        {
+          "id": "ir-never-saw",
+          "statement": "I never saw that memo before it appeared in the papers. Larkspur would never write anything so careless.",
+          "brokenBy": ["memo-metadata", "paper-stock", "deleted-draft"]
+        }
+      ]
+    },
+    {
+      "id": "cfo",
+      "name": "Barnaby Fitch",
+      "persona": "The finance director of Larkspur: a rumpled man who talks about quarterly figures the way other men talk about the weather, and who is permanently late.",
+      "secret": "He gambles on racing pigeons and spent the board dinner in the cloakroom, anxiously phoning a pigeon loft.",
+      "alibi": "Insists he sat through the whole board dinner without leaving his chair.",
+      "lies": [
+        {
+          "id": "cfo-dinner",
+          "statement": "I sat through the board dinner from soup to cheese and never left my chair.",
+          "brokenBy": ["pigeon-receipt"]
+        }
+      ]
+    },
+    {
+      "id": "journalist",
+      "name": "Rosamund Ashby",
+      "persona": "The financial reporter who printed the memo first: sharp, quick and proud of never having needed to correct a story, which she regards as a medical condition.",
+      "secret": "She celebrated a bonus with a small party the morning of the leak, which has nothing to do with the memo and everything to do with her editor.",
+      "alibi": "Says she found the memo under her door at a quarter to eight and rushed it to press.",
+      "lies": [
+        {
+          "id": "journalist-no-pay",
+          "statement": "I never pay for tips and never celebrate a story before it's confirmed.",
+          "brokenBy": ["champagne-bill"]
+        }
+      ]
+    },
+    {
+      "id": "trader",
+      "name": "Fenwick Lowe",
+      "persona": "A floor trader with bright braces and a laugh that carries across the exchange; he believes every rumour for exactly one hour.",
+      "secret": "The enormous short order was placed for a client who has begged for anonymity, and he is sworn to keep it: a hedge, not a plot.",
+      "alibi": "Says he was on the floor all morning, with a hundred witnesses.",
+      "lies": [
+        {
+          "id": "trader-own-idea",
+          "statement": "That big order against Larkspur was my own idea, no client involved.",
+          "brokenBy": ["big-short-slip"]
+        }
+      ]
+    }
+  ],
+  "deductions": [
+    {
+      "id": "motive-mortgage",
+      "clueIds": ["mortgage-notice", "trade-ledger"],
+      "insight": "The shell company that bought at the bottom sits at the address of a teahouse whose mortgage falls due on Friday. The memo was not sabotage; it was a loan she gave herself with the market's money."
+    },
+    {
+      "id": "memo-origin",
+      "clueIds": ["memo-metadata", "paper-stock"],
+      "insight": "The memo was written at desk IR-04 and printed on letterhead that only investor relations still owns. The leak came from inside the company, not from a whistleblower."
+    }
+  ],
+  "truth": {
+    "culpritId": "investor-relations",
+    "motive": "Her family's teahouse faced foreclosure on Friday. She saw a way to turn one false rumour into enough money to pay it off.",
+    "method": "She wrote a fake recall memo on her own desk machine, printed it on the old watermarked letterhead and slid it under the press room door before dawn. When the price collapsed, her nominee company, registered to her aunt's teahouse, bought a big block at the bottom. She planned to sell when the company denied the memo and the price recovered.",
+    "crimeLocationId": "press-room",
+    "crimeAtMinute": 420,
+    "timeline": [
+      {
+        "atMinute": 360,
+        "actorId": "investor-relations",
+        "locationId": "print-shop",
+        "action": "Prints the forged recall memo on the old watermarked letterhead, humming a cheerful tune."
+      },
+      {
+        "atMinute": 420,
+        "actorId": "investor-relations",
+        "locationId": "press-room",
+        "action": "Slides the memo under the door and leaves before anyone arrives."
+      },
+      {
+        "atMinute": 420,
+        "actorId": "cfo",
+        "locationId": "larkspur-hq",
+        "action": "Sleeps in his chair, exhausted after a night of pigeon-related anxiety."
+      },
+      {
+        "atMinute": 435,
+        "actorId": "journalist",
+        "locationId": "press-room",
+        "action": "Finds the memo, reads it twice and runs to the editor."
+      },
+      {
+        "atMinute": 540,
+        "actorId": "trader",
+        "locationId": "exchange-floor",
+        "action": "Fills a client's enormous order as the price tumbles."
+      },
+      {
+        "atMinute": 570,
+        "actorId": "investor-relations",
+        "locationId": "teahouse",
+        "action": "Phones in a very large buying order for the shell company from the back table."
+      }
+    ]
+  },
+  "solution": {
+    "motiveDeductionId": "motive-mortgage",
+    "evidenceChains": [
+      ["paper-stock", "trade-ledger"],
+      ["journalist-source", "broker-gossip"],
+      ["memo-metadata", "clerk-confession"]
+    ]
+  },
+  "clock": {
+    "days": 3,
+    "worldEvents": [
+      {
+        "day": 2,
+        "description": "Larkspur issues a stiff denial and the shares rebound. The exchange board announces a review, and every broker in Port Amberly suddenly remembers an urgent appointment."
+      },
+      {
+        "day": 3,
+        "description": "The shell company's block is placed for sale. Brokers whisper that whoever sells first must be the one who knew first."
+      }
+    ]
+  }
+}
