@@ -6,6 +6,7 @@ import { applyMeterRate, type MeterReading, type ModifierEffect } from '../meter
 import type { ModifierSources } from '../modifiers.js';
 import { MINUTES_PER_DAY, type RunClock } from '../run.js';
 import type { Trait } from '../traits.js';
+import { gearModifiers, type KitItem } from './gear.js';
 import { DETECTIVE_NERVES, DETECTIVE_REPUTATION, DETECTIVE_SLEEP_DEBT } from './archetype.js';
 
 // The hero's condition is everything about them that wears off or wears out: nerves, sleep debt and timed
@@ -140,6 +141,7 @@ export function wearOffAtNight(condition: HeroCondition): HeroCondition {
 export function modifierSources(run: {
   readonly traits: readonly Trait[];
   readonly condition: HeroCondition;
+  readonly kit: readonly KitItem[];
 }): ModifierSources {
   const { condition } = run;
   const meters: MeterReading[] = [
@@ -149,6 +151,7 @@ export function modifierSources(run: {
   return {
     traits: run.traits,
     conditions: condition.active.map(({ id }) => ({ id, effects: DETECTIVE_CONDITIONS[id].effects })),
+    gear: gearModifiers(run.kit),
     meters,
   };
 }
