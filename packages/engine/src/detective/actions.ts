@@ -23,9 +23,17 @@ import {
   spendTime,
   type DetectiveRunState,
 } from './run-state.js';
+import {
+  AccuseIntentSchema,
+  DeduceIntentSchema,
+  accuse,
+  deduce,
+  type AccusationOutcome,
+  type DeduceOutcome,
+} from './verdict.js';
 
-// What a player can ask for. Interrogation and deduction are their own tasks; a check of a skill happens
-// inside the intents that need one, so there is no free-standing "use a skill".
+// What a player can ask for. A check of a skill happens inside the intents that need one, so there is no
+// free-standing "use a skill".
 export const IntentSchema = z.discriminatedUnion('kind', [
   /** A quick glance at the place: finds what lies in plain sight. */
   z.object({ kind: z.literal('look') }),
@@ -35,6 +43,10 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('search') }),
   /** Question a suspect of the place, showing clues that may break their lies. */
   InterrogateIntentSchema,
+  /** Link found clues into an insight. */
+  DeduceIntentSchema,
+  /** The final accusation, which ends the run. */
+  AccuseIntentSchema,
 ]);
 export type Intent = z.infer<typeof IntentSchema>;
 
@@ -57,7 +69,9 @@ export type RefusalCode =
   | 'locked'
   | 'unknown-suspect'
   | 'suspect-elsewhere'
-  | 'clue-not-found';
+  | 'clue-not-found'
+  | 'not-found'
+  | 'no-insight';
 
 /** Why an intent was not carried out. Nothing changed and no time passed. */
 export interface Refusal {
@@ -88,7 +102,9 @@ export type Outcome =
       readonly minutes: number;
       readonly consequences: readonly Consequence[];
     }
-  | InterrogationOutcome;
+  | InterrogationOutcome
+  | DeduceOutcome
+  | AccusationOutcome;
 
 /** The full record of a check, for the engine's own log: it does name what was being checked. */
 export interface CheckDetail {
@@ -278,6 +294,14 @@ export function resolveIntent(run: DetectiveRunState, input: unknown, rng: Rng):
       return resolveMove(run, rng, intent.locationId);
     case 'interrogate':
       return resolveInterrogate(run, intent, rng);
+    case 'deduce': {
+      const resolution = deduce(run, intent, rng);
+      return resolution.ok ? { ...resolution, details: [] } : resolution;
+    }
+    case 'accuse': {
+      const resolution = accuse(run, intent, rng);
+      return resolution.ok ? { ...resolution, details: [] } : resolution;
+    }
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
     default:
       return assertNever(intent);
