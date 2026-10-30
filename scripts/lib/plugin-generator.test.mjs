@@ -55,6 +55,7 @@ describe('buildPlugin', () => {
       `${PLUGIN_DIR}/.mcp.json`,
       `${PLUGIN_DIR}/GENERATED.md`,
       `${PLUGIN_DIR}/agents/narrator.md`,
+      `${PLUGIN_DIR}/bin/race-server.mjs`,
       `${PLUGIN_DIR}/commands/new-run.md`,
       `${PLUGIN_DIR}/hooks/guard.mjs`,
       `${PLUGIN_DIR}/hooks/hooks.json`,
@@ -70,11 +71,11 @@ describe('buildPlugin', () => {
     );
   });
 
-  it('declares the MCP server through the plugin root', () => {
+  it('declares the MCP server through a launcher inside the plugin, never a path that leaves it', () => {
     const mcp = JSON.parse(buildPlugin(agents()).get(`${PLUGIN_DIR}/.mcp.json`));
     expect(mcp).toEqual({
       mcpServers: {
-        'the-race': { command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/../../packages/mcp/dist/main.js'] },
+        'the-race': { command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/bin/race-server.mjs'] },
       },
     });
   });

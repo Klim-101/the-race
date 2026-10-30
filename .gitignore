@@ -5,3 +5,6 @@ coverage/
 
 # Private planning notes never leave the machine.
 dev/private/
+
+# Working copies of agents and worktrees.
+.claude/worktrees/

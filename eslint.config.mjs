@@ -50,6 +50,8 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/coverage/**',
       'dev/private/**',
+      // Working copies that agents and worktrees make: whole repositories, with their own node_modules.
+      '.claude/worktrees/**',
       // Generated from agents/, which is linted at the source.
       'plugins/the-race/**',
     ],

@@ -2,6 +2,7 @@ dist
 coverage
 package-lock.json
 dev/private
+.claude/worktrees
 
 # Generated from agents/ by scripts/generate-plugin.mjs; it is compared byte for byte, not reformatted.
 plugins/the-race
