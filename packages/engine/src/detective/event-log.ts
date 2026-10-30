@@ -17,6 +17,7 @@ import { HeroConditionSchema } from './condition.js';
 import { EntityIdSchema } from './case-schema.js';
 import { daysPassed } from './clock.js';
 import { INTERROGATION_APPROACHES } from './interrogation.js';
+import { NightReportSchema } from './night.js';
 import type { DetectiveRunState } from './run-state.js';
 import { VERDICTS, type Verdict } from './verdict.js';
 
@@ -63,6 +64,7 @@ const OutcomeSchema = z.union([
     minutes,
     consequences: z.array(ConsequenceSchema),
   }),
+  z.object({ kind: z.literal('rest') }),
   z.object({
     kind: z.literal('interrogate'),
     suspectId: EntityIdSchema,
@@ -123,6 +125,8 @@ export const LogEntrySchema = z.object({
   endReason: EndReasonSchema.nullable().default(null),
   /** The scheduled events (indices into the case's `clock.worldEvents`) that fired as the days turned. */
   worldEvents: z.array(z.int().min(0)).default([]),
+  /** What the night did if the turn ended in one, with the state of the dice after it; `null` otherwise. */
+  night: NightReportSchema.nullable().default(null),
 });
 export type LogEntry = z.infer<typeof LogEntrySchema>;
 
@@ -156,6 +160,7 @@ function entryOf(before: DetectiveRunState, intent: Intent, resolution: Resoluti
     status: after.status,
     endReason: after.endReason,
     worldEvents: daysPassed(before.case, before.clock.day, after.clock.day).firedEventIndexes,
+    night: resolution.night ?? null,
   });
 }
 

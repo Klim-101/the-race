@@ -19,7 +19,7 @@ export const LATE_FROM_MINUTE = 22 * 60;
 /** One point of sleep debt for every full stretch of this many minutes worked late. */
 export const SLEEP_DEBT_MINUTES_PER_POINT = 60;
 
-export const CONDITION_IDS = ['drunk', 'injured', 'exhausted', 'shaken', 'sedated'] as const;
+export const CONDITION_IDS = ['drunk', 'injured', 'exhausted', 'shaken', 'sedated', 'ill-equipped'] as const;
 export const ConditionIdSchema = z.enum(CONDITION_IDS);
 export type ConditionId = z.infer<typeof ConditionIdSchema>;
 
@@ -48,6 +48,8 @@ export const DETECTIVE_CONDITIONS: Readonly<Record<ConditionId, ConditionDefinit
   shaken: { duration: { minutes: 120 }, effects: [{ skills: ['social', 'pressure'], amount: -2 }] },
   // A sedative settles the nerves at once, at the price of attention.
   sedated: { duration: { minutes: 360 }, effects: [{ skills: ['perception'], amount: -3 }] },
+  // Gear lost to a robbery, until it is replaced: gear is not an item yet, so it is a timed penalty.
+  'ill-equipped': { duration: { minutes: 2 * MINUTES_PER_DAY }, effects: [{ skills: 'all', amount: -1 }] },
 };
 
 /** A condition that is on the hero: the minutes it has left, or `'night'` if it lasts until the night. */
@@ -129,7 +131,7 @@ export function withCondition(condition: HeroCondition, id: ConditionId): HeroCo
   };
 }
 
-/** What the night does to conditions: those that last until the night are gone. The night itself is P1-18. */
+/** What the night does to conditions: those that last until the night are gone; the rest is in `night.ts`. */
 export function wearOffAtNight(condition: HeroCondition): HeroCondition {
   return { ...condition, active: condition.active.filter(({ remaining }) => remaining !== 'night') };
 }

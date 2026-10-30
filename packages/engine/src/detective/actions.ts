@@ -3,6 +3,7 @@
 
 import { z } from 'zod';
 import { assertNever } from '../assert-never.js';
+import { endReasonOfMeters } from '../meters.js';
 import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
 import { collectModifier } from '../modifiers.js';
 import { hasAutoDiscover, type TraitTrigger } from '../traits.js';
@@ -13,8 +14,9 @@ import {
   type Location,
   type SkillCheck,
 } from './case-schema.js';
-import { modifierSources } from './condition.js';
+import { meterReadings, modifierSources } from './condition.js';
 import { settleClock } from './clock.js';
+import { isCollapse, passNight, type NightCause, type NightReport } from './night.js';
 import { InterrogateIntentSchema, resolveInterrogate, type InterrogationOutcome } from './interrogation.js';
 import { buildNeighbors, closedSources } from './obtainability.js';
 import {
@@ -49,6 +51,8 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   InterrogateIntentSchema,
   /** Link found clues into an insight. */
   DeduceIntentSchema,
+  /** Stop for the day and sleep where the hero stands: the night passes at once. */
+  z.object({ kind: z.literal('rest') }),
   /** The final accusation, which ends the run. */
   AccuseIntentSchema,
 ]);
@@ -107,6 +111,7 @@ export type Outcome =
       readonly minutes: number;
       readonly consequences: readonly Consequence[];
     }
+  | { readonly kind: 'rest' }
   | InterrogationOutcome
   | DeduceOutcome
   | AccusationOutcome;
@@ -124,6 +129,8 @@ export type Resolution =
       readonly run: DetectiveRunState;
       readonly outcome: Outcome;
       readonly details: readonly CheckDetail[];
+      /** Set when the turn ended in a night: what the night did, for the engine's log. */
+      readonly night?: NightReport;
     }
   | { readonly ok: false; readonly refusal: Refusal };
 
@@ -291,8 +298,34 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
  */
 export function resolveIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resolution {
   const resolution = dispatchIntent(run, input, rng);
+  if (!resolution.ok) return resolution;
   // The turn is settled here, once, for every kind of intent: the night, scheduled events and the ways to lose.
-  return resolution.ok ? { ...resolution, run: settleClock(resolution.run, run.clock.day) } : resolution;
+  const slept = sleepIfDue(resolution, run.clock.day, rng);
+  return { ...slept, run: settleClock(slept.run, run.clock.day) };
+}
+
+type Carried = Resolution & { ok: true };
+
+/**
+ * The night, if the turn brought one: the hero chose to rest, the active hours ran out or nerves are gone
+ * and the meters call it a collapse. A run that is lost to its meters or its reputation does not sleep it
+ * off: the night would hide a breakdown, which the clock settles next.
+ */
+function sleepIfDue(resolution: Carried, day: number, rng: Rng): Carried {
+  const { run } = resolution;
+  if (run.status !== 'active') return resolution;
+  if (run.reputation === 0 || endReasonOfMeters(meterReadings(run)) !== null) return resolution;
+  let cause: NightCause | null = null;
+  if (resolution.outcome.kind === 'rest') cause = 'rest';
+  else if (run.clock.day > day) cause = 'active-hours';
+  else if (isCollapse(run)) cause = 'collapse';
+  if (cause === null) return resolution;
+  const night = passNight(run, rng, cause, day);
+  return { ...resolution, run: night.run, night: night.report };
+}
+
+function resolveRest(run: DetectiveRunState, rng: Rng): Resolution {
+  return { ok: true, run: endTurn(run, rng), outcome: { kind: 'rest' }, details: [] };
 }
 
 function dispatchIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resolution {
@@ -311,6 +344,8 @@ function dispatchIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resol
       return resolveSearch(run, rng);
     case 'move':
       return resolveMove(run, rng, intent.locationId);
+    case 'rest':
+      return resolveRest(run, rng);
     case 'interrogate':
       return resolveInterrogate(run, intent, rng);
     case 'deduce': {
