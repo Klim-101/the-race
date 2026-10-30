@@ -50,7 +50,7 @@ export const heroCreate = defineTool({
     const rng = createRng(pending.seed);
     const assembled = assembleHero({ ...input, archetype: 'detective' }, rng);
     if (!assembled.isValid) {
-      const reasons = assembled.issues.map(({ path, message }) => `${path || '(hero)'}: ${message}`);
+      const reasons = assembled.issues.map(({ path, message }) => `${path}: ${message}`);
       throw new ToolFailure({
         code: 'invalid-hero',
         message: `The hero is not valid. ${reasons.join(' ')}`,
