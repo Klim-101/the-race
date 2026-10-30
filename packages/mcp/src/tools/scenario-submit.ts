@@ -26,7 +26,7 @@ const MAX_CASE_TEXT_LENGTH = 400_000;
 
 /** The most fundamental problems first (a lower number): a case that does not parse has nothing else to fix yet. */
 const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
-  'schema': 0,
+  schema: 0,
   'duplicate-id': 1,
   'unknown-reference': 2,
   'locale-mismatch': 3,
@@ -65,7 +65,7 @@ function clip(text: string, length: number): string {
 }
 
 /** Most important first, capped, and each one short. Array.sort is stable, so ties keep the engine's order. */
-function compactIssues(issues: readonly CaseIssue[]): {
+export function compactIssues(issues: readonly CaseIssue[]): {
   issues: { code: string; path: string; message: string }[];
   moreIssues: number;
 } {
@@ -107,7 +107,7 @@ export const scenarioSubmit = defineTool({
   name: 'scenario_submit',
   description:
     'For the case generator only. Submits one complete case, as JSON text or as an object, to the engine. ' +
-    'The engine validates it for this run\'s hero. If it is accepted the engine seals it and starts the run, ' +
+    "The engine validates it for this run's hero. If it is accepted the engine seals it and starts the run, " +
     'and the result is just {"accepted":true}: stop and answer "accepted". If it is not, the result lists ' +
     'the issues (code, path, message), most important first, and how many attempts are left: fix exactly ' +
     'those and submit the whole case again. At most three submissions are allowed; after that the result ' +
@@ -158,7 +158,11 @@ export const scenarioSubmit = defineTool({
 
       const attempts = pending.attempts + 1;
       const attemptsLeft = MAX_CASE_ATTEMPTS - attempts;
-      await savePending(context.saveDir, { ...pending, attempts, failed: attemptsLeft === 0 }, context.saveFs);
+      await savePending(
+        context.saveDir,
+        { ...pending, attempts, failed: attemptsLeft === 0 },
+        context.saveFs,
+      );
       if (attemptsLeft === 0) return { accepted: false, attemptsLeft, final: true, reason: FINAL_REASON };
       return { accepted: false, attemptsLeft, ...compactIssues(result.issues) };
     }),

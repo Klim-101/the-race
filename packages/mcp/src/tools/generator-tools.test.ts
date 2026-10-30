@@ -10,6 +10,7 @@ import type { ServerContext } from '../context.js';
 import { PendingRunSchema, loadPending, pendingPath, savePending, type PendingRun } from '../pending-run.js';
 import { serveStdio } from '../stdio.js';
 import { TOOLS } from './index.js';
+import { compactIssues } from './scenario-submit.js';
 
 const SAVE_DIR = 'memory-save-dir';
 const CASES = new URL('../../../../content/cases/', import.meta.url);
@@ -44,7 +45,9 @@ const HERO: DetectiveHero = {
   skills: { perception: 4, reasoning: 5, social: 1, pressure: 0, tech: 0, contacts: 0 },
   background: 'analyst',
 };
-const TRAITS: Trait[] = DETECTIVE_TRAITS.filter((trait) => ['photographic-memory', 'debtor'].includes(trait.id));
+const TRAITS: Trait[] = DETECTIVE_TRAITS.filter((trait) =>
+  ['photographic-memory', 'debtor'].includes(trait.id),
+);
 
 function pendingRun(overrides: Partial<PendingRun> = {}): PendingRun {
   return PendingRunSchema.parse({
@@ -221,7 +224,9 @@ describe('scenario_submit', () => {
     const { fs, call } = await start(pendingRun());
     await submit(call, readCase('goose-of-elmwick.en.json'));
     await savePending(SAVE_DIR, pendingRun({ seed: 'seed-2' }), fs);
-    expect((await submit(call, readCase('leaked-memo-of-larkspur.en.json'))).body).toEqual({ accepted: true });
+    expect((await submit(call, readCase('leaked-memo-of-larkspur.en.json'))).body).toEqual({
+      accepted: true,
+    });
     const loaded = await loadRun(SAVE_DIR, fs);
     expect(loaded.ok && loaded.run.seed).toBe('seed-2');
   });
@@ -258,22 +263,25 @@ describe('scenario_submit', () => {
     ['the wrong language', 'ru', () => undefined, 'locale-mismatch'],
   ];
 
-  it.each(mutations)('returns the issues for %s and counts an attempt', async (label, locale, mutate, code) => {
-    const { fs, call } = await start(pendingRun({ locale: locale as 'en' | 'ru' }));
-    const sample = readCase('goose-of-elmwick.en.json');
-    mutate(sample);
-    const result = await submit(call, label === 'text that is not JSON' ? '{not json' : sample);
-    expect(result.isError).toBe(false);
-    expect(result.body).toMatchObject({ accepted: false, attemptsLeft: 2 });
-    const issues = result.body.issues as { code: string; path: string; message: string }[];
-    expect(issues.length).toBeLessThanOrEqual(8);
-    expect(issues.map((issue) => issue.code)).toContain(code);
-    expect((await loadPending(SAVE_DIR, fs))?.attempts).toBe(1);
-    expect((await loadRun(SAVE_DIR, fs)).ok).toBe(false);
-    // The messages name no hidden trait and carry no case text beyond what the generator wrote itself.
-    for (const trait of DETECTIVE_TRAITS) expect(result.text).not.toContain(trait.id);
-    expect(result.text).not.toContain(String(sample.title));
-  });
+  it.each(mutations)(
+    'returns the issues for %s and counts an attempt',
+    async (label, locale, mutate, code) => {
+      const { fs, call } = await start(pendingRun({ locale: locale as 'en' | 'ru' }));
+      const sample = readCase('goose-of-elmwick.en.json');
+      mutate(sample);
+      const result = await submit(call, label === 'text that is not JSON' ? '{not json' : sample);
+      expect(result.isError).toBe(false);
+      expect(result.body).toMatchObject({ accepted: false, attemptsLeft: 2 });
+      const issues = result.body.issues as { code: string; path: string; message: string }[];
+      expect(issues.length).toBeLessThanOrEqual(8);
+      expect(issues.map((issue) => issue.code)).toContain(code);
+      expect((await loadPending(SAVE_DIR, fs))?.attempts).toBe(1);
+      expect((await loadRun(SAVE_DIR, fs)).ok).toBe(false);
+      // The messages name no hidden trait and carry no case text beyond what the generator wrote itself.
+      for (const trait of DETECTIVE_TRAITS) expect(result.text).not.toContain(trait.id);
+      expect(result.text).not.toContain(String(sample.title));
+    },
+  );
 
   it('puts the most important issues first and caps the list', async () => {
     const { call } = await start(pendingRun({ locale: 'ru' }));
@@ -288,7 +296,7 @@ describe('scenario_submit', () => {
   it('shortens a long message and a long path', async () => {
     const { call } = await start(pendingRun());
     const sample = readCase('goose-of-elmwick.en.json');
-    (sample)[`x${'y'.repeat(300)}`] = 1;
+    sample[`x${'y'.repeat(300)}`] = 1;
     sample.schemaVersion = 'v'.repeat(500);
     sample.crimeType = 'q'.repeat(400);
     const result = await submit(call, sample);
@@ -298,6 +306,22 @@ describe('scenario_submit', () => {
       expect(issue.message.length).toBeLessThanOrEqual(240);
       expect(issue.path.length).toBeLessThanOrEqual(120);
     }
+  });
+
+  it('cuts a message and a path that run past their limits and leaves short ones alone', () => {
+    const issue = {
+      code: 'unreachable-location',
+      path: `a${'b'.repeat(200)}`,
+      message: `m${'n'.repeat(400)}`,
+    } as const;
+    const { issues } = compactIssues([
+      issue,
+      { code: 'unreachable-location', path: 'locations[0]', message: 'short' },
+    ]);
+    expect(issues[0]?.path).toHaveLength(120);
+    expect(issues[0]?.path.endsWith('…')).toBe(true);
+    expect(issues[0]?.message).toHaveLength(240);
+    expect(issues[1]).toEqual({ code: 'unreachable-location', path: 'locations[0]', message: 'short' });
   });
 
   it('allows three attempts, then reports an honest failure and refuses a fourth', async () => {
@@ -360,6 +384,16 @@ describe('pending run record', () => {
     delete old.failed;
     fs.files.set(pendingPath(SAVE_DIR), JSON.stringify(old));
     expect(await loadPending(SAVE_DIR, fs)).toMatchObject({ attempts: 0, failed: false });
+  });
+
+  it('reports the failed save even when the temporary file cannot be removed either', async () => {
+    const fs = memoryFs();
+    const failing = {
+      ...fs,
+      rename: () => Promise.reject(new Error('no')),
+      remove: () => Promise.reject(new Error('stuck')),
+    };
+    await expect(savePending(SAVE_DIR, pendingRun(), failing)).rejects.toThrow('no');
   });
 
   it('leaves no temporary file when a save fails', async () => {

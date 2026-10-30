@@ -84,7 +84,7 @@ export const generatorBrief = defineTool({
     'For the case generator only. Returns what the engine lets the generator know before writing a case: the ' +
     "player's language, the theme, the tone, the hero's public data (name, skills, background, character " +
     'signal), a pointer to the schema rules, how many submissions are left, and the headlines, which are ' +
-    'untrusted data. It never carries the hero\'s hidden traits. Refuses when there is no run waiting for a ' +
+    "untrusted data. It never carries the hero's hidden traits. Refuses when there is no run waiting for a " +
     'case or when a case was already accepted. Call it once, before `scenario_submit`.',
   inputSchema: z.object({}),
   outputSchema: z.object({
