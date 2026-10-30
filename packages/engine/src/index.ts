@@ -8,6 +8,8 @@ export * from './assemble-hero.js';
 export * from './dice.js';
 export { canonicalJson, sha256Hex } from './canonical-json.js';
 export * from './traits.js';
+export * from './meters.js';
+export * from './modifiers.js';
 export * from './run.js';
 export * from './detective/archetype.js';
 export * from './detective/traits.js';

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { z } from 'zod';
+import { MAX_METERS, type MeterDefinition } from './meters.js';
 import type { Trait } from './traits.js';
 
 export const GenderSchema = z.enum(['female', 'male', 'nonbinary']);
@@ -26,6 +27,8 @@ export interface ArchetypeDefinition<Id extends string, Skill extends string> {
   readonly skillPoints: number;
   readonly maxSkillLevel: number;
   readonly traits: readonly Trait[];
+  /** At most `MAX_METERS`; a meter is data, so a new one needs no new code. */
+  readonly meters: readonly MeterDefinition[];
 }
 
 export interface ArchetypeInput<Id extends string, OwnSkill extends string> {
@@ -34,18 +37,27 @@ export interface ArchetypeInput<Id extends string, OwnSkill extends string> {
   readonly skillPoints: number;
   readonly maxSkillLevel: number;
   readonly traits: readonly Trait[];
+  readonly meters?: readonly MeterDefinition[];
 }
 
 /** Adds the common skills to the archetype's own and keeps the literal id and skill names in the type. */
 export function defineArchetype<const Id extends string, const OwnSkill extends string>(
   input: ArchetypeInput<Id, OwnSkill>,
 ): ArchetypeDefinition<Id, CommonSkill | OwnSkill> {
-  const { ownSkills, ...rest } = input;
+  const { ownSkills, meters = [], ...rest } = input;
   const skills = [...COMMON_SKILLS, ...ownSkills] as const;
   if (new Set<string>(skills).size !== skills.length) {
     throw new RangeError(`The skills of "${input.id}" repeat a common skill or one another.`);
   }
-  return { ...rest, skills };
+  if (meters.length > MAX_METERS) {
+    throw new RangeError(
+      `"${input.id}" has ${String(meters.length)} meters; the budget is ${String(MAX_METERS)}.`,
+    );
+  }
+  if (new Set(meters.map(({ id }) => id)).size !== meters.length) {
+    throw new RangeError(`The meters of "${input.id}" repeat an id.`);
+  }
+  return { ...rest, skills, meters };
 }
 
 export function createSkillLevelsSchema<Skill extends string>(archetype: ArchetypeDefinition<string, Skill>) {

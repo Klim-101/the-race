@@ -3,7 +3,7 @@
 
 import { assertNever } from '../assert-never.js';
 import type { InformationSource, Trait, TraitTrigger } from '../traits.js';
-import { traitModifier } from '../traits.js';
+import { collectModifier } from '../modifiers.js';
 import type { DetectiveHero } from './archetype.js';
 import type { DetectiveCase, Location, LocationAccess, SkillCheck } from './case-schema.js';
 
@@ -21,7 +21,8 @@ export type CheckPolicy = (check: SkillCheck, situations: readonly TraitTrigger[
 /** A natural 20 plus the skill level and the traits' modifier reaches the difficulty. */
 export function canEverPass(hero: DetectiveHero, traits: readonly Trait[]): CheckPolicy {
   return (check, situations) =>
-    hero.skills[check.skill] + traitModifier(traits, situations, check.skill) + D20_MAX >= check.difficulty;
+    hero.skills[check.skill] + collectModifier({ traits }, check.skill, situations) + D20_MAX >=
+    check.difficulty;
 }
 
 /** The sources the hero's traits close to them. */

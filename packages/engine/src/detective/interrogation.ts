@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
-import { traitModifier } from '../traits.js';
+import { collectModifier } from '../modifiers.js';
 import type { CheckDetail, Consequence, Resolution } from './actions.js';
 import { EntityIdSchema, type Lie, type Suspect } from './case-schema.js';
 import { changeReputation, endTurn, spendTime, type DetectiveRunState } from './run-state.js';
@@ -119,7 +119,7 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
     rng,
     run.hero.skills,
     { skill: rules.skill, difficulty },
-    traitModifier(run.traits, situations, rules.skill),
+    collectModifier({ traits: run.traits }, rules.skill, situations),
   );
 
   // Evidence is evidence: a success makes the suspect give up every lie it breaks, a failure only the
