@@ -10,6 +10,7 @@ export { canonicalJson, sha256Hex } from './canonical-json.js';
 export * from './traits.js';
 export * from './meters.js';
 export * from './modifiers.js';
+export * from './signals.js';
 export * from './run.js';
 export * from './migrations.js';
 export * from './detective/archetype.js';
@@ -25,6 +26,8 @@ export * from './detective/fatigue.js';
 export * from './detective/clock.js';
 export * from './detective/random-events.js';
 export * from './detective/night.js';
+export * from './detective/signals.js';
+export * from './detective/signal-events.js';
 export * from './detective/event-log.js';
 export { sealCase, isCaseSealIntact, assertCaseSealIntact } from './detective/seal.js';
 export {

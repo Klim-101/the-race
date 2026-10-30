@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { meterEffects, type MeterReading, type ModifierEffect } from './meters.js';
+import { signalModifier, type Signal } from './signals.js';
 import { traitModifier, type Trait, type TraitTrigger } from './traits.js';
 
 /** A timed condition or a piece of gear: while it is on the hero, its effects apply to checks. */
@@ -16,6 +17,8 @@ export interface ModifierSources {
   readonly conditions?: readonly ModifierItem[];
   readonly gear?: readonly ModifierItem[];
   readonly meters?: readonly MeterReading[];
+  /** The hero's character signal, whose modifiers apply under their own triggers. */
+  readonly signal?: Signal | undefined;
 }
 
 function effectTotal(effects: readonly ModifierEffect[], skill: string): number {
@@ -35,7 +38,9 @@ export function collectModifier(
   skill: string,
   situations: readonly TraitTrigger[],
 ): number {
-  let total = traitModifier(sources.traits ?? [], situations, skill);
+  let total =
+    traitModifier(sources.traits ?? [], situations, skill) +
+    signalModifier(sources.signal, situations, skill);
   for (const item of [...(sources.conditions ?? []), ...(sources.gear ?? [])]) {
     total += effectTotal(item.effects, skill);
   }
