@@ -22,6 +22,7 @@ export type CaseIssueCode =
   | 'too-many-red-herrings'
   | 'world-event-out-of-range'
   | 'event-cuts-solution'
+  | 'solution-after-culprit-flees'
   | 'real-name'
   | 'wrong-script'
   | 'wrong-language';
