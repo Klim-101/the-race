@@ -16,6 +16,7 @@ export type CaseIssueCode =
   | 'evidence-chain-misses-culprit'
   | 'no-chain-without-untrained-skill'
   | 'unobtainable-motive'
+  | 'unlikely-solution'
   | 'unbreakable-lie'
   | 'culprit-not-at-crime'
   | 'actor-in-two-places'

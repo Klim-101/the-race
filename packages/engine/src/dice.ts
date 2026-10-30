@@ -70,6 +70,42 @@ export interface SkillCheckResult<Skill extends string = string> {
 }
 
 /**
+ * The rule for one face of the die: meeting the difficulty is a success, but a natural 20 always
+ * succeeds and a natural 1 always fails.
+ */
+export function isCheckSuccess(
+  die: number,
+  skillLevel: number,
+  modifier: number,
+  difficulty: number,
+): boolean {
+  if (die === CRITICAL_SUCCESS_DIE) return true;
+  if (die === CRITICAL_FAILURE_DIE) return false;
+  return die + skillLevel + modifier >= difficulty;
+}
+
+/** The exact chance that one d20 check succeeds, counted face by face with the rule `rollCheck` uses. */
+export function passChance(skillLevel: number, modifier: number, difficulty: number): number {
+  let faces = 0;
+  for (let die = 1; die <= D20_SIDES; die += 1) {
+    if (isCheckSuccess(die, skillLevel, modifier, difficulty)) faces += 1;
+  }
+  return faces / D20_SIDES;
+}
+
+/**
+ * The same chance with the lucky natural 20 taken away: only the faces 2 to 19 that reach the difficulty
+ * on their own count. The case validator uses it, because a case may not lean on a lucky roll.
+ */
+export function passChanceWithoutLuck(skillLevel: number, modifier: number, difficulty: number): number {
+  let faces = 0;
+  for (let die = CRITICAL_FAILURE_DIE + 1; die < CRITICAL_SUCCESS_DIE; die += 1) {
+    if (isCheckSuccess(die, skillLevel, modifier, difficulty)) faces += 1;
+  }
+  return faces / D20_SIDES;
+}
+
+/**
  * d20 + skill + modifier against a difficulty; meeting it exactly is a success, except that a natural
  * 20 always succeeds and a natural 1 always fails.
  * The modifier is a situational bonus or penalty, such as a hidden trait firing.
@@ -93,7 +129,7 @@ export function rollCheck<Skill extends string>(
     total,
     difficulty: check.difficulty,
     critical,
-    success: critical === null ? total >= check.difficulty : critical === 'success',
+    success: isCheckSuccess(die, skillLevel, modifier, check.difficulty),
     rngState,
   };
 }
