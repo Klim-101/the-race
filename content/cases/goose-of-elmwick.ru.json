@@ -298,5 +298,54 @@
         "description": "Секретарша куратора увольняется в знак протеста против запаха корицы, а городские голуби устраивают на крыше музея на редкость шумное собрание."
       }
     ]
-  }
+  },
+  "randomEvents": [
+    {
+      "id": "pigeon-parade",
+      "description": "Городские голуби идеальным строем пересекают площадь, и половина Элмвика останавливается поглазеть.",
+      "weight": 3,
+      "fromDay": 1,
+      "effect": {
+        "kind": "flavor"
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    },
+    {
+      "id": "cinnamon-queue",
+      "description": "Очередь за булочками с корицей огибает угол и съедает целый час утра.",
+      "weight": 3,
+      "fromDay": 1,
+      "effect": {
+        "kind": "time-lost",
+        "minutes": 60
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    },
+    {
+      "id": "gala-rehearsal",
+      "description": "Оркестр к торжеству всю ночь репетирует под окном, и никто толком не спит.",
+      "weight": 2,
+      "fromDay": 2,
+      "effect": {
+        "kind": "nerves-cost",
+        "points": 1
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    }
+  ]
 }

@@ -18,19 +18,21 @@ import {
   type RunLog,
 } from './event-log.js';
 import {
+  DEFAULT_LODGING,
   INCIDENT_CHANCE,
   INCIDENT_DELAY_MINUTES,
   NIGHT_NERVES_FIRST,
   NIGHT_NERVES_FLOOR,
   NightReportSchema,
-  drawNextDayEvents,
   isCollapse,
   nervesRestoredOnNight,
   passNight,
   type Incident,
 } from './night.js';
 import { createDetectiveRun, changeReputation, type DetectiveRunState } from './run-state.js';
+import { standingOf } from './random-events.js';
 import { sealCase } from './seal.js';
+import { isSolvable } from './solvability.js';
 
 type Edit = (raw: ReturnType<typeof buildCheeseCase>) => void;
 
@@ -71,6 +73,20 @@ describe('the nerves a night gives back', () => {
     expect(NIGHT_NERVES_FLOOR).toBe(1);
   });
 });
+
+const play = (
+  initial: DetectiveRunState,
+  intents: readonly unknown[],
+): { run: DetectiveRunState; log: RunLog } => {
+  let run = initial;
+  let log = EMPTY_RUN_LOG;
+  for (const intent of intents) {
+    const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
+    log = recordResolution(log, run, intent, resolution);
+    if (resolution.ok) run = resolution.run;
+  }
+  return { run, log };
+};
 
 describe('passNight', () => {
   const tired = (): DetectiveRunState => withCondition_(newRun(), { nerves: 2, sleepDebt: 5, active: [] });
@@ -143,9 +159,146 @@ describe('passNight', () => {
     expect(NightReportSchema.parse(JSON.parse(JSON.stringify(report)))).toEqual(report);
   });
 
-  it('draws nothing for the next day until the event pool exists, and records that', () => {
-    expect(drawNextDayEvents(newRun(), createRng(1))).toEqual([]);
-    expect(passNight(newRun(), createRng(1), 'rest', 1).report.events).toEqual([]);
+  it('draws nothing and takes no dice for the events when the case has no pool', () => {
+    for (const seed of SEEDS.slice(0, 100)) {
+      const { run, report } = passNight(newRun(), createRng(seed), 'rest', 1);
+      const dice = createRng(seed);
+      if (dice.roll(100) <= INCIDENT_CHANCE[DEFAULT_LODGING]) dice.roll(3);
+
+      expect(report.events).toEqual([]);
+      expect(run.drawnEvents).toEqual([]);
+      expect(report.rngStateAfter).toBe(dice.state());
+    }
+  });
+});
+
+describe('the night draws the random events of the next day', () => {
+  const POOL = [
+    {
+      id: 'brass-band',
+      description: 'A brass band marches through the square.',
+      weight: 3,
+      effect: { kind: 'flavor' },
+      duration: { kind: 'instant' },
+    },
+    {
+      id: 'long-queue',
+      description: 'A long queue at the bakery costs an hour.',
+      weight: 3,
+      effect: { kind: 'time-lost', minutes: 120 },
+      duration: { kind: 'instant' },
+    },
+    {
+      id: 'noisy-night',
+      description: 'Noisy neighbours fray the nerves.',
+      weight: 3,
+      effect: { kind: 'nerves-cost', points: 2 },
+      duration: { kind: 'instant' },
+    },
+    {
+      id: 'sleepless',
+      description: 'A sleepless night leaves the hero exhausted.',
+      weight: 3,
+      effect: { kind: 'condition', condition: 'exhausted' },
+      duration: { kind: 'instant' },
+    },
+    {
+      id: 'dug-up',
+      description: 'The cellar road is dug up.',
+      weight: 3,
+      effect: { kind: 'location-closes', locationId: 'storage-cellar' },
+      duration: { kind: 'permanent' },
+    },
+    {
+      id: 'no-gossip',
+      description: 'Nobody talks to strangers today.',
+      weight: 3,
+      effect: { kind: 'source-closes', source: 'police-data' },
+      duration: { kind: 'until-day', day: 3 },
+    },
+  ];
+  const pooled = (seed = 1): DetectiveRunState =>
+    newRun((raw) => {
+      raw.randomEvents = POOL;
+    }, seed);
+
+  it('records the drawn ids in the report and the run, with the dice and the effects carried through', () => {
+    const seen = new Set<string>();
+    for (const seed of SEEDS) {
+      const rng = createRng(seed);
+      const { run, report } = passNight(pooled(), rng, 'rest', 1);
+
+      expect(run.drawnEvents.map(({ eventId }) => eventId)).toEqual(report.events);
+      for (const { day } of run.drawnEvents) expect(day).toBe(2);
+      expect(report.rngStateAfter).toBe(rng.state());
+      expect(run.rngState).toBe(rng.state());
+      expect(run.clock.day).toBe(2);
+      // However much time an event costs, the morning stays on its own day.
+      expect(run.clock.minute).toBeLessThan(MINUTES_PER_DAY);
+      expect(report.events.length).toBeLessThanOrEqual(2);
+      for (const id of report.events) seen.add(id);
+      if (report.events.includes('long-queue')) {
+        expect(run.clock.minute).toBeGreaterThanOrEqual(DAY_START_MINUTE + 120);
+      }
+      if (report.events.includes('sleepless')) {
+        expect(run.condition.active.map(({ id }) => id)).toContain('exhausted');
+      }
+    }
+    // The cellar is on the only route to the solution, so the engine never draws the event that shuts it.
+    expect(seen.has('dug-up')).toBe(false);
+    expect([...seen].sort()).toEqual(
+      POOL.map(({ id }) => id)
+        .filter((id) => id !== 'dug-up')
+        .sort(),
+    );
+  });
+
+  it('never ends the day before it starts, even when a late start is followed by lost time', () => {
+    const start = { ...pooled(), condition: { ...pooled().condition, nerves: 1 } };
+    for (const seed of SEEDS) {
+      const { run } = passNight(start, createRng(seed), 'collapse', 1);
+      expect(run.clock.day).toBe(2);
+      expect(run.condition.nerves).toBeGreaterThanOrEqual(NIGHT_NERVES_FLOOR);
+    }
+  });
+
+  it('is the same draw for the same state and dice', () => {
+    for (const seed of SEEDS.slice(0, 50)) {
+      expect(passNight(pooled(), createRng(seed), 'rest', 1)).toEqual(
+        passNight(pooled(), createRng(seed), 'rest', 1),
+      );
+    }
+  });
+
+  it('is logged beside the night, and replay reproduces runs through several nights, for many seeds', () => {
+    const script = [{ kind: 'rest' }, { kind: 'look' }, { kind: 'rest' }, { kind: 'search' }];
+    let drawn = 0;
+    for (const seed of SEEDS) {
+      const initial = pooled(seed);
+      const { run, log } = play(initial, script);
+
+      expect(replay(initial, log)).toEqual({ ok: true, run });
+      for (const entry of log) {
+        const ids = entry.randomEvents.map(({ eventId }) => eventId);
+        expect(ids).toEqual(entry.night?.events ?? []);
+        drawn += ids.length;
+      }
+      // No drawn event ever cuts the last route: the case stays solvable on every day.
+      expect(isSolvable(run.case, run.hero, run.traits, standingOf(run))).toBe(true);
+    }
+    expect(drawn).toBeGreaterThan(100);
+  });
+
+  it('is diverged when the log names other events than the draw gives', () => {
+    const initial = pooled(1);
+    const { log } = play(initial, [{ kind: 'rest' }]);
+    const forged = log.map((entry) => ({
+      ...entry,
+      randomEvents: [],
+      night: entry.night && { ...entry.night, events: ['x'] },
+    }));
+
+    expect(replay(initial, forged)).toMatchObject({ ok: false, code: 'diverged' });
   });
 });
 
@@ -292,20 +445,6 @@ describe('a collapse', () => {
 });
 
 describe('the night in a turn', () => {
-  const play = (
-    initial: DetectiveRunState,
-    intents: readonly unknown[],
-  ): { run: DetectiveRunState; log: RunLog } => {
-    let run = initial;
-    let log = EMPTY_RUN_LOG;
-    for (const intent of intents) {
-      const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
-      log = recordResolution(log, run, intent, resolution);
-      if (resolution.ok) run = resolution.run;
-    }
-    return { run, log };
-  };
-
   it('accepts a rest intent', () => {
     expect(IntentSchema.parse({ kind: 'rest' })).toEqual({ kind: 'rest' });
   });

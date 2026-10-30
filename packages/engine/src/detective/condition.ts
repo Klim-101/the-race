@@ -132,11 +132,6 @@ export function withCondition(condition: HeroCondition, id: ConditionId): HeroCo
   };
 }
 
-/** What the night does to conditions: those that last until the night are gone; the rest is in `night.ts`. */
-export function wearOffAtNight(condition: HeroCondition): HeroCondition {
-  return { ...condition, active: condition.active.filter(({ remaining }) => remaining !== 'night') };
-}
-
 /** Everything that moves the hero's checks, for `collectModifier`. */
 export function modifierSources(run: {
   readonly traits: readonly Trait[];

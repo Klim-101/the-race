@@ -298,5 +298,54 @@
         "description": "The curator's secretary quits in protest at the smell of cinnamon, and the town's pigeons hold an unusually loud meeting on the museum roof."
       }
     ]
-  }
+  },
+  "randomEvents": [
+    {
+      "id": "pigeon-parade",
+      "description": "The town's pigeons march across the square in a perfect line, and half of Elmwick stops to watch.",
+      "weight": 3,
+      "fromDay": 1,
+      "effect": {
+        "kind": "flavor"
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    },
+    {
+      "id": "cinnamon-queue",
+      "description": "A queue for cinnamon buns winds around the corner and swallows an hour of the morning.",
+      "weight": 3,
+      "fromDay": 1,
+      "effect": {
+        "kind": "time-lost",
+        "minutes": 60
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    },
+    {
+      "id": "gala-rehearsal",
+      "description": "The gala band rehearses under the window all night, and nobody sleeps well.",
+      "weight": 2,
+      "fromDay": 2,
+      "effect": {
+        "kind": "nerves-cost",
+        "points": 1
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    }
+  ]
 }

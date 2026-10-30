@@ -7,12 +7,12 @@ import { applyMeterRate, endReasonOfMeters } from '../meters.js';
 import { DrawnSignalEventSchema } from '../signals.js';
 import { DAY_START_MINUTE } from '../run.js';
 import { DETECTIVE_NERVES, DETECTIVE_SLEEP_DEBT } from './archetype.js';
+import { drawEvents } from './random-events.js';
 import { LodgingSafetySchema, type LodgingSafety } from './case-schema.js';
 import {
   ConditionIdSchema,
   meterReadings,
   withCondition,
-  wearOffAtNight,
   type ConditionId,
   type HeroCondition,
 } from './condition.js';
@@ -70,7 +70,7 @@ export const NightReportSchema = z.object({
   sleepDebtPaid: z.int().min(0),
   conditionsCleared: z.array(ConditionIdSchema),
   incident: IncidentSchema.nullable(),
-  /** What `drawNextDayEvents` drew for the morning; see task #94. */
+  /** The ids of the random events the night drew for the morning, in order; empty when the case has no pool. */
   events: z.array(z.string().min(1)),
   /** The events of the hero's character signal that the night drew, with their tones; see `signals.ts`. */
   signalEvents: z.array(DrawnSignalEventSchema).default([]),
@@ -78,12 +78,6 @@ export const NightReportSchema = z.object({
   rngStateAfter: z.int().min(0).max(0xffffffff),
 });
 export type NightReport = z.infer<typeof NightReportSchema>;
-
-/**
- * The seam of the random events of the next day (task #94): the night calls it once, after everything
- * else, and records the ids it returns. Until the event pool exists nothing is drawn, and no dice are used.
- */
-export const drawNextDayEvents: (run: DetectiveRunState, rng: Rng) => readonly string[] = () => [];
 
 /** Nerves that the night of `day` gives back. */
 export function nervesRestoredOnNight(day: number): number {
@@ -100,11 +94,10 @@ export function isCollapse(run: DetectiveRunState): boolean {
 
 /** Sleep heals injuries and drunkenness, takes what lasts until the night and runs the rest down. */
 function sleptOff(condition: HeroCondition): HeroCondition {
-  const active = wearOffAtNight(condition).active.flatMap((item) => {
-    if (NIGHT_HEALS.includes(item.id)) return [];
-    // `wearOffAtNight` has taken every condition that lasts until the night, which is the only one whose
-    // `remaining` is not a number of minutes; were one left, it would not be a positive number and would go.
-    const remaining = Number(item.remaining) - NIGHT_MINUTES;
+  const active = condition.active.flatMap((item) => {
+    // What lasts until the night ends with it, and a night's sleep heals some conditions outright.
+    if (item.remaining === 'night' || NIGHT_HEALS.includes(item.id)) return [];
+    const remaining = item.remaining - NIGHT_MINUTES;
     return remaining > 0 ? [{ id: item.id, remaining }] : [];
   });
   return { ...condition, active };
@@ -121,7 +114,8 @@ function incidentOf(rng: Rng): Incident {
 /**
  * The night after `day`, slept where the hero stands. The clock goes to the morning of the next day; the
  * run's other facts (clues, insights, the case, reputation) are not touched. Two dice are taken at most:
- * one for whether an incident happens and one for which.
+ * one for whether an incident happens and one for which, and then the draw of the next day's random events,
+ * which takes none when the case has no pool.
  */
 export function passNight(
   run: DetectiveRunState,
@@ -164,8 +158,10 @@ export function passNight(
   }
 
   const slept: DetectiveRunState = { ...run, condition, clock: { day: day + 1, minute } };
-  const events = drawNextDayEvents(slept, rng);
-  const { run: settled, events: signalEvents } = settleSignalAtNight(slept, rng);
+  // The random events come first and the signal after them: both are drawn on the same dice, and their
+  // effects (an hour lost, a scare, a message) land on the new morning.
+  const drawn = drawEvents(slept, rng);
+  const { run: settled, events: signalEvents } = settleSignalAtNight(drawn.run, rng);
   return {
     run: { ...settled, rngState: rng.state() },
     report: {
@@ -180,7 +176,7 @@ export function passNight(
         .map(({ id }) => id)
         .filter((id) => !healed.active.some((item) => item.id === id)),
       incident,
-      events: [...events],
+      events: drawn.events.map(({ eventId }) => eventId),
       signalEvents: [...signalEvents],
       rngStateAfter: rng.state(),
     },
