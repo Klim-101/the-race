@@ -17,7 +17,7 @@ export const DETECTIVE_REPUTATION = defineMeter({
 });
 
 // Nerves are spent as time passes (see `passTime`) and on a failure; the night gives back only a part.
-// Below a threshold the hero is clumsy; the mishap and garble effects are data until the rules that read them.
+// Below a threshold the hero is clumsy; `fatigue.ts` reads the mishap chance and the garble level.
 export const DETECTIVE_NERVES = defineMeter({
   id: 'nerves',
   max: 10,
