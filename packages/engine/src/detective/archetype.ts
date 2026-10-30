@@ -7,7 +7,7 @@ import { DETECTIVE_TRAITS } from './traits.js';
 
 export const DETECTIVE = defineArchetype({
   id: 'detective',
-  skills: ['observation', 'logic', 'charm', 'pressure', 'tech', 'contacts'],
+  ownSkills: ['pressure', 'tech', 'contacts'],
   skillPoints: 10,
   maxSkillLevel: 5,
   traits: DETECTIVE_TRAITS,

@@ -153,9 +153,9 @@ describe('traitModifier', () => {
   const claustrophobe = trait('claustrophobe');
 
   it('applies a bonus only to its skills and only when triggered', () => {
-    expect(traitModifier([accountant], ['financial-documents'], 'logic')).toBe(3);
-    expect(traitModifier([accountant], ['financial-documents'], 'charm')).toBe(0);
-    expect(traitModifier([accountant], ['confined-space'], 'logic')).toBe(0);
+    expect(traitModifier([accountant], ['financial-documents'], 'reasoning')).toBe(3);
+    expect(traitModifier([accountant], ['financial-documents'], 'social')).toBe(0);
+    expect(traitModifier([accountant], ['confined-space'], 'reasoning')).toBe(0);
   });
 
   it('applies an all-skills penalty to any skill', () => {
@@ -166,14 +166,16 @@ describe('traitModifier', () => {
     const hothead = trait('hothead');
 
     expect(traitModifier([hothead], ['interrogation'], 'pressure')).toBe(3);
-    expect(traitModifier([hothead], ['interrogation'], 'charm')).toBe(-2);
+    expect(traitModifier([hothead], ['interrogation'], 'social')).toBe(-2);
     expect(traitModifier([hothead], ['interrogation'], 'tech')).toBe(0);
   });
 
   it('adds up several traits and ignores effects that are not modifiers', () => {
     const traits = [accountant, claustrophobe, trait('debtor')];
 
-    expect(traitModifier(traits, ['financial-documents', 'confined-space', 'second-day'], 'logic')).toBe(0);
-    expect(traitModifier(traits, ['second-day'], 'logic')).toBe(0);
+    expect(traitModifier(traits, ['financial-documents', 'confined-space', 'second-day'], 'reasoning')).toBe(
+      0,
+    );
+    expect(traitModifier(traits, ['second-day'], 'reasoning')).toBe(0);
   });
 });

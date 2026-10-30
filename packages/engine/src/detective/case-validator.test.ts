@@ -132,7 +132,7 @@ describe('validateCase', () => {
 
     it('rejects a location behind a check no roll can pass', () => {
       const detectiveCase = buildCheeseCase();
-      detectiveCase.locations[3]!.access = { kind: 'skill', check: { skill: 'charm', difficulty: 25 } };
+      detectiveCase.locations[3]!.access = { kind: 'skill', check: { skill: 'social', difficulty: 25 } };
 
       expect(issueCodes(detectiveCase)).toEqual(
         expect.arrayContaining([
@@ -184,7 +184,7 @@ describe('validateCase', () => {
     it('rejects a case every chain of which needs a skill the hero has no points in', () => {
       const hero: DetectiveHero = {
         ...buildHero(),
-        skills: { observation: 0, logic: 3, charm: 0, pressure: 3, tech: 2, contacts: 2 },
+        skills: { perception: 0, reasoning: 3, social: 0, pressure: 3, tech: 2, contacts: 2 },
       };
 
       expect(issueCodes(buildCheeseCase(), context({ hero }))).toEqual(['no-chain-without-untrained-skill']);
@@ -338,7 +338,7 @@ describe('validateCase', () => {
     it('applies a penalty in the situations of the location', () => {
       const detectiveCase = buildCheeseCase();
       detectiveCase.locations[2]!.situations = ['confined-space'];
-      detectiveCase.clues[2]!.discovery = { skill: 'observation', difficulty: 23 };
+      detectiveCase.clues[2]!.discovery = { skill: 'perception', difficulty: 23 };
       const claustrophobe = context({ traits: [trait('claustrophobe')] });
 
       expect(issueCodes(detectiveCase)).toEqual([]);
@@ -348,7 +348,7 @@ describe('validateCase', () => {
     it('applies a penalty in the situations of the clue itself', () => {
       const detectiveCase = buildCheeseCase();
       detectiveCase.clues[2]!.situations = ['confined-space'];
-      detectiveCase.clues[2]!.discovery = { skill: 'observation', difficulty: 23 };
+      detectiveCase.clues[2]!.discovery = { skill: 'perception', difficulty: 23 };
 
       expect(issueCodes(detectiveCase, context({ traits: [trait('claustrophobe')] }))).toContain(
         'unobtainable-evidence',
@@ -357,14 +357,14 @@ describe('validateCase', () => {
 
     it('does not apply a penalty outside its situation', () => {
       const detectiveCase = buildCheeseCase();
-      detectiveCase.clues[2]!.discovery = { skill: 'observation', difficulty: 23 };
+      detectiveCase.clues[2]!.discovery = { skill: 'perception', difficulty: 23 };
 
       expect(issueCodes(detectiveCase, context({ traits: [trait('claustrophobe')] }))).toEqual([]);
     });
 
     it('lets a bonus open a check that was out of reach', () => {
       const detectiveCase = buildCheeseCase();
-      detectiveCase.locations[3]!.access = { kind: 'skill', check: { skill: 'charm', difficulty: 22 } };
+      detectiveCase.locations[3]!.access = { kind: 'skill', check: { skill: 'social', difficulty: 22 } };
       detectiveCase.locations[3]!.situations = ['high-society'];
 
       expect(issueCodes(detectiveCase)).toContain('unreachable-location');
