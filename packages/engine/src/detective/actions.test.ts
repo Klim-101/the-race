@@ -448,3 +448,52 @@ describe('what the player and the narrator are told', () => {
     });
   });
 });
+
+describe('resolveIntent: deduction and accusation', () => {
+  const found = (): DetectiveRunState => findClue(findClue(newRun(), 'oven-receipt'), 'debt-ledger');
+
+  it('routes a deduction to the verdict module and keeps no checks', () => {
+    const resolution = ok(
+      resolveIntent(found(), { kind: 'deduce', clueIds: ['oven-receipt', 'debt-ledger'] }, dice(10)),
+    );
+
+    expect(resolution.outcome).toMatchObject({
+      kind: 'deduce',
+      result: 'insight',
+      deductionId: 'motive-debt',
+    });
+    expect(resolution.run.insightIds).toContain('motive-debt');
+    expect(resolution.details).toEqual([]);
+  });
+
+  it('routes an accusation, which ends the run', () => {
+    const accusation = {
+      kind: 'accuse',
+      culpritId: 'baker',
+      motiveInsightId: null,
+      evidenceClueIds: ['oven-receipt', 'debt-ledger'],
+    };
+    const resolution = ok(resolveIntent(found(), accusation, dice(10)));
+
+    expect(resolution.outcome).toMatchObject({ kind: 'accuse', verdict: 'unproven' });
+    expect(resolution.run.status).toBe('lost');
+    expect(resolution.details).toEqual([]);
+  });
+
+  it('passes the refusals of these intents through unchanged', () => {
+    const refusal = resolveIntent(
+      newRun(),
+      { kind: 'deduce', clueIds: ['oven-receipt', 'debt-ledger'] },
+      dice(10),
+    );
+
+    expect(refusal).toMatchObject({ ok: false, refusal: { code: 'not-found' } });
+    expect(
+      resolveIntent(
+        newRun(),
+        { kind: 'accuse', culpritId: 'nobody', motiveInsightId: null, evidenceClueIds: [] },
+        dice(10),
+      ),
+    ).toMatchObject({ ok: false, refusal: { code: 'unknown-suspect' } });
+  });
+});
