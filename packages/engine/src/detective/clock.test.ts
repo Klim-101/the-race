@@ -286,9 +286,9 @@ describe('a breakdown', () => {
   });
 
   it('comes after the world and after reputation when several hold at once', () => {
-    const fled = at(withNerves(newRun(fleeOnDay(2)), 0, 2), 1, ACTIVE_MINUTES_PER_DAY);
+    const fled = pastMidnight(withNerves(newRun(fleeOnDay(2)), 0, 2), 2);
     expect(settleClock(fled, 1).endReason).toBe('culprit-fled');
-    const ranOut = at(withNerves(newRun(), 0, 2), 3, ACTIVE_MINUTES_PER_DAY);
+    const ranOut = pastMidnight(withNerves(newRun(), 0, 2), 4);
     expect(settleClock(ranOut, 3).endReason).toBe('time-ran-out');
     expect(settleClock(withNerves(newRun(), 0, 0), 1).endReason).toBe('reputation-zero');
   });
