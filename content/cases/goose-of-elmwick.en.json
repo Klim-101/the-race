@@ -1,0 +1,298 @@
+{
+  "schemaVersion": 1,
+  "locale": "en",
+  "crimeType": "curious-theft",
+  "tone": "absurd",
+  "title": "The Goose of Elmwick",
+  "premise": "The night before the Postal Museum's anniversary gala in Elmwick, a town of The Draft, Admiral Quill vanishes. He is a stuffed goose in a brass-buttoned waistcoat, the museum's mascot for ninety years and the star lot of tomorrow's charity auction. The display stand is empty, the guest list is long, and the mayor wants the goose back before the speeches start.",
+  "startLocationId": "museum-hall",
+  "locations": [
+    {
+      "id": "museum-hall",
+      "name": "Museum hall",
+      "description": "A long hall of brass scales, mail sacks and glass cases. At its far end stands an empty plinth with a polite little sign: 'Admiral Quill, please do not touch.'",
+      "connections": ["courtyard", "archive", "curator-office"],
+      "access": { "kind": "open" }
+    },
+    {
+      "id": "courtyard",
+      "name": "Gala courtyard",
+      "description": "Bunting, folding chairs and a string quartet tuning up. Half the town has come to see who the goose's kidnapper might be, and all of them have an opinion.",
+      "connections": ["museum-hall", "tea-shop", "boiler-room"],
+      "access": { "kind": "open" },
+      "situations": ["crowd"]
+    },
+    {
+      "id": "tea-shop",
+      "name": "The Copper Kettle tea shop",
+      "description": "A tea shop across the courtyard where the waitresses see everything and forgive nothing. The scones are excellent.",
+      "connections": ["courtyard", "post-office"],
+      "access": { "kind": "open" }
+    },
+    {
+      "id": "post-office",
+      "name": "Elmwick post office",
+      "description": "A sleepy counter with a brass bell, a sorting wall of pigeonholes and an old telegraph operator who has been retired for twenty years and still comes in daily.",
+      "connections": ["tea-shop"],
+      "access": { "kind": "open" }
+    },
+    {
+      "id": "archive",
+      "name": "Museum archive",
+      "description": "Shelves of undelivered letters, tied in ribbon and stamped 'Return to nobody'. The door has a stout lock and the key is, naturally, missing.",
+      "connections": ["museum-hall"],
+      "access": { "kind": "clue", "clueId": "archive-key" }
+    },
+    {
+      "id": "curator-office",
+      "name": "Curator's office",
+      "description": "A cramped office with a sofa, a kettle and a door guarded by the curator's secretary, who treats every visitor as a personal insult to the collection.",
+      "connections": ["museum-hall"],
+      "access": { "kind": "skill", "check": { "skill": "social", "difficulty": 11 } }
+    },
+    {
+      "id": "boiler-room",
+      "name": "Boiler room",
+      "description": "A low, hot cellar under the courtyard, full of pipes that knock like impatient visitors. There is room to stand and not much room to turn around.",
+      "connections": ["courtyard"],
+      "access": { "kind": "open" },
+      "situations": ["confined-space"]
+    }
+  ],
+  "clues": [
+    {
+      "id": "archive-key",
+      "locationId": "courtyard",
+      "description": "A heavy iron key lies under a folding chair, tagged 'Archive' in the curator's tidy handwriting.",
+      "discovery": null,
+      "pointsTo": [],
+      "isRedHerring": false
+    },
+    {
+      "id": "feather-trail",
+      "locationId": "museum-hall",
+      "description": "A trail of small grey feathers runs from the plinth to the service door, as if the goose had left in a hurry or been carried by someone who sheds.",
+      "discovery": { "skill": "perception", "difficulty": 9 },
+      "pointsTo": ["postmaster"],
+      "isRedHerring": false
+    },
+    {
+      "id": "stand-hollow",
+      "locationId": "museum-hall",
+      "description": "The goose's plinth has a hidden hatch in its base. Inside, lavender-scented paper lines an empty compartment the size of a bundle of letters.",
+      "discovery": { "skill": "perception", "difficulty": 12 },
+      "pointsTo": ["postmaster"],
+      "isRedHerring": false
+    },
+    {
+      "id": "door-log",
+      "locationId": "museum-hall",
+      "description": "The service door's electric lock keeps a tiny log. At ten past two it records a spare staff card, issued years ago to the museum's former postmaster-in-residence and never handed back.",
+      "discovery": { "skill": "tech", "difficulty": 10 },
+      "situations": ["digital-evidence"],
+      "pointsTo": ["postmaster"],
+      "isRedHerring": false
+    },
+    {
+      "id": "ransom-note",
+      "locationId": "museum-hall",
+      "description": "A note in cut-out newspaper letters, pinned to the plinth: 'We have the goose. Leave three buttered scones at the fountain.' It is signed with a smiling face and smells of cinnamon.",
+      "discovery": null,
+      "pointsTo": ["caterer"],
+      "isRedHerring": true
+    },
+    {
+      "id": "wet-boots",
+      "locationId": "courtyard",
+      "description": "Muddy boot prints cross the courtyard and stop at the museum steps. The mud is full of crumbs and sugar.",
+      "discovery": { "skill": "perception", "difficulty": 8 },
+      "pointsTo": ["caterer"],
+      "isRedHerring": true
+    },
+    {
+      "id": "hatbox-witness",
+      "locationId": "tea-shop",
+      "description": "A waitress, after a little friendly conversation, admits she saw an elderly woman with a hatbox crossing the courtyard long after midnight. The hatbox was honking softly.",
+      "discovery": { "skill": "social", "difficulty": 10 },
+      "pointsTo": ["postmaster"],
+      "isRedHerring": false
+    },
+    {
+      "id": "letters-rumour",
+      "locationId": "post-office",
+      "description": "The retired telegraph operator remembers that, forty years ago, the postmaster's late husband wrote her a love letter every week and mailed them to the museum for safekeeping. 'Inside the goose, of course. Where else do you hide a letter?'",
+      "discovery": { "skill": "contacts", "difficulty": 11 },
+      "pointsTo": ["postmaster"],
+      "isRedHerring": false
+    },
+    {
+      "id": "ink-smudge",
+      "locationId": "archive",
+      "description": "On the archive's index card for 'Admiral Quill (contents)' someone has left a violet fingerprint. Only one pen in Elmwick writes in violet ink.",
+      "discovery": { "skill": "perception", "difficulty": 11 },
+      "pointsTo": ["postmaster"],
+      "isRedHerring": false
+    },
+    {
+      "id": "apprentice-confession",
+      "locationId": "boiler-room",
+      "description": "Wedged between two knocking pipes, the museum apprentice is easy to rattle. Pressed hard enough, he admits that a kind old lady promised him a pound of toffee to hold the handcart while she carried 'something very important' out of the hall.",
+      "discovery": { "skill": "pressure", "difficulty": 11 },
+      "pointsTo": ["postmaster"],
+      "isRedHerring": false
+    },
+    {
+      "id": "sale-catalogue",
+      "locationId": "curator-office",
+      "description": "The auction catalogue, lot fourteen: 'Admiral Quill, stuffed goose, with stand and contents unexamined.' The curator has underlined the word 'contents' twice and written 'insure!' beside it.",
+      "discovery": { "skill": "reasoning", "difficulty": 12 },
+      "situations": ["financial-documents"],
+      "pointsTo": [],
+      "isRedHerring": false
+    },
+    {
+      "id": "gold-cufflink",
+      "locationId": "curator-office",
+      "description": "A gold cufflink shaped like a tiny envelope lies behind the office sofa, next to a blanket and a pillow that smells of a long night.",
+      "discovery": null,
+      "pointsTo": ["curator"],
+      "isRedHerring": true
+    }
+  ],
+  "suspects": [
+    {
+      "id": "postmaster",
+      "name": "Wilhelmina Tuck",
+      "persona": "The retired Elmwick postmaster, small, brisk and eighty-one, who knits during interrogations and answers every question with a question about your mother.",
+      "secret": "Her late husband's love letters are hidden in the goose's stand, and the auction was about to sell them to a stranger along with the bird.",
+      "alibi": "Claims she spent the whole night sorting parcels at the post office, as she has every night since she retired.",
+      "lies": [
+        {
+          "id": "postmaster-parcels",
+          "statement": "I was sorting parcels at the post office all night, and the pigeonholes will tell you so.",
+          "brokenBy": ["door-log", "hatbox-witness"]
+        }
+      ]
+    },
+    {
+      "id": "curator",
+      "name": "Alaric Pell",
+      "persona": "The museum curator, a nervous man in a waistcoat the same colour as the goose's, who apologises to display cases when he bumps into them.",
+      "secret": "He sleeps in his office on gala eves because he is afraid of oversleeping, and he is quietly relieved the goose is gone, as it was overinsured.",
+      "alibi": "Says he locked the museum at ten and went straight home to bed.",
+      "lies": [
+        {
+          "id": "curator-home",
+          "statement": "I locked up at ten and slept at home, as I always do.",
+          "brokenBy": ["gold-cufflink"]
+        }
+      ]
+    },
+    {
+      "id": "caterer",
+      "name": "Quentin Moss",
+      "persona": "The gala's caterer, a large man with flour in his moustache and a bitter feud with the town's goose population.",
+      "secret": "He baked three hundred goose-shaped biscuits and burnt the lot, so he has been creeping around the courtyard at night, hoping to bake again unseen.",
+      "alibi": "Says he was in the tea shop kitchen from dusk to dawn, baking.",
+      "lies": [
+        {
+          "id": "caterer-boots",
+          "statement": "My boots have never touched the museum floor.",
+          "brokenBy": ["wet-boots"]
+        }
+      ]
+    },
+    {
+      "id": "apprentice",
+      "name": "Pip Dobbin",
+      "persona": "The museum's apprentice, nineteen, a boy who agrees with whoever spoke last and sweats in an unusually interesting way.",
+      "secret": "He was paid in toffee to help move a heavy hatbox and has been too frightened to say so.",
+      "alibi": "Says he was tucked up in bed by nine and slept like a log.",
+      "lies": [
+        {
+          "id": "apprentice-bed",
+          "statement": "I was in bed by nine and never left it.",
+          "brokenBy": ["apprentice-confession", "door-log"]
+        }
+      ]
+    }
+  ],
+  "deductions": [
+    {
+      "id": "motive-love-letters",
+      "clueIds": ["stand-hollow", "letters-rumour"],
+      "insight": "The goose's stand hid a compartment for letters, and the postmaster's late husband mailed his love letters to the museum. She took the goose not for the bird but for what was inside it, before the auction could sell her memories to a stranger."
+    },
+    {
+      "id": "night-visit",
+      "clueIds": ["door-log", "feather-trail"],
+      "insight": "The goose left by the service door at ten past two, opened with an old staff card, and was carried by someone who sheds feathers. That was no biscuit-baker's job."
+    }
+  ],
+  "truth": {
+    "culpritId": "postmaster",
+    "motive": "Her late husband's love letters were hidden inside the goose's stand, and the charity auction was about to sell the lot to a stranger. She wanted her letters back and could not bear to ask.",
+    "method": "She used an old spare staff card to enter by the service door at ten past two, talked the museum apprentice into holding a handcart for a pound of toffee, and carried the goose out in a hatbox, leaving a few grey feathers behind. The letters are in her post office, under the stamp counter.",
+    "crimeLocationId": "museum-hall",
+    "crimeAtMinute": 130,
+    "timeline": [
+      {
+        "atMinute": 60,
+        "actorId": "caterer",
+        "locationId": "tea-shop",
+        "action": "Burns the third batch of goose-shaped biscuits and swears quietly at the oven."
+      },
+      {
+        "atMinute": 100,
+        "actorId": "postmaster",
+        "locationId": "courtyard",
+        "action": "Meets the apprentice and persuades him, with toffee, to help her carry something heavy."
+      },
+      {
+        "atMinute": 130,
+        "actorId": "postmaster",
+        "locationId": "museum-hall",
+        "action": "Opens the service door with the old spare card, lifts Admiral Quill from his plinth and tucks him in a hatbox."
+      },
+      {
+        "atMinute": 130,
+        "actorId": "apprentice",
+        "locationId": "boiler-room",
+        "action": "Waits among the knocking pipes with the handcart, trembling."
+      },
+      {
+        "atMinute": 130,
+        "actorId": "curator",
+        "locationId": "curator-office",
+        "action": "Snores on the office sofa, dreaming of insurance forms."
+      },
+      {
+        "atMinute": 170,
+        "actorId": "postmaster",
+        "locationId": "post-office",
+        "action": "Hides the hatbox under the stamp counter and finally reads the letters."
+      }
+    ]
+  },
+  "solution": {
+    "motiveDeductionId": "motive-love-letters",
+    "evidenceChains": [
+      ["feather-trail", "ink-smudge", "stand-hollow"],
+      ["hatbox-witness", "letters-rumour"],
+      ["door-log", "apprentice-confession"]
+    ]
+  },
+  "clock": {
+    "days": 3,
+    "worldEvents": [
+      {
+        "day": 2,
+        "description": "The mayor announces the gala will go ahead with an empty plinth and a commemorative sign, and the auction house sends a very polite valuer to ask whether the goose was insured."
+      },
+      {
+        "day": 3,
+        "description": "The curator's secretary quits in protest at the smell of cinnamon, and the town's pigeons hold an unusually loud meeting on the museum roof."
+      }
+    ]
+  }
+}
