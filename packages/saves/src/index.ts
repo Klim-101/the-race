@@ -1,9 +1,9 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+export { defaultSaveDir, resolveSaveDir, type SaveDirInputs } from './save-dir.js';
 export { nodeSaveFs, type SaveFs } from './save-fs.js';
 export {
-  defaultSaveDir,
   runFiles,
   loadRun,
   saveRun,

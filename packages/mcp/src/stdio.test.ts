@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { resolve } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { LOCALES, RULESET_VERSION } from '@the-race/engine';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { defineTool } from './define-tool.js';
 import { SERVER_NAME, SERVER_VERSION } from './server-identity.js';
@@ -139,11 +139,21 @@ describe('serveStdio', () => {
 });
 
 describe('createDefaultContext', () => {
-  it('keeps saves under .race and draws a different seed each time', () => {
+  it('keeps saves in the directory it is given and draws a different seed each time', () => {
     const context = createDefaultContext('some-dir');
-    expect(context.saveDir).toBe(join('some-dir', '.race'));
+    expect(context.saveDir).toBe('some-dir');
     expect(context.newSeed()).toMatch(/^[0-9a-f]{16}$/);
     expect(context.newSeed()).not.toBe(context.newSeed());
+  });
+
+  it('defaults to the save directory resolved from the environment', () => {
+    const home = resolve('temp-race-home');
+    vi.stubEnv('RACE_HOME', home);
+    try {
+      expect(createDefaultContext().saveDir).toBe(home);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 

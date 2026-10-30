@@ -8,7 +8,7 @@ import type { SaveFs } from '@the-race/saves';
  * `Math.random`, so a test can give it a fake of each.
  */
 export interface ServerContext {
-  /** The directory the saves live in (see `defaultSaveDir`). */
+  /** The directory the saves live in (see `resolveSaveDir`). */
   readonly saveDir: string;
   readonly saveFs: SaveFs;
   /** A fresh seed for a new run. Randomness enters the game here and only here. */

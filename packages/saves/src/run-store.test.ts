@@ -12,7 +12,7 @@ import {
 } from '@the-race/engine';
 import { describe, expect, it } from 'vitest';
 import { WALK, newRun, playTurns } from '../test/new-run.js';
-import { defaultSaveDir, loadRun, runFiles, saveRun } from './run-store.js';
+import { loadRun, runFiles, saveRun } from './run-store.js';
 import { memoryFs } from '../test/memory-fs.js';
 
 const DIR = join('save-root');
@@ -22,9 +22,8 @@ function secondTurn(run: DetectiveRunState): DetectiveRunState {
   return endTurn(findClue(moveTo(run, 'cheese-stall'), 'flour-crumbs'), createRng('next'));
 }
 
-describe('defaultSaveDir and runFiles', () => {
-  it('puts the save under .race of the working directory', () => {
-    expect(defaultSaveDir('work')).toBe(join('work', '.race'));
+describe('runFiles', () => {
+  it('puts the save under run/ of the save directory', () => {
     expect(FILES.current).toBe(join(DIR, 'run', 'state.json'));
     expect(FILES.previous).toBe(join(DIR, 'run', 'state.prev.json'));
   });

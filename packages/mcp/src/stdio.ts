@@ -10,10 +10,13 @@ import type { ServerContext } from './context.js';
 import { createServer } from './server.js';
 import type { Tool } from './define-tool.js';
 
-/** The context of a real session: saves under `<cwd>/.race`, and seeds from the operating system's entropy. */
-export function createDefaultContext(workingDirectory: string): ServerContext {
+/**
+ * The context of a real session: saves in the player's own state directory (never the working directory, see
+ * `resolveSaveDir`), and seeds from the operating system's entropy.
+ */
+export function createDefaultContext(saveDir: string = defaultSaveDir()): ServerContext {
   return {
-    saveDir: defaultSaveDir(workingDirectory),
+    saveDir,
     saveFs: nodeSaveFs,
     newSeed: () => randomBytes(8).toString('hex'),
   };

@@ -162,7 +162,7 @@ describe('boundaries', () => {
 
   it.each(markdown)('%s never tells an agent to read the save directory', (path) => {
     for (const line of read(path).split('\n')) {
-      if (/\.race\b/.test(line)) expect(line, name(path)).toMatch(/\b(never|not|no)\b/i);
+      if (/\.race\b|save director/i.test(line)) expect(line, name(path)).toMatch(/\b(never|not|no)\b/i);
     }
   });
 

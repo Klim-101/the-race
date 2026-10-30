@@ -18,11 +18,6 @@ import {
 } from '@the-race/engine';
 import { nodeSaveFs, type SaveFs } from './save-fs.js';
 
-/** The save directory of a working directory. It is git-ignored. */
-export function defaultSaveDir(workingDirectory: string): string {
-  return join(workingDirectory, '.race');
-}
-
 export interface RunFiles {
   readonly directory: string;
   readonly current: string;
