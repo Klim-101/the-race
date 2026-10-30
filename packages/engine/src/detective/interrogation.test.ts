@@ -98,6 +98,26 @@ describe('refusals', () => {
     });
   });
 
+  it('finds a suspect by their public location, not by the sealed timeline', () => {
+    const detectiveCase = buildCheeseCase();
+    // The timeline ends at the market square; the public location is the cellar.
+    detectiveCase.suspects[1]!.locationId = 'storage-cellar';
+    const run = createDetectiveRun({
+      hero: buildHero(),
+      traits: [],
+      case: DetectiveCaseSchema.parse(detectiveCase),
+      seed: 'interrogation',
+      rngState: 1,
+      locale: 'en',
+    });
+
+    expect(ask(run, 'rival', 'social', [], createRng(1))).toMatchObject({
+      ok: false,
+      refusal: { code: 'suspect-elsewhere' },
+    });
+    expect(ask(moveTo(run, 'storage-cellar'), 'rival', 'social', [], createRng(1)).ok).toBe(true);
+  });
+
   it('refuses the same way a clue that is hidden and a clue that does not exist', () => {
     const run = atBaker();
     const hidden = ask(run, 'baker', 'pressure', ['debt-ledger'], createRng(1));

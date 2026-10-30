@@ -78,6 +78,8 @@ export type Lie = z.infer<typeof LieSchema>;
 
 export const SuspectSchema = z.object({
   id: EntityIdSchema,
+  /** Where the suspect can be found. Public, unlike the timeline; without it they can be questioned anywhere. */
+  locationId: EntityIdSchema.optional(),
   name: NarrativeTextSchema,
   persona: NarrativeTextSchema,
   secret: NarrativeTextSchema,

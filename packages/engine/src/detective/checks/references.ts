@@ -76,6 +76,9 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
     });
   });
   detectiveCase.suspects.forEach((suspect, suspectIndex) => {
+    if (suspect.locationId !== undefined) {
+      expect(locationIds, 'location', suspect.locationId, `suspects[${String(suspectIndex)}].locationId`);
+    }
     suspect.lies.forEach((lie, lieIndex) => {
       lie.brokenBy.forEach((id, clueIndex) => {
         const path = `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}].brokenBy[${String(clueIndex)}]`;

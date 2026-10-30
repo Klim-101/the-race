@@ -55,6 +55,18 @@ describe('validateCase', () => {
       expect(issueCodes(detectiveCase)).toEqual(['duplicate-id']);
     });
 
+    it('rejects a suspect placed in a location that does not exist', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.suspects[1]!.locationId = 'ghost-room';
+
+      const result = validateCase(detectiveCase, context());
+
+      expect(result).toMatchObject({
+        isValid: false,
+        issues: [{ code: 'unknown-reference', path: 'suspects[1].locationId' }],
+      });
+    });
+
     it('reports every reference that names nothing, and skips the graph checks', () => {
       const detectiveCase = buildCheeseCase();
       detectiveCase.startLocationId = 'nowhere';
