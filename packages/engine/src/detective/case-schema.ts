@@ -3,6 +3,7 @@
 
 import { z } from 'zod';
 import { LocaleSchema } from '../locale.js';
+import { InformationSourceSchema, TraitTriggerSchema } from '../traits.js';
 import { DetectiveSkillSchema } from './archetype.js';
 
 export const CASE_SCHEMA_VERSION = 1;
@@ -48,6 +49,8 @@ export const LocationSchema = z.object({
   description: NarrativeTextSchema,
   connections: z.array(EntityIdSchema),
   access: LocationAccessSchema,
+  /** What the scene is like (a cramped cellar, a crowd); the hero's traits react to it. */
+  situations: z.array(TraitTriggerSchema).default([]),
 });
 export type Location = z.infer<typeof LocationSchema>;
 
@@ -57,6 +60,10 @@ export const ClueSchema = z.object({
   description: NarrativeTextSchema,
   /** `null` means the clue is found by simply looking. */
   discovery: SkillCheckSchema.nullable(),
+  /** Extra circumstances of this clue, on top of those of its location. */
+  situations: z.array(TraitTriggerSchema).default([]),
+  /** Where the information comes from, if it comes from a source that can be closed to the hero. */
+  source: InformationSourceSchema.nullable().default(null),
   pointsTo: z.array(EntityIdSchema),
   isRedHerring: z.boolean(),
 });

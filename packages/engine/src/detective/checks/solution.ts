@@ -4,7 +4,13 @@
 import type { DetectiveHero } from '../archetype.js';
 import type { CaseIssue } from '../case-issue.js';
 import type { DetectiveCase } from '../case-schema.js';
-import { canPassWithTrainedSkill, computeObtainable, type Obtainable } from '../obtainability.js';
+import type { Trait } from '../../traits.js';
+import {
+  canPassWithTrainedSkill,
+  closedSources,
+  computeObtainable,
+  type Obtainable,
+} from '../obtainability.js';
 
 export const MIN_EVIDENCE_CHAINS = 2;
 
@@ -12,6 +18,7 @@ export const MIN_EVIDENCE_CHAINS = 2;
 export function checkSolution(
   detectiveCase: DetectiveCase,
   hero: DetectiveHero,
+  traits: readonly Trait[],
   obtainable: Obtainable,
 ): CaseIssue[] {
   const { evidenceChains, motiveDeductionId } = detectiveCase.solution;
@@ -69,7 +76,11 @@ export function checkSolution(
     }
   });
 
-  const trained = computeObtainable(detectiveCase, canPassWithTrainedSkill(hero));
+  const trained = computeObtainable(
+    detectiveCase,
+    canPassWithTrainedSkill(hero, traits),
+    closedSources(traits),
+  );
   if (!evidenceChains.some((chain) => chain.every((clueId) => trained.clueIds.has(clueId)))) {
     issues.push({
       code: 'no-chain-without-untrained-skill',
