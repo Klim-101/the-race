@@ -14,6 +14,7 @@ export * from './detective/traits.js';
 export * from './detective/case-schema.js';
 export * from './detective/case-issue.js';
 export * from './detective/run-state.js';
+export * from './detective/actions.js';
 export { sealCase, isCaseSealIntact, assertCaseSealIntact } from './detective/seal.js';
 export {
   validateCase,

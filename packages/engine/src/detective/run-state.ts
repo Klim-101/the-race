@@ -36,6 +36,8 @@ export const DetectiveRunStateSchema = z
     caseSeal: z.string().regex(CASE_SEAL_PATTERN),
     locationId: EntityIdSchema,
     visitedLocationIds: z.array(EntityIdSchema),
+    /** Places the hero has searched; a second search of one is a reinspection. */
+    searchedLocationIds: z.array(EntityIdSchema),
     foundClueIds: z.array(EntityIdSchema),
     /** Deductions the hero has made. */
     insightIds: z.array(EntityIdSchema),
@@ -58,6 +60,7 @@ export const DetectiveRunStateSchema = z
     const locationIds = new Set(run.case.locations.map(({ id }) => id));
     known('locationId', [run.locationId], locationIds);
     known('visitedLocationIds', run.visitedLocationIds, locationIds);
+    known('searchedLocationIds', run.searchedLocationIds, locationIds);
     known('foundClueIds', run.foundClueIds, new Set(run.case.clues.map(({ id }) => id)));
     known('insightIds', run.insightIds, new Set(run.case.deductions.map(({ id }) => id)));
     known('revealedTraitIds', run.revealedTraitIds, new Set(run.traits.map(({ id }) => id)));
@@ -93,6 +96,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     caseSeal: sealCase(input.case),
     locationId: input.case.startLocationId,
     visitedLocationIds: [input.case.startLocationId],
+    searchedLocationIds: [],
     foundClueIds: [],
     insightIds: [],
   });
@@ -125,6 +129,16 @@ export function moveTo(run: DetectiveRunState, locationId: string): DetectiveRun
     run.case.locations.map(({ id }) => id),
   );
   return { ...run, locationId, visitedLocationIds: addOnce(run.visitedLocationIds, locationId) };
+}
+
+export function markSearched(run: DetectiveRunState, locationId: string): DetectiveRunState {
+  assertActive(run);
+  requireId(
+    'location',
+    locationId,
+    run.case.locations.map(({ id }) => id),
+  );
+  return { ...run, searchedLocationIds: addOnce(run.searchedLocationIds, locationId) };
 }
 
 export function findClue(run: DetectiveRunState, clueId: string): DetectiveRunState {
