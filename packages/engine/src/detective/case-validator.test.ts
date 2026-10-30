@@ -128,7 +128,7 @@ describe('validateCase', () => {
       expect(issueCodes(detectiveCase)).toEqual(['unreachable-location']);
     });
 
-    it('rejects a clue no roll can find', () => {
+    it('lets an optional clue no roll can find stay unavailable', () => {
       const detectiveCase = buildCheeseCase();
       detectiveCase.clues.push({
         id: 'microfilm',
@@ -139,7 +139,16 @@ describe('validateCase', () => {
         isRedHerring: false,
       });
 
-      expect(issueCodes(detectiveCase)).toEqual(['unobtainable-clue']);
+      expect(issueCodes(detectiveCase)).toEqual([]);
+    });
+
+    it('rejects a clue of an evidence chain no roll can find', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.clues[0]!.discovery = { skill: 'tech', difficulty: 30 };
+
+      expect(issueCodes(detectiveCase)).toEqual(
+        expect.arrayContaining(['unobtainable-clue', 'unobtainable-evidence']),
+      );
     });
 
     it('rejects a suspect in a place the hero cannot reach', () => {
@@ -435,8 +444,33 @@ describe('validateCase', () => {
       expect(issueCodes(detectiveCase, context({ traits: [trait('well-connected')] }))).toEqual([]);
     });
 
+    it('lets an optional police-data clue stay closed to the hero without failing the case', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.clues.push({
+        id: 'police-file',
+        locationId: 'market-square',
+        description: 'A file from the police archive.',
+        discovery: null,
+        source: 'police-data',
+        pointsTo: [],
+        isRedHerring: false,
+      });
+
+      expect(issueCodes(detectiveCase, context({ traits: [trait('old-enemy-in-the-police')] }))).toEqual([]);
+    });
+
+    it('still fails a police-data clue that sits in an evidence chain', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.clues[0]!.source = 'police-data';
+
+      expect(issueCodes(detectiveCase, context({ traits: [trait('old-enemy-in-the-police')] }))).toContain(
+        'unobtainable-clue',
+      );
+    });
+
     it('does not let a photographic memory rescue a clue no roll can find', () => {
       const detectiveCase = buildCheeseCase();
+      detectiveCase.solution.evidenceChains[0]!.push('microfilm');
       detectiveCase.clues.push({
         id: 'microfilm',
         locationId: 'market-square',
@@ -446,9 +480,9 @@ describe('validateCase', () => {
         isRedHerring: false,
       });
 
-      expect(issueCodes(detectiveCase, context({ traits: [trait('photographic-memory')] }))).toEqual([
-        'unobtainable-clue',
-      ]);
+      expect(issueCodes(detectiveCase, context({ traits: [trait('photographic-memory')] }))).toEqual(
+        expect.arrayContaining(['unobtainable-clue', 'unobtainable-evidence']),
+      );
     });
   });
 });

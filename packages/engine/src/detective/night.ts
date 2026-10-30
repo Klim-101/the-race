@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import type { Rng } from '../dice.js';
 import { applyMeterRate, endReasonOfMeters } from '../meters.js';
+import { DrawnSignalEventSchema } from '../signals.js';
 import { DAY_START_MINUTE } from '../run.js';
 import { DETECTIVE_NERVES, DETECTIVE_SLEEP_DEBT } from './archetype.js';
 import { drawEvents } from './random-events.js';
@@ -15,6 +16,7 @@ import {
   type ConditionId,
   type HeroCondition,
 } from './condition.js';
+import { settleSignalAtNight } from './signal-events.js';
 import type { DetectiveRunState } from './run-state.js';
 
 // The night is the main moment of recalculation, and it is ONE pure step over the state and the dice: the
@@ -70,6 +72,8 @@ export const NightReportSchema = z.object({
   incident: IncidentSchema.nullable(),
   /** The ids of the random events the night drew for the morning, in order; empty when the case has no pool. */
   events: z.array(z.string().min(1)),
+  /** The events of the hero's character signal that the night drew, with their tones; see `signals.ts`. */
+  signalEvents: z.array(DrawnSignalEventSchema).default([]),
   /** The state of the dice after the night, so the next turn picks up from it. */
   rngStateAfter: z.int().min(0).max(0xffffffff),
 });
@@ -154,10 +158,12 @@ export function passNight(
   }
 
   const slept: DetectiveRunState = { ...run, condition, clock: { day: day + 1, minute } };
-  // The draw is the last use of the dice, and its effects (an hour lost, a scare) land on the new morning.
+  // The random events come first and the signal after them: both are drawn on the same dice, and their
+  // effects (an hour lost, a scare, a message) land on the new morning.
   const drawn = drawEvents(slept, rng);
+  const { run: settled, events: signalEvents } = settleSignalAtNight(drawn.run, rng);
   return {
-    run: { ...drawn.run, rngState: rng.state() },
+    run: { ...settled, rngState: rng.state() },
     report: {
       cause,
       whole,
@@ -171,6 +177,7 @@ export function passNight(
         .filter((id) => !healed.active.some((item) => item.id === id)),
       incident,
       events: drawn.events.map(({ eventId }) => eventId),
+      signalEvents: [...signalEvents],
       rngStateAfter: rng.state(),
     },
   };
