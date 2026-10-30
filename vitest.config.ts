@@ -17,13 +17,15 @@ export default defineConfig({
       reportsDirectory: 'coverage',
       // Without `include`, a source file no test imports is silently absent instead of failing at 0%.
       include: ['packages/*/src/**/*.ts'],
-      exclude: ['packages/*/src/**/*.test.ts', 'packages/*/src/index.ts'],
+      exclude: ['packages/*/src/**/*.test.ts', 'packages/*/src/index.ts', 'packages/mcp/src/main.ts'],
       // Raised as coverage improves, never lowered to make a change pass.
       thresholds: {
         // The engine decides truth, dice and verdicts: a missed branch is a silent rules bug.
         'packages/engine/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
         // A save that silently loses a run, or a summary that leaks the truth, breaks the game.
         'packages/saves/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        // The server is the only way the agent reaches the engine; a swallowed error here is a silent wrong answer.
+        'packages/mcp/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
       },
     },
   },
