@@ -148,3 +148,11 @@ export function traitModifier(
   }
   return total;
 }
+
+/** Whether a trait gives the hero what they look for without a check in the current situations. */
+export function hasAutoDiscover(traits: readonly Trait[], situations: readonly TraitTrigger[]): boolean {
+  return traits.some(
+    ({ trigger, effects }) =>
+      situations.includes(trigger) && effects.some((effect) => effect.kind === 'auto-discover'),
+  );
+}
