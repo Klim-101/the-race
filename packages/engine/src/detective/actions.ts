@@ -4,7 +4,8 @@
 import { z } from 'zod';
 import { assertNever } from '../assert-never.js';
 import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
-import { hasAutoDiscover, traitModifier, type TraitTrigger } from '../traits.js';
+import { collectModifier } from '../modifiers.js';
+import { hasAutoDiscover, type TraitTrigger } from '../traits.js';
 import {
   EntityIdSchema,
   type Clue,
@@ -133,7 +134,12 @@ function roll(
   check: SkillCheck,
   situations: readonly TraitTrigger[],
 ): SkillCheckResult {
-  return rollCheck(rng, run.hero.skills, check, traitModifier(run.traits, situations, check.skill));
+  return rollCheck(
+    rng,
+    run.hero.skills,
+    check,
+    collectModifier({ traits: run.traits }, check.skill, situations),
+  );
 }
 
 /** Time spent, reputation lost for a critical failure, and the turn counted with the state of the dice. */
