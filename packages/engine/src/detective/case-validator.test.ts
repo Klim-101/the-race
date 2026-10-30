@@ -142,6 +142,33 @@ describe('validateCase', () => {
       expect(issueCodes(detectiveCase)).toEqual(['unobtainable-clue']);
     });
 
+    it('rejects a suspect in a place the hero cannot reach', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.locations[3]!.access = { kind: 'skill', check: { skill: 'social', difficulty: 25 } };
+      detectiveCase.suspects[2]!.locationId = 'mayor-office';
+
+      const result = validateCase(detectiveCase, context());
+
+      expect(result.isValid).toBe(false);
+      expect(result.isValid ? [] : result.issues).toContainEqual(
+        expect.objectContaining({ code: 'unreachable-suspect', path: 'suspects[2].locationId' }),
+      );
+    });
+
+    it('does not check a suspect without a location', () => {
+      const detectiveCase = buildCheeseCase();
+      delete detectiveCase.suspects[2]!.locationId;
+
+      expect(issueCodes(detectiveCase)).not.toContain('unreachable-suspect');
+    });
+
+    it('accepts a suspect behind a check the hero can pass', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.suspects[2]!.locationId = 'mayor-office';
+
+      expect(issueCodes(detectiveCase)).not.toContain('unreachable-suspect');
+    });
+
     it('rejects a location behind a check no roll can pass', () => {
       const detectiveCase = buildCheeseCase();
       detectiveCase.locations[3]!.access = { kind: 'skill', check: { skill: 'social', difficulty: 25 } };

@@ -8,6 +8,7 @@ export type CaseIssueCode =
   | 'locale-mismatch'
   | 'unreachable-location'
   | 'unobtainable-clue'
+  | 'unreachable-suspect'
   | 'too-few-evidence-chains'
   | 'overlapping-evidence-chains'
   | 'red-herring-in-evidence-chain'
