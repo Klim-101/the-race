@@ -24,6 +24,7 @@ import {
   findClue,
   markSearched,
   moveTo,
+  startCondition,
   type DetectiveRunState,
 } from './run-state.js';
 
@@ -287,6 +288,28 @@ describe('search', () => {
 
     expect(outcome).toMatchObject({ consequences: ['time-lost', 'reputation-lost'] });
     expect(run.reputation).toBe(MAX_REPUTATION - CRITICAL_FAILURE_REPUTATION);
+  });
+
+  it('also frays the nerves on a natural 1, and not otherwise', () => {
+    const { run } = ok(resolveIntent(inCellar(), { kind: 'search' }, dice(1)));
+    expect(run.condition.nerves).toBe(9);
+
+    const calm = ok(resolveIntent(inCellar(), { kind: 'search' }, dice(15)));
+    expect(calm.run.condition.nerves).toBe(10);
+  });
+
+  it('wears the hero down as time passes and applies the condition to the roll', () => {
+    const rested = ok(resolveIntent(inCellar(), { kind: 'search' }, dice(12)));
+    const sedated = ok(resolveIntent(startCondition(inCellar(), 'sedated'), { kind: 'search' }, dice(12)));
+
+    const modifierOf = (resolution: ReturnType<typeof ok>) => {
+      const result = resolution.details[0]?.result;
+      return result === undefined || result === 'auto' ? undefined : result.modifier;
+    };
+    expect(modifierOf(sedated)).toBe((modifierOf(rested) ?? 0) - 3);
+    expect(sedated.run.condition.active).toEqual([
+      { id: 'sedated', remaining: 360 - (sedated.outcome as { minutes: number }).minutes },
+    ]);
   });
 
   it('has no penalty when there was nothing left to find', () => {

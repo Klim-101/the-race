@@ -7,6 +7,7 @@ import { assembleHero } from '../assemble-hero.js';
 import { createRng } from '../dice.js';
 import { MAX_REPUTATION, MINUTES_PER_DAY } from '../run.js';
 import { DetectiveCaseSchema } from './case-schema.js';
+import { initialCondition } from './condition.js';
 import {
   DetectiveRunStateSchema,
   addInsight,
@@ -18,6 +19,8 @@ import {
   moveTo,
   revealTrait,
   spendTime,
+  startCondition,
+  strainNerves,
   viewRun,
   type DetectiveRunState,
 } from './run-state.js';
@@ -171,6 +174,41 @@ describe('transitions', () => {
     endRun(run, 'won');
 
     expect(run).toEqual(before);
+  });
+});
+
+describe('condition', () => {
+  it('starts rested and shows in the public view', () => {
+    expect(newRun().condition).toEqual({ nerves: 10, sleepDebt: 0, active: [] });
+    expect(viewRun(newRun()).condition).toMatchObject({ nerves: 10, sleepDebt: 0, conditions: [] });
+  });
+
+  it('is filled in for a save that predates it, without a schema bump', () => {
+    const { condition, ...old } = JSON.parse(JSON.stringify(newRun())) as Record<string, unknown>;
+
+    expect(condition).toBeDefined();
+    expect(DetectiveRunStateSchema.parse(old).condition).toEqual(initialCondition());
+  });
+
+  it('spends nerves and ages conditions as time is spent, and never touches evidence', () => {
+    const run = startCondition(newRun(), 'shaken');
+    const later = spendTime(run, 300);
+
+    expect(later.condition).toEqual({ nerves: 9, sleepDebt: 0, active: [] });
+    expect({ ...later, condition: run.condition, clock: run.clock }).toEqual(run);
+  });
+
+  it('shows timed conditions in the view', () => {
+    const view = viewRun(startCondition(strainNerves(newRun()), 'exhausted'));
+
+    expect(view.condition).toMatchObject({ nerves: 9, conditions: [{ id: 'exhausted', minutesLeft: null }] });
+  });
+
+  it('is changed only while the run is active', () => {
+    const over = endRun(newRun(), 'gave-up');
+
+    expect(() => strainNerves(over)).toThrow(RangeError);
+    expect(() => startCondition(over, 'drunk')).toThrow(RangeError);
   });
 });
 

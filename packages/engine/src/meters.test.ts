@@ -130,7 +130,7 @@ describe('the complexity budget', () => {
   });
 
   it('gives the detective reputation as a meter', () => {
-    expect(DETECTIVE.meters.map(({ id }) => id)).toEqual(['reputation']);
+    expect(DETECTIVE.meters.map(({ id }) => id)).toEqual(['reputation', 'nerves', 'sleep-debt']);
   });
 
   it('refuses more meters than the budget and repeated ids', () => {

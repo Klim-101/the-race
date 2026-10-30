@@ -216,6 +216,7 @@ describe('a clue that breaks a lie', () => {
       reputationChange: -2,
     });
     expect(run.concededLieIds).toEqual([]);
+    expect(run.condition.nerves).toBe(9);
   });
 
   it('is conceded one lie at a time on a failure', () => {

@@ -13,6 +13,7 @@ import {
   type Location,
   type SkillCheck,
 } from './case-schema.js';
+import { modifierSources } from './condition.js';
 import { settleClock } from './clock.js';
 import { InterrogateIntentSchema, resolveInterrogate, type InterrogationOutcome } from './interrogation.js';
 import { buildNeighbors, closedSources } from './obtainability.js';
@@ -23,6 +24,7 @@ import {
   markSearched,
   moveTo,
   spendTime,
+  strainNerves,
   type DetectiveRunState,
 } from './run-state.js';
 import {
@@ -140,7 +142,7 @@ function roll(
     rng,
     run.hero.skills,
     check,
-    collectModifier({ traits: run.traits }, check.skill, situations),
+    collectModifier(modifierSources(run), check.skill, situations),
   );
 }
 
@@ -154,7 +156,7 @@ function settle(
   const consequences: Consequence[] = [];
   let next = run;
   if (results.some((result) => result.critical === 'failure')) {
-    next = changeReputation(next, -CRITICAL_FAILURE_REPUTATION);
+    next = strainNerves(changeReputation(next, -CRITICAL_FAILURE_REPUTATION));
     consequences.push('reputation-lost');
   }
   return { run: endTurn(spendTime(next, minutes), rng), consequences };

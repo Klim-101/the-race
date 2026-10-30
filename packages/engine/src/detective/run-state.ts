@@ -17,6 +17,16 @@ import {
 } from '../run.js';
 import { TraitSchema, type Trait } from '../traits.js';
 import { DETECTIVE, DetectiveHeroSchema, type DetectiveHero } from './archetype.js';
+import {
+  HeroConditionSchema,
+  initialCondition,
+  passTime,
+  withCondition,
+  withNervesStrained,
+  viewCondition,
+  type ConditionId,
+  type ConditionView,
+} from './condition.js';
 import { DetectiveCaseSchema, EntityIdSchema, type DetectiveCase, type Location } from './case-schema.js';
 import { buildNeighbors } from './obtainability.js';
 import { CASE_SEAL_PATTERN, isCaseSealIntact, sealCase } from './seal.js';
@@ -45,6 +55,8 @@ export const DetectiveRunStateSchema = z
     insightIds: z.array(EntityIdSchema),
     /** Lies of suspects that the hero has broken; the suspect has given that ground for good. */
     concededLieIds: z.array(EntityIdSchema).default([]),
+    /** Nerves, sleep debt and timed conditions; see `condition.ts`. */
+    condition: HeroConditionSchema.default(() => initialCondition()),
     /** Places that a scheduled event has closed; the hero cannot enter them any more. */
     closedLocationIds: z.array(EntityIdSchema).default([]),
   })
@@ -121,6 +133,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     foundClueIds: [],
     insightIds: [],
     concededLieIds: [],
+    condition: initialCondition(),
     closedLocationIds: [],
   });
 }
@@ -197,7 +210,20 @@ export function revealTrait(run: DetectiveRunState, traitId: string): DetectiveR
 
 export function spendTime(run: DetectiveRunState, minutes: number): DetectiveRunState {
   assertActive(run);
-  return { ...run, clock: advanceClock(run.clock, minutes) };
+  const clock = advanceClock(run.clock, minutes);
+  return { ...run, clock, condition: passTime(run.condition, run.clock, minutes) };
+}
+
+/** A failure frays the nerves. */
+export function strainNerves(run: DetectiveRunState): DetectiveRunState {
+  assertActive(run);
+  return { ...run, condition: withNervesStrained(run.condition) };
+}
+
+/** Puts a timed condition on the hero. */
+export function startCondition(run: DetectiveRunState, id: ConditionId): DetectiveRunState {
+  assertActive(run);
+  return { ...run, condition: withCondition(run.condition, id) };
 }
 
 /** Reputation moves by `delta` and stays between zero and the maximum. */
@@ -248,6 +274,7 @@ export interface DetectiveRunView {
   readonly status: RunStatus;
   readonly clock: RunClock & { readonly totalDays: number };
   readonly reputation: number;
+  readonly condition: ConditionView;
   /** What the world has done so far, as the player was told: events whose day has come. */
   readonly news: readonly string[];
   readonly hero: DetectiveHero;
@@ -292,6 +319,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     status: run.status,
     clock: { ...run.clock, totalDays: detectiveCase.clock.days },
     reputation: run.reputation,
+    condition: viewCondition(run.condition),
     news: detectiveCase.clock.worldEvents
       .filter(({ day }) => day <= run.clock.day)
       .map(({ description }) => description),
