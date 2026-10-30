@@ -2,12 +2,21 @@
 
 Save and resume runs. The engine is pure and does no I/O; this package owns the files.
 
-## Layout of `.race/`
+## Where saves live
 
-`.race/` is git-ignored. `defaultSaveDir(cwd)` returns it for a working directory.
+A save holds the sealed truth as plain JSON, so it lives in the player's own state directory, never in the working
+directory. `resolveSaveDir({ env, platform, homedir })` is the one pure function that decides, and `defaultSaveDir()`
+calls it with the process values:
+
+1. `RACE_HOME`, when set and non-empty (resolved to an absolute path).
+2. Windows: `%LOCALAPPDATA%\the-race`, else `<home>\AppData\Local\the-race`.
+3. macOS: `<home>/Library/Application Support/the-race`.
+4. Elsewhere: `$XDG_STATE_HOME/the-race` when it is set and absolute, else `<home>/.local/state/the-race`.
+
+## Layout of the save directory
 
 ```
-.race/
+the-race/
   run/
     state.json        the current save of the active run (JSON of the engine's run state)
     state.prev.json   the generation before it

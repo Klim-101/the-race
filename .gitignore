@@ -5,6 +5,3 @@ coverage/
 
 # Private planning notes never leave the machine.
 dev/private/
-
-# Player saves and runtime data.
-.race/

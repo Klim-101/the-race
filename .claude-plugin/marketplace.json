@@ -1,0 +1,15 @@
+{
+  "name": "the-race",
+  "description": "the RACE: a text roguelike you play in your own words. A deterministic engine owns the dice and the truth; the agent tells the story.",
+  "owner": {
+    "name": "The RACE Authors"
+  },
+  "plugins": [
+    {
+      "name": "the-race",
+      "source": "./plugins/the-race",
+      "description": "the RACE: a text roguelike you play in your own words. A deterministic engine owns the dice and the truth; the agent tells the story.",
+      "version": "0.0.0"
+    }
+  ]
+}
