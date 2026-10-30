@@ -12,7 +12,7 @@ npm run build
 node packages/mcp/dist/main.js
 ```
 
-Stdout carries the protocol, so the server writes nothing else to it. Saves go under `<working directory>/.race`.
+Stdout carries the protocol, so the server writes nothing else to it. Saves go in the player's own state directory, never the working directory: `RACE_HOME` when set, else the platform's per-user state directory (see `@the-race/saves`).
 
 ## Tools
 

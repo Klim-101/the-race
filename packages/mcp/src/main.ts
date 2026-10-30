@@ -5,4 +5,4 @@
 import { createDefaultContext, serveStdio } from './stdio.js';
 
 // The process entry and nothing else, so it is left out of the coverage run; the integration test spawns it.
-await serveStdio(process, createDefaultContext(process.cwd()));
+await serveStdio(process, createDefaultContext());
