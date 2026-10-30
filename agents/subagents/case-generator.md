@@ -1,7 +1,7 @@
 ---
 name: case-generator
 description: Writes a complete detective case as JSON in its own isolated context and submits it straight to the engine. Invoke only from the narrator of the RACE, once a hero exists, with the single word "generate". Returns only "accepted" or "failed: <reason>" and never the content of the case.
-tools: mcp__the-race__generator_brief, mcp__the-race__scenario_submit
+tools: mcp__plugin_the-race_the-race__generator_brief, mcp__plugin_the-race_the-race__scenario_submit
 model: inherit
 ---
 
