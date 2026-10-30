@@ -20,7 +20,8 @@ export type CaseIssueCode =
   | 'actor-in-two-places'
   | 'too-many-red-herrings'
   | 'real-name'
-  | 'wrong-script';
+  | 'wrong-script'
+  | 'wrong-language';
 
 /** One reason a case was rejected; the message is written for the generator that has to fix it. */
 export interface CaseIssue {

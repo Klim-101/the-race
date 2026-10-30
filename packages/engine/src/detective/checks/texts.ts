@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Locale } from '../../locale.js';
+import { isClearlyOtherLanguage } from '../../text/language.js';
 import { findRealName } from '../../text/real-names.js';
 import { isInLocaleScript } from '../../text/script.js';
 import type { CaseIssue } from '../case-issue.js';
@@ -40,6 +41,9 @@ export function checkTexts(
     }
     if (!isInLocaleScript(text, locale)) {
       issues.push({ code: 'wrong-script', path, message: `Write this text in "${locale}".` });
+    } else if (isClearlyOtherLanguage(text, locale)) {
+      // Only when the script is right: a wrong script is already reported, and once is enough.
+      issues.push({ code: 'wrong-language', path, message: `Write this text in the language "${locale}".` });
     }
   }
   return issues;
