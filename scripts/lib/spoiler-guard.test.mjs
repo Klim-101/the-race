@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { spawnSync } from 'node:child_process';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { resolveSaveDir as savesResolveSaveDir } from '../../packages/saves/src/save-dir.js';
 import { DENY_REASON, resolveSaveDir, shouldDeny } from '../../agents/hooks/spoiler-guard.mjs';
 
 const SCRIPT = join(
@@ -34,9 +35,9 @@ const SAVE = {
 const call = (tool_name, tool_input, extra = {}) => ({ tool_name, tool_input, ...extra });
 const denied = (input, options) => shouldDeny(input, options);
 
-// The convention shared with `resolveSaveDir` in packages/saves: if that function and this table ever
-// disagree, one of them is wrong. The integration of the two is checked where both exist.
-describe('resolveSaveDir', () => {
+// The hook cannot import the saves package, so it carries its own copy of the rules; this keeps the copy
+// honest by comparing it with `resolveSaveDir` from packages/saves over a table of environments.
+describe('resolveSaveDir agrees with packages/saves', () => {
   it.each([
     ['RACE_HOME wins', { platform: 'linux', home: '/h', env: { RACE_HOME: '/data/race' } }, '/data/race'],
     [
@@ -55,9 +56,9 @@ describe('resolveSaveDir', () => {
       'C:\\Users\\a\\AppData\\Local\\the-race',
     ],
     [
-      'windows relative LOCALAPPDATA is ignored',
+      'windows LOCALAPPDATA is taken as it is',
       { platform: 'win32', home: 'C:\\Users\\a', env: { LOCALAPPDATA: 'rel' } },
-      'C:\\Users\\a\\AppData\\Local\\the-race',
+      'rel\\the-race',
     ],
     [
       'macOS',
@@ -77,6 +78,9 @@ describe('resolveSaveDir', () => {
     ['linux default', { platform: 'linux', home: '/h', env: {} }, '/h/.local/state/the-race'],
   ])('%s', (_name, input, expected) => {
     expect(resolveSaveDir(input)).toBe(expected);
+    // `resolve` only makes a RACE_HOME absolute, which the saves package does and the hook leaves to its cwd.
+    const { home, ...rest } = input;
+    expect(resolve(resolveSaveDir(input))).toBe(resolve(savesResolveSaveDir({ ...rest, homedir: home })));
   });
 });
 

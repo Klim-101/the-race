@@ -25,7 +25,7 @@ export function resolveSaveDir({ env, platform, home }) {
   if (env.RACE_HOME) return env.RACE_HOME;
   if (platform === 'win32') {
     const local = env.LOCALAPPDATA;
-    const base = local && path.win32.isAbsolute(local) ? local : path.win32.join(home, 'AppData', 'Local');
+    const base = local ? local : path.win32.join(home, 'AppData', 'Local');
     return path.win32.join(base, 'the-race');
   }
   if (platform === 'darwin') return path.posix.join(home, 'Library', 'Application Support', 'the-race');
