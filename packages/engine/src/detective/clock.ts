@@ -65,10 +65,13 @@ export function daysPassed(detectiveCase: DetectiveCase, fromDay: number, toDay:
  */
 export function settleClock(run: DetectiveRunState, previousDay: number): DetectiveRunState {
   if (run.status !== 'active') return run;
-  // The active hours end at midnight, where the clock itself turns the day; the night then passes and
-  // the morning is always 08:00, whatever part of the night the action ran into.
+  // The active hours end at midnight, where the clock itself turns the day. The night (`passNight`) has
+  // normally set the morning already, a late one after an incident; a clock still inside the night is
+  // brought to 08:00, whatever part of the night the action ran into.
   const rested =
-    run.clock.day > previousDay ? { ...run, clock: { day: run.clock.day, minute: DAY_START_MINUTE } } : run;
+    run.clock.day > previousDay && run.clock.minute < DAY_START_MINUTE
+      ? { ...run, clock: { day: run.clock.day, minute: DAY_START_MINUTE } }
+      : run;
   const passed = daysPassed(run.case, previousDay, rested.clock.day);
   const closed = passed.closedLocationIds.reduce(closeLocation, rested);
   const reason =

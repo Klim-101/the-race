@@ -42,6 +42,11 @@ export const LocationAccessSchema = z.discriminatedUnion('kind', [
 ]);
 export type LocationAccess = z.infer<typeof LocationAccessSchema>;
 
+/** How safe a night in a place is; it decides the chance of an incident (see `night.ts`). */
+export const LODGING_SAFETIES = ['safe', 'ordinary', 'risky'] as const;
+export const LodgingSafetySchema = z.enum(LODGING_SAFETIES);
+export type LodgingSafety = z.infer<typeof LodgingSafetySchema>;
+
 /** Connections are two-way: listing a connection on either location links both. */
 export const LocationSchema = z.object({
   id: EntityIdSchema,
@@ -51,6 +56,8 @@ export const LocationSchema = z.object({
   access: LocationAccessSchema,
   /** What the scene is like (a cramped cellar, a crowd); the hero's traits react to it. */
   situations: z.array(TraitTriggerSchema).default([]),
+  /** How safe the hero's night is if they sleep here; optional, and a place without it is an ordinary one. */
+  lodging: LodgingSafetySchema.optional(),
 });
 export type Location = z.infer<typeof LocationSchema>;
 
