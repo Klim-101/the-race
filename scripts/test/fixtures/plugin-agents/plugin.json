@@ -1,0 +1,8 @@
+{
+  "name": "the-race",
+  "version": "0.0.1",
+  "description": "Fixture plugin.",
+  "author": { "name": "The RACE Authors" },
+  "license": "Apache-2.0",
+  "keywords": ["fixture"]
+}
