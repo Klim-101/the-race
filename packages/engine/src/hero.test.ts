@@ -18,7 +18,7 @@ describe('HeroSchema', () => {
   });
 
   it('rejects a skill above the maximum level', () => {
-    const skills = { observation: 6, logic: 4, charm: 0, pressure: 0, tech: 0, contacts: 0 };
+    const skills = { perception: 6, reasoning: 4, social: 0, pressure: 0, tech: 0, contacts: 0 };
 
     expect(HeroSchema.safeParse({ ...buildHero(), skills }).success).toBe(false);
   });

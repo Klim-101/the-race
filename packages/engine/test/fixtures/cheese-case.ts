@@ -5,7 +5,7 @@ import type { DetectiveHero } from '../../src/detective/archetype.js';
 
 /**
  * A small solvable case: the baker stole the festival cheese wheel to pay off the oven.
- * Chain 0 needs only observation; chain 1 needs charm the default hero lacks.
+ * Chain 0 needs only perception; chain 1 needs social the default hero lacks.
  */
 export function buildCheeseCase(): Record<string, unknown> & {
   locations: Record<string, unknown>[];
@@ -51,7 +51,7 @@ export function buildCheeseCase(): Record<string, unknown> & {
         name: 'Mayor office',
         description: 'A secretary guards the door like a dragon guards gold.',
         connections: [],
-        access: { kind: 'skill', check: { skill: 'charm', difficulty: 12 } },
+        access: { kind: 'skill', check: { skill: 'social', difficulty: 12 } },
       },
     ],
     clues: [
@@ -67,7 +67,7 @@ export function buildCheeseCase(): Record<string, unknown> & {
         id: 'flour-crumbs',
         locationId: 'cheese-stall',
         description: 'Flour on the plinth, though nobody bakes at a cheese stall.',
-        discovery: { skill: 'observation', difficulty: 10 },
+        discovery: { skill: 'perception', difficulty: 10 },
         pointsTo: ['baker'],
         isRedHerring: false,
       },
@@ -75,7 +75,7 @@ export function buildCheeseCase(): Record<string, unknown> & {
         id: 'cart-tracks',
         locationId: 'storage-cellar',
         description: 'Round tracks of something heavy rolled into the cellar.',
-        discovery: { skill: 'observation', difficulty: 8 },
+        discovery: { skill: 'perception', difficulty: 8 },
         pointsTo: ['baker'],
         isRedHerring: false,
       },
@@ -83,7 +83,7 @@ export function buildCheeseCase(): Record<string, unknown> & {
         id: 'oven-receipt',
         locationId: 'mayor-office',
         description: 'An unpaid receipt for a festival oven, signed by the baker.',
-        discovery: { skill: 'logic', difficulty: 12 },
+        discovery: { skill: 'reasoning', difficulty: 12 },
         pointsTo: ['baker'],
         isRedHerring: false,
       },
@@ -165,12 +165,12 @@ export function buildCheeseCase(): Record<string, unknown> & {
   };
 }
 
-/** Trained in observation and logic, untrained in charm. */
+/** Trained in perception and reasoning, untrained in social. */
 export function buildHero(): DetectiveHero {
   return {
     name: 'Mira Kos',
     gender: 'female',
     archetype: 'detective',
-    skills: { observation: 3, logic: 2, charm: 0, pressure: 1, tech: 2, contacts: 2 },
+    skills: { perception: 3, reasoning: 2, social: 0, pressure: 1, tech: 2, contacts: 2 },
   };
 }

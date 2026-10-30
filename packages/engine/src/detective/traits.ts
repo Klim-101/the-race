@@ -9,7 +9,7 @@ export const DETECTIVE_TRAITS: readonly Trait[] = [
     id: 'former-accountant',
     polarity: 'positive',
     trigger: 'financial-documents',
-    effects: [{ kind: 'modifier', skills: ['logic', 'observation'], amount: 3 }],
+    effects: [{ kind: 'modifier', skills: ['reasoning', 'perception'], amount: 3 }],
     excludes: ['sloppy-with-paperwork'],
   },
   {
@@ -29,7 +29,7 @@ export const DETECTIVE_TRAITS: readonly Trait[] = [
     id: 'well-connected',
     polarity: 'positive',
     trigger: 'high-society',
-    effects: [{ kind: 'modifier', skills: ['contacts', 'charm'], amount: 3 }],
+    effects: [{ kind: 'modifier', skills: ['contacts', 'social'], amount: 3 }],
   },
   {
     id: 'night-owl',
@@ -42,7 +42,7 @@ export const DETECTIVE_TRAITS: readonly Trait[] = [
     id: 'people-reader',
     polarity: 'positive',
     trigger: 'interrogation',
-    effects: [{ kind: 'modifier', skills: ['charm', 'pressure'], amount: 2 }],
+    effects: [{ kind: 'modifier', skills: ['social', 'pressure'], amount: 2 }],
     excludes: ['hothead'],
   },
   {
@@ -73,14 +73,14 @@ export const DETECTIVE_TRAITS: readonly Trait[] = [
     id: 'stage-fright',
     polarity: 'negative',
     trigger: 'crowd',
-    effects: [{ kind: 'modifier', skills: ['charm', 'pressure'], amount: -2 }],
+    effects: [{ kind: 'modifier', skills: ['social', 'pressure'], amount: -2 }],
     excludes: ['showman'],
   },
   {
     id: 'sloppy-with-paperwork',
     polarity: 'negative',
     trigger: 'financial-documents',
-    effects: [{ kind: 'modifier', skills: ['logic'], amount: -3 }],
+    effects: [{ kind: 'modifier', skills: ['reasoning'], amount: -3 }],
   },
   {
     id: 'hothead',
@@ -88,7 +88,7 @@ export const DETECTIVE_TRAITS: readonly Trait[] = [
     trigger: 'interrogation',
     effects: [
       { kind: 'modifier', skills: ['pressure'], amount: 3 },
-      { kind: 'modifier', skills: ['charm'], amount: -2 },
+      { kind: 'modifier', skills: ['social'], amount: -2 },
     ],
   },
   {
@@ -96,8 +96,8 @@ export const DETECTIVE_TRAITS: readonly Trait[] = [
     polarity: 'mixed',
     trigger: 'night',
     effects: [
-      { kind: 'modifier', skills: ['observation'], amount: 3 },
-      { kind: 'modifier', skills: ['logic'], amount: -2 },
+      { kind: 'modifier', skills: ['perception'], amount: 3 },
+      { kind: 'modifier', skills: ['reasoning'], amount: -2 },
     ],
   },
   {
@@ -105,8 +105,8 @@ export const DETECTIVE_TRAITS: readonly Trait[] = [
     polarity: 'mixed',
     trigger: 'crowd',
     effects: [
-      { kind: 'modifier', skills: ['charm'], amount: 3 },
-      { kind: 'modifier', skills: ['observation'], amount: -2 },
+      { kind: 'modifier', skills: ['social'], amount: 3 },
+      { kind: 'modifier', skills: ['perception'], amount: -2 },
     ],
   },
 ].map((trait) => TraitSchema.parse(trait));

@@ -7,6 +7,12 @@ import type { Trait } from './traits.js';
 export const GenderSchema = z.enum(['female', 'male', 'nonbinary']);
 export type Gender = z.infer<typeof GenderSchema>;
 
+/** Skills every archetype has, so that traits, conditions and gear that name them work in all of them. */
+export const COMMON_SKILLS = ['perception', 'reasoning', 'social'] as const;
+export type CommonSkill = (typeof COMMON_SKILLS)[number];
+/** The skills an archetype adds to the common ones. */
+export const OWN_SKILL_COUNT = 3;
+
 /**
  * Everything the shared engine needs to know about one kind of hero. An archetype owns its skills,
  * its point budget and its trait catalogue, so a new archetype is a new definition and not a change
@@ -14,6 +20,7 @@ export type Gender = z.infer<typeof GenderSchema>;
  */
 export interface ArchetypeDefinition<Id extends string, Skill extends string> {
   readonly id: Id;
+  /** The common skills first, then the archetype's own. */
   readonly skills: readonly [Skill, ...Skill[]];
   /** The player spends exactly this many points when creating a hero. */
   readonly skillPoints: number;
@@ -21,11 +28,24 @@ export interface ArchetypeDefinition<Id extends string, Skill extends string> {
   readonly traits: readonly Trait[];
 }
 
-/** Identity helper that keeps the literal id and skill names in the type. */
-export function defineArchetype<const Id extends string, const Skill extends string>(
-  definition: ArchetypeDefinition<Id, Skill>,
-): ArchetypeDefinition<Id, Skill> {
-  return definition;
+export interface ArchetypeInput<Id extends string, OwnSkill extends string> {
+  readonly id: Id;
+  readonly ownSkills: readonly [OwnSkill, OwnSkill, OwnSkill];
+  readonly skillPoints: number;
+  readonly maxSkillLevel: number;
+  readonly traits: readonly Trait[];
+}
+
+/** Adds the common skills to the archetype's own and keeps the literal id and skill names in the type. */
+export function defineArchetype<const Id extends string, const OwnSkill extends string>(
+  input: ArchetypeInput<Id, OwnSkill>,
+): ArchetypeDefinition<Id, CommonSkill | OwnSkill> {
+  const { ownSkills, ...rest } = input;
+  const skills = [...COMMON_SKILLS, ...ownSkills] as const;
+  if (new Set<string>(skills).size !== skills.length) {
+    throw new RangeError(`The skills of "${input.id}" repeat a common skill or one another.`);
+  }
+  return { ...rest, skills };
 }
 
 export function createSkillLevelsSchema<Skill extends string>(archetype: ArchetypeDefinition<string, Skill>) {
