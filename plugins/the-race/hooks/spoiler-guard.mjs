@@ -14,7 +14,7 @@ import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 
 export const DENY_REASON =
-  "The game's saves are off limits. Use the game tools (mcp__the-race__*) instead of files.";
+  "The game's saves are off limits. Use the game tools (mcp__plugin_the-race_the-race__*) instead of files.";
 
 // Tools that change a file: only the path they name matters, not the text they write.
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);

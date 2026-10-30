@@ -123,7 +123,7 @@ describe('allowed', () => {
       call('Edit', { file_path: 'src/a.ts', old_string: 'a', new_string: 'b' }),
       LINUX,
     ],
-    ['the game tool', call('mcp__the-race__run_view', {}), LINUX],
+    ['the game tool', call('mcp__plugin_the-race_the-race__run_view', {}), LINUX],
     ['another MCP tool', call('mcp__other__search', { query: 'weather', limit: 3 }), LINUX],
     ['a tool without input', call('TodoWrite', undefined), LINUX],
     [

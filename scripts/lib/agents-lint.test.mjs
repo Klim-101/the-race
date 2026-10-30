@@ -5,9 +5,13 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { MCP_SERVER_NAME } from './plugin-generator.mjs';
 
 const AGENTS = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'agents');
-const PREFIX = 'mcp__the-race__';
+// Claude Code names the tools of a plugin's MCP server mcp__plugin_<plugin>_<server>__<tool>. A tool named
+// any other way matches nothing, and a subagent that lists only such tools is refused with zero tools.
+const PLUGIN_NAME = JSON.parse(readFileSync(join(AGENTS, 'plugin.json'), 'utf8')).name;
+const PREFIX = `mcp__plugin_${PLUGIN_NAME}_${MCP_SERVER_NAME}__`;
 
 // The tool surface the agent layer may name; the MCP server implements it.
 const NARRATOR_TOOLS = [
