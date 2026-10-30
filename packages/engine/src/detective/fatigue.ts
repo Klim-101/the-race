@@ -103,7 +103,7 @@ export function resolveReread(run: DetectiveRunState, intent: RereadIntent, rng:
  * What fatigue adds to a turn that was carried out on `before`: the garble of what the hero read, and
  * maybe a mishap. Both follow the hero as they were when the turn began. The mishap is rolled on the run's
  * dice only when its chance is above zero, so a rested hero's dice are untouched. Evidence is not touched.
- * The accusation is left alone: it ends the run. So is resting: a hero who sleeps stumbles on nothing, and
+ * The accusation is left alone: it ends the run. So is using an item, which is no risk of its own. So is resting: a hero who sleeps stumbles on nothing, and
  * the night looks after what the day wore down.
  */
 export function applyFatigue(
@@ -112,7 +112,7 @@ export function applyFatigue(
   rng: Rng,
 ): Resolution & { ok: true } {
   const { outcome } = resolution;
-  if (outcome.kind === 'accuse' || outcome.kind === 'rest') return resolution;
+  if (outcome.kind === 'accuse' || outcome.kind === 'rest' || outcome.kind === 'use') return resolution;
   let { run } = resolution;
   let extra: Partial<Fatigue> = {};
   let minutes = 0;

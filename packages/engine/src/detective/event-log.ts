@@ -19,6 +19,7 @@ import { EntityIdSchema } from './case-schema.js';
 import { daysPassed } from './clock.js';
 import { MishapKindSchema } from './fatigue.js';
 import { INTERROGATION_APPROACHES } from './interrogation.js';
+import { ConsumableIdSchema, PendingEffectSchema, SuppliesSchema } from './consumables.js';
 import { NightReportSchema } from './night.js';
 import { DrawnEventSchema, type DetectiveRunState } from './run-state.js';
 import { VERDICTS, type Verdict } from './verdict.js';
@@ -98,6 +99,13 @@ const OutcomeSchema = z.union([
   }),
   z.object({ kind: z.literal('reread'), clueId: EntityIdSchema, minutes, ...fatigue }),
   z.object({
+    kind: z.literal('use'),
+    itemId: ConsumableIdSchema,
+    minutes,
+    left: z.int().min(0),
+    scheduled: z.int().min(0),
+  }),
+  z.object({
     kind: z.literal('deduce'),
     result: z.literal('nothing'),
     minutes,
@@ -133,6 +141,9 @@ export const LogEntrySchema = z.object({
   reputation: z.int().min(0),
   /** Nerves, sleep debt and conditions after the turn, so that a replay reproduces what wears off. */
   condition: HeroConditionSchema,
+  /** What the hero carries and the prices still on their way after the turn, so a replay reproduces both. */
+  supplies: SuppliesSchema.default({}),
+  pendingEffects: z.array(PendingEffectSchema).default([]),
   status: RunStatusSchema,
   /** Why the run ended on this turn; `null` while it goes on, and for a log from before reasons. */
   endReason: EndReasonSchema.nullable().default(null),
@@ -172,6 +183,8 @@ function entryOf(before: DetectiveRunState, intent: Intent, resolution: Resoluti
     clock: after.clock,
     reputation: after.reputation,
     condition: after.condition,
+    supplies: after.supplies,
+    pendingEffects: after.pendingEffects,
     status: after.status,
     endReason: after.endReason,
     worldEvents: daysPassed(before.case, before.clock.day, after.clock.day).firedEventIndexes,
