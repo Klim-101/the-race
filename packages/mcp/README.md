@@ -22,16 +22,18 @@ Stdout carries the protocol, so the server writes nothing else to it. Saves go i
 
 The game tools, which the narrator skill calls by exactly these names:
 
-| Tool          | What it does                                                                                |
-| ------------- | ------------------------------------------------------------------------------------------- |
-| `run_new`     | Starts a pending run (seed, language, theme) and returns the hero choices. Refused mid-run. |
-| `hero_create` | Assembles the hero on the seed's dice; hidden traits are rolled and stored, never returned. |
-| `run_view`    | The public view of the run, or `awaiting-hero` / `awaiting-case` / `no-run`.                |
-| `act`         | look, move, search, rest, use, reread: `{ turn, intent }`.                                  |
-| `question`    | Interrogate a suspect, optionally showing clues.                                            |
-| `deduce`      | Link found clues into an insight.                                                           |
-| `accuse`      | The final accusation; ends the run and is the one place the truth is returned.              |
-| `run_give_up` | Ends the run as gave-up (a retry returns the same end).                                     |
+| Tool              | What it does                                                                                                                                                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run_new`         | Starts a pending run (seed, language, theme) and returns the hero choices. Refused mid-run.                                                                                                                                 |
+| `hero_create`     | Assembles the hero on the seed's dice; hidden traits are rolled and stored, never returned.                                                                                                                                 |
+| `run_view`        | The public view of the run, or `awaiting-hero` / `awaiting-case` / `no-run`.                                                                                                                                                |
+| `act`             | look, move, search, rest, use, reread: `{ turn, intent }`.                                                                                                                                                                  |
+| `question`        | Interrogate a suspect, optionally showing clues.                                                                                                                                                                            |
+| `deduce`          | Link found clues into an insight.                                                                                                                                                                                           |
+| `accuse`          | The final accusation; ends the run and is the one place the truth is returned.                                                                                                                                              |
+| `run_give_up`     | Ends the run as gave-up (a retry returns the same end).                                                                                                                                                                     |
+| `generator_brief` | For the case generator only: locale, theme, tone, the hero's public data, attempts left. Never a hidden trait.                                                                                                              |
+| `scenario_submit` | For the case generator only: validates a case for the run's hero, seals it and starts the run, or lists the issues. At most three attempts; an accepted case is final. Returns `{"accepted":true}` and nothing of the case. |
 
 Every tool that changes a run takes `turn`, the run's turn from `run_view`. A call with another number is refused with `stale-turn` and changes nothing, so a retried call is never applied twice. A turn is saved together with its log entry; giving up is not a turn, so a given-up run is saved without its log.
 

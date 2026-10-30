@@ -18,7 +18,9 @@ const PendingThemeSchema = z.enum(PENDING_THEMES);
  * one, the hero. It lives in its own file beside `run/` and is gone once the case is accepted and the run
  * is saved. `traits` is the hero's hidden roll: it is engine-side state like the run's own, and no tool
  * returns it. `rngState` is the state of the dice after the hero was assembled, so the run continues the
- * same sequence and the same seed always gives the same hero and the same run.
+ * same sequence and the same seed always gives the same hero and the same run. `attempts` counts the case
+ * submissions made so far and `failed` is set when the generator ran out of them; both have defaults, so a
+ * record written without them still loads.
  */
 export const PendingRunSchema = z.object({
   schemaVersion: z.literal(1),
@@ -28,6 +30,8 @@ export const PendingRunSchema = z.object({
   hero: DetectiveHeroSchema.nullable(),
   traits: z.array(TraitSchema),
   rngState: z.int().min(0).max(0xffffffff),
+  attempts: z.int().min(0).default(0),
+  failed: z.boolean().default(false),
 });
 export type PendingRun = z.infer<typeof PendingRunSchema>;
 
@@ -52,6 +56,8 @@ export function newPendingRun(seed: string, locale: PendingRun['locale']): Pendi
     hero: null,
     traits: [],
     rngState: createRng(seed).state(),
+    attempts: 0,
+    failed: false,
   };
 }
 

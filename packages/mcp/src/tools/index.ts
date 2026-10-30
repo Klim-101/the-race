@@ -5,11 +5,13 @@ import type { Tool } from '../define-tool.js';
 import { accuse } from './accuse.js';
 import { act } from './act.js';
 import { deduce } from './deduce.js';
+import { generatorBrief } from './generator-brief.js';
 import { heroCreate } from './hero-create.js';
 import { question } from './question.js';
 import { runGiveUp } from './run-give-up.js';
 import { runNew } from './run-new.js';
 import { runView } from './run-view.js';
+import { scenarioSubmit } from './scenario-submit.js';
 import { serverInfo } from './server-info.js';
 
 /**
@@ -21,9 +23,11 @@ export const TOOLS: readonly Tool[] = [
   accuse,
   act,
   deduce,
+  generatorBrief,
   heroCreate,
   question,
   runGiveUp,
   runNew,
   runView,
+  scenarioSubmit,
 ];
