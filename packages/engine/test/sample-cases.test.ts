@@ -46,18 +46,21 @@ const HEROES: readonly DetectiveHero[] = [
     gender: 'female',
     archetype: 'detective',
     skills: { perception: 4, reasoning: 5, social: 1, pressure: 0, tech: 0, contacts: 0 },
+    background: 'analyst',
   },
   {
     name: 'Dante Rook, street private eye',
     gender: 'male',
     archetype: 'detective',
     skills: { perception: 1, reasoning: 0, social: 5, pressure: 0, tech: 0, contacts: 4 },
+    background: 'locksmith',
   },
   {
     name: 'Sasha Vell, investigative blogger',
     gender: 'nonbinary',
     archetype: 'detective',
     skills: { perception: 0, reasoning: 1, social: 0, pressure: 4, tech: 5, contacts: 0 },
+    background: 'journalist',
   },
 ];
 

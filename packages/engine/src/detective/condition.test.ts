@@ -21,7 +21,7 @@ import {
 
 const at = (hour: number, day = 1) => ({ day, minute: hour * 60 });
 const modifier = (condition: HeroCondition, skill: string): number =>
-  collectModifier(modifierSources({ traits: [], condition }), skill, []);
+  collectModifier(modifierSources({ traits: [], condition, kit: [] }), skill, []);
 
 describe('initialCondition', () => {
   it('starts with full nerves, no sleep debt and no conditions', () => {

@@ -7,6 +7,7 @@ import type { ModifierSources } from '../modifiers.js';
 import { MINUTES_PER_DAY, type RunClock } from '../run.js';
 import { findSignal } from '../signals.js';
 import type { Trait } from '../traits.js';
+import { gearModifiers, type KitItem } from './gear.js';
 import { DETECTIVE, DETECTIVE_NERVES, DETECTIVE_REPUTATION, DETECTIVE_SLEEP_DEBT } from './archetype.js';
 
 // The hero's condition is everything about them that wears off or wears out: nerves, sleep debt and timed
@@ -136,6 +137,7 @@ export function withCondition(condition: HeroCondition, id: ConditionId): HeroCo
 export function modifierSources(run: {
   readonly traits: readonly Trait[];
   readonly condition: HeroCondition;
+  readonly kit: readonly KitItem[];
   readonly hero?: { readonly signalId?: string | undefined };
 }): ModifierSources {
   const { condition } = run;
@@ -147,6 +149,7 @@ export function modifierSources(run: {
     traits: run.traits,
     signal: findSignal(DETECTIVE.signals, run.hero?.signalId),
     conditions: condition.active.map(({ id }) => ({ id, effects: DETECTIVE_CONDITIONS[id].effects })),
+    gear: gearModifiers(run.kit),
     meters,
   };
 }

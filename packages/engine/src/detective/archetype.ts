@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { createHeroSchema, defineArchetype } from '../archetype.js';
 import { defineMeter } from '../meters.js';
 import { MAX_REPUTATION } from '../run.js';
+import { BackgroundSchema, DEFAULT_BACKGROUND } from './gear.js';
 import { DETECTIVE_SIGNALS } from './signals.js';
 import { DETECTIVE_TRAITS } from './traits.js';
 
@@ -58,6 +59,9 @@ export const DETECTIVE = defineArchetype({
 export const DetectiveSkillSchema = z.enum(DETECTIVE.skills);
 export type DetectiveSkill = z.infer<typeof DetectiveSkillSchema>;
 
-export const DetectiveHeroSchema = createHeroSchema(DETECTIVE);
+/** Who the hero was before: it decides the starting kit (see `gear.ts`). Old saves without one are policemen. */
+export const DetectiveHeroSchema = createHeroSchema(DETECTIVE).extend({
+  background: BackgroundSchema.default(DEFAULT_BACKGROUND),
+});
 export type DetectiveHero = z.infer<typeof DetectiveHeroSchema>;
 export type DetectiveSkillLevels = DetectiveHero['skills'];

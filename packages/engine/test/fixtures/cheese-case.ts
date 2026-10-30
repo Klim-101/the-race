@@ -174,5 +174,6 @@ export function buildHero(): DetectiveHero {
     gender: 'female',
     archetype: 'detective',
     skills: { perception: 3, reasoning: 2, social: 0, pressure: 1, tech: 2, contacts: 2 },
+    background: 'police',
   };
 }

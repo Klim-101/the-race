@@ -257,14 +257,19 @@ function withSignals(signals: readonly ReturnType<typeof defineSignal>[], body: 
 
 describe('signals at the table', () => {
   it('add their modifiers under their triggers through the one modifier total', () => {
-    const run = newRun('feeling-low');
+    // Without a kit: a notebook would add its own point of reasoning to the signal's.
+    const run = { ...newRun('feeling-low'), kit: [] };
 
     expect(collectModifier(modifierSources(run), 'perception', [])).toBe(-1);
     expect(collectModifier(modifierSources(run), 'reasoning', ['night'])).toBe(1);
     expect(collectModifier(modifierSources(newRun('in-love')), 'social', ['interrogation'])).toBe(1);
     expect(collectModifier(modifierSources(newRun()), 'perception', [])).toBe(0);
     expect(
-      collectModifier(modifierSources({ traits: [], condition: newRun().condition }), 'perception', []),
+      collectModifier(
+        modifierSources({ traits: [], condition: newRun().condition, kit: [] }),
+        'perception',
+        [],
+      ),
     ).toBe(0);
   });
 

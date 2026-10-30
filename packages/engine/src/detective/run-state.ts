@@ -32,6 +32,7 @@ import {
   type ConditionView,
 } from './condition.js';
 import { DetectiveCaseSchema, EntityIdSchema, type DetectiveCase, type Location } from './case-schema.js';
+import { GearIdSchema, KitItemSchema, initialKit, viewKit, withGearState, type KitView } from './gear.js';
 import { buildNeighbors } from './obtainability.js';
 import { CASE_SEAL_PATTERN, isCaseSealIntact, sealCase } from './seal.js';
 
@@ -65,6 +66,8 @@ export const DetectiveRunStateSchema = z
     concededLieIds: z.array(EntityIdSchema).default([]),
     /** Nerves, sleep debt and timed conditions; see `condition.ts`. */
     condition: HeroConditionSchema.default(() => initialCondition()),
+    /** The hero's gear and whether each piece is in hand; it comes from their background. Old saves have none. */
+    kit: z.array(KitItemSchema).default([]),
     /** Places that a scheduled event has closed; the hero cannot enter them any more. */
     closedLocationIds: z.array(EntityIdSchema).default([]),
     /** Random events the night has drawn, with the day of each; the pool of the case holds what they are. */
@@ -115,6 +118,13 @@ export const DetectiveRunStateSchema = z
       run.drawnEvents.map(({ eventId }) => eventId),
       new Set((run.case.randomEvents ?? []).map(({ id }) => id)),
     );
+    if (new Set(run.kit.map(({ id }) => id)).size !== run.kit.length) {
+      context.addIssue({
+        code: 'custom',
+        path: ['kit'],
+        message: 'A piece of gear is in the kit at most once.',
+      });
+    }
     known('revealedTraitIds', run.revealedTraitIds, new Set(run.traits.map(({ id }) => id)));
   });
 export type DetectiveRunState = z.infer<typeof DetectiveRunStateSchema>;
@@ -154,6 +164,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     insightIds: [],
     concededLieIds: [],
     condition: initialCondition(),
+    kit: initialKit(input.hero.background),
     closedLocationIds: [],
     drawnEvents: [],
     signalEvents: [],
@@ -258,6 +269,18 @@ export function startCondition(run: DetectiveRunState, id: ConditionId): Detecti
   return { ...run, condition: withCondition(run.condition, id) };
 }
 
+/** A piece of gear is lost: its bonus is gone and its penalty applies until it is replaced. */
+export function loseGear(run: DetectiveRunState, gearId: string): DetectiveRunState {
+  assertActive(run);
+  return { ...run, kit: withGearState(run.kit, GearIdSchema.parse(gearId), 'lost') };
+}
+
+/** A lost piece is replaced: the penalty goes and the bonus is back. No intent reaches this yet. */
+export function replaceGear(run: DetectiveRunState, gearId: string): DetectiveRunState {
+  assertActive(run);
+  return { ...run, kit: withGearState(run.kit, GearIdSchema.parse(gearId), 'owned') };
+}
+
 /** Reputation moves by `delta` and stays between zero and the maximum. */
 export function changeReputation(run: DetectiveRunState, delta: number): DetectiveRunState {
   assertActive(run);
@@ -318,6 +341,8 @@ export interface DetectiveRunView {
   readonly clock: RunClock & { readonly totalDays: number };
   readonly reputation: number;
   readonly condition: ConditionView;
+  /** The hero's gear and whether each piece is in hand or lost. */
+  readonly kit: readonly KitView[];
   /** Ids of the warnings the player is shown, such as `low-reputation`; they come from the meters' data. */
   readonly warnings: readonly string[];
   /** What the world has done so far, as the player was told: events whose day has come. */
@@ -384,6 +409,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     clock: { ...run.clock, totalDays: detectiveCase.clock.days },
     reputation: run.reputation,
     condition: viewCondition(run.condition),
+    kit: viewKit(run.kit),
     warnings: warningsOfMeters(meterReadings(run)),
     news: detectiveCase.clock.worldEvents
       .filter(({ day }) => day <= run.clock.day)
