@@ -16,7 +16,6 @@ import {
   viewCondition,
   withCondition,
   withNervesStrained,
-  wearOffAtNight,
   type HeroCondition,
 } from './condition.js';
 
@@ -129,19 +128,6 @@ describe('withCondition', () => {
 
     const toNight: HeroCondition = { ...initialCondition(), active: [{ id: 'exhausted', remaining: 5 }] };
     expect(withCondition(toNight, 'exhausted').active).toEqual([{ id: 'exhausted', remaining: 'night' }]);
-  });
-});
-
-describe('wearOffAtNight', () => {
-  it('removes what lasts until the night and nothing else', () => {
-    let condition = withCondition(withCondition(initialCondition(), 'exhausted'), 'injured');
-    condition = { ...condition, nerves: 4, sleepDebt: 2 };
-
-    expect(wearOffAtNight(condition)).toEqual({
-      nerves: 4,
-      sleepDebt: 2,
-      active: [{ id: 'injured', remaining: MINUTES_PER_DAY }],
-    });
   });
 });
 

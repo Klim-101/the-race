@@ -23,7 +23,6 @@ export const DETECTIVE_NERVES = defineMeter({
   max: 10,
   start: 10,
   drain: { amount: 1, per: 'failure' },
-  recovery: { amount: 3, per: 'night' },
   thresholds: [
     { below: 6, effects: { modifiers: [{ skills: 'all', amount: -1 }] } },
     { below: 3, effects: { modifiers: [{ skills: 'all', amount: -1 }], mishapChance: 15, garbleLevel: 2 } },
