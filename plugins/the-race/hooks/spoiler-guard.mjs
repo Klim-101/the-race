@@ -109,10 +109,10 @@ function candidates(text) {
 }
 
 // A file that is only ever in the save directory, named so that a relative path after a `cd` still shows.
-const SAVE_FILE = /(^|[/\s])(pending\.json|run\/(state|log)(\.prev)?\.json)(?=$|[\s"'`;&|)])/;
+const SAVE_FILE = /(^|[/\s])(pending(\/state)?\.json|run\/(state|log)(\.prev)?\.json)(?=$|[\s"'`;&|)])/;
 // The save directory spelled out for another home or another shell than the one resolved here.
 const SAVE_SHAPE =
-  /(^|[/\s])(state|local|application support)\/the-race(\/|$|[\s"'`;&|)])|(^|[/\s])the-race\/(run(\/|$|[\s"'`;&|)])|pending\.json)|(^|[/\s])\.race(\/|$|[\s"'`;&|)])/;
+  /(^|[/\s])(state|local|application support)\/the-race(\/|$|[\s"'`;&|)])|(^|[/\s])the-race\/(run(\/|$|[\s"'`;&|)])|pending(\/|\.json))|(^|[/\s])\.race(\/|$|[\s"'`;&|)])/;
 // A command that walks into every folder under a path it is given.
 const RECURSIVE = [
   /\b(find|rg|tree|ag|ack|du)\b/i,

@@ -147,6 +147,12 @@ describe('denied', () => {
     ['Read of state.json (mac)', call('Read', { file_path: `${SAVE.mac}/run/state.json` }), MAC],
     ['Read of state.json (linux)', call('Read', { file_path: `${SAVE.linux}/run/state.json` }), LINUX],
     ['Read of pending.json', call('Read', { file_path: `${SAVE.linux}/pending.json` }), LINUX],
+    ['Read of pending/state.json', call('Read', { file_path: `${SAVE.linux}/pending/state.json` }), LINUX],
+    [
+      'Bash cat of a pending record under another home',
+      call('Bash', { command: 'cat /home/other/.local/state/the-race/pending/state.json' }),
+      LINUX,
+    ],
     ['Read of the folder itself', call('Read', { file_path: SAVE.linux }), LINUX],
     [
       'Read with RACE_HOME set',
