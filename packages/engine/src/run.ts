@@ -6,7 +6,7 @@ import { LocaleSchema } from './locale.js';
 
 export const RUN_SCHEMA_VERSION = 2;
 /** Bumped when a rule changes in a way that makes an old run play differently. */
-export const RULESET_VERSION = 1;
+export const RULESET_VERSION = 2;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;
