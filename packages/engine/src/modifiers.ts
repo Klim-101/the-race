@@ -1,19 +1,13 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { meterEffects, type MeterDefinition, type ModifierEffect } from './meters.js';
+import { meterEffects, type MeterReading, type ModifierEffect } from './meters.js';
 import { traitModifier, type Trait, type TraitTrigger } from './traits.js';
 
 /** A timed condition or a piece of gear: while it is on the hero, its effects apply to checks. */
 export interface ModifierItem {
   readonly id: string;
   readonly effects: readonly ModifierEffect[];
-}
-
-/** A meter and where it stands now. */
-export interface MeterReading {
-  readonly definition: MeterDefinition;
-  readonly value: number;
 }
 
 /** Everything that can move a check; every part is optional, so a caller names only what it has. */

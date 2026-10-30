@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { assertNever } from '../assert-never.js';
+import { endReasonOfMeters } from '../meters.js';
 import { statusOfEndReason, type EndReason } from '../run.js';
 import type { DetectiveCase } from './case-schema.js';
+import { meterReadings } from './condition.js';
 import { closeLocation, endRun, type DetectiveRunState } from './run-state.js';
 
 // Time is a resource and it flows only by the player's actions. A day has active hours; when an action
@@ -57,8 +59,9 @@ export function daysPassed(detectiveCase: DetectiveCase, fromDay: number, toDay:
 /**
  * Settles the clock of a turn that has just been carried out, `previousDay` being the day the turn began
  * on: the night passes if the active hours are spent, the days entered fire their events, and then the
- * run ends if time ran out, the culprit fled or reputation is gone. A run that is already over (the
- * accusation ended it) is left alone.
+ * run ends if time ran out, the culprit fled, reputation is gone or a meter ends it (a breakdown). When
+ * several hold at once the first of these wins: the world moves first, then reputation, then the meters
+ * in the order of the archetype. A run that is already over (the accusation ended it) is left alone.
  */
 export function settleClock(run: DetectiveRunState, previousDay: number): DetectiveRunState {
   if (run.status !== 'active') return run;
@@ -68,6 +71,9 @@ export function settleClock(run: DetectiveRunState, previousDay: number): Detect
       : run;
   const passed = daysPassed(run.case, previousDay, rested.clock.day);
   const closed = passed.closedLocationIds.reduce(closeLocation, rested);
-  const reason = passed.endReason ?? (closed.reputation === 0 ? 'reputation-zero' : null);
+  const reason =
+    passed.endReason ??
+    (closed.reputation === 0 ? 'reputation-zero' : null) ??
+    endReasonOfMeters(meterReadings(closed));
   return reason === null ? closed : endRun(closed, statusOfEndReason(reason), reason);
 }

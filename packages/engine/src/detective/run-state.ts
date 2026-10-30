@@ -15,6 +15,7 @@ import {
   type RunClock,
   type RunStatus,
 } from '../run.js';
+import { warningsOfMeters } from '../meters.js';
 import { TraitSchema, type Trait } from '../traits.js';
 import { DETECTIVE, DetectiveHeroSchema, type DetectiveHero } from './archetype.js';
 import {
@@ -23,6 +24,7 @@ import {
   passTime,
   withCondition,
   withNervesStrained,
+  meterReadings,
   viewCondition,
   type ConditionId,
   type ConditionView,
@@ -275,6 +277,8 @@ export interface DetectiveRunView {
   readonly clock: RunClock & { readonly totalDays: number };
   readonly reputation: number;
   readonly condition: ConditionView;
+  /** Ids of the warnings the player is shown, such as `low-reputation`; they come from the meters' data. */
+  readonly warnings: readonly string[];
   /** What the world has done so far, as the player was told: events whose day has come. */
   readonly news: readonly string[];
   readonly hero: DetectiveHero;
@@ -320,6 +324,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     clock: { ...run.clock, totalDays: detectiveCase.clock.days },
     reputation: run.reputation,
     condition: viewCondition(run.condition),
+    warnings: warningsOfMeters(meterReadings(run)),
     news: detectiveCase.clock.worldEvents
       .filter(({ day }) => day <= run.clock.day)
       .map(({ description }) => description),

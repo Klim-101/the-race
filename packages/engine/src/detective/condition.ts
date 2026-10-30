@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { z } from 'zod';
-import { applyMeterRate, type MeterDefinition, type ModifierEffect } from '../meters.js';
+import { applyMeterRate, type MeterReading, type ModifierEffect } from '../meters.js';
 import type { ModifierSources } from '../modifiers.js';
 import { MINUTES_PER_DAY, type RunClock } from '../run.js';
 import type { Trait } from '../traits.js';
-import { DETECTIVE_NERVES, DETECTIVE_SLEEP_DEBT } from './archetype.js';
+import { DETECTIVE_NERVES, DETECTIVE_REPUTATION, DETECTIVE_SLEEP_DEBT } from './archetype.js';
 
 // The hero's condition is everything about them that wears off or wears out: nerves, sleep debt and timed
 // conditions. It is a function of the clock and of what happened, never of the case, and it never touches
@@ -140,7 +140,7 @@ export function modifierSources(run: {
   readonly condition: HeroCondition;
 }): ModifierSources {
   const { condition } = run;
-  const meters: { definition: MeterDefinition; value: number }[] = [
+  const meters: MeterReading[] = [
     { definition: DETECTIVE_NERVES, value: condition.nerves },
     { definition: DETECTIVE_SLEEP_DEBT, value: condition.sleepDebt },
   ];
@@ -149,6 +149,18 @@ export function modifierSources(run: {
     conditions: condition.active.map(({ id }) => ({ id, effects: DETECTIVE_CONDITIONS[id].effects })),
     meters,
   };
+}
+
+/** Every meter of the detective with where it stands, reputation first as on the archetype. */
+export function meterReadings(run: {
+  readonly reputation: number;
+  readonly condition: HeroCondition;
+}): readonly MeterReading[] {
+  return [
+    { definition: DETECTIVE_REPUTATION, value: run.reputation },
+    { definition: DETECTIVE_NERVES, value: run.condition.nerves },
+    { definition: DETECTIVE_SLEEP_DEBT, value: run.condition.sleepDebt },
+  ];
 }
 
 export interface ConditionView {

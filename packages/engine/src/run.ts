@@ -26,8 +26,8 @@ export const RunStatusSchema = z.enum(RUN_STATUSES);
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 
 /**
- * Why a run ended: what the final screen shows. The status only says won, lost or gave-up. `breakdown` is
- * declared here and takes effect with the nerves meter (P1-29).
+ * Why a run ended: what the final screen shows. The status only says won, lost or gave-up. `breakdown` comes from
+ * a threshold of the nerves meter (see `endReasonOfMeters`).
  */
 export const END_REASONS = [
   'proven',

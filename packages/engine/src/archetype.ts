@@ -57,6 +57,19 @@ export function defineArchetype<const Id extends string, const OwnSkill extends 
   if (new Set(meters.map(({ id }) => id)).size !== meters.length) {
     throw new RangeError(`The meters of "${input.id}" repeat an id.`);
   }
+  // A condition on a meter that is not on the archetype could never hold, so it is a mistake in the data.
+  const meterIds = new Set(meters.map(({ id }) => id));
+  for (const { id, thresholds } of meters) {
+    for (const { when = [] } of thresholds) {
+      for (const { meter } of when) {
+        if (meter === id || !meterIds.has(meter)) {
+          throw new RangeError(
+            `A threshold of "${id}" has a condition on "${meter}", which is not another meter of "${input.id}".`,
+          );
+        }
+      }
+    }
+  }
   return { ...rest, skills, meters };
 }
 
