@@ -276,6 +276,31 @@ describe('validateCase', () => {
       );
     });
 
+    it('rejects a Latin-script text in the wrong language, anywhere including the truth', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.truth.method = 'La rueda de queso fue rodada hasta la bodega por la noche.';
+      detectiveCase.suspects[0]!.persona = 'Eine freundliche Bäckerin, die den ganzen Tag im Laden steht.';
+
+      const result = validateCase(detectiveCase, context());
+
+      expect(result).toMatchObject({
+        isValid: false,
+        issues: [
+          { code: 'wrong-language', path: 'suspects[0].persona' },
+          { code: 'wrong-language', path: 'truth.method' },
+        ],
+      });
+    });
+
+    it('reports a wrong script once, not as a wrong language too', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.premise = 'Утром в день ярмарки огромный круг сыра исчез с прилавка.';
+
+      const result = validateCase(detectiveCase, context());
+
+      expect(result).toMatchObject({ isValid: false, issues: [{ code: 'wrong-script', path: 'premise' }] });
+    });
+
     it('rejects a real-world name anywhere in the texts, including the truth', () => {
       const detectiveCase = buildCheeseCase();
       detectiveCase.truth.method = 'Sold the wheel to a buyer from Norway.';
