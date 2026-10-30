@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { assertNever } from '../assert-never.js';
-import type { Hero } from '../hero.js';
+import type { DetectiveHero } from './archetype.js';
 import type { DetectiveCase, Location, LocationAccess, SkillCheck } from './case-schema.js';
 
 export const D20_MAX = 20;
@@ -11,13 +11,13 @@ export const D20_MAX = 20;
 export type CheckPolicy = (check: SkillCheck) => boolean;
 
 /** A natural 20 plus the skill level reaches the difficulty. */
-export function canEverPass(hero: Hero): CheckPolicy {
+export function canEverPass(hero: DetectiveHero): CheckPolicy {
   return (check) => hero.skills[check.skill] + D20_MAX >= check.difficulty;
 }
 
 // A check the hero can only pass on pure luck is a poor sole route to the solution, so the
 // "comfortable" policy also demands at least one point in the skill.
-export function canPassWithTrainedSkill(hero: Hero): CheckPolicy {
+export function canPassWithTrainedSkill(hero: DetectiveHero): CheckPolicy {
   const isPossible = canEverPass(hero);
   return (check) => hero.skills[check.skill] >= 1 && isPossible(check);
 }

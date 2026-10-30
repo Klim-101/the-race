@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { Hero } from '../../src/hero.js';
+import type { DetectiveHero } from '../../src/detective/archetype.js';
 
 /**
  * A small solvable case: the baker stole the festival cheese wheel to pay off the oven.
@@ -166,7 +166,7 @@ export function buildCheeseCase(): Record<string, unknown> & {
 }
 
 /** Trained in observation and logic, untrained in charm. */
-export function buildHero(): Hero {
+export function buildHero(): DetectiveHero {
   return {
     name: 'Mira Kos',
     gender: 'female',

@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { Hero } from '../hero.js';
+import type { DetectiveHero } from './archetype.js';
 import type { Locale } from '../locale.js';
 import type { CaseIssue } from './case-issue.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
@@ -16,7 +16,7 @@ import { canEverPass, computeObtainable } from './obtainability.js';
 
 export interface CaseValidationContext {
   /** The hero the case is generated for: solvability depends on their skills. */
-  readonly hero: Hero;
+  readonly hero: DetectiveHero;
   readonly locale: Locale;
   /** Names taken from the source headlines; none of them may survive into the mirror world. */
   readonly realNames: readonly string[];

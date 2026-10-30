@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { z } from 'zod';
-import { SkillSchema } from '../hero.js';
 import { LocaleSchema } from '../locale.js';
+import { DetectiveSkillSchema } from './archetype.js';
 
 export const CASE_SCHEMA_VERSION = 1;
 
@@ -29,7 +29,7 @@ export const EntityIdSchema = z.string().regex(/^[a-z][a-z0-9-]*$/, 'Use lowerca
 const NarrativeTextSchema = z.string().trim().min(1).max(2000);
 
 export const SkillCheckSchema = z.object({
-  skill: SkillSchema,
+  skill: DetectiveSkillSchema,
   difficulty: z.int().min(1).max(30),
 });
 export type SkillCheck = z.infer<typeof SkillCheckSchema>;

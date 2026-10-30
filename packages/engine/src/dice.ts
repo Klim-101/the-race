@@ -1,9 +1,6 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { SkillCheck } from './detective/case-schema.js';
-import type { Skill, SkillLevels } from './hero.js';
-
 export const D20_SIDES = 20;
 
 /** A seeded random source. Its whole state is one 32-bit integer, so a save can store it and resume. */
@@ -56,7 +53,7 @@ export function createRng(seed: string | number): Rng {
   return restoreRng(typeof seed === 'string' ? hashSeed(seed) : seed >>> 0);
 }
 
-export interface SkillCheckResult {
+export interface SkillCheckResult<Skill extends string = string> {
   skill: Skill;
   die: number;
   skillLevel: number;
@@ -70,7 +67,12 @@ export interface SkillCheckResult {
  * d20 + skill + modifier against a difficulty; meeting it exactly is a success.
  * The modifier is a situational bonus or penalty, such as a hidden trait firing.
  */
-export function rollCheck(rng: Rng, skills: SkillLevels, check: SkillCheck, modifier = 0): SkillCheckResult {
+export function rollCheck<Skill extends string>(
+  rng: Rng,
+  skills: Readonly<Record<Skill, number>>,
+  check: { readonly skill: Skill; readonly difficulty: number },
+  modifier = 0,
+): SkillCheckResult<Skill> {
   const die = rng.roll(D20_SIDES);
   const skillLevel = skills[check.skill];
   const total = die + skillLevel + modifier;

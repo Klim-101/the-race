@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { Hero } from '../../hero.js';
+import type { DetectiveHero } from '../archetype.js';
 import type { CaseIssue } from '../case-issue.js';
 import type { DetectiveCase } from '../case-schema.js';
 import { canPassWithTrainedSkill, computeObtainable, type Obtainable } from '../obtainability.js';
@@ -9,7 +9,11 @@ import { canPassWithTrainedSkill, computeObtainable, type Obtainable } from '../
 export const MIN_EVIDENCE_CHAINS = 2;
 
 /** The case has at least two independent, genuine ways to prove the culprit, and a findable motive. */
-export function checkSolution(detectiveCase: DetectiveCase, hero: Hero, obtainable: Obtainable): CaseIssue[] {
+export function checkSolution(
+  detectiveCase: DetectiveCase,
+  hero: DetectiveHero,
+  obtainable: Obtainable,
+): CaseIssue[] {
   const { evidenceChains, motiveDeductionId } = detectiveCase.solution;
   const { culpritId } = detectiveCase.truth;
   const redHerringIds = new Set(
