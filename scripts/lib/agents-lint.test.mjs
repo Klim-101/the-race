@@ -25,7 +25,7 @@ const NARRATOR_TOOLS = [
   'run_give_up',
 ];
 const GENERATOR_TOOLS = ['generator_brief', 'scenario_submit'];
-const NON_MCP_TOOLS_OF_NARRATOR = ['Agent'];
+const NON_MCP_TOOLS_OF_NARRATOR = ['Agent', 'AskUserQuestion'];
 
 function walk(dir) {
   return readdirSync(dir).flatMap((name) => {
@@ -111,7 +111,7 @@ describe('tools', () => {
     expect(read(path)).not.toMatch(/generator_brief|scenario_submit/);
   });
 
-  it('the narrator pre-approves only contract tools and the subagent launcher', () => {
+  it('the narrator pre-approves only contract tools, the subagent launcher and the poll', () => {
     const { data } = parseFrontmatter(read(narratorPath));
     const listed = data['allowed-tools'].split(/[,\s]+/).filter(Boolean);
     for (const tool of listed) {

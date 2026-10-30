@@ -1,6 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { DETECTIVE_SKILL_PRESETS } from '@the-race/engine';
 import { runFiles } from '@the-race/saves';
 import { describe, expect, it } from 'vitest';
 import { HERO_CHOICES, call, gameContext, installCase, prepareHero } from '../../test/game.js';
@@ -42,6 +43,17 @@ describe('run_new', () => {
     expect(JSON.stringify(result.body)).not.toContain('traits');
     const view = await call(runView, {}, context);
     expect(view.body).toMatchObject({ status: 'awaiting-hero', locale: 'ru' });
+  });
+
+  it('offers ready-made builds of the points, each one a hero the engine accepts', async () => {
+    const context = gameContext();
+    const result = await call(runNew, { locale: 'en' }, context);
+    const presets = result.body.skillPresets as { id: string; skills: Record<string, number> }[];
+    expect(presets.map(({ id }) => id)).toEqual(DETECTIVE_SKILL_PRESETS.map(({ id }) => id));
+    for (const { skills } of presets) {
+      const made = await call(heroCreate, { ...HERO_CHOICES, skills }, context);
+      expect(made.isError).toBe(false);
+    }
   });
 
   it('is refused while a run is active, and allowed once it is over', async () => {
