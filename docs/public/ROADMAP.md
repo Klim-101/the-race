@@ -8,7 +8,7 @@ Live task status is on the [project board](https://github.com/users/Klim-101/pro
 
 | Phase                           | Status      | Progress |
 | ------------------------------- | ----------- | -------- |
-| Phase 0 — Foundation            | in progress | 6 / 8    |
+| Phase 0 — Foundation            | done        | 8 / 8    |
 | Phase 1 — Engine core           | in progress | 5 / 16   |
 | Phase 2 — First playable run    | planned     | 0 / 7    |
 | Phase 3 — News and mirror world | planned     | 0 / 9    |
