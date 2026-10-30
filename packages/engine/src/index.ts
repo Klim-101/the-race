@@ -9,6 +9,7 @@ export * from './dice.js';
 export { canonicalJson, sha256Hex } from './canonical-json.js';
 export * from './traits.js';
 export * from './run.js';
+export * from './migrations.js';
 export * from './detective/archetype.js';
 export * from './detective/traits.js';
 export * from './detective/case-schema.js';

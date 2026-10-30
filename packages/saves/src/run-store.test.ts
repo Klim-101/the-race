@@ -127,6 +127,17 @@ describe('saveRun and loadRun', () => {
     expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
   });
 
+  it('reports a field of the wrong type as a schema problem, not a seal problem', async () => {
+    const fs = memoryFs();
+    fs.files.set(FILES.current, JSON.stringify({ ...newRun(), turn: 'x' }));
+
+    expect(await loadRun(DIR, fs)).toMatchObject({
+      ok: false,
+      reason: 'corrupt',
+      detail: 'The file does not match the run schema.',
+    });
+  });
+
   it('reports a case that no longer matches its seal as corrupt', async () => {
     const fs = memoryFs();
     const run = newRun();
@@ -149,6 +160,23 @@ describe('saveRun and loadRun', () => {
     expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'unsupported-version' });
   });
 
+  it('names both versions when a save comes from a newer engine', async () => {
+    const fs = memoryFs();
+    fs.files.set(FILES.current, JSON.stringify({ ...newRun(), schemaVersion: 99 }));
+
+    const loaded = await loadRun(DIR, fs);
+
+    expect(loaded).toMatchObject({ ok: false, reason: 'unsupported-version' });
+    expect(loaded.ok ? '' : loaded.detail).toMatch(/99.*newer.*1/);
+  });
+
+  it('reports an older version with no migration as unsupported', async () => {
+    const fs = memoryFs();
+    fs.files.set(FILES.current, JSON.stringify({ ...newRun(), schemaVersion: 0 }));
+
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'unsupported-version' });
+  });
+
   it('does not take a non-numeric schema version for a version', async () => {
     const fs = memoryFs();
     fs.files.set(FILES.current, JSON.stringify({ schemaVersion: 'one' }));
@@ -161,6 +189,53 @@ describe('saveRun and loadRun', () => {
     fs.failRead(FILES.current);
 
     expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'unreadable' });
+  });
+});
+
+describe('loading an older save', () => {
+  // A made-up version 0 that called the turn counter `turnNumber`.
+  const migrations = {
+    0: (raw: Readonly<Record<string, unknown>>) => {
+      const { turnNumber, ...rest } = raw;
+      return { ...rest, turn: turnNumber };
+    },
+  };
+  function oldSave(run: DetectiveRunState): string {
+    const { turn, ...rest } = run;
+    return JSON.stringify({ ...rest, schemaVersion: 0, turnNumber: turn });
+  }
+
+  it('migrates it in memory and leaves the file alone until the next save', async () => {
+    const fs = memoryFs();
+    const run = secondTurn(newRun());
+    fs.files.set(FILES.current, oldSave(run));
+
+    const loaded = await loadRun(DIR, fs, migrations);
+
+    expect(loaded).toEqual({ ok: true, run, source: 'current' });
+    expect(JSON.parse(fs.files.get(FILES.current) ?? '')).toHaveProperty('schemaVersion', 0);
+
+    await saveRun(DIR, run, fs);
+    expect(JSON.parse(fs.files.get(FILES.current) ?? '')).toHaveProperty('schemaVersion', 1);
+  });
+
+  it('reports a migration that throws as corrupt', async () => {
+    const fs = memoryFs();
+    fs.files.set(FILES.current, oldSave(newRun()));
+    const broken = {
+      0: () => {
+        throw new Error('boom');
+      },
+    };
+
+    expect(await loadRun(DIR, fs, broken)).toMatchObject({ ok: false, reason: 'corrupt' });
+  });
+
+  it('reports a migrated save that still fails the schema as corrupt', async () => {
+    const fs = memoryFs();
+    fs.files.set(FILES.current, oldSave(newRun()));
+
+    expect(await loadRun(DIR, fs, { 0: () => ({}) })).toMatchObject({ ok: false, reason: 'corrupt' });
   });
 });
 
