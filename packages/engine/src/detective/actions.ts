@@ -14,6 +14,7 @@ import {
   type SkillCheck,
 } from './case-schema.js';
 import { modifierSources } from './condition.js';
+import { RereadIntentSchema, applyFatigue, resolveReread, type Fatigue } from './fatigue.js';
 import { settleClock } from './clock.js';
 import { InterrogateIntentSchema, resolveInterrogate, type InterrogationOutcome } from './interrogation.js';
 import { buildNeighbors, closedSources } from './obtainability.js';
@@ -51,6 +52,8 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   DeduceIntentSchema,
   /** The final accusation, which ends the run. */
   AccuseIntentSchema,
+  /** Read a garbled clue again, carefully. */
+  RereadIntentSchema,
 ]);
 export type Intent = z.infer<typeof IntentSchema>;
 
@@ -76,7 +79,9 @@ export type RefusalCode =
   | 'suspect-elsewhere'
   | 'clue-not-found'
   | 'not-found'
-  | 'no-insight';
+  | 'no-insight'
+  | 'garbled-clue'
+  | 'not-garbled';
 
 /** Why an intent was not carried out. Nothing changed and no time passed. */
 export interface Refusal {
@@ -85,13 +90,13 @@ export interface Refusal {
   readonly message: string;
 }
 
-export type Consequence = 'time-lost' | 'reputation-lost';
+export type Consequence = 'time-lost' | 'reputation-lost' | 'mishap';
 
 /**
  * What happened, as far as the player and the narrator may know. It names no clue that was not found
  * and does not say how many are still hidden.
  */
-export type Outcome =
+export type Outcome = (
   | { readonly kind: 'look'; readonly foundClueIds: readonly string[]; readonly minutes: number }
   | {
       readonly kind: 'move';
@@ -109,7 +114,11 @@ export type Outcome =
     }
   | InterrogationOutcome
   | DeduceOutcome
-  | AccusationOutcome;
+  | AccusationOutcome
+  | { readonly kind: 'reread'; readonly clueId: string; readonly minutes: number }
+) &
+  /** Set by fatigue only when there is something to say: a mishap's kind, and the garble of a reading. */
+  Partial<Fatigue>;
 
 /** The full record of a check, for the engine's own log: it does name what was being checked. */
 export interface CheckDetail {
@@ -290,7 +299,8 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
  * out is refused with a code, and then nothing changes and no dice are rolled.
  */
 export function resolveIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resolution {
-  const resolution = dispatchIntent(run, input, rng);
+  const dispatched = dispatchIntent(run, input, rng);
+  const resolution = dispatched.ok ? applyFatigue(run, dispatched, rng) : dispatched;
   // The turn is settled here, once, for every kind of intent: the night, scheduled events and the ways to lose.
   return resolution.ok ? { ...resolution, run: settleClock(resolution.run, run.clock.day) } : resolution;
 }
@@ -321,6 +331,8 @@ function dispatchIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resol
       const resolution = accuse(run, intent, rng);
       return resolution.ok ? { ...resolution, details: [] } : resolution;
     }
+    case 'reread':
+      return resolveReread(run, intent, rng);
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
     default:
       return assertNever(intent);

@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import { canonicalJson } from '../canonical-json.js';
 import { restoreRng } from '../dice.js';
+import { MAX_GARBLE_LEVEL } from '../meters.js';
 import {
   EndReasonSchema,
   RunClockSchema,
@@ -16,6 +17,7 @@ import { IntentSchema, resolveIntent, type Intent, type Resolution } from './act
 import { HeroConditionSchema } from './condition.js';
 import { EntityIdSchema } from './case-schema.js';
 import { daysPassed } from './clock.js';
+import { MishapKindSchema } from './fatigue.js';
 import { INTERROGATION_APPROACHES } from './interrogation.js';
 import type { DetectiveRunState } from './run-state.js';
 import { VERDICTS, type Verdict } from './verdict.js';
@@ -43,12 +45,17 @@ const CheckDetailSchema = z.object({
   result: z.union([SkillCheckResultSchema, z.literal('auto')]),
 });
 
-const ConsequenceSchema = z.enum(['time-lost', 'reputation-lost']);
+const ConsequenceSchema = z.enum(['time-lost', 'reputation-lost', 'mishap']);
 const minutes = z.int().min(0);
 const idList = z.array(EntityIdSchema);
+/** What fatigue adds to a turn, recorded so that a replay reproduces it; absent when there is none. */
+const fatigue = {
+  mishap: MishapKindSchema.optional(),
+  garbleLevel: z.int().min(1).max(MAX_GARBLE_LEVEL).optional(),
+};
 
 const OutcomeSchema = z.union([
-  z.object({ kind: z.literal('look'), foundClueIds: idList, minutes }),
+  z.object({ kind: z.literal('look'), foundClueIds: idList, minutes, ...fatigue }),
   z.object({
     kind: z.literal('move'),
     from: EntityIdSchema,
@@ -56,12 +63,14 @@ const OutcomeSchema = z.union([
     entered: z.boolean(),
     minutes,
     consequences: z.array(ConsequenceSchema),
+    ...fatigue,
   }),
   z.object({
     kind: z.literal('search'),
     foundClueIds: idList,
     minutes,
     consequences: z.array(ConsequenceSchema),
+    ...fatigue,
   }),
   z.object({
     kind: z.literal('interrogate'),
@@ -76,18 +85,22 @@ const OutcomeSchema = z.union([
     secret: z.string().nullable(),
     reputationChange: z.int(),
     consequences: z.array(ConsequenceSchema),
+    ...fatigue,
   }),
   z.object({
     kind: z.literal('deduce'),
     result: z.enum(['insight', 'already-known']),
     deductionId: EntityIdSchema,
     minutes,
+    ...fatigue,
   }),
+  z.object({ kind: z.literal('reread'), clueId: EntityIdSchema, minutes, ...fatigue }),
   z.object({
     kind: z.literal('deduce'),
     result: z.literal('nothing'),
     minutes,
-    consequences: z.tuple([z.literal('time-lost')]),
+    consequences: z.array(ConsequenceSchema),
+    ...fatigue,
   }),
   z.object({
     kind: z.literal('accuse'),
