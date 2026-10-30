@@ -25,6 +25,29 @@ export const RUN_STATUSES = ['active', 'won', 'lost', 'gave-up'] as const;
 export const RunStatusSchema = z.enum(RUN_STATUSES);
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 
+/**
+ * Why a run ended: what the final screen shows. The status only says won, lost or gave-up. `breakdown` is
+ * declared here and takes effect with the nerves meter (P1-29).
+ */
+export const END_REASONS = [
+  'proven',
+  'unproven',
+  'wrong',
+  'time-ran-out',
+  'culprit-fled',
+  'reputation-zero',
+  'breakdown',
+  'gave-up',
+] as const;
+export const EndReasonSchema = z.enum(END_REASONS);
+export type EndReason = z.infer<typeof EndReasonSchema>;
+
+/** The status a run ends in for each reason: only a proven case is won. */
+export function statusOfEndReason(reason: EndReason): Exclude<RunStatus, 'active'> {
+  if (reason === 'proven') return 'won';
+  return reason === 'gave-up' ? 'gave-up' : 'lost';
+}
+
 /** What every kind of run carries, whatever its archetype. */
 export const runBaseShape = {
   schemaVersion: z.literal(RUN_SCHEMA_VERSION),
@@ -37,6 +60,8 @@ export const runBaseShape = {
   clock: RunClockSchema,
   reputation: z.int().min(0).max(MAX_REPUTATION),
   status: RunStatusSchema,
+  /** `null` while the run is active, and for a save from before reasons were recorded. */
+  endReason: EndReasonSchema.nullable().default(null),
 };
 
 /** Moves the clock forward; time only runs one way. */

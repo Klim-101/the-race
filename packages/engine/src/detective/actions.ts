@@ -13,6 +13,7 @@ import {
   type Location,
   type SkillCheck,
 } from './case-schema.js';
+import { settleClock } from './clock.js';
 import { InterrogateIntentSchema, resolveInterrogate, type InterrogationOutcome } from './interrogation.js';
 import { buildNeighbors, closedSources } from './obtainability.js';
 import {
@@ -68,6 +69,7 @@ export type RefusalCode =
   | 'already-here'
   | 'not-adjacent'
   | 'locked'
+  | 'location-closed'
   | 'unknown-suspect'
   | 'suspect-elsewhere'
   | 'clue-not-found'
@@ -234,6 +236,9 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
     return refuse('not-adjacent', `"${locationId}" is not next to the hero's place.`);
   }
 
+  if (run.closedLocationIds.includes(locationId)) {
+    return refuse('location-closed', `"${locationId}" has been closed.`);
+  }
   const destination = locationById(detectiveCase, locationId);
   const { access } = destination;
   // A place the hero has been in is open to them for good.
@@ -283,6 +288,12 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
  * out is refused with a code, and then nothing changes and no dice are rolled.
  */
 export function resolveIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resolution {
+  const resolution = dispatchIntent(run, input, rng);
+  // The turn is settled here, once, for every kind of intent: the night, scheduled events and the ways to lose.
+  return resolution.ok ? { ...resolution, run: settleClock(resolution.run, run.clock.day) } : resolution;
+}
+
+function dispatchIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resolution {
   const parsed = IntentSchema.safeParse(input);
   if (!parsed.success) {
     return refuse('invalid-intent', parsed.error.issues.map((issue) => issue.message).join('; '));

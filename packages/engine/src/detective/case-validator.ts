@@ -13,6 +13,7 @@ import { checkReferences } from './checks/references.js';
 import { checkSolution } from './checks/solution.js';
 import { checkTexts } from './checks/texts.js';
 import { checkTimeline } from './checks/timeline.js';
+import { checkWorldEvents } from './checks/world-events.js';
 import { canEverPass, closedSources, computeObtainable } from './obtainability.js';
 
 export interface CaseValidationContext {
@@ -61,6 +62,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...checkSolution(detectiveCase, context.hero, context.traits, obtainable),
     ...checkLies(detectiveCase, obtainable),
     ...checkTimeline(detectiveCase),
+    ...checkWorldEvents(detectiveCase, context.hero, context.traits),
     ...checkRedHerrings(detectiveCase),
     ...checkTexts(detectiveCase, context.locale, context.realNames),
   ];

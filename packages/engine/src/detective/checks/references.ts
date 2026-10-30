@@ -92,6 +92,17 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
     });
   });
 
+  detectiveCase.clock.worldEvents.forEach((event, index) => {
+    if (event.effect?.kind === 'location-closes') {
+      expect(
+        locationIds,
+        'location',
+        event.effect.locationId,
+        `clock.worldEvents[${String(index)}].effect.locationId`,
+      );
+    }
+  });
+
   const { truth, solution } = detectiveCase;
   expect(suspectIds, 'suspect', truth.culpritId, 'truth.culpritId');
   expect(locationIds, 'location', truth.crimeLocationId, 'truth.crimeLocationId');

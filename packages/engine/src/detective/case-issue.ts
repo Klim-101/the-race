@@ -19,6 +19,8 @@ export type CaseIssueCode =
   | 'culprit-not-at-crime'
   | 'actor-in-two-places'
   | 'too-many-red-herrings'
+  | 'world-event-out-of-range'
+  | 'event-cuts-solution'
   | 'real-name'
   | 'wrong-script'
   | 'wrong-language';
