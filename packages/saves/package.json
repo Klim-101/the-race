@@ -2,7 +2,7 @@
   "name": "@the-race/saves",
   "version": "0.0.0",
   "private": true,
-  "description": "Save and resume runs: atomic files under .race/ and a resume summary built from the public view.",
+  "description": "Save and resume runs: atomic files in the player's own state directory and a resume summary built from the public view.",
   "type": "module",
   "license": "Apache-2.0",
   "files": [

@@ -14,10 +14,15 @@ import {
   type Rng,
 } from '@the-race/engine';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { defaultSaveDir, loadRun, nodeSaveFs, runFiles, saveRun } from '../src/index.js';
+import { loadRun, nodeSaveFs, resolveSaveDir, runFiles, saveRun } from '../src/index.js';
 import { newRun } from './new-run.js';
 
 let workingDirectory = '';
+
+/** The save directory the way a player sets it: RACE_HOME, here a temp directory. */
+function defaultSaveDir(root: string): string {
+  return resolveSaveDir({ env: { RACE_HOME: root }, platform: process.platform, homedir: root });
+}
 
 beforeEach(async () => {
   workingDirectory = await mkdtemp(join(tmpdir(), 'race-saves-'));
@@ -36,7 +41,7 @@ function playTurn(run: DetectiveRunState, rng: Rng): { run: DetectiveRunState; d
 }
 
 describe('save and resume over a real directory', () => {
-  it('writes under .race/run and leaves no temp file behind', async () => {
+  it('writes under run/ in the save directory and leaves no temp file behind', async () => {
     const saveDir = defaultSaveDir(workingDirectory);
 
     await saveRun(saveDir, newRun());
