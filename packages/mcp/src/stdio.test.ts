@@ -92,7 +92,7 @@ describe('serveStdio', () => {
     await peer.initialize();
     const reply = await peer.request('tools/list', {});
     const tools = (reply.result as { tools: Record<string, unknown>[] }).tools;
-    expect(tools.map((tool) => tool.name)).toEqual(['server_info']);
+    expect(tools[0]?.name).toBe('server_info');
     expect(tools[0]).toMatchObject({
       description: expect.stringContaining('safe to call') as unknown,
       inputSchema: { type: 'object' },

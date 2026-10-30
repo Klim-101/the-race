@@ -20,7 +20,10 @@ Stdout carries the protocol, so the server writes nothing else to it. Saves go u
 | ------------- | ----------------------------------------------------------------------------- |
 | `server_info` | Server name and version, ruleset version, supported locales. Changes nothing. |
 
-The game tools come in later changes.
+| `generator_brief` | For the case generator only: locale, theme, tone, the hero's public data, attempts left. Never a hidden trait. |
+| `scenario_submit` | For the case generator only: validates a case for the run's hero, seals it and starts the run, or lists the issues. At most three attempts; an accepted case is final. Returns `{"accepted":true}` and nothing of the case. |
+
+The other game tools come in later changes.
 
 ## Results and errors
 
