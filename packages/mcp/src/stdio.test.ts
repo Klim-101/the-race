@@ -3,7 +3,6 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { PassThrough } from 'node:stream';
 import { LOCALES, RULESET_VERSION } from '@the-race/engine';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
@@ -13,6 +12,7 @@ import { createDefaultContext, serveStdio } from './stdio.js';
 import { TOOLS } from './tools/index.js';
 import { ToolFailure } from './tool-error.js';
 import { fakeContext } from '../test/fake-context.js';
+import { Peer } from '../test/peer.js';
 
 const refusing = defineTool({
   name: 'refusing',
@@ -24,49 +24,6 @@ const refusing = defineTool({
       new ToolFailure({ code: 'no-run', message: 'There is no run.', remediation: 'Start one.' }),
     ),
 });
-
-/** A JSON-RPC peer over the same line-delimited streams a real host uses. */
-class Peer {
-  readonly stdin = new PassThrough();
-  readonly stdout = new PassThrough();
-  private buffer = '';
-  private readonly waiting = new Map<number, (message: Record<string, unknown>) => void>();
-  private nextId = 1;
-
-  constructor() {
-    this.stdout.on('data', (chunk: Buffer) => {
-      this.buffer += chunk.toString('utf8');
-      let newline = this.buffer.indexOf('\n');
-      while (newline >= 0) {
-        const message = JSON.parse(this.buffer.slice(0, newline)) as Record<string, unknown>;
-        this.buffer = this.buffer.slice(newline + 1);
-        this.waiting.get(message.id as number)?.(message);
-        newline = this.buffer.indexOf('\n');
-      }
-    });
-  }
-
-  request(method: string, params: unknown): Promise<Record<string, unknown>> {
-    const id = this.nextId++;
-    const reply = new Promise<Record<string, unknown>>((resolve) => this.waiting.set(id, resolve));
-    this.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id, method, params })}\n`);
-    return reply;
-  }
-
-  notify(method: string): void {
-    this.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method })}\n`);
-  }
-
-  async initialize(): Promise<Record<string, unknown>> {
-    const reply = await this.request('initialize', {
-      protocolVersion: '2025-03-26',
-      capabilities: {},
-      clientInfo: { name: 'test', version: '0.0.0' },
-    });
-    this.notify('notifications/initialized');
-    return reply;
-  }
-}
 
 const closers: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -92,8 +49,8 @@ describe('serveStdio', () => {
     await peer.initialize();
     const reply = await peer.request('tools/list', {});
     const tools = (reply.result as { tools: Record<string, unknown>[] }).tools;
-    expect(tools.map((tool) => tool.name)).toEqual(['server_info']);
-    expect(tools[0]).toMatchObject({
+    expect(tools.map((tool) => tool.name)).toContain('server_info');
+    expect(tools.find((tool) => tool.name === 'server_info')).toMatchObject({
       description: expect.stringContaining('safe to call') as unknown,
       inputSchema: { type: 'object' },
       outputSchema: { type: 'object' },

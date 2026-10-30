@@ -20,7 +20,24 @@ Stdout carries the protocol, so the server writes nothing else to it. Saves go i
 | ------------- | ----------------------------------------------------------------------------- |
 | `server_info` | Server name and version, ruleset version, supported locales. Changes nothing. |
 
-The game tools come in later changes.
+The game tools, which the narrator skill calls by exactly these names:
+
+| Tool          | What it does                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------- |
+| `run_new`     | Starts a pending run (seed, language, theme) and returns the hero choices. Refused mid-run. |
+| `hero_create` | Assembles the hero on the seed's dice; hidden traits are rolled and stored, never returned. |
+| `run_view`    | The public view of the run, or `awaiting-hero` / `awaiting-case` / `no-run`.                |
+| `act`         | look, move, search, rest, use, reread: `{ turn, intent }`.                                  |
+| `question`    | Interrogate a suspect, optionally showing clues.                                            |
+| `deduce`      | Link found clues into an insight.                                                           |
+| `accuse`      | The final accusation; ends the run and is the one place the truth is returned.              |
+| `run_give_up` | Ends the run as gave-up (a retry returns the same end).                                     |
+
+Every tool that changes a run takes `turn`, the run's turn from `run_view`. A call with another number is refused with `stale-turn` and changes nothing, so a retried call is never applied twice. A turn is saved together with its log entry; giving up is not a turn, so a given-up run is saved without its log.
+
+A pending run (a seed, a language, a theme and, after `hero_create`, the hero with its hidden traits) lives in `<save dir>/pending/state.json` until the case is accepted. `src/pending-run.ts` holds its schema and `loadPending`, `savePending` and `clearPending`.
+
+Input that breaks a tool's schema is answered by the MCP SDK itself, before the handler runs, so its error does not have the shape below. The schema is what the agent reads from `tools/list`, so it is kept strict rather than made permissive.
 
 ## Results and errors
 
