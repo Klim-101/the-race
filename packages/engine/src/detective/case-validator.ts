@@ -6,6 +6,7 @@ import type { Locale } from '../locale.js';
 import type { Trait } from '../traits.js';
 import type { CaseIssue } from './case-issue.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
+import { checkFleeDeadline } from './checks/flee-deadline.js';
 import { checkLies } from './checks/lies.js';
 import { checkReachability } from './checks/reachability.js';
 import { checkRedHerrings } from './checks/red-herrings.js';
@@ -63,6 +64,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...checkLies(detectiveCase, obtainable),
     ...checkTimeline(detectiveCase),
     ...checkWorldEvents(detectiveCase, context.hero, context.traits),
+    ...checkFleeDeadline(detectiveCase, context.hero, context.traits),
     ...checkRedHerrings(detectiveCase),
     ...checkTexts(detectiveCase, context.locale, context.realNames),
   ];
