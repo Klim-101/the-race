@@ -22,6 +22,8 @@ export default defineConfig({
       thresholds: {
         // The engine decides truth, dice and verdicts: a missed branch is a silent rules bug.
         'packages/engine/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        // A save that silently loses a run, or a summary that leaks the truth, breaks the game.
+        'packages/saves/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
       },
     },
   },

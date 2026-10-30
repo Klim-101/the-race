@@ -1,0 +1,301 @@
+// Copyright The RACE Authors
+// SPDX-License-Identifier: Apache-2.0
+
+import { join } from 'node:path';
+import { endTurn, createRng, findClue, moveTo, type DetectiveRunState } from '@the-race/engine';
+import { describe, expect, it } from 'vitest';
+import { newRun } from '../test/new-run.js';
+import { defaultSaveDir, loadRun, runFiles, saveRun } from './run-store.js';
+import type { SaveFs } from './save-fs.js';
+
+const DIR = join('save-root');
+const FILES = runFiles(DIR);
+
+/** An in-memory disk whose operations can be made to fail, to stand in for a crash. */
+function memoryFs(): SaveFs & {
+  files: Map<string, string>;
+  failRename: (path: string | undefined) => void;
+  failRead: (path: string | undefined) => void;
+  failRemove: () => void;
+  directories: string[];
+} {
+  const files = new Map<string, string>();
+  const directories: string[] = [];
+  let renameFails: string | undefined;
+  let readFails: string | undefined;
+  let removeFails = false;
+  return {
+    files,
+    directories,
+    failRename(path) {
+      renameFails = path;
+    },
+    failRead(path) {
+      readFails = path;
+    },
+    failRemove() {
+      removeFails = true;
+    },
+    mkdir(directory) {
+      directories.push(directory);
+      return Promise.resolve();
+    },
+    readFile(path) {
+      if (path === readFails) return Promise.reject(new Error('EACCES'));
+      return Promise.resolve(files.get(path));
+    },
+    writeFileSynced(path, data) {
+      files.set(path, data);
+      return Promise.resolve();
+    },
+    rename(from, to) {
+      if (to === renameFails) return Promise.reject(new Error('rename failed'));
+      const data = files.get(from);
+      if (data === undefined) return Promise.reject(new Error('ENOENT'));
+      files.delete(from);
+      files.set(to, data);
+      return Promise.resolve();
+    },
+    remove(path) {
+      if (removeFails) return Promise.reject(new Error('remove failed'));
+      files.delete(path);
+      return Promise.resolve();
+    },
+  };
+}
+
+function secondTurn(run: DetectiveRunState): DetectiveRunState {
+  return endTurn(findClue(moveTo(run, 'cheese-stall'), 'flour-crumbs'), createRng('next'));
+}
+
+describe('defaultSaveDir and runFiles', () => {
+  it('puts the save under .race of the working directory', () => {
+    expect(defaultSaveDir('work')).toBe(join('work', '.race'));
+    expect(FILES.current).toBe(join(DIR, 'run', 'state.json'));
+    expect(FILES.previous).toBe(join(DIR, 'run', 'state.prev.json'));
+  });
+});
+
+describe('saveRun and loadRun', () => {
+  it('round-trips a run exactly', async () => {
+    const fs = memoryFs();
+    const run = secondTurn(newRun());
+
+    await saveRun(DIR, run, fs);
+    const loaded = await loadRun(DIR, fs);
+
+    expect(loaded).toEqual({ ok: true, run, source: 'current' });
+    expect(fs.directories).toEqual([FILES.directory]);
+    expect([...fs.files.keys()]).toEqual([FILES.current]);
+  });
+
+  it('keeps the generation before the current one', async () => {
+    const fs = memoryFs();
+    const first = newRun();
+    const second = secondTurn(first);
+
+    await saveRun(DIR, first, fs);
+    await saveRun(DIR, second, fs);
+
+    expect(JSON.parse(fs.files.get(FILES.previous) ?? '')).toEqual(first);
+    expect(JSON.parse(fs.files.get(FILES.current) ?? '')).toEqual(second);
+  });
+
+  it('refuses to save a state whose case changed after it was sealed', async () => {
+    const run = newRun();
+    const tampered = { ...run, case: { ...run.case, title: 'Another case' } };
+
+    await expect(saveRun(DIR, tampered, memoryFs())).rejects.toThrow(/seal/);
+  });
+
+  it('reports a missing save', async () => {
+    expect(await loadRun(DIR, memoryFs())).toMatchObject({ ok: false, reason: 'missing' });
+  });
+
+  it('reports a file that is not JSON as corrupt', async () => {
+    const fs = memoryFs();
+    fs.files.set(FILES.current, 'not json {');
+
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
+  });
+
+  it('reports a file that fails the schema as corrupt', async () => {
+    const fs = memoryFs();
+    fs.files.set(FILES.current, JSON.stringify({ schemaVersion: 1, turn: 'x' }));
+    fs.files.set(FILES.previous, '[]');
+
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
+  });
+
+  it('reports a case that no longer matches its seal as corrupt', async () => {
+    const fs = memoryFs();
+    const run = newRun();
+    fs.files.set(FILES.current, JSON.stringify({ ...run, case: { ...run.case, title: 'Swapped' } }));
+
+    const loaded = await loadRun(DIR, fs);
+
+    expect(loaded).toMatchObject({
+      ok: false,
+      reason: 'corrupt',
+      detail: 'The case no longer matches its seal.',
+    });
+  });
+
+  it('reports a schema version this engine does not know, without falling back', async () => {
+    const fs = memoryFs();
+    await saveRun(DIR, newRun(), fs);
+    fs.files.set(FILES.current, JSON.stringify({ ...newRun(), schemaVersion: 99 }));
+
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'unsupported-version' });
+  });
+
+  it('does not take a non-numeric schema version for a version', async () => {
+    const fs = memoryFs();
+    fs.files.set(FILES.current, JSON.stringify({ schemaVersion: 'one' }));
+
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
+  });
+
+  it('reports a file that cannot be read instead of throwing', async () => {
+    const fs = memoryFs();
+    fs.failRead(FILES.current);
+
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'unreadable' });
+  });
+});
+
+describe('falling back to the previous generation', () => {
+  async function twoGenerations(): Promise<{
+    fs: ReturnType<typeof memoryFs>;
+    first: DetectiveRunState;
+    second: DetectiveRunState;
+  }> {
+    const fs = memoryFs();
+    const first = newRun();
+    const second = secondTurn(first);
+    await saveRun(DIR, first, fs);
+    await saveRun(DIR, second, fs);
+    return { fs, first, second };
+  }
+
+  it('uses it when the current file was truncated, and says so', async () => {
+    const { fs, first } = await twoGenerations();
+    fs.files.set(FILES.current, (fs.files.get(FILES.current) ?? '').slice(0, 40));
+
+    expect(await loadRun(DIR, fs)).toEqual({
+      ok: true,
+      run: first,
+      source: 'previous',
+      currentProblem: 'corrupt',
+    });
+  });
+
+  it('uses it when the current file is garbage', async () => {
+    const { fs, first } = await twoGenerations();
+    fs.files.set(FILES.current, '\u0000\u0000\u0000');
+
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: first, source: 'previous' });
+  });
+
+  it('uses it when the current file is missing', async () => {
+    const { fs, first } = await twoGenerations();
+    fs.files.delete(FILES.current);
+
+    expect(await loadRun(DIR, fs)).toEqual({
+      ok: true,
+      run: first,
+      source: 'previous',
+      currentProblem: 'missing',
+    });
+  });
+
+  it('uses it when the current file cannot be read', async () => {
+    const { fs, first } = await twoGenerations();
+    fs.failRead(FILES.current);
+
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: first, currentProblem: 'unreadable' });
+  });
+
+  it('names the current problem when both files are bad', async () => {
+    const { fs } = await twoGenerations();
+    fs.files.set(FILES.current, 'garbage');
+    fs.files.set(FILES.previous, 'garbage');
+
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
+  });
+
+  it('names the previous problem when there is no current file', async () => {
+    const fs = memoryFs();
+    fs.files.set(FILES.previous, 'garbage');
+
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
+  });
+});
+
+describe('a crash in the middle of a save', () => {
+  it('after the temp file is written, loses nothing and the next save works', async () => {
+    const fs = memoryFs();
+    const first = newRun();
+    const second = secondTurn(first);
+    await saveRun(DIR, first, fs);
+
+    fs.failRename(FILES.current);
+    await expect(saveRun(DIR, second, fs)).rejects.toThrow('rename failed');
+
+    expect(fs.files.has(`${FILES.current}.tmp`)).toBe(false);
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: first });
+
+    fs.failRename(undefined);
+    await saveRun(DIR, second, fs);
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: second, source: 'current' });
+  });
+
+  it('leaves the temp file behind when even its cleanup fails, and the save is still whole', async () => {
+    const fs = memoryFs();
+    const first = newRun();
+    await saveRun(DIR, first, fs);
+
+    fs.failRename(FILES.current);
+    fs.failRemove();
+    await expect(saveRun(DIR, secondTurn(first), fs)).rejects.toThrow('rename failed');
+
+    expect(fs.files.has(`${FILES.current}.tmp`)).toBe(true);
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: first, source: 'current' });
+  });
+
+  it('while the previous generation is rotated, still keeps the current file', async () => {
+    const fs = memoryFs();
+    const first = newRun();
+    await saveRun(DIR, first, fs);
+
+    fs.failRename(FILES.previous);
+    await expect(saveRun(DIR, secondTurn(first), fs)).rejects.toThrow('rename failed');
+
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: first, source: 'current' });
+  });
+
+  it('does not let a corrupt current file overwrite a good previous generation', async () => {
+    const fs = memoryFs();
+    const first = newRun();
+    const second = secondTurn(first);
+    const third = endTurn(second, createRng('third'));
+    await saveRun(DIR, first, fs);
+    await saveRun(DIR, second, fs);
+    fs.files.set(FILES.current, 'truncated {');
+
+    await saveRun(DIR, third, fs);
+
+    expect(JSON.parse(fs.files.get(FILES.previous) ?? '')).toEqual(first);
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: third, source: 'current' });
+  });
+
+  it('saves on when the current file cannot be read', async () => {
+    const fs = memoryFs();
+    fs.failRead(FILES.current);
+
+    await saveRun(DIR, newRun(), fs);
+
+    expect(fs.files.has(FILES.current)).toBe(true);
+    expect(fs.files.has(FILES.previous)).toBe(false);
+  });
+});
