@@ -12,6 +12,8 @@ export const DETECTIVE_REPUTATION = defineMeter({
   max: MAX_REPUTATION,
   start: MAX_REPUTATION,
   drain: { amount: 1, per: 'failure' },
+  // Below 3 the public is warned: a hero at the edge of breakdown has little reputation to lose.
+  thresholds: [{ below: 3, effects: { warning: 'low-reputation' } }],
 });
 
 // Nerves are spent as time passes (see `passTime`) and on a failure; the night gives back only a part.
@@ -25,6 +27,9 @@ export const DETECTIVE_NERVES = defineMeter({
   thresholds: [
     { below: 6, effects: { modifiers: [{ skills: 'all', amount: -1 }] } },
     { below: 3, effects: { modifiers: [{ skills: 'all', amount: -1 }], mishapChance: 15, garbleLevel: 2 } },
+    // Nerves gone with little reputation behind the hero is a breakdown. With reputation of 3 or more it is
+    // a collapse instead, which forces the night (P1-18) and does not end the run, so it is not here.
+    { below: 1, when: [{ meter: 'reputation', below: 3 }], effects: { endsRun: { reason: 'breakdown' } } },
   ],
 });
 

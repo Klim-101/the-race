@@ -217,6 +217,14 @@ describe('condition', () => {
   });
 });
 
+describe('viewRun warnings', () => {
+  it('warns the player while reputation is below 3, and only then', () => {
+    expect(viewRun(newRun()).warnings).toEqual([]);
+    expect(viewRun(changeReputation(newRun(), 3 - MAX_REPUTATION)).warnings).toEqual([]);
+    expect(viewRun(changeReputation(newRun(), 2 - MAX_REPUTATION)).warnings).toEqual(['low-reputation']);
+  });
+});
+
 describe('viewRun', () => {
   it('shows the scene: where the hero is, the exits, the suspects and the clock', () => {
     const view = viewRun(newRun());

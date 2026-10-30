@@ -11,65 +11,12 @@ import {
   type DetectiveRunState,
 } from '@the-race/engine';
 import { describe, expect, it } from 'vitest';
-import { newRun } from '../test/new-run.js';
+import { WALK, newRun, playTurns } from '../test/new-run.js';
 import { defaultSaveDir, loadRun, runFiles, saveRun } from './run-store.js';
-import type { SaveFs } from './save-fs.js';
+import { memoryFs } from '../test/memory-fs.js';
 
 const DIR = join('save-root');
 const FILES = runFiles(DIR);
-
-/** An in-memory disk whose operations can be made to fail, to stand in for a crash. */
-function memoryFs(): SaveFs & {
-  files: Map<string, string>;
-  failRename: (path: string | undefined) => void;
-  failRead: (path: string | undefined) => void;
-  failRemove: () => void;
-  directories: string[];
-} {
-  const files = new Map<string, string>();
-  const directories: string[] = [];
-  let renameFails: string | undefined;
-  let readFails: string | undefined;
-  let removeFails = false;
-  return {
-    files,
-    directories,
-    failRename(path) {
-      renameFails = path;
-    },
-    failRead(path) {
-      readFails = path;
-    },
-    failRemove() {
-      removeFails = true;
-    },
-    mkdir(directory) {
-      directories.push(directory);
-      return Promise.resolve();
-    },
-    readFile(path) {
-      if (path === readFails) return Promise.reject(new Error('EACCES'));
-      return Promise.resolve(files.get(path));
-    },
-    writeFileSynced(path, data) {
-      files.set(path, data);
-      return Promise.resolve();
-    },
-    rename(from, to) {
-      if (to === renameFails) return Promise.reject(new Error('rename failed'));
-      const data = files.get(from);
-      if (data === undefined) return Promise.reject(new Error('ENOENT'));
-      files.delete(from);
-      files.set(to, data);
-      return Promise.resolve();
-    },
-    remove(path) {
-      if (removeFails) return Promise.reject(new Error('remove failed'));
-      files.delete(path);
-      return Promise.resolve();
-    },
-  };
-}
 
 function secondTurn(run: DetectiveRunState): DetectiveRunState {
   return endTurn(findClue(moveTo(run, 'cheese-stall'), 'flour-crumbs'), createRng('next'));
@@ -91,7 +38,7 @@ describe('saveRun and loadRun', () => {
     await saveRun(DIR, run, fs);
     const loaded = await loadRun(DIR, fs);
 
-    expect(loaded).toEqual({ ok: true, run, source: 'current' });
+    expect(loaded).toEqual({ ok: true, run, log: [], source: 'current' });
     expect(fs.directories).toEqual([FILES.directory]);
     expect([...fs.files.keys()]).toEqual([FILES.current]);
   });
@@ -221,7 +168,7 @@ describe('loading an older save', () => {
 
     const loaded = await loadRun(DIR, fs, migrations);
 
-    expect(loaded).toEqual({ ok: true, run, source: 'current' });
+    expect(loaded).toEqual({ ok: true, run, log: [], source: 'current' });
     expect(JSON.parse(fs.files.get(FILES.current) ?? '')).toHaveProperty('schemaVersion', 0);
 
     await saveRun(DIR, run, fs);
@@ -272,6 +219,7 @@ describe('falling back to the previous generation', () => {
     expect(await loadRun(DIR, fs)).toEqual({
       ok: true,
       run: first,
+      log: [],
       source: 'previous',
       currentProblem: 'corrupt',
     });
@@ -291,6 +239,7 @@ describe('falling back to the previous generation', () => {
     expect(await loadRun(DIR, fs)).toEqual({
       ok: true,
       run: first,
+      log: [],
       source: 'previous',
       currentProblem: 'missing',
     });
@@ -340,14 +289,15 @@ describe('a crash in the middle of a save', () => {
   it('leaves the temp file behind when even its cleanup fails, and the save is still whole', async () => {
     const fs = memoryFs();
     const first = newRun();
-    await saveRun(DIR, first, fs);
+    await saveRun(DIR, first, fs, []);
 
     fs.failRename(FILES.current);
     fs.failRemove();
-    await expect(saveRun(DIR, secondTurn(first), fs)).rejects.toThrow('rename failed');
+    const played = playTurns(first, WALK);
+    await expect(saveRun(DIR, played.run, fs, played.log)).rejects.toThrow('rename failed');
 
     expect(fs.files.has(`${FILES.current}.tmp`)).toBe(true);
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: first, source: 'current' });
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: first, source: 'previous' });
   });
 
   it('while the previous generation is rotated, still keeps the current file', async () => {
