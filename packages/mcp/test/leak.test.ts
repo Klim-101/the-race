@@ -49,9 +49,15 @@ async function connect() {
   const results: unknown[] = [];
   const call = async (name: string, args: unknown): Promise<Record<string, unknown>> => {
     const reply = await peer.request('tools/call', { name, arguments: args });
-    const result = reply.result as { structuredContent: Record<string, unknown>; isError?: boolean };
+    const result = reply.result as {
+      structuredContent?: Record<string, unknown>;
+      content: { text: string }[];
+      isError?: boolean;
+    };
     results.push(result);
-    return result.structuredContent;
+    return (
+      result.structuredContent ?? (JSON.parse(result.content[0]?.text ?? '{}') as Record<string, unknown>)
+    );
   };
   return { context, peer, call, results };
 }

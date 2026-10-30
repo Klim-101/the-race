@@ -27,6 +27,8 @@ beforeAll(async () => {
     command: process.execPath,
     args: [entry],
     cwd: workingDirectory,
+    // The saves of the test, never the player's own.
+    env: { RACE_HOME: join(workingDirectory, 'saves') },
   });
   client = new Client({ name: 'process-test', version: '0.0.0' });
   await client.connect(transport);
@@ -53,6 +55,19 @@ describe('the server as a child process over stdio', () => {
       name: 'the-race',
       rulesetVersion: RULESET_VERSION,
       locales: [...LOCALES],
+    });
+  });
+
+  it('hands a tool error to the client as text it can read, not as a protocol failure', async () => {
+    // The SDK client checks structured content against the output schema, so an error must not carry any.
+    const result = await client.callTool({ name: 'run_view', arguments: {} });
+    const failed = await client.callTool({ name: 'act', arguments: { turn: 0, intent: { kind: 'look' } } });
+    expect(result.isError).not.toBe(true);
+    expect(failed.isError).toBe(true);
+    expect(failed.structuredContent).toBeUndefined();
+    const text = (failed.content as { text: string }[])[0]?.text ?? '';
+    expect(JSON.parse(text)).toMatchObject({
+      error: { code: 'no-run', remediation: expect.any(String) as unknown },
     });
   });
 

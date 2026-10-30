@@ -15,6 +15,8 @@ const echo = defineTool({
   handler: ({ n }) => Promise.resolve({ n }),
 });
 
+const textOf = (result: { content: unknown[] }): string => (result.content[0] as { text: string }).text;
+
 describe('defineTool', () => {
   it('returns compact JSON text and the same value as structured content', async () => {
     const result = await echo.run({ n: 3 }, fakeContext());
@@ -26,7 +28,8 @@ describe('defineTool', () => {
   it('turns an invalid input into a structured error', async () => {
     const result = await echo.run({ n: 'x' }, fakeContext());
     expect(result.isError).toBe(true);
-    expect(result.structuredContent).toMatchObject({ error: { code: 'invalid-input' } });
+    expect(result.structuredContent).toBeUndefined();
+    expect(JSON.parse(textOf(result))).toMatchObject({ error: { code: 'invalid-input' } });
   });
 
   it('turns a ToolFailure into the error it carries', async () => {
@@ -39,7 +42,8 @@ describe('defineTool', () => {
       handler: () => Promise.reject(new ToolFailure(error)),
     });
     const result = await failing.run({}, fakeContext());
-    expect(result).toMatchObject({ isError: true, structuredContent: { error } });
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toBeUndefined();
     expect(result.content).toEqual([{ type: 'text', text: JSON.stringify({ error }) }]);
   });
 
@@ -52,7 +56,8 @@ describe('defineTool', () => {
       handler: () => Promise.resolve({ n: 'x' } as unknown as { n: number }),
     });
     const result = await drifting.run({}, fakeContext());
-    expect(result).toMatchObject({ isError: true, structuredContent: { error: { code: 'invalid-input' } } });
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(textOf(result))).toMatchObject({ error: { code: 'invalid-input' } });
   });
 
   it('hides an unexpected error', async () => {
@@ -65,6 +70,7 @@ describe('defineTool', () => {
     });
     const result = await crashing.run({}, fakeContext());
     expect(JSON.stringify(result)).not.toContain('stack and path');
-    expect(result).toMatchObject({ isError: true, structuredContent: { error: { code: 'internal-error' } } });
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(textOf(result))).toMatchObject({ error: { code: 'internal-error' } });
   });
 });

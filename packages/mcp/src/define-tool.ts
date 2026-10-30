@@ -34,12 +34,13 @@ function success(output: Record<string, unknown>): CallToolResult {
   return { content: [{ type: 'text', text: JSON.stringify(output) }], structuredContent: output };
 }
 
+/**
+ * An error is plain text content with `isError` and no `structuredContent`: a client checks structured
+ * content against the tool's output schema, and would turn the error into a protocol failure that hides
+ * the code and the remediation from the agent.
+ */
 export function failure(error: ToolError): CallToolResult {
-  return {
-    isError: true,
-    content: [{ type: 'text', text: JSON.stringify({ error }) }],
-    structuredContent: { error },
-  };
+  return { isError: true, content: [{ type: 'text', text: JSON.stringify({ error }) }] };
 }
 
 export function defineTool<Input extends z.ZodObject, Output extends z.ZodObject>(
