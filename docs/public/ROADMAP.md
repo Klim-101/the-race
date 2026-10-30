@@ -9,11 +9,11 @@ Live task status is on the [project board](https://github.com/users/Klim-101/pro
 | Phase                           | Status      | Progress |
 | ------------------------------- | ----------- | -------- |
 | Phase 0 — Foundation            | done        | 8 / 8    |
-| Phase 1 — Engine core           | in progress | 7 / 16   |
+| Phase 1 — Engine core           | in progress | 7 / 19   |
 | Phase 2 — First playable run    | planned     | 0 / 7    |
 | Phase 3 — News and mirror world | planned     | 0 / 11   |
-| Phase 4 — Roguelike loop        | planned     | 0 / 12   |
-| Phase 5 — New archetypes        | planned     | 0 / 4    |
+| Phase 4 — Roguelike loop        | planned     | 0 / 13   |
+| Phase 5 — New archetypes        | planned     | 0 / 5    |
 | Phase 6 — Public release        | planned     | 0 / 6    |
 
 _Last synchronized: 2026-10-30._
