@@ -21,6 +21,11 @@ export const TRAIT_TRIGGERS = [
 export const TraitTriggerSchema = z.enum(TRAIT_TRIGGERS);
 export type TraitTrigger = z.infer<typeof TraitTriggerSchema>;
 
+/** Places information can come from; a trait can close one to the hero. */
+export const INFORMATION_SOURCES = ['police-data'] as const;
+export const InformationSourceSchema = z.enum(INFORMATION_SOURCES);
+export type InformationSource = z.infer<typeof InformationSourceSchema>;
+
 export const TraitEffectSchema = z.discriminatedUnion('kind', [
   // A bonus or penalty on checks of the listed skills, or on every check.
   z.object({
@@ -31,7 +36,7 @@ export const TraitEffectSchema = z.discriminatedUnion('kind', [
   // The clue is found without a check.
   z.object({ kind: z.literal('auto-discover') }),
   // The named source is closed to the hero.
-  z.object({ kind: z.literal('lock-out'), source: z.enum(['police-data']) }),
+  z.object({ kind: z.literal('lock-out'), source: InformationSourceSchema }),
   // A world event the hero brings along, which costs time.
   z.object({ kind: z.literal('spawn-event'), event: z.enum(['debt-collector']) }),
 ]);

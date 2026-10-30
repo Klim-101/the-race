@@ -3,12 +3,14 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
-import type { Hero } from '../hero.js';
+import type { DetectiveHero } from './archetype.js';
+import { DETECTIVE_TRAITS } from './traits.js';
+import type { Trait } from '../traits.js';
 import type { CaseIssueCode } from './case-issue.js';
 import { validateCase, type CaseValidationContext } from './case-validator.js';
 
 function context(overrides: Partial<CaseValidationContext> = {}): CaseValidationContext {
-  return { hero: buildHero(), locale: 'en', realNames: [], ...overrides };
+  return { hero: buildHero(), traits: [], locale: 'en', realNames: [], ...overrides };
 }
 
 function issueCodes(input: unknown, validationContext = context()): CaseIssueCode[] {
@@ -180,7 +182,7 @@ describe('validateCase', () => {
     });
 
     it('rejects a case every chain of which needs a skill the hero has no points in', () => {
-      const hero: Hero = {
+      const hero: DetectiveHero = {
         ...buildHero(),
         skills: { observation: 0, logic: 3, charm: 0, pressure: 3, tech: 2, contacts: 2 },
       };
@@ -297,6 +299,92 @@ describe('validateCase', () => {
           { code: 'real-name', path: 'clock.worldEvents[0].description' },
         ],
       });
+    });
+  });
+
+  describe('hero traits', () => {
+    const trait = (id: string): Trait => {
+      const found = DETECTIVE_TRAITS.find((candidate) => candidate.id === id);
+      if (!found) throw new Error(`No trait ${id}`);
+      return found;
+    };
+
+    it('rejects a case that leans on a source a trait closes to the hero', () => {
+      const detectiveCase = buildCheeseCase();
+      for (const clue of detectiveCase.clues) {
+        if (clue.id === 'oven-receipt' || clue.id === 'debt-ledger') clue.source = 'police-data';
+      }
+
+      expect(issueCodes(detectiveCase)).toEqual([]);
+      expect(issueCodes(detectiveCase, context({ traits: [trait('old-enemy-in-the-police')] }))).toContain(
+        'unobtainable-evidence',
+      );
+    });
+
+    it('never names a trait or a closed source in the issues the generator reads', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.clues[3]!.source = 'police-data';
+      const traits = [trait('old-enemy-in-the-police'), trait('claustrophobe')];
+
+      const result = validateCase(detectiveCase, context({ traits }));
+      const text = JSON.stringify(result).toLowerCase();
+
+      expect(result.isValid).toBe(false);
+      for (const forbidden of ['police', 'enemy', 'claustrophob', 'trait']) {
+        expect(text).not.toContain(forbidden);
+      }
+    });
+
+    it('applies a penalty in the situations of the location', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.locations[2]!.situations = ['confined-space'];
+      detectiveCase.clues[2]!.discovery = { skill: 'observation', difficulty: 23 };
+      const claustrophobe = context({ traits: [trait('claustrophobe')] });
+
+      expect(issueCodes(detectiveCase)).toEqual([]);
+      expect(issueCodes(detectiveCase, claustrophobe)).toContain('unobtainable-evidence');
+    });
+
+    it('applies a penalty in the situations of the clue itself', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.clues[2]!.situations = ['confined-space'];
+      detectiveCase.clues[2]!.discovery = { skill: 'observation', difficulty: 23 };
+
+      expect(issueCodes(detectiveCase, context({ traits: [trait('claustrophobe')] }))).toContain(
+        'unobtainable-evidence',
+      );
+    });
+
+    it('does not apply a penalty outside its situation', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.clues[2]!.discovery = { skill: 'observation', difficulty: 23 };
+
+      expect(issueCodes(detectiveCase, context({ traits: [trait('claustrophobe')] }))).toEqual([]);
+    });
+
+    it('lets a bonus open a check that was out of reach', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.locations[3]!.access = { kind: 'skill', check: { skill: 'charm', difficulty: 22 } };
+      detectiveCase.locations[3]!.situations = ['high-society'];
+
+      expect(issueCodes(detectiveCase)).toContain('unreachable-location');
+      expect(issueCodes(detectiveCase, context({ traits: [trait('well-connected')] }))).toEqual([]);
+    });
+
+    it('does not let a photographic memory rescue a clue no roll can find', () => {
+      const detectiveCase = buildCheeseCase();
+      detectiveCase.clues.push({
+        id: 'microfilm',
+        locationId: 'market-square',
+        description: 'A microfilm hidden in the fountain.',
+        discovery: { skill: 'tech', difficulty: 30 },
+        pointsTo: [],
+        isRedHerring: false,
+      });
+
+      expect(issueCodes(detectiveCase, context({ traits: [trait('photographic-memory')] }))).toEqual([
+        'unobtainable-clue',
+      ]);
     });
   });
 });

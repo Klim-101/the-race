@@ -3,6 +3,7 @@
 
 import type { DetectiveHero } from './archetype.js';
 import type { Locale } from '../locale.js';
+import type { Trait } from '../traits.js';
 import type { CaseIssue } from './case-issue.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { checkLies } from './checks/lies.js';
@@ -12,11 +13,16 @@ import { checkReferences } from './checks/references.js';
 import { checkSolution } from './checks/solution.js';
 import { checkTexts } from './checks/texts.js';
 import { checkTimeline } from './checks/timeline.js';
-import { canEverPass, computeObtainable } from './obtainability.js';
+import { canEverPass, closedSources, computeObtainable } from './obtainability.js';
 
 export interface CaseValidationContext {
   /** The hero the case is generated for: solvability depends on their skills. */
   readonly hero: DetectiveHero;
+  /**
+   * The traits rolled for the hero. Only the validator sees them: the generator and the narrator must not,
+   * so no issue below may name a trait.
+   */
+  readonly traits: readonly Trait[];
   readonly locale: Locale;
   /** Names taken from the source headlines; none of them may survive into the mirror world. */
   readonly realNames: readonly string[];
@@ -45,10 +51,14 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
   const referenceIssues = checkReferences(detectiveCase);
   if (referenceIssues.length > 0) return { isValid: false, issues: referenceIssues };
 
-  const obtainable = computeObtainable(detectiveCase, canEverPass(context.hero));
+  const obtainable = computeObtainable(
+    detectiveCase,
+    canEverPass(context.hero, context.traits),
+    closedSources(context.traits),
+  );
   const issues = [
     ...checkReachability(detectiveCase, obtainable),
-    ...checkSolution(detectiveCase, context.hero, obtainable),
+    ...checkSolution(detectiveCase, context.hero, context.traits, obtainable),
     ...checkLies(detectiveCase, obtainable),
     ...checkTimeline(detectiveCase),
     ...checkRedHerrings(detectiveCase),
