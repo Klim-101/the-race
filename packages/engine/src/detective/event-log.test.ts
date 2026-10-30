@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { restoreRng } from '../dice.js';
-import { MINUTES_PER_DAY } from '../run.js';
+import { DAY_START_MINUTE, MINUTES_PER_DAY } from '../run.js';
 import { resolveIntent } from './actions.js';
 import { DetectiveCaseSchema } from './case-schema.js';
 import {
@@ -237,7 +237,7 @@ describe('deriveStats', () => {
       const stats = deriveStats(log);
 
       expect(stats.turns).toBe(run.turn);
-      expect(stats.minutes).toBe((run.clock.day - 1) * MINUTES_PER_DAY + run.clock.minute);
+      expect(stats.minutes).toBe((run.clock.day - 1) * MINUTES_PER_DAY + run.clock.minute - DAY_START_MINUTE);
       expect(stats.cluesFound).toBe(run.foundClueIds.length);
       expect(stats.insights).toBe(run.insightIds.length);
       expect(stats.status).toBe(run.status);

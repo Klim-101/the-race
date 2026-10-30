@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { assertNever } from '../assert-never.js';
-import { statusOfEndReason, type EndReason } from '../run.js';
+import { DAY_START_MINUTE, MINUTES_PER_DAY, statusOfEndReason, type EndReason } from '../run.js';
 import type { DetectiveCase } from './case-schema.js';
 import { closeLocation, endRun, type DetectiveRunState } from './run-state.js';
 
@@ -11,8 +11,8 @@ import { closeLocation, endRun, type DetectiveRunState } from './run-state.js';
 // scheduled events, or the end of the case) is decided here, from the case and the days alone, so the
 // log can recompute it and a replay agrees with the run.
 
-/** From the start of a day: 16 hours of daylight work, then the night. */
-export const ACTIVE_MINUTES_PER_DAY = 16 * 60;
+/** From the start of a day at 08:00 to midnight: 16 hours of work, then the night. */
+export const ACTIVE_MINUTES_PER_DAY = MINUTES_PER_DAY - DAY_START_MINUTE;
 
 export interface DaysPassed {
   /** Indices into `clock.worldEvents` of the events that fired, in the order they fired. */
@@ -62,10 +62,10 @@ export function daysPassed(detectiveCase: DetectiveCase, fromDay: number, toDay:
  */
 export function settleClock(run: DetectiveRunState, previousDay: number): DetectiveRunState {
   if (run.status !== 'active') return run;
+  // The active hours end at midnight, where the clock itself turns the day; the night then passes and
+  // the morning is always 08:00, whatever part of the night the action ran into.
   const rested =
-    run.clock.minute >= ACTIVE_MINUTES_PER_DAY
-      ? { ...run, clock: { day: run.clock.day + 1, minute: 0 } }
-      : run;
+    run.clock.day > previousDay ? { ...run, clock: { day: run.clock.day, minute: DAY_START_MINUTE } } : run;
   const passed = daysPassed(run.case, previousDay, rested.clock.day);
   const closed = passed.closedLocationIds.reduce(closeLocation, rested);
   const reason = passed.endReason ?? (closed.reputation === 0 ? 'reputation-zero' : null);

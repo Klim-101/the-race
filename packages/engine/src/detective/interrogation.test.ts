@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { createRng, D20_SIDES, type Rng } from '../dice.js';
-import { MAX_REPUTATION } from '../run.js';
+import { DAY_START_MINUTE, MAX_REPUTATION } from '../run.js';
 import { TraitSchema, type Trait } from '../traits.js';
 import { resolveIntent, type Resolution } from './actions.js';
 import { DetectiveCaseSchema } from './case-schema.js';
@@ -168,7 +168,7 @@ describe('a clue that breaks a lie', () => {
     });
     expect(run.concededLieIds).toEqual(['baker-asleep']);
     expect(run.turn).toBe(1);
-    expect(run.clock.minute).toBe(INTERROGATE_MINUTES);
+    expect(run.clock.minute).toBe(DAY_START_MINUTE + INTERROGATE_MINUTES);
     expect(details).toMatchObject([{ subject: { kind: 'suspect', id: 'baker' } }]);
     expect(DetectiveRunStateSchema.safeParse(run).success).toBe(true);
   });

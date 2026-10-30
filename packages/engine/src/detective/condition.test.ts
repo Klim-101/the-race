@@ -3,12 +3,13 @@
 
 import { describe, expect, it } from 'vitest';
 import { collectModifier } from '../modifiers.js';
-import { MINUTES_PER_DAY } from '../run.js';
+import { DAY_START_MINUTE, MINUTES_PER_DAY } from '../run.js';
 import { DETECTIVE_NERVES, DETECTIVE_SLEEP_DEBT } from './archetype.js';
 import {
   CONDITION_IDS,
   DETECTIVE_CONDITIONS,
   HeroConditionSchema,
+  LATE_FROM_MINUTE,
   initialCondition,
   modifierSources,
   passTime,
@@ -77,6 +78,13 @@ describe('passTime', () => {
     expect(passTime(initialCondition(), at(10), 5 * MINUTES_PER_DAY).sleepDebt).toBe(
       DETECTIVE_SLEEP_DEBT.max,
     );
+  });
+
+  it('counts no sleep debt from a day that starts at 08:00 until work runs past 22:00', () => {
+    const start = { day: 1, minute: DAY_START_MINUTE };
+
+    expect(passTime(initialCondition(), start, LATE_FROM_MINUTE - DAY_START_MINUTE).sleepDebt).toBe(0);
+    expect(passTime(initialCondition(), start, MINUTES_PER_DAY - DAY_START_MINUTE).sleepDebt).toBe(2);
   });
 
   it('runs timed conditions down, drops them at zero and keeps those that wait for the night', () => {

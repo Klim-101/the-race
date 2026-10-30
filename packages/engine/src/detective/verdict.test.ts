@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { createRng } from '../dice.js';
+import { DAY_START_MINUTE } from '../run.js';
 import { DetectiveCaseSchema } from './case-schema.js';
 import { createDetectiveRun, endRun, viewRun, type DetectiveRunState } from './run-state.js';
 import {
@@ -54,7 +55,7 @@ describe('deduce', () => {
     });
     expect(result.run.insightIds).toEqual(['motive-debt']);
     expect(result.run.turn).toBe(1);
-    expect(result.run.clock.minute).toBe(DEDUCE_MINUTES);
+    expect(result.run.clock.minute).toBe(DAY_START_MINUTE + DEDUCE_MINUTES);
     expect(run.insightIds).toEqual([]);
     expect(viewRun(result.run).insights.map(({ id }) => id)).toEqual(['motive-debt']);
   });
@@ -78,7 +79,7 @@ describe('deduce', () => {
         consequences: ['time-lost'],
       });
       expect(result.run.insightIds).toEqual([]);
-      expect(result.run.clock.minute).toBe(FAILED_DEDUCTION_MINUTES);
+      expect(result.run.clock.minute).toBe(DAY_START_MINUTE + FAILED_DEDUCTION_MINUTES);
       expect(result.run.turn).toBe(1);
     }
     expect(close.outcome).toEqual(far.outcome);

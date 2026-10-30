@@ -4,12 +4,14 @@
 import { z } from 'zod';
 import { LocaleSchema } from './locale.js';
 
-export const RUN_SCHEMA_VERSION = 1;
+export const RUN_SCHEMA_VERSION = 2;
 /** Bumped when a rule changes in a way that makes an old run play differently. */
 export const RULESET_VERSION = 1;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;
+/** Every day of a run starts at this minute of the clock, 08:00, and so does the morning after a night. */
+export const DAY_START_MINUTE = 8 * 60;
 
 export const RunClockSchema = z.object({
   /** 1-based day of the run. */

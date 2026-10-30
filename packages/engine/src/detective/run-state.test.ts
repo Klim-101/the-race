@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { assembleHero } from '../assemble-hero.js';
 import { createRng } from '../dice.js';
-import { MAX_REPUTATION, MINUTES_PER_DAY } from '../run.js';
+import { DAY_START_MINUTE, MAX_REPUTATION, MINUTES_PER_DAY, RUN_SCHEMA_VERSION } from '../run.js';
 import { DetectiveCaseSchema } from './case-schema.js';
 import { initialCondition } from './condition.js';
 import {
@@ -44,10 +44,10 @@ describe('createDetectiveRun', () => {
     const run = newRun();
 
     expect(run).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: RUN_SCHEMA_VERSION,
       archetype: 'detective',
       turn: 0,
-      clock: { day: 1, minute: 0 },
+      clock: { day: 1, minute: DAY_START_MINUTE },
       reputation: MAX_REPUTATION,
       status: 'active',
       locationId: 'market-square',
@@ -85,7 +85,9 @@ describe('DetectiveRunStateSchema', () => {
   it('rejects another schema version, a negative turn, dice out of range and too much reputation', () => {
     const run = newRun();
 
-    expect(DetectiveRunStateSchema.safeParse({ ...run, schemaVersion: 2 }).success).toBe(false);
+    expect(DetectiveRunStateSchema.safeParse({ ...run, schemaVersion: RUN_SCHEMA_VERSION + 1 }).success).toBe(
+      false,
+    );
     expect(DetectiveRunStateSchema.safeParse({ ...run, turn: -1 }).success).toBe(false);
     expect(DetectiveRunStateSchema.safeParse({ ...run, rngState: 2 ** 32 }).success).toBe(false);
     expect(DetectiveRunStateSchema.safeParse({ ...run, reputation: MAX_REPUTATION + 1 }).success).toBe(false);
@@ -116,8 +118,11 @@ describe('transitions', () => {
   });
 
   it('spends time and rolls the day over', () => {
-    expect(spendTime(newRun(), 90).clock).toEqual({ day: 1, minute: 90 });
-    expect(spendTime(spendTime(newRun(), MINUTES_PER_DAY - 10), 20).clock).toEqual({ day: 2, minute: 10 });
+    expect(spendTime(newRun(), 90).clock).toEqual({ day: 1, minute: DAY_START_MINUTE + 90 });
+    expect(spendTime(spendTime(newRun(), MINUTES_PER_DAY - DAY_START_MINUTE - 10), 20).clock).toEqual({
+      day: 2,
+      minute: 10,
+    });
   });
 
   it('keeps reputation between zero and the maximum', () => {
@@ -218,7 +223,7 @@ describe('viewRun', () => {
 
     expect(view).toMatchObject({
       title: 'The Vanishing Wheel of Elmwick',
-      clock: { day: 1, minute: 0, totalDays: 3 },
+      clock: { day: 1, minute: DAY_START_MINUTE, totalDays: 3 },
       reputation: MAX_REPUTATION,
       hiddenTraitCount: 2,
       revealedTraits: [],

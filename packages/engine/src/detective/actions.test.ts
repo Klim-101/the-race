@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { createRng, D20_SIDES, type Rng } from '../dice.js';
-import { MAX_REPUTATION } from '../run.js';
+import { DAY_START_MINUTE, MAX_REPUTATION } from '../run.js';
 import { TraitSchema, type Trait } from '../traits.js';
 import {
   CRITICAL_FAILURE_REPUTATION,
@@ -75,7 +75,7 @@ describe('look', () => {
 
     expect(outcome).toEqual({ kind: 'look', foundClueIds: ['cellar-key'], minutes: LOOK_MINUTES });
     expect(next.foundClueIds).toEqual(['cellar-key']);
-    expect(next.clock.minute).toBe(LOOK_MINUTES);
+    expect(next.clock.minute).toBe(DAY_START_MINUTE + LOOK_MINUTES);
     expect(next.turn).toBe(1);
     expect(next.rngState).toBe(rng.state());
   });
