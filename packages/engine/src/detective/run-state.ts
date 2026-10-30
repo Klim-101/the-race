@@ -17,6 +17,7 @@ import {
   type RunStatus,
 } from '../run.js';
 import { warningsOfMeters } from '../meters.js';
+import { DrawnSignalEventSchema, findSignal, signalIgnores, type Signal } from '../signals.js';
 import { TraitSchema, type Trait } from '../traits.js';
 import { DETECTIVE, DetectiveHeroSchema, type DetectiveHero } from './archetype.js';
 import {
@@ -71,6 +72,8 @@ export const DetectiveRunStateSchema = z
     closedLocationIds: z.array(EntityIdSchema).default([]),
     /** Random events the night has drawn, with the day of each; the pool of the case holds what they are. */
     drawnEvents: z.array(DrawnEventSchema).default([]),
+    /** Signal events the night has drawn; the tone is in the log, and the narrator is told only the kind. */
+    signalEvents: z.array(DrawnSignalEventSchema).default([]),
     /** Found clues whose reading was garbled by fatigue; each must be read again before it is used as proof. */
     garbledClueIds: z.array(EntityIdSchema).default([]),
   })
@@ -164,6 +167,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     kit: initialKit(input.hero.background),
     closedLocationIds: [],
     drawnEvents: [],
+    signalEvents: [],
     garbledClueIds: [],
   });
 }
@@ -244,9 +248,18 @@ export function spendTime(run: DetectiveRunState, minutes: number): DetectiveRun
   return { ...run, clock, condition: passTime(run.condition, run.clock, minutes) };
 }
 
-/** A failure frays the nerves. */
-export function strainNerves(run: DetectiveRunState): DetectiveRunState {
+/** The signal of the hero, if they chose one. */
+export function signalOfRun(run: DetectiveRunState): Signal | undefined {
+  return findSignal(DETECTIVE.signals, run.hero.signalId);
+}
+
+/** A failure frays the nerves, unless the hero's signal ignores that; an event's cost is not a failure. */
+export function strainNerves(
+  run: DetectiveRunState,
+  cause: 'failure' | 'event' = 'failure',
+): DetectiveRunState {
   assertActive(run);
+  if (cause === 'failure' && signalIgnores(signalOfRun(run), 'nerves', 'failure')) return run;
   return { ...run, condition: withNervesStrained(run.condition) };
 }
 
@@ -335,6 +348,15 @@ export interface DetectiveRunView {
   /** What the world has done so far, as the player was told: events whose day has come. */
   readonly news: readonly string[];
   readonly hero: DetectiveHero;
+  /** The hero's public character signal: ids only, so the narrator gets a voice and never a number. */
+  readonly signal: {
+    readonly id: string;
+    readonly voice: string;
+    readonly gift: string;
+    readonly cost: string;
+  } | null;
+  /** Signal events of the day the run is at, by kind only: the engine chose their tone and effect. */
+  readonly signalEvents: readonly { readonly kind: string }[];
   readonly hiddenTraitCount: number;
   readonly revealedTraits: readonly Trait[];
   readonly location: {
@@ -360,6 +382,13 @@ function requireLocation(detectiveCase: DetectiveCase, id: string): Location {
     throw new RangeError(`There is no location "${id}" in this run.`);
   }
   return location;
+}
+
+function signalViewOf(run: DetectiveRunState): DetectiveRunView['signal'] {
+  const signal = signalOfRun(run);
+  return signal === undefined
+    ? null
+    : { id: signal.id, voice: signal.voice, gift: signal.gift, cost: signal.cost };
 }
 
 export function viewRun(run: DetectiveRunState): DetectiveRunView {
@@ -391,6 +420,8 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         ),
       ),
     hero: run.hero,
+    signal: signalViewOf(run),
+    signalEvents: run.signalEvents.filter(({ day }) => day === run.clock.day).map(({ kind }) => ({ kind })),
     hiddenTraitCount: run.traits.length - run.revealedTraitIds.length,
     revealedTraits: run.traits.filter(({ id }) => run.revealedTraitIds.includes(id)),
     location: { id: location.id, name: location.name, description: location.description, exits },

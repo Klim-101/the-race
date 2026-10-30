@@ -6,6 +6,7 @@ import { createHeroSchema, defineArchetype } from '../archetype.js';
 import { defineMeter } from '../meters.js';
 import { MAX_REPUTATION } from '../run.js';
 import { BackgroundSchema, DEFAULT_BACKGROUND } from './gear.js';
+import { DETECTIVE_SIGNALS } from './signals.js';
 import { DETECTIVE_TRAITS } from './traits.js';
 
 export const DETECTIVE_REPUTATION = defineMeter({
@@ -53,6 +54,7 @@ export const DETECTIVE = defineArchetype({
   maxSkillLevel: 5,
   traits: DETECTIVE_TRAITS,
   meters: [DETECTIVE_REPUTATION, DETECTIVE_NERVES, DETECTIVE_SLEEP_DEBT],
+  signals: DETECTIVE_SIGNALS,
 });
 
 export const DetectiveSkillSchema = z.enum(DETECTIVE.skills);

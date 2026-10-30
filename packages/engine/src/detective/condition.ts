@@ -5,9 +5,10 @@ import { z } from 'zod';
 import { applyMeterRate, type MeterReading, type ModifierEffect } from '../meters.js';
 import type { ModifierSources } from '../modifiers.js';
 import { MINUTES_PER_DAY, type RunClock } from '../run.js';
+import { findSignal } from '../signals.js';
 import type { Trait } from '../traits.js';
 import { gearModifiers, type KitItem } from './gear.js';
-import { DETECTIVE_NERVES, DETECTIVE_REPUTATION, DETECTIVE_SLEEP_DEBT } from './archetype.js';
+import { DETECTIVE, DETECTIVE_NERVES, DETECTIVE_REPUTATION, DETECTIVE_SLEEP_DEBT } from './archetype.js';
 
 // The hero's condition is everything about them that wears off or wears out: nerves, sleep debt and timed
 // conditions. It is a function of the clock and of what happened, never of the case, and it never touches
@@ -142,6 +143,7 @@ export function modifierSources(run: {
   readonly traits: readonly Trait[];
   readonly condition: HeroCondition;
   readonly kit: readonly KitItem[];
+  readonly hero?: { readonly signalId?: string | undefined };
 }): ModifierSources {
   const { condition } = run;
   const meters: MeterReading[] = [
@@ -150,6 +152,7 @@ export function modifierSources(run: {
   ];
   return {
     traits: run.traits,
+    signal: findSignal(DETECTIVE.signals, run.hero?.signalId),
     conditions: condition.active.map(({ id }) => ({ id, effects: DETECTIVE_CONDITIONS[id].effects })),
     gear: gearModifiers(run.kit),
     meters,

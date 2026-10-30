@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import type { Rng } from '../dice.js';
 import { applyMeterRate, endReasonOfMeters } from '../meters.js';
+import { DrawnSignalEventSchema } from '../signals.js';
 import { DAY_START_MINUTE } from '../run.js';
 import { DETECTIVE_NERVES, DETECTIVE_SLEEP_DEBT } from './archetype.js';
 import { LodgingSafetySchema, type LodgingSafety } from './case-schema.js';
@@ -15,6 +16,7 @@ import {
   type ConditionId,
   type HeroCondition,
 } from './condition.js';
+import { settleSignalAtNight } from './signal-events.js';
 import type { DetectiveRunState } from './run-state.js';
 
 // The night is the main moment of recalculation, and it is ONE pure step over the state and the dice: the
@@ -70,6 +72,8 @@ export const NightReportSchema = z.object({
   incident: IncidentSchema.nullable(),
   /** What `drawNextDayEvents` drew for the morning; see task #94. */
   events: z.array(z.string().min(1)),
+  /** The events of the hero's character signal that the night drew, with their tones; see `signals.ts`. */
+  signalEvents: z.array(DrawnSignalEventSchema).default([]),
   /** The state of the dice after the night, so the next turn picks up from it. */
   rngStateAfter: z.int().min(0).max(0xffffffff),
 });
@@ -161,8 +165,9 @@ export function passNight(
 
   const slept: DetectiveRunState = { ...run, condition, clock: { day: day + 1, minute } };
   const events = drawNextDayEvents(slept, rng);
+  const { run: settled, events: signalEvents } = settleSignalAtNight(slept, rng);
   return {
-    run: { ...slept, rngState: rng.state() },
+    run: { ...settled, rngState: rng.state() },
     report: {
       cause,
       whole,
@@ -176,6 +181,7 @@ export function passNight(
         .filter((id) => !healed.active.some((item) => item.id === id)),
       incident,
       events: [...events],
+      signalEvents: [...signalEvents],
       rngStateAfter: rng.state(),
     },
   };

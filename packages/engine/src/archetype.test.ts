@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { COMMON_SKILLS, OWN_SKILL_COUNT, createHeroSchema, defineArchetype } from './archetype.js';
 import { DETECTIVE } from './detective/archetype.js';
 import { ARCHETYPES } from './hero.js';
+import { defineMeter } from './meters.js';
+import { defineSignal } from './signals.js';
 import { TraitSchema } from './traits.js';
 
 const SURVIVOR = defineArchetype({
@@ -32,6 +34,66 @@ describe('defineArchetype', () => {
       expect(archetype.skills).toHaveLength(COMMON_SKILLS.length + OWN_SKILL_COUNT);
       expect(archetype.skills.slice(0, COMMON_SKILLS.length)).toEqual([...COMMON_SKILLS]);
     }
+  });
+});
+
+describe('defineArchetype signals', () => {
+  const base = { id: 'x', ownSkills: ['a', 'b', 'c'], skillPoints: 4, maxSkillLevel: 3, traits: [] } as const;
+  const stamina = defineMeter({ id: 'stamina', max: 5, start: 5 });
+  const calm = defineSignal({
+    id: 'calm',
+    voice: 'v',
+    gift: 'g',
+    cost: 'c',
+    meters: [{ meter: 'stamina', cap: 3 }],
+  });
+  const lucky = defineSignal({
+    id: 'lucky',
+    voice: 'v',
+    gift: 'g',
+    cost: 'c',
+    events: [
+      {
+        id: 'e',
+        chance: 10,
+        variants: [
+          { tone: 'neutral', kind: 'k', weight: 1, effects: [{ kind: 'meter', meter: 'luck', delta: 1 }] },
+        ],
+      },
+      {
+        id: 'f',
+        chance: 10,
+        variants: [
+          { tone: 'neutral', kind: 'k', weight: 1, effects: [{ kind: 'condition', condition: 'cold' }] },
+        ],
+      },
+    ],
+  });
+
+  it('keeps the signals of an archetype, none by default', () => {
+    expect(defineArchetype({ ...base, meters: [stamina], signals: [calm] }).signals).toEqual([calm]);
+    expect(defineArchetype(base).signals).toEqual([]);
+  });
+
+  it('refuses a repeated id, and a rule or an effect on a meter the archetype lacks', () => {
+    expect(() => defineArchetype({ ...base, meters: [stamina], signals: [calm, calm] })).toThrow(RangeError);
+    expect(() => defineArchetype({ ...base, signals: [calm] })).toThrow(/stamina/);
+    expect(() => defineArchetype({ ...base, meters: [stamina], signals: [lucky] })).toThrow(/luck/);
+  });
+
+  it('lets a hero pick one of the signals, or none, and nothing else', () => {
+    const schema = createHeroSchema(defineArchetype({ ...base, meters: [stamina], signals: [calm] }));
+    const hero = {
+      name: 'Ilya',
+      gender: 'male',
+      archetype: 'x',
+      skills: { perception: 1, reasoning: 0, social: 0, a: 2, b: 1, c: 0 },
+    };
+
+    expect(schema.safeParse(hero).success).toBe(true);
+    expect(schema.safeParse({ ...hero, signalId: 'calm' }).data?.signalId).toBe('calm');
+    expect(schema.safeParse({ ...hero, signalId: 'unknown' }).success).toBe(false);
+    expect(schema.safeParse({ ...hero, signalId: ['calm'] }).success).toBe(false);
   });
 });
 
