@@ -1,0 +1,166 @@
+[
+  {
+    "prompt": "Let us play the RACE",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Start a new run of the RACE",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Continue my run of the RACE where we left off",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Resume my detective run",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "I want to play the RACE, a new case please",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Start a new case in the RACE in English",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Pick up my run, I was in the museum hall",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Open the tavern, I want to choose a hero for the RACE",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Can we play the text roguelike the RACE with a new seed?",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "/race",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "New run, please. I will be the detective",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Let us continue the case from yesterday in the RACE",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Сыграем в the RACE",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Начни новый забег в the RACE",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Продолжи мой забег",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Хочу сыграть в RACE: детективное дело, новый герой",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Давай продолжим расследование в the RACE",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Запусти новую игру the RACE на русском",
+    "shouldTrigger": true
+  },
+  {
+    "prompt": "Write a short detective story about a stolen painting",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Explain how Zod discriminated unions work in packages/engine",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Fix the failing test in case-validator.test.ts",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Let us play chess",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "What is the best roguelike game of 2024?",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Recommend some noir detective novels",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Help me design a murder mystery plot for my novel",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Run npm run test:coverage and show the result",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Summarise today's headlines about the stock market",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Refactor the dice module to use a seeded generator",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Play a game of twenty questions with me",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "How do I write a Claude Code subagent?",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Give me character names for a detective novel set in a fictional city",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Review the pull request for the roadmap sync workflow",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Напиши рассказ про детектива и украденную картину",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Объясни, как работает валидатор дел в этом репозитории",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Давай сыграем в шахматы",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Посоветуй хорошие детективные романы",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Почини упавший тест в движке",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Придумай сюжет для детективной повести",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Сыграем в города",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Что нового в новостях сегодня?",
+    "shouldTrigger": false
+  },
+  {
+    "prompt": "Добавь новый навык в код героя",
+    "shouldTrigger": false
+  }
+]

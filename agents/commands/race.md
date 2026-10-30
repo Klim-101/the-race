@@ -1,0 +1,7 @@
+---
+description: Start a new run of the RACE or resume the current one
+---
+
+Use the `play-the-race` skill to play the RACE with me.
+
+If a run is already in progress, resume it with a short recap. Otherwise start a new run. Use my language: $ARGUMENTS names it or a seed if I gave one; if empty, use the language of this message.
