@@ -5,8 +5,9 @@ import { z } from 'zod';
 import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
 import { collectModifier } from '../modifiers.js';
 import type { CheckDetail, Consequence, Resolution } from './actions.js';
+import { modifierSources } from './condition.js';
 import { EntityIdSchema, type Lie, type Suspect } from './case-schema.js';
-import { changeReputation, endTurn, spendTime, type DetectiveRunState } from './run-state.js';
+import { changeReputation, endTurn, spendTime, strainNerves, type DetectiveRunState } from './run-state.js';
 
 // This file depends on `actions.ts` for types only: `actions.ts` imports the intent schema from here.
 
@@ -119,7 +120,7 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
     rng,
     run.hero.skills,
     { skill: rules.skill, difficulty },
-    collectModifier({ traits: run.traits }, rules.skill, situations),
+    collectModifier(modifierSources(run), rules.skill, situations),
   );
 
   // Evidence is evidence: a success makes the suspect give up every lie it breaks, a failure only the
@@ -142,7 +143,8 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
     ...run,
     concededLieIds: [...run.concededLieIds, ...fallen.map(({ id }) => id)],
   };
-  const next = endTurn(spendTime(changeReputation(withLies, reputationChange), minutes), rng);
+  const strained = result.critical === 'failure' ? strainNerves(withLies) : withLies;
+  const next = endTurn(spendTime(changeReputation(strained, reputationChange), minutes), rng);
   const details: CheckDetail[] = [{ subject: { kind: 'suspect', id: suspect.id }, result }];
 
   return {

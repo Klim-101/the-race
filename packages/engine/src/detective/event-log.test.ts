@@ -135,6 +135,15 @@ describe('replay', () => {
       expect(replay(initial, bent)).toEqual({ ok: false, index: 0, code: 'refused' });
     });
 
+    it('when the condition differs from what was written', () => {
+      const bent = replace(1, (entry) => ({
+        ...entry,
+        condition: { ...entry.condition, nerves: entry.condition.nerves - 1 },
+      }));
+
+      expect(replay(initial, bent)).toEqual({ ok: false, index: 1, code: 'diverged' });
+    });
+
     it('when the result differs from what was written', () => {
       const bent = replace(1, (entry) => ({ ...entry, reputation: entry.reputation - 1 }));
 

@@ -7,21 +7,46 @@ import { defineMeter } from '../meters.js';
 import { MAX_REPUTATION } from '../run.js';
 import { DETECTIVE_TRAITS } from './traits.js';
 
+export const DETECTIVE_REPUTATION = defineMeter({
+  id: 'reputation',
+  max: MAX_REPUTATION,
+  start: MAX_REPUTATION,
+  drain: { amount: 1, per: 'failure' },
+});
+
+// Nerves are spent as time passes (see `passTime`) and on a failure; the night gives back only a part.
+// Below a threshold the hero is clumsy; the mishap and garble effects are data until the rules that read them.
+export const DETECTIVE_NERVES = defineMeter({
+  id: 'nerves',
+  max: 10,
+  start: 10,
+  drain: { amount: 1, per: 'failure' },
+  recovery: { amount: 3, per: 'night' },
+  thresholds: [
+    { below: 6, effects: { modifiers: [{ skills: 'all', amount: -1 }] } },
+    { below: 3, effects: { modifiers: [{ skills: 'all', amount: -1 }], mishapChance: 15, garbleLevel: 2 } },
+  ],
+});
+
+// Sleep debt counts up, so its bands are `atLeast`; a full night takes one point off.
+export const DETECTIVE_SLEEP_DEBT = defineMeter({
+  id: 'sleep-debt',
+  max: 10,
+  start: 0,
+  drain: { amount: 1, per: 'night' },
+  thresholds: [
+    { atLeast: 4, effects: { modifiers: [{ skills: 'all', amount: -1 }], garbleLevel: 1 } },
+    { atLeast: 7, effects: { modifiers: [{ skills: 'all', amount: -1 }], mishapChance: 10, garbleLevel: 2 } },
+  ],
+});
+
 export const DETECTIVE = defineArchetype({
   id: 'detective',
   ownSkills: ['pressure', 'tech', 'contacts'],
   skillPoints: 10,
   maxSkillLevel: 5,
   traits: DETECTIVE_TRAITS,
-  // Reputation is spent on blunders and has no effect of its own yet; its value lives in the run state.
-  meters: [
-    defineMeter({
-      id: 'reputation',
-      max: MAX_REPUTATION,
-      start: MAX_REPUTATION,
-      drain: { amount: 1, per: 'failure' },
-    }),
-  ],
+  meters: [DETECTIVE_REPUTATION, DETECTIVE_NERVES, DETECTIVE_SLEEP_DEBT],
 });
 
 export const DetectiveSkillSchema = z.enum(DETECTIVE.skills);

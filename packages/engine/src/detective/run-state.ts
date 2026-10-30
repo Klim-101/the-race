@@ -15,6 +15,16 @@ import {
 } from '../run.js';
 import { TraitSchema, type Trait } from '../traits.js';
 import { DETECTIVE, DetectiveHeroSchema, type DetectiveHero } from './archetype.js';
+import {
+  HeroConditionSchema,
+  initialCondition,
+  passTime,
+  withCondition,
+  withNervesStrained,
+  viewCondition,
+  type ConditionId,
+  type ConditionView,
+} from './condition.js';
 import { DetectiveCaseSchema, EntityIdSchema, type DetectiveCase, type Location } from './case-schema.js';
 import { buildNeighbors } from './obtainability.js';
 import { CASE_SEAL_PATTERN, isCaseSealIntact, sealCase } from './seal.js';
@@ -43,6 +53,8 @@ export const DetectiveRunStateSchema = z
     insightIds: z.array(EntityIdSchema),
     /** Lies of suspects that the hero has broken; the suspect has given that ground for good. */
     concededLieIds: z.array(EntityIdSchema).default([]),
+    /** Nerves, sleep debt and timed conditions; see `condition.ts`. */
+    condition: HeroConditionSchema.default(() => initialCondition()),
   })
   .superRefine((run, context) => {
     if (!isCaseSealIntact(run)) {
@@ -107,6 +119,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     foundClueIds: [],
     insightIds: [],
     concededLieIds: [],
+    condition: initialCondition(),
   });
 }
 
@@ -182,7 +195,20 @@ export function revealTrait(run: DetectiveRunState, traitId: string): DetectiveR
 
 export function spendTime(run: DetectiveRunState, minutes: number): DetectiveRunState {
   assertActive(run);
-  return { ...run, clock: advanceClock(run.clock, minutes) };
+  const clock = advanceClock(run.clock, minutes);
+  return { ...run, clock, condition: passTime(run.condition, run.clock, minutes) };
+}
+
+/** A failure frays the nerves. */
+export function strainNerves(run: DetectiveRunState): DetectiveRunState {
+  assertActive(run);
+  return { ...run, condition: withNervesStrained(run.condition) };
+}
+
+/** Puts a timed condition on the hero. */
+export function startCondition(run: DetectiveRunState, id: ConditionId): DetectiveRunState {
+  assertActive(run);
+  return { ...run, condition: withCondition(run.condition, id) };
 }
 
 /** Reputation moves by `delta` and stays between zero and the maximum. */
@@ -214,6 +240,7 @@ export interface DetectiveRunView {
   readonly status: RunStatus;
   readonly clock: RunClock & { readonly totalDays: number };
   readonly reputation: number;
+  readonly condition: ConditionView;
   readonly hero: DetectiveHero;
   readonly hiddenTraitCount: number;
   readonly revealedTraits: readonly Trait[];
@@ -256,6 +283,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     status: run.status,
     clock: { ...run.clock, totalDays: detectiveCase.clock.days },
     reputation: run.reputation,
+    condition: viewCondition(run.condition),
     hero: run.hero,
     hiddenTraitCount: run.traits.length - run.revealedTraitIds.length,
     revealedTraits: run.traits.filter(({ id }) => run.revealedTraitIds.includes(id)),

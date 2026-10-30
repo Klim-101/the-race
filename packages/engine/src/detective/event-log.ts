@@ -6,6 +6,7 @@ import { canonicalJson } from '../canonical-json.js';
 import { restoreRng } from '../dice.js';
 import { RunClockSchema, RunStatusSchema, type RunClock, type RunStatus } from '../run.js';
 import { IntentSchema, resolveIntent, type Intent, type Resolution } from './actions.js';
+import { HeroConditionSchema } from './condition.js';
 import { EntityIdSchema } from './case-schema.js';
 import { INTERROGATION_APPROACHES } from './interrogation.js';
 import type { DetectiveRunState } from './run-state.js';
@@ -107,6 +108,8 @@ export const LogEntrySchema = z.object({
   /** The state of the run after the turn. */
   clock: RunClockSchema,
   reputation: z.int().min(0),
+  /** Nerves, sleep debt and conditions after the turn, so that a replay reproduces what wears off. */
+  condition: HeroConditionSchema,
   status: RunStatusSchema,
 });
 export type LogEntry = z.infer<typeof LogEntrySchema>;
@@ -137,6 +140,7 @@ function entryOf(before: DetectiveRunState, intent: Intent, resolution: Resoluti
     outcome: resolution.outcome,
     clock: after.clock,
     reputation: after.reputation,
+    condition: after.condition,
     status: after.status,
   });
 }
