@@ -17,7 +17,7 @@ _The world changed overnight. Run._
 
 </div>
 
-A text roguelike that runs inside your coding agent (Claude Code first, Codex later) on your own subscription. Every run is one hero in a **mirror world** rebuilt from today's world news: the conflicts are real, the names are fictional. The hero dies for good. Tomorrow the world is different.
+A text roguelike that runs inside [Claude Code](https://claude.com/claude-code) on your own subscription. Every run is one hero in a **mirror world** rebuilt from today's world news: the conflicts are real, the names are fictional. The hero dies for good. Tomorrow the world is different.
 
 > **Status:** early prototype. Nothing is playable yet: the engine can already run a detective case from the first look to the final accusation, and the agent side that tells the story is next. See the [roadmap](docs/public/ROADMAP.md).
 
@@ -37,6 +37,10 @@ A text roguelike that runs inside your coding agent (Claude Code first, Codex la
 A headline like _"Exchange halted after a sudden crash"_ turns into a case: who profited from the panic? Each case has suspects with secrets and lies, locations with locks, clues (some of them false trails) and a clock ticking on world events drawn from the news. Tone ranges from a serious insider-trading hunt to a comic one, where a trading bot has fallen in love with a meme coin.
 
 Later archetypes: the **survivor** leading a group through a crisis, and the **trader** building a fortune in a market shaped by the news.
+
+## Scope
+
+the RACE targets **Claude Code only**. Support for other agent hosts, Codex included, is explicitly **out of scope** and is not on the roadmap. The engine is plain TypeScript with no host dependency, so a fork that adds another host is welcome and is allowed by the license; it will not be maintained here.
 
 ## How it works
 
