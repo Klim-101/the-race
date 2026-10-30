@@ -5,7 +5,16 @@ import { describe, expect, it } from 'vitest';
 import { defineArchetype } from './archetype.js';
 import { DETECTIVE } from './detective/archetype.js';
 import { ARCHETYPES } from './hero.js';
-import { MAX_METERS, MeterDefinitionSchema, applyMeterRate, defineMeter, meterEffects } from './meters.js';
+import {
+  MAX_METERS,
+  MeterDefinitionSchema,
+  applyMeterRate,
+  defineMeter,
+  endReasonOfMeters,
+  inBand,
+  meterEffects,
+  warningsOfMeters,
+} from './meters.js';
 import { collectModifier } from './modifiers.js';
 import { TraitSchema } from './traits.js';
 
@@ -54,6 +63,7 @@ describe('meterEffects', () => {
       modifiers: [{ skills: ['social'], amount: 1 }],
       mishapChance: 0,
       garbleLevel: 0,
+      warnings: [],
     });
     expect(meterEffects(NERVES, 5).modifiers).toEqual([{ skills: ['perception'], amount: -1 }]);
     expect(meterEffects(NERVES, 2)).toMatchObject({ mishapChance: 20, garbleLevel: 1 });
@@ -65,6 +75,110 @@ describe('meterEffects', () => {
     for (let value = 0; value <= NERVES.max; value += 1) {
       expect(meterEffects(NERVES, value)).toEqual(meterEffects(NERVES, value));
     }
+  });
+});
+
+const REPUTATION = defineMeter({
+  id: 'reputation',
+  max: 10,
+  start: 10,
+  thresholds: [{ below: 3, effects: { warning: 'low-reputation' } }],
+});
+const FRAYED = defineMeter({
+  id: 'nerves',
+  max: 10,
+  start: 10,
+  thresholds: [
+    { below: 1, when: [{ meter: 'reputation', below: 3 }], effects: { endsRun: { reason: 'breakdown' } } },
+    {
+      below: 1,
+      when: [
+        { meter: 'reputation', atLeast: 9 },
+        { meter: 'sleep', atLeast: 5 },
+      ],
+      effects: { endsRun: { reason: 'gave-up' } },
+    },
+    { below: 4, effects: { warning: 'low-reputation', modifiers: [{ skills: 'all', amount: -1 }] } },
+  ],
+});
+const SLEEP = defineMeter({ id: 'sleep', max: 10, start: 0 });
+const readings = (reputation: number, nerves: number, sleep = 0) => [
+  { definition: REPUTATION, value: reputation },
+  { definition: FRAYED, value: nerves },
+  { definition: SLEEP, value: sleep },
+];
+const ending = (id: string, reason: 'wrong' | 'unproven') =>
+  defineMeter({ id, max: 3, start: 3, thresholds: [{ below: 1, effects: { endsRun: { reason } } }] });
+
+describe('a threshold that ends the run', () => {
+  const threshold = (value: object) => ({ id: 'n', max: 5, start: 5, thresholds: [value] });
+  const ends = { endsRun: { reason: 'breakdown' } };
+  const when = [{ meter: 'reputation', below: 3 }];
+  const accepts = (value: object) => MeterDefinitionSchema.safeParse(threshold(value)).success;
+
+  it('names a reason and may carry a condition on other meters, but then does nothing else', () => {
+    expect(accepts({ below: 1, effects: ends })).toBe(true);
+    expect(accepts({ below: 1, when, effects: ends })).toBe(true);
+    expect(accepts({ below: 1, effects: { endsRun: { reason: 'nonsense' } } })).toBe(false);
+    expect(accepts({ below: 1, when: [], effects: ends })).toBe(false);
+    expect(accepts({ below: 1, when, effects: { warning: 'w' } })).toBe(false);
+    expect(accepts({ below: 1, when, effects: { ...ends, mishapChance: 5 } })).toBe(false);
+    expect(accepts({ below: 1, when: [{ meter: 'a' }], effects: ends })).toBe(false);
+    expect(accepts({ below: 1, effects: { warning: 'Not Kebab' } })).toBe(false);
+  });
+
+  it('holds when the own band and every condition hold', () => {
+    expect(endReasonOfMeters(readings(2, 0))).toBe('breakdown');
+    expect(endReasonOfMeters(readings(3, 0))).toBeNull();
+    expect(endReasonOfMeters(readings(2, 1))).toBeNull();
+    expect(endReasonOfMeters(readings(9, 0, 5))).toBe('gave-up');
+    expect(endReasonOfMeters(readings(9, 0, 4))).toBeNull();
+  });
+
+  it('never holds for a condition on a meter without a reading', () => {
+    expect(endReasonOfMeters([{ definition: FRAYED, value: 0 }])).toBeNull();
+  });
+
+  it('takes the first threshold that applies, meters in the order given', () => {
+    expect(endReasonOfMeters(readings(2, 0, 9))).toBe('breakdown');
+    const two = [
+      { definition: ending('a', 'wrong'), value: 0 },
+      { definition: ending('b', 'unproven'), value: 0 },
+    ];
+    expect(endReasonOfMeters(two)).toBe('wrong');
+    expect(endReasonOfMeters([...two].reverse())).toBe('unproven');
+  });
+
+  it('is decided by the readings alone, for every pair of values', () => {
+    for (let reputation = 0; reputation <= 10; reputation += 1) {
+      for (let nerves = 0; nerves <= 10; nerves += 1) {
+        expect(endReasonOfMeters(readings(reputation, nerves))).toBe(
+          nerves === 0 && reputation < 3 ? 'breakdown' : null,
+        );
+      }
+    }
+  });
+
+  it('leaves a conditional threshold out of the effects on checks', () => {
+    expect(meterEffects(FRAYED, 0).modifiers).toEqual([{ skills: 'all', amount: -1 }]);
+  });
+});
+
+describe('warnings', () => {
+  it('apply while their band does, once each, in the order of the meters', () => {
+    expect(meterEffects(REPUTATION, 2).warnings).toEqual(['low-reputation']);
+    expect(meterEffects(REPUTATION, 3).warnings).toEqual([]);
+    expect(warningsOfMeters(readings(2, 1))).toEqual(['low-reputation']);
+    expect(warningsOfMeters(readings(5, 9))).toEqual([]);
+  });
+});
+
+describe('inBand', () => {
+  it('is below or at least', () => {
+    expect(inBand({ below: 3 }, 2)).toBe(true);
+    expect(inBand({ below: 3 }, 3)).toBe(false);
+    expect(inBand({ atLeast: 3 }, 3)).toBe(true);
+    expect(inBand({ atLeast: 3 }, 2)).toBe(false);
   });
 });
 
@@ -131,6 +245,30 @@ describe('the complexity budget', () => {
 
   it('gives the detective reputation as a meter', () => {
     expect(DETECTIVE.meters.map(({ id }) => id)).toEqual(['reputation', 'nerves', 'sleep-debt']);
+  });
+
+  it('refuses a condition on a meter that is not another meter of the archetype', () => {
+    const base = {
+      id: 'x',
+      ownSkills: ['a', 'b', 'c'],
+      skillPoints: 4,
+      maxSkillLevel: 3,
+      traits: [],
+    } as const;
+    const watcher = (meter: string) =>
+      defineMeter({
+        id: 'w',
+        max: 3,
+        start: 3,
+        thresholds: [
+          { below: 1, when: [{ meter, below: 3 }], effects: { endsRun: { reason: 'breakdown' } } },
+        ],
+      });
+    const other = defineMeter({ id: 'o', max: 3, start: 3 });
+
+    expect(defineArchetype({ ...base, meters: [watcher('o'), other] }).meters).toHaveLength(2);
+    expect(() => defineArchetype({ ...base, meters: [watcher('missing'), other] })).toThrow(RangeError);
+    expect(() => defineArchetype({ ...base, meters: [watcher('w'), other] })).toThrow(RangeError);
   });
 
   it('refuses more meters than the budget and repeated ids', () => {

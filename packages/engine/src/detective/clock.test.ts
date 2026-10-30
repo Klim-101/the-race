@@ -4,10 +4,12 @@
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { createRng, restoreRng } from '../dice.js';
+import { endReasonOfMeters } from '../meters.js';
 import { END_REASONS, MAX_REPUTATION, statusOfEndReason } from '../run.js';
 import { resolveIntent } from './actions.js';
 import { validateCase } from './case-validator.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
+import { meterReadings } from './condition.js';
 import { ACTIVE_MINUTES_PER_DAY, daysPassed, settleClock } from './clock.js';
 import {
   EMPTY_RUN_LOG,
@@ -235,6 +237,67 @@ describe('settleClock', () => {
     const run = changeReputation(at(newRun(fleeOnDay(2)), 1, ACTIVE_MINUTES_PER_DAY), -MAX_REPUTATION);
 
     expect(settleClock(run, 1).endReason).toBe('culprit-fled');
+  });
+});
+
+describe('a breakdown', () => {
+  const withNerves = (run: DetectiveRunState, nerves: number, reputation: number): DetectiveRunState => ({
+    ...changeReputation(run, reputation - MAX_REPUTATION),
+    condition: { ...run.condition, nerves },
+  });
+
+  it('ends the run when nerves are gone and reputation is below 3, for every pair of values', () => {
+    for (let reputation = 0; reputation <= MAX_REPUTATION; reputation += 1) {
+      for (let nerves = 0; nerves <= 10; nerves += 1) {
+        const settled = settleClock(withNerves(newRun(), nerves, reputation), 1);
+        if (reputation === 0) expect(settled.endReason).toBe('reputation-zero');
+        else if (nerves === 0 && reputation < 3) {
+          expect(settled).toMatchObject({ status: 'lost', endReason: 'breakdown' });
+        } else expect(settled).toMatchObject({ status: 'active', endReason: null });
+      }
+    }
+  });
+
+  it('is not a breakdown at 3 reputation: that is a collapse, which the night will deal with', () => {
+    expect(settleClock(withNerves(newRun(), 0, 3), 1).status).toBe('active');
+  });
+
+  it('comes after the world and after reputation when several hold at once', () => {
+    const fled = at(withNerves(newRun(fleeOnDay(2)), 0, 2), 1, ACTIVE_MINUTES_PER_DAY);
+    expect(settleClock(fled, 1).endReason).toBe('culprit-fled');
+    const ranOut = at(withNerves(newRun(), 0, 2), 3, ACTIVE_MINUTES_PER_DAY);
+    expect(settleClock(ranOut, 3).endReason).toBe('time-ran-out');
+    expect(settleClock(withNerves(newRun(), 0, 0), 1).endReason).toBe('reputation-zero');
+  });
+
+  it('is what the meters of the run say', () => {
+    expect(endReasonOfMeters(meterReadings(withNerves(newRun(), 0, 2)))).toBe('breakdown');
+  });
+
+  it('ends a run that time wore down, whatever the seed, and the log and replay agree', () => {
+    let ended = 0;
+    for (let seed = 1; seed <= 200; seed += 1) {
+      // One minute short of the next point of nerves, with the last point and little reputation left.
+      const start = { ...withNerves(newRun(undefined, seed), 1, 2), clock: { day: 1, minute: 239 } };
+      const run = {
+        ...start,
+        locationId: 'cheese-stall',
+        visitedLocationIds: ['market-square', 'cheese-stall'],
+      };
+      const intent = { kind: 'search' };
+      const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
+      if (!resolution.ok) continue;
+      expect(resolution.run.condition.nerves).toBe(0);
+      expect(resolution.run.status).toBe('lost');
+      expect(resolution.run.endReason).toBe(
+        resolution.run.reputation === 0 ? 'reputation-zero' : 'breakdown',
+      );
+      const log = recordResolution(EMPTY_RUN_LOG, run, intent, resolution);
+      expect(deriveStats(log)).toMatchObject({ status: 'lost', endReason: resolution.run.endReason });
+      expect(replay(run, log)).toMatchObject({ ok: true, run: resolution.run });
+      ended += 1;
+    }
+    expect(ended).toBeGreaterThan(0);
   });
 });
 
