@@ -3,10 +3,15 @@
 
 import {
   DetectiveCaseSchema,
+  EMPTY_RUN_LOG,
   assembleHero,
   createDetectiveRun,
   createRng,
+  recordResolution,
+  resolveIntent,
+  restoreRng,
   type DetectiveRunState,
+  type RunLog,
 } from '@the-race/engine';
 import { buildCheeseCase, buildHero } from '../../engine/test/fixtures/cheese-case.js';
 
@@ -24,3 +29,25 @@ export function newRun(): DetectiveRunState {
     locale: 'en',
   });
 }
+
+/** Plays the intents that the engine accepts and keeps the log of them; refused ones leave nothing. */
+export function playTurns(
+  start: DetectiveRunState,
+  intents: readonly unknown[],
+): { run: DetectiveRunState; log: RunLog } {
+  let run = start;
+  let log: RunLog = EMPTY_RUN_LOG;
+  for (const intent of intents) {
+    const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
+    log = recordResolution(log, run, intent, resolution);
+    if (resolution.ok) run = resolution.run;
+  }
+  return { run, log };
+}
+
+export const WALK: readonly unknown[] = [
+  { kind: 'look' },
+  { kind: 'move', locationId: 'cheese-stall' },
+  { kind: 'search' },
+  { kind: 'look' },
+];
