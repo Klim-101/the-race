@@ -2,11 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-  ARCHETYPES,
   EMPTY_RUN_LOG,
   createDetectiveRun,
-  createRng,
-  rollTraits,
   validateCase,
   type CaseIssue,
   type CaseIssueCode,
@@ -140,15 +137,13 @@ export const scenarioSubmit = defineTool({
       });
 
       if (result.isValid) {
-        // The dice the run continues with are those after the trait draw, as when the hero was made.
-        const rng = createRng(pending.seed);
-        rollTraits(rng, ARCHETYPES[hero.archetype].traits);
+        // The run continues the dice the hero was made with: the pending record holds their state.
         const run = createDetectiveRun({
           hero,
           traits: pending.traits,
           case: result.detectiveCase,
           seed: pending.seed,
-          rngState: rng.state(),
+          rngState: pending.rngState,
           locale: pending.locale,
         });
         await saveRun(context.saveDir, run, context.saveFs, EMPTY_RUN_LOG);

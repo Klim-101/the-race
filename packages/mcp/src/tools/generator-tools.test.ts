@@ -7,7 +7,7 @@ import { DETECTIVE_TRAITS, type DetectiveHero, type Trait } from '@the-race/engi
 import { loadRun, runFiles, type SaveFs } from '@the-race/saves';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ServerContext } from '../context.js';
-import { PendingRunSchema, loadPending, pendingPath, savePending, type PendingRun } from '../pending-run.js';
+import { PendingRunSchema, loadPending, pendingFile, savePending, type PendingRun } from '../pending-run.js';
 import { serveStdio } from '../stdio.js';
 import { TOOLS } from './index.js';
 import { compactIssues } from './scenario-submit.js';
@@ -54,7 +54,8 @@ function pendingRun(overrides: Partial<PendingRun> = {}): PendingRun {
     schemaVersion: 1,
     seed: 'seed-1',
     locale: 'en',
-    theme: 'a theft in a museum',
+    theme: 'curious-theft',
+    rngState: 12345,
     hero: HERO,
     traits: TRAITS,
     ...overrides,
@@ -140,7 +141,7 @@ describe('generator_brief', () => {
     expect(brief.isError).toBe(false);
     expect(brief.body).toMatchObject({
       locale: 'en',
-      theme: 'a theft in a museum',
+      theme: 'curious-theft',
       hero: { name: HERO.name, background: 'analyst', signal: { id: 'burnt-out', voice: 'flat-dry' } },
       attemptsLeft: 3,
       headlines: [],
@@ -194,7 +195,7 @@ describe('scenario_submit', () => {
     expect(loaded.ok && loaded.log).toEqual([]);
     expect(loaded.ok && loaded.run.traits).toEqual(TRAITS);
     expect(loaded.ok && loaded.run.case.title).toBe(sample.title);
-    expect(fs.files.has(pendingPath(SAVE_DIR))).toBe(false);
+    expect(fs.files.has(pendingFile(SAVE_DIR))).toBe(false);
   });
 
   it('refuses a second submission and a brief once a case is accepted, and keeps the first case', async () => {
@@ -215,9 +216,9 @@ describe('scenario_submit', () => {
     const saved = new Map(fs.files);
     await submit(call, readCase('goose-of-elmwick.en.json'));
     // Put the pending record back, as a crash between the save and the removal would leave it.
-    fs.files.set(pendingPath(SAVE_DIR), saved.get(pendingPath(SAVE_DIR)) ?? '');
+    fs.files.set(pendingFile(SAVE_DIR), saved.get(pendingFile(SAVE_DIR)) ?? '');
     expect(errorCode(await submit(call, readCase('goose-of-elmwick.en.json')))).toBe('case-already-accepted');
-    expect(fs.files.has(pendingPath(SAVE_DIR))).toBe(false);
+    expect(fs.files.has(pendingFile(SAVE_DIR))).toBe(false);
   });
 
   it('lets a new pending run of another seed go on beside an old saved run', async () => {
@@ -368,13 +369,13 @@ describe('scenario_submit', () => {
 describe('pending run record', () => {
   it('loads nothing from a missing, unreadable, corrupt or foreign file', async () => {
     const fs = memoryFs();
-    expect(await loadPending(SAVE_DIR, fs)).toBeNull();
-    fs.files.set(pendingPath(SAVE_DIR), '{not json');
-    expect(await loadPending(SAVE_DIR, fs)).toBeNull();
-    fs.files.set(pendingPath(SAVE_DIR), '{"schemaVersion":2}');
-    expect(await loadPending(SAVE_DIR, fs)).toBeNull();
+    expect(await loadPending(SAVE_DIR, fs)).toBeUndefined();
+    fs.files.set(pendingFile(SAVE_DIR), '{not json');
+    expect(await loadPending(SAVE_DIR, fs)).toBeUndefined();
+    fs.files.set(pendingFile(SAVE_DIR), '{"schemaVersion":2}');
+    expect(await loadPending(SAVE_DIR, fs)).toBeUndefined();
     const broken = { ...fs, readFile: () => Promise.reject(new Error('denied')) };
-    expect(await loadPending(SAVE_DIR, broken)).toBeNull();
+    expect(await loadPending(SAVE_DIR, broken)).toBeUndefined();
   });
 
   it('reads a record written before attempts existed', async () => {
@@ -382,7 +383,7 @@ describe('pending run record', () => {
     const old: Record<string, unknown> = { ...pendingRun() };
     delete old.attempts;
     delete old.failed;
-    fs.files.set(pendingPath(SAVE_DIR), JSON.stringify(old));
+    fs.files.set(pendingFile(SAVE_DIR), JSON.stringify(old));
     expect(await loadPending(SAVE_DIR, fs)).toMatchObject({ attempts: 0, failed: false });
   });
 

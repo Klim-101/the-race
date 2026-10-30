@@ -39,7 +39,7 @@ export async function openPendingRun(context: ServerContext): Promise<OpenPendin
     message: 'A case has already been accepted for this run, and it cannot be replaced.',
     remediation: 'Stop. Answer with the single word "accepted" and nothing else.',
   });
-  if (pending === null) {
+  if (pending === undefined) {
     throw saved.ok
       ? accepted
       : new ToolFailure({
