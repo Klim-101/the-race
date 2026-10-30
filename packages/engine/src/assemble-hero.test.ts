@@ -74,6 +74,29 @@ describe('assembleHero', () => {
   });
 });
 
+describe('assembleHero with a signal', () => {
+  it('keeps the signal the player picked, and takes it from the archetype’s list only', () => {
+    expect(assemble('s', { ...buildHero(), signalId: 'burnt-out' }).hero).toEqual({
+      ...buildHero(),
+      signalId: 'burnt-out',
+    });
+
+    const result = assembleHero({ ...buildHero(), signalId: 'smitten' }, createRng('s'));
+    expect(result.isValid).toBe(false);
+    if (!result.isValid) expect(result.issues.map(({ path }) => path)).toEqual(['signalId']);
+  });
+
+  it('rolls the same traits with a signal or without one, so a signal costs no dice', () => {
+    expect(assemble('t', { ...buildHero(), signalId: 'in-love' }).traits).toEqual(assemble('t').traits);
+  });
+
+  it('shows the signal in the hero view, which is public', () => {
+    expect(viewHero(assemble('v', { ...buildHero(), signalId: 'in-love' })).hero).toMatchObject({
+      signalId: 'in-love',
+    });
+  });
+});
+
 describe('viewHero', () => {
   it('shows the hero and how many traits are hidden, and nothing about them', () => {
     const traitIds = DETECTIVE_TRAITS.map(({ id }) => id);

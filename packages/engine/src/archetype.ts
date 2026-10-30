@@ -3,6 +3,7 @@
 
 import { z } from 'zod';
 import { MAX_METERS, type MeterDefinition } from './meters.js';
+import type { Signal } from './signals.js';
 import type { Trait } from './traits.js';
 
 export const GenderSchema = z.enum(['female', 'male', 'nonbinary']);
@@ -29,6 +30,8 @@ export interface ArchetypeDefinition<Id extends string, Skill extends string> {
   readonly traits: readonly Trait[];
   /** At most `MAX_METERS`; a meter is data, so a new one needs no new code. */
   readonly meters: readonly MeterDefinition[];
+  /** The character signals a player may pick for the hero, one at most; each is data. */
+  readonly signals: readonly Signal[];
 }
 
 export interface ArchetypeInput<Id extends string, OwnSkill extends string> {
@@ -38,13 +41,14 @@ export interface ArchetypeInput<Id extends string, OwnSkill extends string> {
   readonly maxSkillLevel: number;
   readonly traits: readonly Trait[];
   readonly meters?: readonly MeterDefinition[];
+  readonly signals?: readonly Signal[];
 }
 
 /** Adds the common skills to the archetype's own and keeps the literal id and skill names in the type. */
 export function defineArchetype<const Id extends string, const OwnSkill extends string>(
   input: ArchetypeInput<Id, OwnSkill>,
 ): ArchetypeDefinition<Id, CommonSkill | OwnSkill> {
-  const { ownSkills, meters = [], ...rest } = input;
+  const { ownSkills, meters = [], signals = [], ...rest } = input;
   const skills = [...COMMON_SKILLS, ...ownSkills] as const;
   if (new Set<string>(skills).size !== skills.length) {
     throw new RangeError(`The skills of "${input.id}" repeat a common skill or one another.`);
@@ -70,7 +74,25 @@ export function defineArchetype<const Id extends string, const OwnSkill extends 
       }
     }
   }
-  return { ...rest, skills, meters };
+  if (new Set(signals.map(({ id }) => id)).size !== signals.length) {
+    throw new RangeError(`The signals of "${input.id}" repeat an id.`);
+  }
+  // A rule or an effect on a meter the archetype lacks could never apply, so it is a mistake in the data.
+  for (const signal of signals) {
+    const effects = signal.events.flatMap(({ variants }) => variants.flatMap((variant) => variant.effects));
+    const named = [
+      ...signal.meters.map(({ meter }) => meter),
+      ...effects.flatMap((effect) => (effect.kind === 'meter' ? [effect.meter] : [])),
+    ];
+    for (const meter of named) {
+      if (!meterIds.has(meter)) {
+        throw new RangeError(
+          `The signal "${signal.id}" names "${meter}", which is not a meter of "${input.id}".`,
+        );
+      }
+    }
+  }
+  return { ...rest, skills, meters, signals };
 }
 
 export function createSkillLevelsSchema<Skill extends string>(archetype: ArchetypeDefinition<string, Skill>) {
@@ -93,5 +115,12 @@ export function createHeroSchema<Id extends string, Skill extends string>(
     gender: GenderSchema,
     archetype: z.literal(archetype.id),
     skills: createSkillLevelsSchema(archetype),
+    /** The one visible signal the player picked, by id; absent for a hero without one. */
+    signalId: z
+      .string()
+      .refine((id) => archetype.signals.some((signal) => signal.id === id), {
+        message: `The signal is not one of the signals of "${archetype.id}".`,
+      })
+      .optional(),
   });
 }

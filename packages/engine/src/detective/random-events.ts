@@ -169,7 +169,7 @@ function applyEffect(run: DetectiveRunState, effect: RandomEventEffect): Detecti
       // Never the last point: an event frays the nerves but does not break the hero.
       let strained = run;
       for (let point = 0; point < effect.points && strained.condition.nerves > 1; point += 1) {
-        strained = strainNerves(strained);
+        strained = strainNerves(strained, 'event');
       }
       return strained;
     }
