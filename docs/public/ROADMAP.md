@@ -5,6 +5,18 @@ the RACE is built in phases. Each phase ends with something you can run: the eng
 Live task status is on the [project board](https://github.com/users/Klim-101/projects/3) and in [milestones](https://github.com/Klim-101/the-race/milestones). The progress table below is updated automatically from the milestones; do not edit it by hand.
 
 <!-- roadmap:progress:start -->
+
+| Phase                           | Status      | Progress |
+| ------------------------------- | ----------- | -------- |
+| Phase 0 — Foundation            | in progress | 5 / 8    |
+| Phase 1 — Engine core           | planned     | 0 / 9    |
+| Phase 2 — First playable run    | planned     | 0 / 7    |
+| Phase 3 — News and mirror world | planned     | 0 / 8    |
+| Phase 4 — Roguelike loop        | planned     | 0 / 8    |
+| Phase 5 — New archetypes        | planned     | 0 / 4    |
+| Phase 6 — Public release        | planned     | 0 / 6    |
+
+_Last synchronized: 2026-10-30._
 <!-- roadmap:progress:end -->
 
 ## Phase 0 — Foundation
