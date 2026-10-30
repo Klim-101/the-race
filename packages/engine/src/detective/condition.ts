@@ -21,7 +21,15 @@ export const LATE_FROM_MINUTE = 22 * 60;
 /** One point of sleep debt for every full stretch of this many minutes worked late. */
 export const SLEEP_DEBT_MINUTES_PER_POINT = 60;
 
-export const CONDITION_IDS = ['drunk', 'injured', 'exhausted', 'shaken', 'sedated', 'ill-equipped'] as const;
+export const CONDITION_IDS = [
+  'drunk',
+  'injured',
+  'exhausted',
+  'shaken',
+  'sedated',
+  'ill-equipped',
+  'emboldened',
+] as const;
 export const ConditionIdSchema = z.enum(CONDITION_IDS);
 export type ConditionId = z.infer<typeof ConditionIdSchema>;
 
@@ -50,6 +58,8 @@ export const DETECTIVE_CONDITIONS: Readonly<Record<ConditionId, ConditionDefinit
   shaken: { duration: { minutes: 120 }, effects: [{ skills: ['social', 'pressure'], amount: -2 }] },
   // A sedative settles the nerves at once, at the price of attention.
   sedated: { duration: { minutes: 360 }, effects: [{ skills: ['perception'], amount: -3 }] },
+  // The lift of a drink: bolder in talk, until it wears off.
+  emboldened: { duration: { minutes: 240 }, effects: [{ skills: ['social'], amount: 2 }] },
   // Gear lost to a robbery, until it is replaced: gear is not an item yet, so it is a timed penalty.
   'ill-equipped': { duration: { minutes: 2 * MINUTES_PER_DAY }, effects: [{ skills: 'all', amount: -1 }] },
 };
@@ -76,7 +86,8 @@ export function initialCondition(): HeroCondition {
   return { nerves: DETECTIVE_NERVES.start, sleepDebt: DETECTIVE_SLEEP_DEBT.start, active: [] };
 }
 
-function absoluteMinute(clock: RunClock): number {
+/** Minutes from the start of the run to the clock. */
+export function absoluteMinute(clock: RunClock): number {
   return (clock.day - 1) * MINUTES_PER_DAY + clock.minute;
 }
 

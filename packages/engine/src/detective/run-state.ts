@@ -22,6 +22,7 @@ import { TraitSchema, type Trait } from '../traits.js';
 import { DETECTIVE, DetectiveHeroSchema, type DetectiveHero } from './archetype.js';
 import {
   HeroConditionSchema,
+  absoluteMinute,
   initialCondition,
   passTime,
   withCondition,
@@ -32,6 +33,17 @@ import {
   type ConditionView,
 } from './condition.js';
 import { DetectiveCaseSchema, EntityIdSchema, type DetectiveCase, type Location } from './case-schema.js';
+import {
+  PendingEffectSchema,
+  SuppliesSchema,
+  initialSupplies,
+  splitPending,
+  viewPending,
+  viewSupplies,
+  withMeterDelta,
+  type PendingView,
+  type SupplyView,
+} from './consumables.js';
 import { GearIdSchema, KitItemSchema, initialKit, viewKit, withGearState, type KitView } from './gear.js';
 import { buildNeighbors } from './obtainability.js';
 import { CASE_SEAL_PATTERN, isCaseSealIntact, sealCase } from './seal.js';
@@ -76,6 +88,10 @@ export const DetectiveRunStateSchema = z
     signalEvents: z.array(DrawnSignalEventSchema).default([]),
     /** Found clues whose reading was garbled by fatigue; each must be read again before it is used as proof. */
     garbledClueIds: z.array(EntityIdSchema).default([]),
+    /** Consumables the hero carries, by count; they come from their background. Old saves have none. */
+    supplies: SuppliesSchema.default({}),
+    /** Prices of consumables that have not landed yet; the clock and the night apply them. */
+    pendingEffects: z.array(PendingEffectSchema).default([]),
   })
   .superRefine((run, context) => {
     if (!isCaseSealIntact(run)) {
@@ -169,6 +185,8 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     drawnEvents: [],
     signalEvents: [],
     garbledClueIds: [],
+    supplies: initialSupplies(input.hero.background),
+    pendingEffects: [],
   });
 }
 
@@ -245,7 +263,18 @@ export function revealTrait(run: DetectiveRunState, traitId: string): DetectiveR
 export function spendTime(run: DetectiveRunState, minutes: number): DetectiveRunState {
   assertActive(run);
   const clock = advanceClock(run.clock, minutes);
-  return { ...run, clock, condition: passTime(run.condition, run.clock, minutes) };
+  const passed = { ...run, clock, condition: passTime(run.condition, run.clock, minutes) };
+  return landPending(passed, false);
+}
+
+/**
+ * Lets the delayed prices that are due land: those whose minute has come and, at the night, those that wait
+ * for it. They land on the condition in the order they were scheduled.
+ */
+export function landPending(run: DetectiveRunState, night: boolean): DetectiveRunState {
+  const { due, waiting } = splitPending(run.pendingEffects, absoluteMinute(run.clock), night);
+  if (due.length === 0) return run;
+  return { ...run, condition: due.reduce(withMeterDelta, run.condition), pendingEffects: waiting };
 }
 
 /** The signal of the hero, if they chose one. */
@@ -343,6 +372,10 @@ export interface DetectiveRunView {
   readonly condition: ConditionView;
   /** The hero's gear and whether each piece is in hand or lost. */
   readonly kit: readonly KitView[];
+  /** Consumables in hand, by count. */
+  readonly supplies: readonly SupplyView[];
+  /** Prices that are on their way and have not landed yet. */
+  readonly pending: readonly PendingView[];
   /** Ids of the warnings the player is shown, such as `low-reputation`; they come from the meters' data. */
   readonly warnings: readonly string[];
   /** What the world has done so far, as the player was told: events whose day has come. */
@@ -410,6 +443,8 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     reputation: run.reputation,
     condition: viewCondition(run.condition),
     kit: viewKit(run.kit),
+    supplies: viewSupplies(run.supplies),
+    pending: viewPending(run.pendingEffects, absoluteMinute(run.clock)),
     warnings: warningsOfMeters(meterReadings(run)),
     news: detectiveCase.clock.worldEvents
       .filter(({ day }) => day <= run.clock.day)

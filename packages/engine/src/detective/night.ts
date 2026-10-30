@@ -17,7 +17,7 @@ import {
   type HeroCondition,
 } from './condition.js';
 import { settleSignalAtNight } from './signal-events.js';
-import type { DetectiveRunState } from './run-state.js';
+import { landPending, type DetectiveRunState } from './run-state.js';
 
 // The night is the main moment of recalculation, and it is ONE pure step over the state and the dice: the
 // same state and dice always give the same night. It restores the nerves only in part, by less each day,
@@ -160,7 +160,7 @@ export function passNight(
   const slept: DetectiveRunState = { ...run, condition, clock: { day: day + 1, minute } };
   // The random events come first and the signal after them: both are drawn on the same dice, and their
   // effects (an hour lost, a scare, a message) land on the new morning.
-  const drawn = drawEvents(slept, rng);
+  const drawn = drawEvents(landPending(slept, true), rng);
   const { run: settled, events: signalEvents } = settleSignalAtNight(drawn.run, rng);
   return {
     run: { ...settled, rngState: rng.state() },

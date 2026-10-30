@@ -19,6 +19,8 @@ export * from './detective/case-schema.js';
 export * from './detective/case-issue.js';
 export * from './detective/condition.js';
 export * from './detective/gear.js';
+export * from './detective/consumables.js';
+export * from './detective/use-item.js';
 export * from './detective/run-state.js';
 export * from './detective/actions.js';
 export * from './detective/interrogation.js';
