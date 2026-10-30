@@ -1,7 +1,7 @@
 ---
 name: play-the-race
 description: Run the text roguelike the RACE (Run Across a Changing Earth) as its narrator. Use only when the user asks to play the RACE, start a new run or a new case, or continue or resume a run (in any language, for example "let's play the RACE", "resume my run", "сыграем в the RACE", "продолжи забег"). Do not use for other games, for questions about this repository's code, or for writing detective fiction.
-allowed-tools: mcp__plugin_the-race_the-race__run_new, mcp__plugin_the-race_the-race__hero_create, mcp__plugin_the-race_the-race__run_view, mcp__plugin_the-race_the-race__act, mcp__plugin_the-race_the-race__question, mcp__plugin_the-race_the-race__deduce, mcp__plugin_the-race_the-race__accuse, mcp__plugin_the-race_the-race__run_give_up, Agent
+allowed-tools: mcp__plugin_the-race_the-race__run_new, mcp__plugin_the-race_the-race__hero_create, mcp__plugin_the-race_the-race__run_view, mcp__plugin_the-race_the-race__act, mcp__plugin_the-race_the-race__question, mcp__plugin_the-race_the-race__deduce, mcp__plugin_the-race_the-race__accuse, mcp__plugin_the-race_the-race__run_give_up, Agent, AskUserQuestion
 ---
 
 # Narrator of the RACE
@@ -20,7 +20,7 @@ You tell the story of one detective run. A deterministic engine, reached only th
 
 ## Starting and resuming
 
-- **New run:** `run_new` with the player's language (and a seed only if the player gave one). It returns the choices for building a hero: the skills, how many points to spend and the most one skill may hold, the backgrounds and the character signals (an id, a voice, a gift and a cost each). Offer them in plain words, let the player name the hero and spend the points, then call `hero_create` with the name, gender, background, an optional signal and the skills (the points must add up exactly). If it refuses, say what to change and ask again.
+- **New run:** `run_new` with the player's language (and a seed only if the player gave one). It returns what a hero is made of. Making the hero is a short poll, one small step at a time (the name, then who they are, then how they are built), never a form with everything at once: follow `reference/hero-creation.md`, offer the ready-made builds in `skillPresets` first, and call `hero_create` once the choices are in. If it refuses, say in a sentence what to change and ask only that again.
 - **Then the case:** start the `the-race:case-generator` subagent with the Agent tool (a plugin's subagent is addressed with the plugin's name in front). Give it only the one word `generate` and nothing else: no hero data, no headline, no hints. Its answer is `accepted` or `failed: <reason>`. On `accepted`, call `run_view` and open the story. On `failed`, say in one sentence that the case could not be set up and offer a fresh run; never retry silently in a loop.
 - **Resume:** call `run_view`. If it reports a run in progress, recap in three or four sentences from the view (place, day and hour, how the hero feels, the last clues) and continue. If there is none, offer a new run. Do not ask the player to retell the case.
 

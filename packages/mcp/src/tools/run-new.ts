@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { BACKGROUNDS, DETECTIVE, LOCALES, LocaleSchema } from '@the-race/engine';
+import { BACKGROUNDS, DETECTIVE, DETECTIVE_SKILL_PRESETS, LOCALES, LocaleSchema } from '@the-race/engine';
 import { loadRun } from '@the-race/saves';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
@@ -18,7 +18,8 @@ export const runNew = defineTool({
     "player wants to stop. Pass the player's language as `locale`, and a `seed` only if the player gave one. " +
     'It changes nothing about a finished run, and calling it again before the hero exists simply starts over ' +
     'with a fresh seed. The result is what the player may choose from when making the hero: the skills and the ' +
-    'points to spend on them (all of them, no more, no skill above `maxSkillLevel`), the backgrounds, the ' +
+    'points to spend on them (all of them, no more, no skill above `maxSkillLevel`), ready-made builds of those ' +
+    'points (`skillPresets`: offer these first, a player may still spend the points one by one), the backgrounds, the ' +
     'character signals (ids with a voice, a gift and a cost to be told from the locale text) and the ' +
     "languages. Next call hero_create with the player's choices.",
   inputSchema: z.object({
@@ -31,6 +32,7 @@ export const runNew = defineTool({
     skills: z.array(z.string()),
     skillPoints: z.int(),
     maxSkillLevel: z.int(),
+    skillPresets: z.array(z.object({ id: z.string(), skills: z.record(z.string(), z.int()) })),
     backgrounds: z.array(z.string()),
     signals: z.array(z.object({ id: z.string(), voice: z.string(), gift: z.string(), cost: z.string() })),
     locales: z.array(z.string()),
@@ -57,6 +59,7 @@ export const runNew = defineTool({
       skills: [...DETECTIVE.skills],
       skillPoints: DETECTIVE.skillPoints,
       maxSkillLevel: DETECTIVE.maxSkillLevel,
+      skillPresets: DETECTIVE_SKILL_PRESETS.map(({ id, skills }) => ({ id, skills: { ...skills } })),
       backgrounds: [...BACKGROUNDS],
       signals: DETECTIVE.signals.map(({ id, voice, gift, cost }) => ({ id, voice, gift, cost })),
       locales: [...LOCALES],
