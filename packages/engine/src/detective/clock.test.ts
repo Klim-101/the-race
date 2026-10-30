@@ -374,7 +374,8 @@ describe('the event log', () => {
     }
     expect([...fired].sort()).toEqual([0, 1]);
     expect(reasons.has('culprit-fled')).toBe(true);
-  });
+    // Hundreds of replays: over the default limit when the whole suite runs under coverage.
+  }, 30_000);
 
   it('is diverged when the recorded reason is not the one the rules give', () => {
     const initial = newRun(mixed, 4);
