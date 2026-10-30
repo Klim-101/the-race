@@ -3,6 +3,7 @@
 
 import { z } from 'zod';
 import type { Rng } from '../dice.js';
+import { statusOfEndReason } from '../run.js';
 import { EntityIdSchema, type Truth } from './case-schema.js';
 import { addInsight, endRun, endTurn, spendTime, type DetectiveRunState } from './run-state.js';
 import { assertCaseSealIntact } from './seal.js';
@@ -168,7 +169,7 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
 
   return {
     ok: true,
-    run: endRun(endTurn(run, rng), verdict === 'proven' ? 'won' : 'lost'),
+    run: endRun(endTurn(run, rng), statusOfEndReason(verdict), verdict),
     outcome: {
       kind: 'accuse',
       verdict,

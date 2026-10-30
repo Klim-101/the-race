@@ -225,6 +225,7 @@ describe('deriveStats', () => {
       criticalFailures: 0,
       verdict: null,
       status: 'active',
+      endReason: null,
       clock: null,
     });
   });

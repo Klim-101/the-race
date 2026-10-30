@@ -122,9 +122,24 @@ export const SolutionSchema = z.object({
 });
 export type Solution = z.infer<typeof SolutionSchema>;
 
+/**
+ * What a scheduled event does to the run, beyond being news. Both effects are the engine's to apply:
+ * - `culprit-flees`: the culprit gets away on that day, and a case still unsolved is lost;
+ * - `location-closes`: the place can no longer be entered from that day (clues already found stay found).
+ */
+export const WorldEventEffectSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('culprit-flees') }),
+  z.object({ kind: z.literal('location-closes'), locationId: EntityIdSchema }),
+]);
+export type WorldEventEffect = z.infer<typeof WorldEventEffectSchema>;
+
 export const WorldEventSchema = z.object({
+  /** The day on which the event fires, as that day begins. */
   day: z.int().min(1),
+  /** What the player is told; it must not give away the truth. */
   description: NarrativeTextSchema,
+  /** Absent for an event that is only news. */
+  effect: WorldEventEffectSchema.optional(),
 });
 export type WorldEvent = z.infer<typeof WorldEventSchema>;
 

@@ -4,10 +4,18 @@
 import { z } from 'zod';
 import { canonicalJson } from '../canonical-json.js';
 import { restoreRng } from '../dice.js';
-import { RunClockSchema, RunStatusSchema, type RunClock, type RunStatus } from '../run.js';
+import {
+  EndReasonSchema,
+  RunClockSchema,
+  RunStatusSchema,
+  type EndReason,
+  type RunClock,
+  type RunStatus,
+} from '../run.js';
 import { IntentSchema, resolveIntent, type Intent, type Resolution } from './actions.js';
 import { HeroConditionSchema } from './condition.js';
 import { EntityIdSchema } from './case-schema.js';
+import { daysPassed } from './clock.js';
 import { INTERROGATION_APPROACHES } from './interrogation.js';
 import type { DetectiveRunState } from './run-state.js';
 import { VERDICTS, type Verdict } from './verdict.js';
@@ -111,6 +119,10 @@ export const LogEntrySchema = z.object({
   /** Nerves, sleep debt and conditions after the turn, so that a replay reproduces what wears off. */
   condition: HeroConditionSchema,
   status: RunStatusSchema,
+  /** Why the run ended on this turn; `null` while it goes on, and for a log from before reasons. */
+  endReason: EndReasonSchema.nullable().default(null),
+  /** The scheduled events (indices into the case's `clock.worldEvents`) that fired as the days turned. */
+  worldEvents: z.array(z.int().min(0)).default([]),
 });
 export type LogEntry = z.infer<typeof LogEntrySchema>;
 
@@ -142,6 +154,8 @@ function entryOf(before: DetectiveRunState, intent: Intent, resolution: Resoluti
     reputation: after.reputation,
     condition: after.condition,
     status: after.status,
+    endReason: after.endReason,
+    worldEvents: daysPassed(before.case, before.clock.day, after.clock.day).firedEventIndexes,
   });
 }
 
@@ -225,6 +239,8 @@ export interface RunStats {
   readonly verdict: Verdict | null;
   /** The status of the run after its last turn. */
   readonly status: RunStatus;
+  /** Why the run ended, or `null` while it goes on. */
+  readonly endReason: EndReason | null;
   /** The clock after its last turn, or `null` for an empty log. */
   readonly clock: RunClock | null;
 }
@@ -256,6 +272,7 @@ export function deriveStats(log: RunLog): RunStats {
     criticalFailures: rolls.filter(({ critical }) => critical === 'failure').length,
     verdict,
     status: last?.status ?? 'active',
+    endReason: last?.endReason ?? null,
     clock: last?.clock ?? null,
   };
 }
