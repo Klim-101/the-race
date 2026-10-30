@@ -3,7 +3,6 @@
 
 import { z } from 'zod';
 import type { Rng } from './dice.js';
-import { SkillSchema, type Skill } from './hero.js';
 
 /** Every hero carries exactly this many hidden traits. */
 export const HERO_TRAIT_COUNT = 2;
@@ -24,7 +23,7 @@ export const TraitEffectSchema = z.discriminatedUnion('kind', [
   // A bonus or penalty on checks of the listed skills, or on every check.
   z.object({
     kind: z.literal('modifier'),
-    skills: z.union([z.literal('all'), z.array(SkillSchema).min(1)]),
+    skills: z.union([z.literal('all'), z.array(z.string().min(1)).min(1)]),
     amount: z.int().refine((amount) => amount !== 0, { message: 'A modifier of zero does nothing.' }),
   }),
   // The clue is found without a check.
@@ -36,46 +35,19 @@ export const TraitEffectSchema = z.discriminatedUnion('kind', [
 ]);
 export type TraitEffect = z.infer<typeof TraitEffectSchema>;
 
-export const TraitIdSchema = z.enum([
-  'former-accountant',
-  'debtor',
-  'photographic-memory',
-  'claustrophobe',
-  'old-enemy-in-the-police',
-]);
-export type TraitId = z.infer<typeof TraitIdSchema>;
-
 export const TraitSchema = z.object({
-  id: TraitIdSchema,
+  id: z.string().min(1),
   trigger: TraitTriggerSchema,
   effect: TraitEffectSchema,
 });
 export type Trait = z.infer<typeof TraitSchema>;
 
-export const TRAIT_CATALOGUE: readonly Trait[] = [
-  {
-    id: 'former-accountant',
-    trigger: 'financial-documents',
-    effect: { kind: 'modifier', skills: ['logic', 'observation'], amount: 3 },
-  },
-  { id: 'debtor', trigger: 'second-day', effect: { kind: 'spawn-event', event: 'debt-collector' } },
-  { id: 'photographic-memory', trigger: 'reinspection', effect: { kind: 'auto-discover' } },
-  { id: 'claustrophobe', trigger: 'confined-space', effect: { kind: 'modifier', skills: 'all', amount: -3 } },
-  {
-    id: 'old-enemy-in-the-police',
-    trigger: 'police-contact',
-    effect: { kind: 'lock-out', source: 'police-data' },
-  },
-];
-
-/** Draws distinct traits from the catalogue; a given seed always draws the same ones. */
-export function rollTraits(rng: Rng, count: number = HERO_TRAIT_COUNT): Trait[] {
-  if (!Number.isInteger(count) || count < 0 || count > TRAIT_CATALOGUE.length) {
-    throw new RangeError(
-      `Cannot draw ${String(count)} distinct traits from ${String(TRAIT_CATALOGUE.length)}.`,
-    );
+/** Draws distinct traits from a catalogue; a given seed always draws the same ones. */
+export function rollTraits(rng: Rng, catalogue: readonly Trait[], count: number = HERO_TRAIT_COUNT): Trait[] {
+  if (!Number.isInteger(count) || count < 0 || count > catalogue.length) {
+    throw new RangeError(`Cannot draw ${String(count)} distinct traits from ${String(catalogue.length)}.`);
   }
-  const pool = [...TRAIT_CATALOGUE];
+  const pool = [...catalogue];
   const drawn: Trait[] = [];
   for (let index = 0; index < count; index += 1) {
     drawn.push(...pool.splice(rng.roll(pool.length) - 1, 1));
@@ -87,7 +59,7 @@ export function rollTraits(rng: Rng, count: number = HERO_TRAIT_COUNT): Trait[] 
 export function traitModifier(
   traits: readonly Trait[],
   situations: readonly TraitTrigger[],
-  skill: Skill,
+  skill: string,
 ): number {
   let total = 0;
   for (const { trigger, effect } of traits) {

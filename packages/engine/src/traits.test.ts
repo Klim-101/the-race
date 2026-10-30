@@ -2,28 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
+import { DETECTIVE_TRAITS } from './detective/traits.js';
 import { createRng } from './dice.js';
-import {
-  HERO_TRAIT_COUNT,
-  TRAIT_CATALOGUE,
-  TraitSchema,
-  rollTraits,
-  traitModifier,
-  type Trait,
-} from './traits.js';
+import { HERO_TRAIT_COUNT, TraitSchema, rollTraits, traitModifier, type Trait } from './traits.js';
 
 const trait = (id: Trait['id']): Trait => {
-  const found = TRAIT_CATALOGUE.find((candidate) => candidate.id === id);
+  const found = DETECTIVE_TRAITS.find((candidate) => candidate.id === id);
   if (!found) throw new Error(`No trait ${id}`);
   return found;
 };
 
-describe('TRAIT_CATALOGUE', () => {
+describe('DETECTIVE_TRAITS', () => {
   it('holds valid traits with unique ids', () => {
-    for (const entry of TRAIT_CATALOGUE) {
+    for (const entry of DETECTIVE_TRAITS) {
       expect(TraitSchema.safeParse(entry).success).toBe(true);
     }
-    expect(new Set(TRAIT_CATALOGUE.map(({ id }) => id)).size).toBe(TRAIT_CATALOGUE.length);
+    expect(new Set(DETECTIVE_TRAITS.map(({ id }) => id)).size).toBe(DETECTIVE_TRAITS.length);
   });
 
   it('rejects a modifier that does nothing', () => {
@@ -35,34 +29,38 @@ describe('TRAIT_CATALOGUE', () => {
 
 describe('rollTraits', () => {
   it('draws the standard number of distinct traits', () => {
-    const traits = rollTraits(createRng('hero'));
+    const traits = rollTraits(createRng('hero'), DETECTIVE_TRAITS);
 
     expect(traits).toHaveLength(HERO_TRAIT_COUNT);
     expect(new Set(traits.map(({ id }) => id)).size).toBe(HERO_TRAIT_COUNT);
   });
 
   it('draws the same traits for the same seed', () => {
-    expect(rollTraits(createRng('same'))).toEqual(rollTraits(createRng('same')));
+    expect(rollTraits(createRng('same'), DETECTIVE_TRAITS)).toEqual(
+      rollTraits(createRng('same'), DETECTIVE_TRAITS),
+    );
   });
 
   it('can reach every trait in the catalogue', () => {
     const seen = new Set<string>();
     for (let seed = 0; seed < 200; seed += 1) {
-      for (const { id } of rollTraits(createRng(seed))) seen.add(id);
+      for (const { id } of rollTraits(createRng(seed), DETECTIVE_TRAITS)) seen.add(id);
     }
 
-    expect(seen.size).toBe(TRAIT_CATALOGUE.length);
+    expect(seen.size).toBe(DETECTIVE_TRAITS.length);
   });
 
   it('draws the whole catalogue when asked, and nothing when asked for zero', () => {
-    expect(rollTraits(createRng(1), TRAIT_CATALOGUE.length)).toHaveLength(TRAIT_CATALOGUE.length);
-    expect(rollTraits(createRng(1), 0)).toEqual([]);
+    expect(rollTraits(createRng(1), DETECTIVE_TRAITS, DETECTIVE_TRAITS.length)).toHaveLength(
+      DETECTIVE_TRAITS.length,
+    );
+    expect(rollTraits(createRng(1), DETECTIVE_TRAITS, 0)).toEqual([]);
   });
 
   it('rejects counts the catalogue cannot satisfy', () => {
-    expect(() => rollTraits(createRng(1), -1)).toThrow(RangeError);
-    expect(() => rollTraits(createRng(1), 1.5)).toThrow(RangeError);
-    expect(() => rollTraits(createRng(1), TRAIT_CATALOGUE.length + 1)).toThrow(RangeError);
+    expect(() => rollTraits(createRng(1), DETECTIVE_TRAITS, -1)).toThrow(RangeError);
+    expect(() => rollTraits(createRng(1), DETECTIVE_TRAITS, 1.5)).toThrow(RangeError);
+    expect(() => rollTraits(createRng(1), DETECTIVE_TRAITS, DETECTIVE_TRAITS.length + 1)).toThrow(RangeError);
   });
 });
 
