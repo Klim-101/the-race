@@ -82,15 +82,6 @@ function refuse(
   return { ok: false, refusal: { code, message } };
 }
 
-/**
- * Where a suspect can be found: the place of their last entry in the timeline of the case. A suspect the
- * timeline does not follow can be talked to anywhere.
- */
-function suspectPlace(run: DetectiveRunState, suspectId: string): string | null {
-  const entries = run.case.truth.timeline.filter(({ actorId }) => actorId === suspectId);
-  return entries.at(-1)?.locationId ?? null;
-}
-
 /** The suspect's standing lies that one of the shown clues breaks. */
 function brokenLies(run: DetectiveRunState, suspect: Suspect, shown: readonly string[]): Lie[] {
   return suspect.lies.filter(
@@ -103,8 +94,8 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
   if (!suspect) {
     return refuse('unknown-suspect', `There is no suspect "${intent.suspectId}".`);
   }
-  const place = suspectPlace(run, suspect.id);
-  if (place !== null && place !== run.locationId) {
+  // The public location, never the sealed timeline, which may hint at the crime scene.
+  if (suspect.locationId !== undefined && suspect.locationId !== run.locationId) {
     return refuse('suspect-elsewhere', `"${suspect.id}" is not at the hero's place.`);
   }
   // An id that names no clue and one the hero has not found are refused alike, so that asking cannot

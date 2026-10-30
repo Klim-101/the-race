@@ -107,6 +107,7 @@ export function buildCheeseCase(): Record<string, unknown> & {
     suspects: [
       {
         id: 'baker',
+        locationId: 'cheese-stall',
         name: 'Orla Brenn',
         persona: 'A cheerful baker with flour up to the elbows.',
         secret: 'She owes the town for an oven she cannot pay for.',
@@ -117,6 +118,7 @@ export function buildCheeseCase(): Record<string, unknown> & {
       },
       {
         id: 'rival',
+        locationId: 'market-square',
         name: 'Gustav Holm',
         persona: 'A rival cheesemaker who lost the fair contract.',
         secret: 'He sneaked into the fair to taste the competition.',

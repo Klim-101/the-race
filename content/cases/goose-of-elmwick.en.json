@@ -162,6 +162,7 @@
   "suspects": [
     {
       "id": "postmaster",
+      "locationId": "post-office",
       "name": "Wilhelmina Tuck",
       "persona": "The retired Elmwick postmaster, small, brisk and eighty-one, who knits during interrogations and answers every question with a question about your mother.",
       "secret": "Her late husband's love letters are hidden in the goose's stand, and the auction was about to sell them to a stranger along with the bird.",
@@ -176,6 +177,7 @@
     },
     {
       "id": "curator",
+      "locationId": "museum-hall",
       "name": "Alaric Pell",
       "persona": "The museum curator, a nervous man in a waistcoat the same colour as the goose's, who apologises to display cases when he bumps into them.",
       "secret": "He sleeps in his office on gala eves because he is afraid of oversleeping, and he is quietly relieved the goose is gone, as it was overinsured.",
@@ -190,6 +192,7 @@
     },
     {
       "id": "caterer",
+      "locationId": "tea-shop",
       "name": "Quentin Moss",
       "persona": "The gala's caterer, a large man with flour in his moustache and a bitter feud with the town's goose population.",
       "secret": "He baked three hundred goose-shaped biscuits and burnt the lot, so he has been creeping around the courtyard at night, hoping to bake again unseen.",
@@ -204,6 +207,7 @@
     },
     {
       "id": "apprentice",
+      "locationId": "boiler-room",
       "name": "Pip Dobbin",
       "persona": "The museum's apprentice, nineteen, a boy who agrees with whoever spoke last and sweats in an unusually interesting way.",
       "secret": "He was paid in toffee to help move a heavy hatbox and has been too frightened to say so.",
