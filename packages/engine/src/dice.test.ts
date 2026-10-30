@@ -3,7 +3,46 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildHero } from '../test/fixtures/cheese-case.js';
-import { createRng, D20_SIDES, restoreRng, rollCheck } from './dice.js';
+import { createRng, D20_SIDES, passChance, passChanceWithoutLuck, restoreRng, rollCheck } from './dice.js';
+
+describe('passChance', () => {
+  it('counts the faces of the d20, with a natural 20 always in and a natural 1 always out', () => {
+    expect(passChance(0, 0, 11)).toBe(10 / 20); // 11 to 20
+    expect(passChance(0, 0, 1)).toBe(19 / 20); // every face but the natural 1
+    expect(passChance(0, 0, 40)).toBe(1 / 20); // only the natural 20
+    expect(passChance(30, 0, 1)).toBe(19 / 20);
+  });
+
+  it('reads the modifier and the skill the same way', () => {
+    expect(passChance(2, 1, 13)).toBe(passChance(0, 0, 10));
+    expect(passChance(0, -3, 11)).toBe(passChance(0, 0, 14));
+  });
+
+  it('can leave out the luck of a natural 20', () => {
+    expect(passChanceWithoutLuck(0, 0, 11)).toBe(9 / 20); // 11 to 19
+    expect(passChanceWithoutLuck(0, 0, 40)).toBe(0);
+    expect(passChanceWithoutLuck(30, 0, 1)).toBe(18 / 20);
+  });
+
+  it('agrees with the frequency of rollCheck successes over many seeded rolls', () => {
+    const rolls = 20000;
+    for (const difficulty of [1, 5, 10, 15, 20, 25, 40]) {
+      for (const skillLevel of [0, 2, 5]) {
+        for (const modifier of [-2, 0, 3]) {
+          const rng = createRng(`chance-${String(difficulty)}-${String(skillLevel)}-${String(modifier)}`);
+          let successes = 0;
+          for (let index = 0; index < rolls; index += 1) {
+            const check = { skill: 'perception', difficulty } as const;
+            if (rollCheck(rng, { perception: skillLevel }, check, modifier).success) successes += 1;
+          }
+          expect(Math.abs(successes / rolls - passChance(skillLevel, modifier, difficulty))).toBeLessThan(
+            0.02,
+          );
+        }
+      }
+    }
+  });
+});
 
 /** A seed whose first d20 roll is `die`, so a test can pick the roll it needs. */
 function seedRolling(die: number): number {

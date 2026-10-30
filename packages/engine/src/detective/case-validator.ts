@@ -14,6 +14,7 @@ import { checkRedHerrings } from './checks/red-herrings.js';
 import { checkReferences } from './checks/references.js';
 import { checkSuspectReachability } from './checks/suspect-reachability.js';
 import { checkSolution } from './checks/solution.js';
+import { checkSolveChance } from './checks/solve-chance.js';
 import { checkTexts } from './checks/texts.js';
 import { checkTimeline } from './checks/timeline.js';
 import { checkWorldEvents } from './checks/world-events.js';
@@ -64,6 +65,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...checkReachability(detectiveCase, obtainable),
     ...checkSuspectReachability(detectiveCase, obtainable),
     ...checkSolution(detectiveCase, context.hero, context.traits, obtainable),
+    ...checkSolveChance(detectiveCase, context.hero, context.traits, obtainable),
     ...checkLies(detectiveCase, obtainable),
     ...checkTimeline(detectiveCase),
     ...checkWorldEvents(detectiveCase, context.hero, context.traits),

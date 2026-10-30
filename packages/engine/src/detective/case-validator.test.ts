@@ -441,7 +441,10 @@ describe('validateCase', () => {
       detectiveCase.locations[3]!.situations = ['high-society'];
 
       expect(issueCodes(detectiveCase)).toContain('unreachable-location');
-      expect(issueCodes(detectiveCase, context({ traits: [trait('well-connected')] }))).toEqual([]);
+      // The bonus makes the door possible, not likely: luck is left out, so the chance is still too small.
+      expect(issueCodes(detectiveCase, context({ traits: [trait('well-connected')] }))).toEqual([
+        'unlikely-solution',
+      ]);
     });
 
     it('lets an optional police-data clue stay closed to the hero without failing the case', () => {
