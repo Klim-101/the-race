@@ -7,6 +7,7 @@ import { collectModifier } from '../modifiers.js';
 import type { CheckDetail, Consequence, Resolution } from './actions.js';
 import { modifierSources } from './condition.js';
 import { EntityIdSchema, type Lie, type Suspect } from './case-schema.js';
+import { suspectPlace } from './random-events.js';
 import { changeReputation, endTurn, spendTime, strainNerves, type DetectiveRunState } from './run-state.js';
 
 // This file depends on `actions.ts` for types only: `actions.ts` imports the intent schema from here.
@@ -96,7 +97,8 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
     return refuse('unknown-suspect', `There is no suspect "${intent.suspectId}".`);
   }
   // The public location, never the sealed timeline, which may hint at the crime scene.
-  if (suspect.locationId !== undefined && suspect.locationId !== run.locationId) {
+  const place = suspectPlace(run, suspect);
+  if (place !== undefined && place !== run.locationId) {
     return refuse('suspect-elsewhere', `"${suspect.id}" is not at the hero's place.`);
   }
   // An id that names no clue and one the hero has not found are refused alike, so that asking cannot
