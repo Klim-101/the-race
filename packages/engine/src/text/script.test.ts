@@ -16,7 +16,7 @@ describe('isInLocaleScript', () => {
   });
 
   it('tolerates a foreign brand inside a sentence', () => {
-    expect(isInLocaleScript('Акции компании Nordell упали на бирже Вальдмарка.', 'ru')).toBe(true);
+    expect(isInLocaleScript('Акции компании Nordell упали на бирже Эльмвика.', 'ru')).toBe(true);
   });
 
   it('does not judge texts with too few letters', () => {

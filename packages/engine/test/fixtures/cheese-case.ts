@@ -21,7 +21,7 @@ export function buildCheeseCase(): Record<string, unknown> & {
     locale: 'en',
     crimeType: 'curious-theft',
     tone: 'absurd',
-    title: 'The Vanishing Wheel of Valdmark',
+    title: 'The Vanishing Wheel of Elmwick',
     premise: 'On the morning of the harvest fair, the giant cheese wheel is gone from its stall.',
     startLocationId: 'market-square',
     locations: [
