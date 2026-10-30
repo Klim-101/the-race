@@ -2,7 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { join } from 'node:path';
-import { endTurn, createRng, findClue, moveTo, type DetectiveRunState } from '@the-race/engine';
+import {
+  endTurn,
+  createRng,
+  findClue,
+  moveTo,
+  RUN_SCHEMA_VERSION,
+  type DetectiveRunState,
+} from '@the-race/engine';
 import { describe, expect, it } from 'vitest';
 import { WALK, newRun, playTurns } from '../test/new-run.js';
 import { defaultSaveDir, loadRun, runFiles, saveRun } from './run-store.js';
@@ -114,7 +121,7 @@ describe('saveRun and loadRun', () => {
     const loaded = await loadRun(DIR, fs);
 
     expect(loaded).toMatchObject({ ok: false, reason: 'unsupported-version' });
-    expect(loaded.ok ? '' : loaded.detail).toMatch(/99.*newer.*1/);
+    expect(loaded.ok ? '' : loaded.detail).toMatch(new RegExp(`99.*newer.*${String(RUN_SCHEMA_VERSION)}`));
   });
 
   it('reports an older version with no migration as unsupported', async () => {
@@ -146,6 +153,8 @@ describe('loading an older save', () => {
       const { turnNumber, ...rest } = raw;
       return { ...rest, turn: turnNumber };
     },
+    // The real step from version 1 moves the clock; the made-up save already has a current clock.
+    1: (raw: Readonly<Record<string, unknown>>) => raw,
   };
   function oldSave(run: DetectiveRunState): string {
     const { turn, ...rest } = run;
@@ -163,7 +172,7 @@ describe('loading an older save', () => {
     expect(JSON.parse(fs.files.get(FILES.current) ?? '')).toHaveProperty('schemaVersion', 0);
 
     await saveRun(DIR, run, fs);
-    expect(JSON.parse(fs.files.get(FILES.current) ?? '')).toHaveProperty('schemaVersion', 1);
+    expect(JSON.parse(fs.files.get(FILES.current) ?? '')).toHaveProperty('schemaVersion', RUN_SCHEMA_VERSION);
   });
 
   it('reports a migration that throws as corrupt', async () => {
@@ -182,7 +191,10 @@ describe('loading an older save', () => {
     const fs = memoryFs();
     fs.files.set(FILES.current, oldSave(newRun()));
 
-    expect(await loadRun(DIR, fs, { 0: () => ({}) })).toMatchObject({ ok: false, reason: 'corrupt' });
+    expect(await loadRun(DIR, fs, { 0: () => ({}), 1: (raw) => raw })).toMatchObject({
+      ok: false,
+      reason: 'corrupt',
+    });
   });
 });
 

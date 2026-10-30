@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { RUN_SCHEMA_VERSION } from './run.js';
+import { DAY_START_MINUTE, MINUTES_PER_DAY, RUN_SCHEMA_VERSION } from './run.js';
 import { migrateRun, RUN_MIGRATIONS, RunMigrationError, type RunMigrationRegistry } from './migrations.js';
 
 // A made-up history: v1 -> v2 added `flag`, v2 -> v3 added `extra`.
@@ -21,8 +21,29 @@ function codeOf(fn: () => unknown): string | undefined {
 }
 
 describe('migrateRun', () => {
-  it('has no real migrations until a second schema version exists', () => {
-    expect(RUN_MIGRATIONS).toEqual({});
+  it('moves a version 1 clock, counted from minute 0, to the time of day', () => {
+    const old = { schemaVersion: 1, clock: { day: 2, minute: 90 }, turn: 4 };
+
+    expect(migrateRun(old)).toEqual({
+      schemaVersion: RUN_SCHEMA_VERSION,
+      clock: { day: 2, minute: 90 + DAY_START_MINUTE },
+      turn: 4,
+    });
+    expect(migrateRun({ schemaVersion: 1, clock: { day: 1, minute: 0 } })).toMatchObject({
+      clock: { day: 1, minute: DAY_START_MINUTE },
+    });
+  });
+
+  it('keeps the minute inside the day', () => {
+    const raw = { schemaVersion: 1, clock: { day: 1, minute: MINUTES_PER_DAY - 1 } };
+
+    expect(migrateRun(raw)).toMatchObject({ clock: { minute: DAY_START_MINUTE - 1 } });
+  });
+
+  it('fails the step for a save without a clock', () => {
+    expect(codeOf(() => migrateRun({ schemaVersion: 1 }))).toBe('step-failed');
+    expect(codeOf(() => migrateRun({ schemaVersion: 1, clock: { day: 1 } }))).toBe('step-failed');
+    expect(Object.keys(RUN_MIGRATIONS)).toEqual(['1']);
   });
 
   it('returns a current-version save as it is', () => {

@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { RUN_SCHEMA_VERSION } from './run.js';
+import { DAY_START_MINUTE, MINUTES_PER_DAY, RUN_SCHEMA_VERSION } from './run.js';
 
 /** A save as plain JSON, before any schema has looked at it. */
 export type RawRun = Readonly<Record<string, unknown>>;
@@ -13,10 +13,20 @@ export type RunMigration = (raw: RawRun) => RawRun;
 export type RunMigrationRegistry = Readonly<Record<number, RunMigration>>;
 
 /**
- * Empty while schema version 1 is the only one that has shipped. A schema change adds the step from the
- * old version here, in the same change that bumps `RUN_SCHEMA_VERSION`.
+ * Version 1 counted a day's minutes from its start, a run beginning at minute 0; from version 2 the clock
+ * reads as the time of day and every day starts at `DAY_START_MINUTE` (08:00). The old minute is moved
+ * by that offset, so a save carries on at the same point of its day: minute 0 becomes 08:00. A schema
+ * change adds the step from the old version here, in the same change that bumps `RUN_SCHEMA_VERSION`.
  */
-export const RUN_MIGRATIONS: RunMigrationRegistry = {};
+function startTheDayAtEight(raw: RawRun): RawRun {
+  const { clock } = raw;
+  if (!isRecord(clock) || typeof clock.minute !== 'number') {
+    throw new TypeError('The save has no clock to move.');
+  }
+  return { ...raw, clock: { ...clock, minute: (clock.minute + DAY_START_MINUTE) % MINUTES_PER_DAY } };
+}
+
+export const RUN_MIGRATIONS: RunMigrationRegistry = { 1: startTheDayAtEight };
 
 export const RUN_MIGRATION_ERROR_CODES = [
   'not-an-object',

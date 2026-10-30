@@ -24,7 +24,7 @@ describe('buildResumeSummary', () => {
     expect(text).toContain(base.traits[0]?.id);
     expect(text).toContain(`${RESUME_LABELS.hiddenTraits}: 1`);
     expect(text).toContain('Day 1 of');
-    expect(text).toContain('00:00');
+    expect(text).toContain('08:00');
   });
 
   it('says "none" for what the hero has not found yet and marks visited exits', () => {

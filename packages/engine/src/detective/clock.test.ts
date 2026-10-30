@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { createRng, restoreRng } from '../dice.js';
 import { endReasonOfMeters } from '../meters.js';
-import { END_REASONS, MAX_REPUTATION, statusOfEndReason } from '../run.js';
+import { DAY_START_MINUTE, END_REASONS, MAX_REPUTATION, MINUTES_PER_DAY, statusOfEndReason } from '../run.js';
 import { resolveIntent } from './actions.js';
 import { validateCase } from './case-validator.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
@@ -60,6 +60,9 @@ const at = (run: DetectiveRunState, day: number, minute: number): DetectiveRunSt
   ...run,
   clock: { day, minute },
 });
+/** Where the clock stands when an action has carried it past midnight, into `day`. */
+const pastMidnight = (run: DetectiveRunState, day: number, minute = 0): DetectiveRunState =>
+  at(run, day, minute);
 
 function resolved(run: DetectiveRunState, intent: unknown): DetectiveRunState {
   const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
@@ -176,17 +179,37 @@ describe('daysPassed', () => {
   });
 });
 
+describe('the start of the day', () => {
+  it('puts a new run at 08:00 of day 1 with sixteen active hours before the night', () => {
+    const run = newRun();
+
+    expect(run.clock).toEqual({ day: 1, minute: DAY_START_MINUTE });
+    expect(DAY_START_MINUTE).toBe(8 * 60);
+    expect(DAY_START_MINUTE + ACTIVE_MINUTES_PER_DAY).toBe(MINUTES_PER_DAY);
+  });
+
+  it('gives a fresh hero no sleep debt and carries the night over to 08:00 of the next day', () => {
+    const run = newRun();
+    expect(run.condition.sleepDebt).toBe(0);
+
+    const late = resolved(at(run, 1, MINUTES_PER_DAY - 1), { kind: 'look' });
+
+    expect(late.clock).toEqual({ day: 2, minute: DAY_START_MINUTE });
+    expect(late.status).toBe('active');
+  });
+});
+
 describe('settleClock', () => {
   it('leaves a turn inside the active hours alone', () => {
-    const run = at(newRun(), 1, ACTIVE_MINUTES_PER_DAY - 1);
+    const run = at(newRun(), 1, MINUTES_PER_DAY - 1);
 
     expect(settleClock(run, 1)).toBe(run);
   });
 
   it('passes the night when the active hours are spent', () => {
-    const settled = settleClock(at(newRun(), 1, ACTIVE_MINUTES_PER_DAY), 1);
+    const settled = settleClock(pastMidnight(newRun(), 2), 1);
 
-    expect(settled.clock).toEqual({ day: 2, minute: 0 });
+    expect(settled.clock).toEqual({ day: 2, minute: DAY_START_MINUTE });
     expect(settled.status).toBe('active');
   });
 
@@ -203,20 +226,20 @@ describe('settleClock', () => {
     });
     expect(viewRun(run).news).toEqual([]);
 
-    const settled = settleClock(at(run, 1, ACTIVE_MINUTES_PER_DAY + 5), 1);
+    const settled = settleClock(pastMidnight(run, 2, 5), 1);
 
     expect(settled.closedLocationIds).toEqual(['storage-cellar']);
     expect(viewRun(settled).news).toEqual(['The cellar floods.']);
   });
 
   it('loses the run when the days run out', () => {
-    const settled = settleClock(at(newRun(), 3, ACTIVE_MINUTES_PER_DAY), 3);
+    const settled = settleClock(pastMidnight(newRun(), 4), 3);
 
     expect(settled).toMatchObject({ status: 'lost', endReason: 'time-ran-out' });
   });
 
   it('loses the run when the culprit flees before the case is solved', () => {
-    const settled = settleClock(at(newRun(fleeOnDay(2)), 1, ACTIVE_MINUTES_PER_DAY), 1);
+    const settled = settleClock(pastMidnight(newRun(fleeOnDay(2)), 2), 1);
 
     expect(settled).toMatchObject({ status: 'lost', endReason: 'culprit-fled', clock: { day: 2 } });
   });
@@ -234,7 +257,7 @@ describe('settleClock', () => {
   });
 
   it('reports the culprit fleeing before reputation, as the world moved first', () => {
-    const run = changeReputation(at(newRun(fleeOnDay(2)), 1, ACTIVE_MINUTES_PER_DAY), -MAX_REPUTATION);
+    const run = changeReputation(pastMidnight(newRun(fleeOnDay(2)), 2), -MAX_REPUTATION);
 
     expect(settleClock(run, 1).endReason).toBe('culprit-fled');
   });
@@ -263,9 +286,9 @@ describe('a breakdown', () => {
   });
 
   it('comes after the world and after reputation when several hold at once', () => {
-    const fled = at(withNerves(newRun(fleeOnDay(2)), 0, 2), 1, ACTIVE_MINUTES_PER_DAY);
+    const fled = pastMidnight(withNerves(newRun(fleeOnDay(2)), 0, 2), 2);
     expect(settleClock(fled, 1).endReason).toBe('culprit-fled');
-    const ranOut = at(withNerves(newRun(), 0, 2), 3, ACTIVE_MINUTES_PER_DAY);
+    const ranOut = pastMidnight(withNerves(newRun(), 0, 2), 4);
     expect(settleClock(ranOut, 3).endReason).toBe('time-ran-out');
     expect(settleClock(withNerves(newRun(), 0, 0), 1).endReason).toBe('reputation-zero');
   });
@@ -320,7 +343,7 @@ describe('closed places', () => {
 
 describe('a turn that ends the run', () => {
   it('is lost on time when an action carries the clock past the last night', () => {
-    const run = at(newRun(), 3, ACTIVE_MINUTES_PER_DAY - 1);
+    const run = at(newRun(), 3, MINUTES_PER_DAY - 1);
 
     const after = resolved(run, { kind: 'look' });
 
@@ -328,7 +351,7 @@ describe('a turn that ends the run', () => {
   });
 
   it('is lost to the culprit on the day the event names', () => {
-    const run = at(newRun(fleeOnDay(2)), 1, ACTIVE_MINUTES_PER_DAY - 1);
+    const run = at(newRun(fleeOnDay(2)), 1, MINUTES_PER_DAY - 1);
 
     expect(resolved(run, { kind: 'look' })).toMatchObject({ status: 'lost', endReason: 'culprit-fled' });
   });

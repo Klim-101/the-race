@@ -7,6 +7,7 @@ import type { Locale } from '../locale.js';
 import {
   MAX_REPUTATION,
   RULESET_VERSION,
+  DAY_START_MINUTE,
   RUN_SCHEMA_VERSION,
   advanceClock,
   statusOfEndReason,
@@ -119,7 +120,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     rngState: input.rngState,
     locale: input.locale,
     turn: 0,
-    clock: { day: 1, minute: 0 },
+    clock: { day: 1, minute: DAY_START_MINUTE },
     reputation: MAX_REPUTATION,
     status: 'active',
     endReason: null,
