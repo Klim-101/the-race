@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "outDir": "dist",
+    "paths": {
+      "@the-race/engine": ["../engine/src/index.ts"],
+      "@the-race/saves": ["../saves/src/index.ts"]
+    }
+  },
+  "include": [
+    "src",
+    "test",
+    "vitest.config.ts",
+    "../engine/src",
+    "../saves/src",
+    "../saves/test",
+    "../engine/test/fixtures"
+  ]
+}
