@@ -45,7 +45,14 @@ const spdxHeaderRule = {
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**', 'dev/private/**'],
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/coverage/**',
+      'dev/private/**',
+      // Generated from agents/, which is linted at the source.
+      'plugins/the-race/**',
+    ],
   },
   js.configs.recommended,
   {

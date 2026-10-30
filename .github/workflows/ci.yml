@@ -41,6 +41,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Check generated plugin
+        run: npm run lint:generated
+
       - name: Typecheck
         run: npm run typecheck
 

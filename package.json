@@ -16,6 +16,8 @@
     "typecheck": "npm run typecheck --workspaces",
     "lint": "node scripts/check-llm-denylist.mjs && eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
+    "generate": "node scripts/generate-plugin.mjs",
+    "lint:generated": "node scripts/generate-plugin.mjs --check",
     "licenses:check": "node scripts/check-licenses.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
