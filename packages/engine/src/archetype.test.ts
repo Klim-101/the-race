@@ -41,8 +41,10 @@ describe('DETECTIVE', () => {
   it('has a valid trait catalogue that only touches its own skills', () => {
     for (const trait of DETECTIVE.traits) {
       expect(TraitSchema.safeParse(trait).success).toBe(true);
-      if (trait.effect.kind === 'modifier' && trait.effect.skills !== 'all') {
-        for (const skill of trait.effect.skills) expect(DETECTIVE.skills).toContain(skill);
+      for (const effect of trait.effects) {
+        if (effect.kind === 'modifier' && effect.skills !== 'all') {
+          for (const skill of effect.skills) expect(DETECTIVE.skills).toContain(skill);
+        }
       }
     }
   });
