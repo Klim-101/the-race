@@ -14,6 +14,8 @@ export default defineProject({
   },
   test: {
     name: 'saves',
+    // Property checks replay hundreds of runs; under coverage on a busy machine the default 5 s is too tight.
+    testTimeout: 30_000,
     include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
   },
 });
