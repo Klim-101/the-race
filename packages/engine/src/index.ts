@@ -11,6 +11,7 @@ export * from './traits.js';
 export * from './meters.js';
 export * from './modifiers.js';
 export * from './run.js';
+export * from './migrations.js';
 export * from './detective/archetype.js';
 export * from './detective/traits.js';
 export * from './detective/case-schema.js';

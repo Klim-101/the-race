@@ -2,7 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { join } from 'node:path';
-import { DetectiveRunStateSchema, RUN_SCHEMA_VERSION, type DetectiveRunState } from '@the-race/engine';
+import {
+  DetectiveRunStateSchema,
+  migrateRun,
+  RUN_MIGRATIONS,
+  RunMigrationError,
+  type DetectiveRunState,
+  type RunMigrationRegistry,
+} from '@the-race/engine';
 import { nodeSaveFs, type SaveFs } from './save-fs.js';
 
 /** The save directory of a working directory. It is git-ignored. */
@@ -44,28 +51,22 @@ type Slot =
   | { readonly ok: true; readonly run: DetectiveRunState }
   | { readonly ok: false; readonly reason: LoadFailureReason; readonly detail: string };
 
-function schemaVersionOf(data: unknown): unknown {
-  return typeof data === 'object' && data !== null && 'schemaVersion' in data
-    ? data.schemaVersion
-    : undefined;
-}
-
 /** Turns the text of a save file into a run, or says why it is not one. */
-function parseRunText(text: string): Slot {
+function parseRunText(text: string, migrations: RunMigrationRegistry): Slot {
   let data: unknown;
   try {
     data = JSON.parse(text);
   } catch {
     return { ok: false, reason: 'corrupt', detail: 'The file is not valid JSON.' };
   }
-  const version = schemaVersionOf(data);
-  if (typeof version === 'number' && version !== RUN_SCHEMA_VERSION) {
-    // The seam for migrations (#64): an older `version` would be upgraded here, before the schema runs.
-    return {
-      ok: false,
-      reason: 'unsupported-version',
-      detail: `The save has schema version ${String(version)}; this engine reads version ${String(RUN_SCHEMA_VERSION)}.`,
-    };
+  // An older save is upgraded in memory only; the file is rewritten by the next normal save.
+  try {
+    data = migrateRun(data, migrations);
+  } catch (error) {
+    // migrateRun throws nothing but RunMigrationError, even when a step does.
+    const failure = error as RunMigrationError;
+    const unsupported = failure.code === 'future-version' || failure.code === 'no-migration-path';
+    return { ok: false, reason: unsupported ? 'unsupported-version' : 'corrupt', detail: failure.message };
   }
   const parsed = DetectiveRunStateSchema.safeParse(data);
   if (parsed.success) return { ok: true, run: parsed.data };
@@ -77,7 +78,7 @@ function parseRunText(text: string): Slot {
   };
 }
 
-async function readSlot(fs: SaveFs, path: string): Promise<Slot> {
+async function readSlot(fs: SaveFs, path: string, migrations: RunMigrationRegistry): Promise<Slot> {
   let text: string | undefined;
   try {
     text = await fs.readFile(path);
@@ -85,7 +86,7 @@ async function readSlot(fs: SaveFs, path: string): Promise<Slot> {
     return { ok: false, reason: 'unreadable', detail: 'The file could not be read.' };
   }
   if (text === undefined) return { ok: false, reason: 'missing', detail: 'The file does not exist.' };
-  return parseRunText(text);
+  return parseRunText(text, migrations);
 }
 
 /**
@@ -93,13 +94,17 @@ async function readSlot(fs: SaveFs, path: string): Promise<Slot> {
  * file is missing or corrupt, the previous generation is used and the result says so. A save of an
  * unknown schema version is not retried from the previous file, which would silently lose progress.
  */
-export async function loadRun(saveDir: string, fs: SaveFs = nodeSaveFs): Promise<LoadRunResult> {
+export async function loadRun(
+  saveDir: string,
+  fs: SaveFs = nodeSaveFs,
+  migrations: RunMigrationRegistry = RUN_MIGRATIONS,
+): Promise<LoadRunResult> {
   const files = runFiles(saveDir);
-  const current = await readSlot(fs, files.current);
+  const current = await readSlot(fs, files.current, migrations);
   if (current.ok) return { ok: true, run: current.run, source: 'current' };
   if (current.reason === 'unsupported-version') return current;
 
-  const previous = await readSlot(fs, files.previous);
+  const previous = await readSlot(fs, files.previous, migrations);
   if (previous.ok) {
     return { ok: true, run: previous.run, source: 'previous', currentProblem: current.reason };
   }
@@ -135,7 +140,7 @@ export async function saveRun(
   await fs.mkdir(files.directory);
 
   const existing = await fs.readFile(files.current).catch(() => undefined);
-  if (existing !== undefined && parseRunText(existing).ok) {
+  if (existing !== undefined && parseRunText(existing, RUN_MIGRATIONS).ok) {
     await replaceFile(fs, files.previous, existing);
   }
   await replaceFile(fs, files.current, text);
