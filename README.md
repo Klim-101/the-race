@@ -1,22 +1,83 @@
-# the RACE — Run Across a Changing Earth
+<div align="center">
+
+# the RACE
+
+**Run Across a Changing Earth**
 
 _The world changed overnight. Run._
 
-A text roguelike that runs inside your coding agent (Claude Code first, Codex later) on your own subscription. Every run is one hero in a mirror world rebuilt from today's world news: real conflicts, fictional names. The hero dies for good; tomorrow the world is different.
+[![CI](https://github.com/Klim-101/the-race/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Klim-101/the-race/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%E2%89%A522.12-339933?logo=nodedotjs&logoColor=white)](.node-version)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.base.json)
+[![Engine coverage](https://img.shields.io/badge/engine%20coverage-100%25-brightgreen.svg)](vitest.config.ts)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](.github/workflows/ci.yml)
+[![Status: early prototype](https://img.shields.io/badge/status-early%20prototype-orange.svg)](docs/public/ROADMAP.md)
+[![Conventional Commits](https://img.shields.io/badge/commits-conventional-fe5196.svg)](https://www.conventionalcommits.org)
 
-**Status:** early prototype. Nothing is playable yet.
+</div>
+
+A text roguelike that runs inside your coding agent (Claude Code first, Codex later) on your own subscription. Every run is one hero in a **mirror world** rebuilt from today's world news: the conflicts are real, the names are fictional. The hero dies for good. Tomorrow the world is different.
+
+> **Status:** early prototype. Nothing is playable yet. See the [roadmap](docs/public/ROADMAP.md).
+
+## The idea
+
+**The news is the seed of the day.** Today's run cannot be played tomorrow, because the world has moved on with the headlines.
+
+- **One hero, one life.** You pick from three heroes in a tavern, spend your skill points, and head out. Death is permanent; the next hero starts in a different world.
+- **A mirror world.** A stock-market crash becomes a crash on the exchange of a country that does not exist, caused by a company that is not real. The substance stays, the names change. Real names are rejected by the engine, and recent tragedies never become a plot.
+- **Hidden traits.** Every hero carries traits you cannot see and did not choose. The engine rolls them up front and they reveal themselves in play: a former accountant reads ledgers well, a claustrophobe falls apart in a lift.
+- **Play in your own words.** You describe what you do in free text. The agent turns it into an action, the engine rolls the dice, the agent tells you what happened.
+- **The world remembers.** Fallen heroes leave notes and a reputation behind for the ones who come after.
+
+### The first archetype: the detective
+
+A headline like _"Exchange halted after a sudden crash"_ turns into a case: who profited from the panic? Each case has suspects with secrets and lies, locations with locks, clues (some of them false trails) and a clock ticking on world events drawn from the news. Tone ranges from a serious insider-trading hunt to a comic one, where a trading bot has fallen in love with a meme coin.
+
+Later archetypes: the **survivor** leading a group through a crisis, and the **trader** building a fortune in a market shaped by the news.
 
 ## How it works
 
-- A deterministic **engine** owns the truth: dice, state, hidden traits, the secret solution of a case and the verdict.
-- The **agent** owns the story: it turns headlines into a scenario, narrates and voices the characters.
-- A scenario is a JSON document the engine validates before a run starts: every location reachable, every lie breakable, at least two independent ways to solve the case, no real names.
+The model tends to agree with the player, and in a roguelike with permadeath that kills the tension. So the truth lives in code, not in the model.
 
-No servers, no API keys, no model calls from the code.
+|                | The engine (code, deterministic)                                | The agent (your Claude Code session)             |
+| -------------- | --------------------------------------------------------------- | ------------------------------------------------ |
+| **Owns**       | Dice, state, hidden traits, the sealed solution and the verdict | The story: scenes, voices, atmosphere            |
+| **Does**       | Validates every scenario, rolls checks, decides win and loss    | Turns headlines into seeds, narrates, role-plays |
+| **Never does** | Call a model                                                    | See who the culprit is                           |
+
+- A scenario is a JSON document the engine validates **before** a run starts: every location reachable, every lie breakable, at least two independent ways to solve the case, no real names. If validation fails, the errors go back to the generator.
+- The case is generated by a separate subagent in its own context and handed straight to the engine. The narrator only gets the public view through typed tools, so it cannot give the culprit away.
+- Headlines come from RSS feeds and are treated as untrusted input. Only titles and short summaries are read, never full articles.
+
+**No servers, no API keys, no model calls from the code.** Everything runs on your own subscription, and a CI check keeps LLM SDKs out of the dependency tree.
+
+## Project layout
+
+```
+packages/engine   Deterministic game rules, the case schema and the solvability validator
+docs/public       Public documentation, including the roadmap
+scripts           Repository checks (LLM SDK denylist, license allowlist)
+```
+
+## Roadmap
+
+| Phase | Goal                                                       |
+| ----- | ---------------------------------------------------------- |
+| 0     | Foundation: monorepo, CI, case schema and validator        |
+| 1     | Engine core: dice, heroes, run state, verdict              |
+| 2     | First playable run in Claude Code from a hand-written case |
+| 3     | News and the mirror world                                  |
+| 4     | Roguelike loop: tavern, permadeath, hall of fallen heroes  |
+| 5     | New archetypes: survivor, trader                           |
+| 6     | Public release and plugin marketplace listing              |
+
+Details and live progress: [ROADMAP.md](docs/public/ROADMAP.md) and the [project board](https://github.com/users/Klim-101/projects/3).
 
 ## Development
 
-The local gate, the same one CI runs on Linux, macOS and Windows:
+You need Node.js 22.12 or newer. The local gate is the same one CI runs on Linux, macOS and Windows:
 
 ```sh
 npm ci
