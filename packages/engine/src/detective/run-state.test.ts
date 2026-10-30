@@ -179,7 +179,7 @@ describe('viewRun', () => {
     const view = viewRun(newRun());
 
     expect(view).toMatchObject({
-      title: 'The Vanishing Wheel of Valdmark',
+      title: 'The Vanishing Wheel of Elmwick',
       clock: { day: 1, minute: 0, totalDays: 3 },
       reputation: MAX_REPUTATION,
       hiddenTraitCount: 2,

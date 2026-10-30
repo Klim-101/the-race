@@ -17,6 +17,7 @@ import { TraitSchema, type Trait } from '../traits.js';
 import { DETECTIVE, DetectiveHeroSchema, type DetectiveHero } from './archetype.js';
 import { DetectiveCaseSchema, EntityIdSchema, type DetectiveCase, type Location } from './case-schema.js';
 import { buildNeighbors } from './obtainability.js';
+import { CASE_SEAL_PATTERN, isCaseSealIntact, sealCase } from './seal.js';
 
 /**
  * Everything about one detective run. It holds the secrets of the case and the hero's hidden traits, so
@@ -31,6 +32,8 @@ export const DetectiveRunStateSchema = z
     traits: z.array(TraitSchema),
     revealedTraitIds: z.array(z.string().min(1)),
     case: DetectiveCaseSchema,
+    /** The case as it was when the validator accepted it; see `sealCase`. */
+    caseSeal: z.string().regex(CASE_SEAL_PATTERN),
     locationId: EntityIdSchema,
     visitedLocationIds: z.array(EntityIdSchema),
     foundClueIds: z.array(EntityIdSchema),
@@ -38,6 +41,13 @@ export const DetectiveRunStateSchema = z
     insightIds: z.array(EntityIdSchema),
   })
   .superRefine((run, context) => {
+    if (!isCaseSealIntact(run)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['caseSeal'],
+        message: 'The case does not match its seal: it was changed after it was accepted.',
+      });
+    }
     const known = (path: string, ids: readonly string[], valid: ReadonlySet<string>): void => {
       for (const id of ids) {
         if (!valid.has(id)) {
@@ -80,6 +90,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     traits: input.traits,
     revealedTraitIds: [],
     case: input.case,
+    caseSeal: sealCase(input.case),
     locationId: input.case.startLocationId,
     visitedLocationIds: [input.case.startLocationId],
     foundClueIds: [],
