@@ -100,6 +100,28 @@ describe('allowed', () => {
       }),
       LINUX,
     ],
+    // The evidence board is written to the player's Documents, outside the closed directory (see
+    // resolveBoardDir in packages/saves); the page holds only what run_view shows.
+    [
+      'Read of the evidence board (win)',
+      call('Read', { file_path: 'C:\\Users\\ann\\Documents\\the-race\\evidence.html' }),
+      WIN,
+    ],
+    [
+      'Read of the evidence board (mac)',
+      call('Read', { file_path: '/Users/ann/Documents/the-race/evidence.html' }),
+      MAC,
+    ],
+    [
+      'Read of the evidence board (linux)',
+      call('Read', { file_path: '/home/ann/Documents/the-race/evidence.html' }),
+      LINUX,
+    ],
+    [
+      'Read of the evidence board in a folder RACE_BOARD_DIR names',
+      call('Read', { file_path: '/data/boards/evidence.html' }),
+      { ...LINUX, env: { RACE_BOARD_DIR: '/data/boards' } },
+    ],
     ['Grep for unrelated text', call('Grep', { pattern: 'the-race', path: 'src' }), LINUX],
     ['Glob inside the project', call('Glob', { pattern: '**/*.ts' }), LINUX],
     [
@@ -154,6 +176,11 @@ describe('denied', () => {
       LINUX,
     ],
     ['Read of the folder itself', call('Read', { file_path: SAVE.linux }), LINUX],
+    [
+      'Read of the board in its old place inside the saves',
+      call('Read', { file_path: `${SAVE.linux}/board/evidence.html` }),
+      LINUX,
+    ],
     [
       'Read with RACE_HOME set',
       call('Read', { file_path: '/data/race/run/log.json' }),

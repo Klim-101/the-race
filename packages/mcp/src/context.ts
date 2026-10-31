@@ -12,6 +12,11 @@ export interface ServerContext {
   /** The directory the saves live in (see `resolveSaveDir`). */
   readonly saveDir: string;
   readonly saveFs: SaveFs;
+  /**
+   * The folder the evidence board is written to (see `resolveBoardDir`): one the player can open, unlike the
+   * save directory. It is passed in so that a test writes the board to a disk of its own.
+   */
+  readonly boardDir: string;
   /** A fresh seed for a new run. Randomness enters the game here and only here. */
   readonly newSeed: () => string;
   /** Today as `YYYY-MM-DD`. The clock enters the game here and only here. */

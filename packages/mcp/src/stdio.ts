@@ -6,7 +6,7 @@ import type { Readable, Writable } from 'node:stream';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { DEFAULT_MAX_BYTES, DEFAULT_TIMEOUT_MS, createHttpGet, loadShippedFeeds } from '@the-race/news';
-import { nodeSaveFs, defaultSaveDir } from '@the-race/saves';
+import { defaultBoardDir, defaultSaveDir, nodeSaveFs } from '@the-race/saves';
 import type { ServerContext } from './context.js';
 import { createServer } from './server.js';
 import type { Tool } from './define-tool.js';
@@ -18,10 +18,12 @@ import type { Tool } from './define-tool.js';
 export function createDefaultContext(
   saveDir: string = defaultSaveDir(),
   env: Readonly<Record<string, string | undefined>> = process.env,
+  boardDir: string = defaultBoardDir(),
 ): ServerContext {
   return {
     saveDir,
     saveFs: nodeSaveFs,
+    boardDir,
     newSeed: () => randomBytes(8).toString('hex'),
     today: () => new Date().toISOString().slice(0, 10),
     httpGet: createHttpGet({ timeoutMs: DEFAULT_TIMEOUT_MS, maxBytes: DEFAULT_MAX_BYTES }),

@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export { defaultSaveDir, resolveSaveDir, type SaveDirInputs } from './save-dir.js';
-export { nodeSaveFs, type SaveFs } from './save-fs.js';
+export { nodeSaveFs, replaceFile, type SaveFs } from './save-fs.js';
+export { BOARD_FILE, defaultBoardDir, resolveBoardDir } from './board-dir.js';
 export {
   runFiles,
   loadRun,
