@@ -82,7 +82,15 @@ export function summarizeRun(run: DetectiveRunState): z.input<typeof RunSummaryS
 export const OutcomeSchema = z.looseObject({ kind: z.string() });
 
 /** The result of a tool that played one turn. */
-export const TurnResultSchema = z.object({ outcome: OutcomeSchema, view: RunSummarySchema });
+/** A random event that happened during the turn, in the words of the case and by the kind of effect it had. */
+export const TurnEventSchema = z.object({ description: z.string(), effect: z.string() });
+
+export const TurnResultSchema = z.object({
+  outcome: OutcomeSchema,
+  /** The random events this turn brought (in the day, at midday or in the evening, or in the night); often none. */
+  events: z.array(TurnEventSchema).default([]),
+  view: RunSummarySchema,
+});
 
 const SAVE_PROBLEMS: Record<Exclude<LoadFailureReason, 'missing'>, string> = {
   corrupt: 'The saved run is damaged and cannot be read.',
@@ -134,6 +142,18 @@ export function assertFreshTurn(run: DetectiveRunState, turn: number): void {
   }
 }
 
+/** The random events drawn between two states of a run: what the turn brought, already applied by the engine. */
+function eventsOfTurn(
+  before: DetectiveRunState,
+  after: DetectiveRunState,
+): z.input<typeof TurnEventSchema>[] {
+  const pool = after.case.randomEvents ?? [];
+  return after.drawnEvents
+    .slice(before.drawnEvents.length)
+    .flatMap(({ eventId }) => pool.filter(({ id }) => id === eventId))
+    .map(({ description, effect }) => ({ description, effect: effect.kind }));
+}
+
 /**
  * Plays one intent on the saved run: checks the turn, resolves it on the run's own dice, writes the turn to
  * the run's log and saves both. A refusal changes nothing, not even the file. The outcome returned is what
@@ -154,5 +174,9 @@ export async function playIntent(
     context.saveFs,
     recordResolution(log, run, intent, resolution),
   );
-  return { outcome: { ...resolution.outcome }, view: summarizeRun(resolution.run) };
+  return {
+    outcome: { ...resolution.outcome },
+    events: eventsOfTurn(run, resolution.run),
+    view: summarizeRun(resolution.run),
+  };
 }

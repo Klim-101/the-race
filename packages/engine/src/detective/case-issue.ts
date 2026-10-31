@@ -26,6 +26,7 @@ export type CaseIssueCode =
   | 'random-event-out-of-range'
   | 'random-event-cuts-solution'
   | 'random-event-violence'
+  | 'too-few-random-events'
   | 'solution-after-culprit-flees'
   | 'real-name'
   | 'wrong-script'

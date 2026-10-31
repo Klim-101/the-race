@@ -45,6 +45,8 @@ The game tools, which the narrator skill calls by exactly these names:
 
 The short `view` that a turn tool returns carries the case title, the language and the known `map`, the same as `run_view`, so the plugin's HUD (see [PLUGIN.md](../../docs/public/PLUGIN.md)) never goes stale between `run_view` calls.
 
+A turn tool's result is `{ outcome, events, view }`: `events` lists the random events the turn brought (the day draws at midday and in the evening, the night draws its own), each with the case's description and the kind of its effect, already applied by the engine. A case must bring at least three random events: `scenario_submit` rejects fewer with `too-few-random-events`.
+
 Every tool that changes a run takes `turn`, the run's turn from `run_view`. A call with another number is refused with `stale-turn` and changes nothing, so a retried call is never applied twice. A turn is saved together with its log entry; giving up is not a turn, so a given-up run is saved without its log.
 
 The evidence board is not written to the save directory, which is closed to the narrator, nor to a profile folder, which a browser under another account could not open. It goes to `board/evidence.html` in the game folder (`C:\the-race\board` by default), or to the folder `RACE_BOARD_DIR` names. If that folder cannot be written, the tool answers `board-unwritable` and says how to choose another one. The page holds what `run_view` shows and nothing more, and a test checks it, so it is safe outside the closed directory. It is one fixed file: a tab the player left open shows the new state after a reload.

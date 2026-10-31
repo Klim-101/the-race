@@ -301,5 +301,40 @@
         "description": "The shell company's block is placed for sale. Brokers whisper that whoever sells first must be the one who knew first."
       }
     ]
-  }
+  },
+  "randomEvents": [
+    {
+      "id": "ticker-glitch",
+      "description": "The exchange ticker stutters for a minute, and every trader insists it was a feature.",
+      "weight": 3,
+      "fromDay": 1,
+      "effect": { "kind": "flavor" },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": { "kind": "instant" }
+    },
+    {
+      "id": "tea-trolley",
+      "description": "The tea trolley parks across the corridor and takes forty minutes of the morning with it.",
+      "weight": 3,
+      "fromDay": 1,
+      "effect": { "kind": "time-lost", "minutes": 45 },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": { "kind": "instant" }
+    },
+    {
+      "id": "unsigned-courier",
+      "description": "A courier demands a signature from someone who left the firm last spring, and the whole building grows short-tempered.",
+      "weight": 2,
+      "fromDay": 2,
+      "effect": { "kind": "nerves-cost", "points": 1 },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": { "kind": "instant" }
+    }
+  ]
 }

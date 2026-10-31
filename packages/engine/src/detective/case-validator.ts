@@ -31,6 +31,11 @@ export interface CaseValidationContext {
   readonly locale: Locale;
   /** Names taken from the source headlines; none of them may survive into the mirror world. */
   readonly realNames: readonly string[];
+  /**
+   * The fewest random events the pool must hold; a generated case must bring `MIN_RANDOM_EVENTS`. Left out, a
+   * case without a pool is accepted, as the cases of before the pool were.
+   */
+  readonly minRandomEvents?: number;
 }
 
 export type CaseValidationResult =
@@ -69,7 +74,13 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...checkLies(detectiveCase, obtainable),
     ...checkTimeline(detectiveCase),
     ...checkWorldEvents(detectiveCase, context.hero, context.traits),
-    ...checkRandomEvents(detectiveCase, context.hero, context.traits, context.locale),
+    ...checkRandomEvents(
+      detectiveCase,
+      context.hero,
+      context.traits,
+      context.locale,
+      context.minRandomEvents ?? 0,
+    ),
     ...checkFleeDeadline(detectiveCase, context.hero, context.traits),
     ...checkRedHerrings(detectiveCase),
     ...checkTexts(detectiveCase, context.locale, context.realNames),

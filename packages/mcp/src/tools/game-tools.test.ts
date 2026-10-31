@@ -3,11 +3,11 @@
 
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { DETECTIVE_SKILL_PRESETS } from '@the-race/engine';
+import { DETECTIVE_SKILL_PRESETS, DetectiveCaseSchema } from '@the-race/engine';
 import { loadRun, runFiles } from '@the-race/saves';
 import { describe, expect, it } from 'vitest';
 import { TEST_BOARD_DIR } from '../../test/fake-context.js';
-import { HERO_CHOICES, call, gameContext, installCase, prepareHero } from '../../test/game.js';
+import { HERO_CHOICES, call, gameContext, installCase, prepareHero, sampleCase } from '../../test/game.js';
 import { escapeHtml } from '../board/render-board.js';
 import { pendingFile } from '../pending-run.js';
 import { accuse } from './accuse.js';
@@ -340,5 +340,73 @@ describe('evidence_board', () => {
   it('is refused when there is no run', async () => {
     const result = await call(evidenceBoard, {}, gameContext());
     expect(errorCode(result)).toBe('no-run');
+  });
+});
+
+describe('the random events of a turn', () => {
+  async function runOfSeed(seed: string) {
+    const context = gameContext();
+    await call(runNew, { locale: 'en', seed }, context);
+    await call(heroCreate, HERO_CHOICES, context);
+    await installCase(context);
+    return context;
+  }
+
+  it('come back with the turn that brought them, also in the day, and the view tells them too', async () => {
+    let seen = 0;
+    for (let index = 0; index < 40; index += 1) {
+      const context = await runOfSeed(`day-events-${String(index)}`);
+      let turn = 0;
+      for (let step = 0; step < 14; step += 1) {
+        const result = await call(
+          act,
+          { turn, intent: { kind: step % 2 === 0 ? 'look' : 'search' } },
+          context,
+        );
+        if (result.isError) break;
+        turn += 1;
+        const events = result.body.events as { description: string; effect: string }[];
+        expect(Array.isArray(events)).toBe(true);
+        if (events.length === 0) continue;
+        const view = (await call(runView, {}, context)).body as { news: string[] };
+        for (const { description, effect } of events) {
+          expect(typeof effect).toBe('string');
+          expect(view.news).toContain(description);
+          seen += 1;
+        }
+        // A night would draw its own; the day's events come with no night in the turn.
+        expect((result.body.outcome as { kind: string }).kind).not.toBe('rest');
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+
+  it('are an empty list when nothing happened', async () => {
+    const context = await activeRun();
+
+    const result = await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+
+    expect(result.body.events).toEqual([]);
+  });
+});
+
+describe('a case without a pool of events', () => {
+  it('is played as before: nothing happens in the day, and the list of events stays empty', async () => {
+    const context = gameContext();
+    await call(runNew, { locale: 'en', seed: 'no-pool' }, context);
+    await call(heroCreate, HERO_CHOICES, context);
+    const bare = DetectiveCaseSchema.parse(
+      Object.fromEntries(Object.entries(sampleCase()).filter(([key]) => key !== 'randomEvents')),
+    );
+    await installCase(context, bare);
+
+    let turn = 0;
+    for (let step = 0; step < 8; step += 1) {
+      const result = await call(act, { turn, intent: { kind: 'look' } }, context);
+      if (result.isError) break;
+      turn += 1;
+      expect(result.body.events).toEqual([]);
+    }
+    expect(turn).toBeGreaterThan(0);
   });
 });

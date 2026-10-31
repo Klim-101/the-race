@@ -3,7 +3,7 @@
 
 import { assertNever } from '../assert-never.js';
 import type { Rng } from '../dice.js';
-import { MINUTES_PER_DAY } from '../run.js';
+import { MINUTES_PER_DAY, type RunClock } from '../run.js';
 import { closedSources } from './obtainability.js';
 import { isLastingEffect, type RandomEvent, type RandomEventEffect, type Suspect } from './case-schema.js';
 import {
@@ -27,6 +27,12 @@ export const MAX_HARMFUL_EVENTS_PER_DAY = 1;
 export const EVENT_SLOTS_PER_DRAW = 2;
 /** The chance of an event in one slot at the start of the case, in percent. */
 export const BASE_EVENT_CHANCE_PERCENT = 35;
+/** The first ruleset in which events are also drawn in the day. */
+export const DAY_EVENTS_RULESET_VERSION = 6;
+/** The clock marks at which the day may bring an event: midday and the evening. */
+export const DAY_EVENT_MARKS = [12 * 60, 18 * 60] as const;
+/** The chance of an event at one mark of the day, in percent, before the growth towards the deadline. */
+export const DAY_EVENT_CHANCE_PERCENT = 25;
 /** The extra percentage points of chance on the last day; it grows in a straight line from the first. */
 export const DEADLINE_CHANCE_GROWTH_PERCENT = 15;
 /** Harmful events weigh up to this much more on the last day, as a fraction of their weight. */
@@ -196,13 +202,31 @@ export interface EventDraw {
  * deterministic in the run and the dice. A run that is over, or a case without a pool, draws nothing.
  */
 export function drawEvents(run: DetectiveRunState, rng: Rng): EventDraw {
+  return drawSlots(run, rng, EVENT_SLOTS_PER_DRAW, BASE_EVENT_CHANCE_PERCENT);
+}
+
+/**
+ * The events of the day: one slot for each mark of the clock (midday, the evening) that the turn carried the
+ * hero past without a night, on the same pool and with the same limits as the night's. `before` is the clock
+ * at the start of the turn; a run of a ruleset from before the day's events draws none.
+ */
+export function drawDayEvents(run: DetectiveRunState, before: RunClock, rng: Rng): EventDraw {
+  const sameDay = run.clock.day === before.day;
+  const crossed = DAY_EVENT_MARKS.filter((mark) => before.minute < mark && run.clock.minute >= mark).length;
+  if (!sameDay || crossed === 0 || run.rulesetVersion < DAY_EVENTS_RULESET_VERSION)
+    return { run, events: [] };
+  const drawn = drawSlots(run, rng, crossed, DAY_EVENT_CHANCE_PERCENT);
+  // The dice rolled for a slot that brought nothing are spent all the same: the run must carry on from here.
+  return { ...drawn, run: { ...drawn.run, rngState: rng.state() } };
+}
+
+function drawSlots(run: DetectiveRunState, rng: Rng, slots: number, baseChance: number): EventDraw {
   let current = run;
   const events: DrawnEvent[] = [];
   if (run.status !== 'active') return { run, events };
-  for (let slot = 0; slot < EVENT_SLOTS_PER_DRAW; slot += 1) {
+  for (let slot = 0; slot < slots; slot += 1) {
     if (poolOf(current).length === 0) break;
-    const chance =
-      BASE_EVENT_CHANCE_PERCENT + Math.round(pressureOf(current) * DEADLINE_CHANCE_GROWTH_PERCENT);
+    const chance = baseChance + Math.round(pressureOf(current) * DEADLINE_CHANCE_GROWTH_PERCENT);
     if (rng.roll(100) > chance) continue;
     const [first, ...others] = candidatesOf(current);
     if (first === undefined) continue;
