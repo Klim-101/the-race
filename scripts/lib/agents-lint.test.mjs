@@ -377,3 +377,14 @@ describe('a trait shows itself', () => {
     expect(outcomes).toMatch(/never hint at a trait that has not been revealed/);
   });
 });
+
+describe('the ending of a run', () => {
+  const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+
+  it('points the narrator to the endings reference, which says the hero leaves and never dies', () => {
+    expect(skill).toContain('reference/endings.md');
+    expect(read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'endings.md'))).toContain(
+      'The hero leaves; the hero never dies.',
+    );
+  });
+});
