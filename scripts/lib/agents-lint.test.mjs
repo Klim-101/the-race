@@ -427,3 +427,28 @@ describe('the hero as the narrator', () => {
     }
   });
 });
+
+describe('the language of the hero', () => {
+  const dir = join(AGENTS, 'skills', 'play-the-race');
+  const skill = read(join(dir, 'SKILL.md'));
+  const voice = read(join(dir, 'reference', 'hero-voice.md'));
+  const tone = read(join(dir, 'reference', 'tone.md'));
+
+  it('is the language of the run, said where the voice is set and in the turn loop, short lines included', () => {
+    for (const text of [voice, tone]) {
+      expect(text).toMatch(/\*\*The language comes first\.\*\*/);
+      expect(text).toMatch(/the short line between a tool call and the poll/);
+      expect(text).toMatch(/rewritten before it is sent/);
+    }
+    expect(skill).toMatch(/read `locale` of the result's `view` and write that line in it/);
+  });
+
+  it('has a Russian counterpart for the voice examples of the signal, the trait and the ending', () => {
+    const outcomes = read(join(dir, 'reference', 'outcomes.md'));
+    const endings = read(join(dir, 'reference', 'endings.md'));
+
+    expect(outcomes).toMatch(/the warmth in my head[^()]*\(«/);
+    expect(outcomes).toMatch(/I have always read a room faster than a ledger" \(«/);
+    expect(endings).toMatch(/«я оставляю папку на столе/);
+  });
+});
