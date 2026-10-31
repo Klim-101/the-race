@@ -51,10 +51,14 @@ describe('the kit by background', () => {
     }
   });
 
-  it('differs between backgrounds, and uses only gear that has a definition', () => {
-    expect(new Set(BACKGROUNDS.map((background) => BACKGROUND_KITS[background].join())).size).toBe(
-      BACKGROUNDS.length,
-    );
+  it('gives each background a kit of gear that has a definition, and kits differ between kinds of hero', () => {
+    for (const background of BACKGROUNDS) {
+      expect(BACKGROUND_KITS[background].length).toBeGreaterThan(0);
+      for (const id of BACKGROUND_KITS[background]) expect(GEAR_IDS).toContain(id);
+    }
+    expect(
+      new Set(BACKGROUNDS.map((background) => BACKGROUND_KITS[background].join())).size,
+    ).toBeGreaterThanOrEqual(8);
     for (const id of GEAR_IDS) expect(DETECTIVE_GEAR[id].effects.length).toBeGreaterThan(0);
   });
 

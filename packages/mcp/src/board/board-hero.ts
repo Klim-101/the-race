@@ -94,7 +94,7 @@ export function renderHero(view: DetectiveRunView, board: BoardText, text: TabTe
 
   return `<div class="card">
 <p><strong>${e(view.hero.name)}</strong></p>
-<p class="tag">${e(t.background)}: ${e(named(t.backgrounds, view.hero.background))}${view.signal === null ? '' : ` · ${e(t.signal)}: ${e(named(t.signals, view.signal.id))}`}</p>
+<p class="tag">${e(t.background)}: ${e(named(t.backgrounds, view.hero.background))}${view.hero.lifeState === undefined ? '' : ` · ${e(t.lifeState)}: ${e(named(t.lifeStates, view.hero.lifeState))}`}${view.signal === null ? '' : ` · ${e(t.signal)}: ${e(named(t.signals, view.signal.id))}`}</p>
 ${signalNote}<p>${e(t.skills)}: ${skills.join(', ')}</p>
 </div>
 <h3>${e(t.condition)}</h3>

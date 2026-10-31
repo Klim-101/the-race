@@ -1,7 +1,14 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { BACKGROUNDS, DETECTIVE, DETECTIVE_SKILL_PRESETS, LOCALES, LocaleSchema } from '@the-race/engine';
+import {
+  BACKGROUNDS,
+  DETECTIVE,
+  DETECTIVE_SKILL_PRESETS,
+  LIFE_STATES,
+  LOCALES,
+  LocaleSchema,
+} from '@the-race/engine';
 import { loadRun } from '@the-race/saves';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
@@ -36,6 +43,7 @@ export const runNew = defineTool({
     maxSkillLevel: z.int(),
     skillPresets: z.array(z.object({ id: z.string(), skills: z.record(z.string(), z.int()) })),
     backgrounds: z.array(z.string()),
+    lifeStates: z.array(z.string()),
     signals: z.array(z.object({ id: z.string(), voice: z.string(), gift: z.string(), cost: z.string() })),
     locales: z.array(z.string()),
   }),
@@ -63,6 +71,7 @@ export const runNew = defineTool({
       maxSkillLevel: DETECTIVE.maxSkillLevel,
       skillPresets: DETECTIVE_SKILL_PRESETS.map(({ id, skills }) => ({ id, skills: { ...skills } })),
       backgrounds: [...BACKGROUNDS],
+      lifeStates: [...LIFE_STATES],
       signals: DETECTIVE.signals.map(({ id, voice, gift, cost }) => ({ id, voice, gift, cost })),
       locales: [...LOCALES],
     };

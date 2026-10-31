@@ -779,3 +779,34 @@ describe('the links still to be made', () => {
     expect(links({ openLinks: [], locale: 'ru' })).toContain('Все выводы сделаны.');
   });
 });
+
+describe('the life state and the new backgrounds on the hero tab', () => {
+  const hero = (lifeState: string | undefined, background: string, locale: 'en' | 'ru' = 'en') =>
+    tab(
+      renderEvidenceBoard(
+        viewOf({
+          locale,
+          hero: {
+            name: 'Mira',
+            gender: 'female',
+            archetype: 'detective',
+            skills: { perception: 4 },
+            background,
+            ...(lifeState === undefined ? {} : { lifeState }),
+          } as View['hero'],
+        }),
+      ),
+      'hero',
+    );
+
+  it('names who the hero was and what they are going through, in both languages', () => {
+    expect(hero('retired', 'dismissed-auditor')).toContain('a dismissed auditor');
+    expect(hero('retired', 'dismissed-auditor')).toContain('Situation: retired');
+    expect(hero('in-debt', 'bus-driver', 'ru')).toContain('водитель автобуса');
+    expect(hero('in-debt', 'bus-driver', 'ru')).toContain('Положение: в долгах');
+  });
+
+  it('says nothing of a situation for a hero who has none', () => {
+    expect(hero(undefined, 'nurse')).not.toContain('Situation');
+  });
+});
