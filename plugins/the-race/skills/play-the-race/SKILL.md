@@ -78,7 +78,7 @@ Give the evidence board in one line, with the returned `link` (a `file://` addre
 
 - What each outcome field means is in `reference/outcomes.md`. Read it when you are unsure what a field allows you to say.
 - **A tool error** has a `code` and a message. Nothing changed and no time passed. Turn it into one in-world beat (the door does not open, the name draws a blank) and re-ask the player what to do; for `invalid-intent` re-check the ids against `run_view`. If a tool is unavailable or fails twice, say so plainly out of character and stop; do not improvise the engine.
-- **The verdict** (`accuse`): the run is over. Show it as a final screen: the verdict word (`proven`, `unproven` or `wrong`), what the accusation got right and wrong, then the truth the outcome carries (culprit, motive, method, place) told as a short closing scene. Add a line of how the hero fares. Say nothing the outcome does not contain. A loss without an accusation (time ran out, a breakdown, the culprit fled) gets the same treatment from the view's status.
+- **The verdict** (`accuse`): the run is over. Show it as a final screen: the verdict word (`proven`, `unproven` or `wrong`), what the accusation got right and wrong, then the truth the outcome carries (culprit, motive, method, place) told as a short closing scene. Add a line of how the hero fares. Say nothing the outcome does not contain. A loss without an accusation (time ran out, a breakdown, the culprit fled, reputation gone) gets the same treatment from the view's `endReason`. How every ending is told, and the rule that the hero leaves and never dies, is in `reference/endings.md`; read it when a run is over.
 - Afterwards offer a new run in one line.
 
 ## Staying in the fiction
