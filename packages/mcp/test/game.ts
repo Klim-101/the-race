@@ -10,6 +10,7 @@ import { clearPending, loadPending } from '../src/pending-run.js';
 import { heroCreate } from '../src/tools/hero-create.js';
 import { runNew } from '../src/tools/run-new.js';
 import { memoryFs, type MemoryFs } from '../../saves/test/memory-fs.js';
+import { offlineNews } from './fake-context.js';
 
 export interface GameContext extends ServerContext {
   readonly fs: MemoryFs;
@@ -19,7 +20,13 @@ export interface GameContext extends ServerContext {
 export function gameContext(): GameContext {
   const fs = memoryFs();
   let counter = 0;
-  return { saveDir: 'game-save', saveFs: fs, fs, newSeed: () => `game-seed-${String(++counter)}` };
+  return {
+    saveDir: 'game-save',
+    saveFs: fs,
+    fs,
+    newSeed: () => `game-seed-${String(++counter)}`,
+    ...offlineNews(),
+  };
 }
 
 export function sampleCase(): DetectiveCase {

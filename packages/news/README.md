@@ -10,6 +10,8 @@ Nothing here reads the clock or the network by itself: the day and the `HttpGet`
 
 The default feeds are in [`content/feeds.json`](../../content/feeds.json): world, economy and tech news in Russian and English, and five `humor` feeds. Headlines are untrusted input; `humor` ones are atmosphere for a case, never a source of its world events.
 
+A headline has an id, `headlineId`: `h` and eight hex digits of a digest of its cleaned title. The block shows it, and a seed cites a headline by that id and never by its text. `listUntrustedHeadlines` gives the same headlines as data, which is what a seed may cite.
+
 ## Adding a feed
 
 An entry in `content/feeds.json` is accepted when all of these hold:

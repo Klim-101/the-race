@@ -36,9 +36,13 @@ The game tools, which the narrator skill calls by exactly these names:
 | `generator_brief` | For the case generator only: locale, theme, tone, the hero's public data, attempts left. Never a hidden trait.                                                                                                              |
 | `world_propose`   | For the case generator only: proposes the mirror name of a real country, organisation or role. Accepted only if no mirror name is shared or real; then fixed for good.                                                      |
 | `world_view`      | The mirror world as the player may know it: its name and every named entity, mirror names only. Changes nothing.                                                                                                            |
+| `news_brief`      | For the seed extractor only: today's cleaned and filtered headlines, each with an id, in an untrusted block, and the seed kinds allowed. Fetched once a day.                                                                |
+| `seeds_submit`    | For the seed extractor only: the seeds of the day, checked against the headlines given and the real names; kept once per day and shared by every run.                                                                       |
 | `scenario_submit` | For the case generator only: validates a case for the run's hero, seals it and starts the run, or lists the issues. At most three attempts; an accepted case is final. Returns `{"accepted":true}` and nothing of the case. |
 
 Every tool that changes a run takes `turn`, the run's turn from `run_view`. A call with another number is refused with `stale-turn` and changes nothing, so a retried call is never applied twice. A turn is saved together with its log entry; giving up is not a turn, so a given-up run is saved without its log.
+
+The news tools read the day, the network and the feed list from the context. `RACE_NEWS_LAG_DAYS` (0 to 14, default 0) sets how many days behind the news a run is; the seeds are kept in `<save dir>/seeds/seeds.json` for 14 days.
 
 A pending run (a seed, a language, a theme and, after `hero_create`, the hero with its hidden traits) lives in `<save dir>/pending/state.json` until the case is accepted. `src/pending-run.ts` holds its schema and `loadPending`, `savePending` and `clearPending`.
 

@@ -7,6 +7,7 @@ import { PassThrough } from 'node:stream';
 import { DETECTIVE_TRAITS, type DetectiveHero, type Trait } from '@the-race/engine';
 import { loadRun, runFiles, type SaveFs } from '@the-race/saves';
 import { afterEach, describe, expect, it } from 'vitest';
+import { offlineNews } from '../../test/fake-context.js';
 import type { ServerContext } from '../context.js';
 import { PendingRunSchema, loadPending, pendingFile, savePending, type PendingRun } from '../pending-run.js';
 import { serveStdio } from '../stdio.js';
@@ -103,7 +104,12 @@ afterEach(async () => {
 });
 
 async function start(pending: PendingRun | null, fs = memoryFs()) {
-  const context: ServerContext = { saveDir: SAVE_DIR, saveFs: fs, newSeed: () => 'unused' };
+  const context: ServerContext = {
+    saveDir: SAVE_DIR,
+    saveFs: fs,
+    newSeed: () => 'unused',
+    ...offlineNews(),
+  };
   if (pending) await savePending(SAVE_DIR, pending, fs);
   const peer = new Peer();
   const server = await serveStdio(peer, context, TOOLS);

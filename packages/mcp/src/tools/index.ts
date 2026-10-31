@@ -8,11 +8,13 @@ import { deduce } from './deduce.js';
 import { evidenceBoard } from './evidence-board.js';
 import { generatorBrief } from './generator-brief.js';
 import { heroCreate } from './hero-create.js';
+import { newsBrief } from './news-brief.js';
 import { question } from './question.js';
 import { runGiveUp } from './run-give-up.js';
 import { runNew } from './run-new.js';
 import { runView } from './run-view.js';
 import { scenarioSubmit } from './scenario-submit.js';
+import { seedsSubmit } from './seeds-submit.js';
 import { serverInfo } from './server-info.js';
 import { worldPropose } from './world-propose.js';
 import { worldView } from './world-view.js';
@@ -29,11 +31,13 @@ export const TOOLS: readonly Tool[] = [
   evidenceBoard,
   generatorBrief,
   heroCreate,
+  newsBrief,
   question,
   runGiveUp,
   runNew,
   runView,
   scenarioSubmit,
+  seedsSubmit,
   worldPropose,
   worldView,
 ];

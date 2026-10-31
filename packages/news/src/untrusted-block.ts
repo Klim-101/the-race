@@ -97,22 +97,41 @@ export function renderUntrustedHeadlines(
   groups: readonly HeadlineGroup[],
   max: number = DEFAULT_BLOCK_HEADLINES,
 ): string {
+  const { entries, conflict } = listUntrustedHeadlines(groups, max);
+  const lines = entries.flatMap(({ id, topic, headline }, index) => [
+    `${String(index + 1)}. ${id} [${topic}] ${headline.title}`,
+    ...(headline.summary === undefined ? [] : [`   ${headline.summary}`]),
+  ]);
+  if (conflict) lines.push(CONFLICT_LINE);
+  return [OPEN, NOTICE, ...(lines.length === 0 ? ['(no headlines today)'] : lines), CLOSE].join('\n');
+}
+
+/** A headline that passed the boundary, with its id and the topic of the feed it came from. */
+export interface ListedHeadline {
+  readonly id: string;
+  readonly topic: FeedTopic;
+  readonly headline: Headline;
+}
+
+/**
+ * The headlines `renderUntrustedHeadlines` shows, as data: what survives cleaning, the tragedy filter and
+ * repeats, in order and capped, and whether an armed conflict was reduced to its one line. What a seed may
+ * cite is exactly this list.
+ */
+export function listUntrustedHeadlines(
+  groups: readonly HeadlineGroup[],
+  max: number = DEFAULT_BLOCK_HEADLINES,
+): { readonly entries: readonly ListedHeadline[]; readonly conflict: boolean } {
   const seen = new Set<string>();
-  const lines: string[] = [];
-  let count = 0;
+  const entries: ListedHeadline[] = [];
   let conflict = false;
   for (const { topic, headlines } of groups) {
     for (const headline of headlines) {
       const admitted = admit(headline, seen);
       if (admitted?.kind === 'conflict') conflict = true;
-      if (admitted?.kind !== 'kept' || count >= max) continue;
-      count += 1;
-      lines.push(
-        `${String(count)}. ${headlineId(admitted.headline.title)} [${topic}] ${admitted.headline.title}`,
-      );
-      if (admitted.headline.summary !== undefined) lines.push(`   ${admitted.headline.summary}`);
+      if (admitted?.kind !== 'kept' || entries.length >= max) continue;
+      entries.push({ id: headlineId(admitted.headline.title), topic, headline: admitted.headline });
     }
   }
-  if (conflict) lines.push(CONFLICT_LINE);
-  return [OPEN, NOTICE, ...(lines.length === 0 ? ['(no headlines today)'] : lines), CLOSE].join('\n');
+  return { entries, conflict };
 }
