@@ -24,6 +24,7 @@ const NARRATOR_TOOLS = [
   'accuse',
   'run_give_up',
   'evidence_board',
+  'tavern_news',
 ];
 const GENERATOR_TOOLS = ['generator_brief', 'scenario_submit'];
 const EXTRACTOR_TOOLS = ['news_brief', 'world_propose', 'seeds_submit'];
@@ -140,6 +141,17 @@ describe('tools', () => {
     expect(body).toContain('`ready`');
     expect(body).toContain('`failed: <short reason>`');
     expect(body).toMatch(/by id, never by text/);
+  });
+
+  it('the narrator brings the news to the tavern before the hero is made, after starting the extractor', () => {
+    const body = read(narratorPath);
+    const start = body.indexOf('**New run:**');
+    const news = body.indexOf('the-race:seed-extractor', start);
+    const tavern = body.indexOf('tavern_news', start);
+    const poll = body.indexOf('Making the hero is a short poll', start);
+    expect(news).toBeGreaterThan(start);
+    expect(tavern).toBeGreaterThan(news);
+    expect(poll).toBeGreaterThan(tavern);
   });
 
   it('the narrator starts the seed extractor before the case generator', () => {
