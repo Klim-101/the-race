@@ -23,6 +23,14 @@ describe('the shipped feed list', () => {
     }
   });
 
+  it('offers at least five enabled feeds in each of ru and en', () => {
+    for (const language of ['ru', 'en']) {
+      expect(
+        SHIPPED.filter((feed) => feed.language === language && feed.enabled).length,
+      ).toBeGreaterThanOrEqual(5);
+    }
+  });
+
   it('offers five humor feeds in more than one language', () => {
     const humor = SHIPPED.filter(({ topic }) => topic === 'humor');
     expect(humor).toHaveLength(5);
