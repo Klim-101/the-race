@@ -391,3 +391,39 @@ describe('the ending of a run', () => {
     );
   });
 });
+
+describe('the hero as the narrator', () => {
+  const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+  const tone = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'tone.md'));
+  const voice = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'hero-voice.md'));
+  const prompts = [
+    skill,
+    tone,
+    voice,
+    ...['talks.md', 'endings.md', 'outcomes.md', 'hero-creation.md'].map((file) =>
+      read(join(AGENTS, 'skills', 'play-the-race', 'reference', file)),
+    ),
+  ];
+
+  it('tells the story in the first person from the pick on, and keeps the tavern an outside voice', () => {
+    expect(skill).toMatch(/you are the hero's own thoughts: first person, present tense/);
+    expect(tone).toMatch(/\*\*First person, present tense\*\*/);
+    expect(tone).toMatch(/Я толкаю дверь/);
+    expect(read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'hero-creation.md'))).toMatch(
+      /outside voice/,
+    );
+  });
+
+  it('points to the voice reference, which says how the voice comes from the hero and what stays', () => {
+    expect(skill).toContain('reference/hero-voice.md');
+    expect(tone).toContain('hero-voice.md');
+    expect(voice).toMatch(/a little irony/i);
+    expect(voice).toMatch(/The hero leaves the case at the end and never dies/);
+  });
+
+  it('has no haughty narrator or second person left anywhere in the narrator files', () => {
+    for (const text of prompts) {
+      expect(text).not.toMatch(/haughty|supercilious|look down your nose|Second person, present tense/i);
+    }
+  });
+});
