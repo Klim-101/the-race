@@ -3,6 +3,7 @@
   "compilerOptions": {
     "rootDir": "..",
     "outDir": "dist",
+    "resolveJsonModule": true,
     "paths": {
       "@the-race/engine": ["../engine/src/index.ts"],
       "@the-race/news": ["../news/src/index.ts"],
@@ -11,6 +12,7 @@
   },
   "include": [
     "src",
+    "src/locales/*.json",
     "test",
     "vitest.config.ts",
     "../engine/src",
