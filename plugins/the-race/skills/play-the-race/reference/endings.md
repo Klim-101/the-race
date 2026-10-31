@@ -28,4 +28,4 @@ For `accuse` the verdict word and the truth come first, as the skill says; the s
 - Do not suggest the hero can come back to this case or this run: it is over. A new run is a new hero.
 - Do not show numbers, meters or ids. Speak of how it felt: a tired hero, an empty phone, a cold file.
 - Do not blame the player. The ending is the world answering, not a verdict on them.
-- Do not mention a hall, a profile, achievements or statistics: none of these exist yet.
+- Do not mention a hall, achievements or any statistic that `profile_view` does not give you: they do not exist yet. The one line of the tally comes after the scene (see SKILL.md): `runs`, `won`, and if it is worth a word the streak or the longest case.

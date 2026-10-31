@@ -13,7 +13,7 @@ import {
 } from '@the-race/engine';
 import { loadRun, runFiles, saveSeedsForDay, type SaveFs } from '@the-race/saves';
 import { afterEach, describe, expect, it } from 'vitest';
-import { TEST_BOARD_DIR, offlineNews } from '../../test/fake-context.js';
+import { TEST_BOARD_DIR, TEST_PROFILE_DIR, offlineNews } from '../../test/fake-context.js';
 import type { ServerContext } from '../context.js';
 import { PendingRunSchema, loadPending, pendingFile, savePending, type PendingRun } from '../pending-run.js';
 import { serveStdio } from '../stdio.js';
@@ -122,6 +122,7 @@ async function start(pending: PendingRun | null, fs = memoryFs(), overrides: Par
     saveDir: SAVE_DIR,
     saveFs: fs,
     boardDir: TEST_BOARD_DIR,
+    profileDir: TEST_PROFILE_DIR,
     newSeed: () => 'unused',
     ...offlineNews(),
     ...overrides,

@@ -38,3 +38,16 @@ export {
   type LoadWorldResult,
   type WorldLoadFailureReason,
 } from './world-store.js';
+export {
+  PROFILE_EXPORT_FILE,
+  PROFILE_FILE,
+  PROFILE_IMPORT_FILE,
+  defaultProfileDir,
+  exportProfile,
+  importProfile,
+  loadProfile,
+  recordRun,
+  resolveProfileDir,
+  type ImportProfileResult,
+  type LoadProfileResult,
+} from './profile-store.js';

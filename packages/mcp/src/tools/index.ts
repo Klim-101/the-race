@@ -11,6 +11,7 @@ import { heroCreate } from './hero-create.js';
 import { heroOffer } from './hero-offer.js';
 import { heroPick } from './hero-pick.js';
 import { newsBrief } from './news-brief.js';
+import { profileExport, profileImport, profileView } from './profile-tools.js';
 import { question } from './question.js';
 import { runGiveUp } from './run-give-up.js';
 import { runNew } from './run-new.js';
@@ -37,6 +38,9 @@ export const TOOLS: readonly Tool[] = [
   heroOffer,
   heroPick,
   newsBrief,
+  profileExport,
+  profileImport,
+  profileView,
   question,
   runGiveUp,
   runNew,
