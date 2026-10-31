@@ -6,7 +6,7 @@ A hero has one run and one life in the Draft. When the run is over it stays over
 
 ## One closing scene, then the line
 
-Tell the ending as a short closing scene of the narrator's voice, six to ten sentences, in the player's language and in the dial of the case tone (`serious`, `wry`, `absurd`): the last moment at the place, the thing that decided it, and a line of how the hero fares afterwards, fitted to their background and, if they had one, their situation (`lifeState`). Say only what the view and the outcome contain; add no fact about the case that they do not. Then one plain line offering a new run.
+Tell the ending as a short closing scene in the hero's own thoughts (first person, as they leave the case), six to ten sentences, in the player's language and in the dial of the case tone (`serious`, `wry`, `absurd`): the last moment at the place, the thing that decided it, and how I (the hero) fare afterwards, fitted to my background and, if they had one, their situation (`lifeState`). Say only what the view and the outcome contain; add no fact about the case that they do not. Then one plain line offering a new run.
 
 For `accuse` the verdict word and the truth come first, as the skill says; the scene then follows the reason below.
 
