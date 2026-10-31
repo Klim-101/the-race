@@ -21,7 +21,7 @@ export const runNew = defineTool({
     'points to spend on them (all of them, no more, no skill above `maxSkillLevel`), ready-made builds of those ' +
     'points (`skillPresets`: offer these first, a player may still spend the points one by one), the backgrounds, the ' +
     'character signals (ids with a voice, a gift and a cost to be told from the locale text) and the ' +
-    "languages. Next call hero_create with the player's choices.",
+    'languages. Next call hero_offer: the tavern puts three heroes forward and the player picks one (hero_create is only for a hand-made hero the player asks for).',
   inputSchema: z.object({
     locale: LocaleSchema.describe(
       'The language code of the whole run, "ru" or "en" (never a language name), fixed from now on.',

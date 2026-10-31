@@ -17,6 +17,8 @@ const PREFIX = `mcp__plugin_${PLUGIN_NAME}_${MCP_SERVER_NAME}__`;
 const NARRATOR_TOOLS = [
   'run_new',
   'hero_create',
+  'hero_offer',
+  'hero_pick',
   'run_view',
   'act',
   'question',
@@ -143,12 +145,12 @@ describe('tools', () => {
     expect(body).toMatch(/by id, never by text/);
   });
 
-  it('the narrator brings the news to the tavern before the hero is made, after starting the extractor', () => {
+  it('the narrator brings the news to the tavern before the heroes are offered, after starting the extractor', () => {
     const body = read(narratorPath);
     const start = body.indexOf('**New run:**');
     const news = body.indexOf('the-race:seed-extractor', start);
     const tavern = body.indexOf('tavern_news', start);
-    const poll = body.indexOf('Making the hero is a short poll', start);
+    const poll = body.indexOf('Then the tavern: the player does not build a hero', start);
     expect(news).toBeGreaterThan(start);
     expect(tavern).toBeGreaterThan(news);
     expect(poll).toBeGreaterThan(tavern);
