@@ -1,0 +1,23 @@
+{
+  "name": "@the-race/news",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Headlines from RSS and Atom feeds: bounded fetching, a tolerant parser and a per-day cache in the player's own state directory.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@the-race/saves": "0.0.0",
+    "zod": "4.6.7"
+  }
+}

@@ -24,6 +24,8 @@ export default defineConfig({
         'packages/engine/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
         // A save that silently loses a run, or a summary that leaks the truth, breaks the game.
         'packages/saves/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        // Headlines are untrusted input and a failing feed must never fail a run: every branch is a promise.
+        'packages/news/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
         // The server is the only way the agent reaches the engine; a swallowed error here is a silent wrong answer.
         'packages/mcp/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
       },
