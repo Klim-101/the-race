@@ -16,6 +16,7 @@ import { runView } from './run-view.js';
 import { scenarioSubmit } from './scenario-submit.js';
 import { seedsSubmit } from './seeds-submit.js';
 import { serverInfo } from './server-info.js';
+import { tavernNews } from './tavern-news.js';
 import { worldPropose } from './world-propose.js';
 import { worldView } from './world-view.js';
 
@@ -38,6 +39,7 @@ export const TOOLS: readonly Tool[] = [
   runView,
   scenarioSubmit,
   seedsSubmit,
+  tavernNews,
   worldPropose,
   worldView,
 ];

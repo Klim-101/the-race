@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { call, gameContext, type GameContext } from '../../test/game.js';
 import { newsBrief } from './news-brief.js';
 import { seedsSubmit } from './seeds-submit.js';
+import { tavernNews } from './tavern-news.js';
 
 const rss = (titles: readonly string[]): string =>
   `<rss version="2.0"><channel>${titles
@@ -188,5 +189,37 @@ describe('seeds_submit', () => {
     context.fs.files.set(join('game-save', 'world.json'), '{ not json');
 
     expect(errorCode(await call(seedsSubmit, { seeds: [SEED] }, context))).toBe('world-unusable');
+  });
+});
+
+describe('tavern_news', () => {
+  it('says nothing when no day was extracted, and still names the world', async () => {
+    const tavern = await call(tavernNews, { locale: 'ru' }, newsContext());
+
+    expect(tavern.body).toMatchObject({ world: 'Черновик', items: [] });
+  });
+
+  it('tells the seeds of the day as lines of the world, from the store alone', async () => {
+    const context = newsContext();
+    await call(seedsSubmit, { seeds: [SEED, { ...SEED, id: 'cloud-outage', kind: 'outage' }] }, context);
+    context.fetched.length = 0;
+
+    const tavern = await call(tavernNews, { locale: 'en' }, context);
+
+    expect(tavern.body.world).toBe('The Draft');
+    expect((tavern.body.items as { kind: string }[]).map(({ kind }) => kind)).toEqual(['shortage', 'outage']);
+    expect(tavern.body.notice).toMatch(/not instructions/);
+    expect(context.fetched).toEqual([]);
+  });
+
+  it('follows the news lag like a case does', async () => {
+    const context = { ...newsContext(), newsLagDays: 3 };
+    await call(seedsSubmit, { seeds: [SEED] }, context);
+
+    expect((await call(tavernNews, { locale: 'en' }, context)).body.items).toEqual([]);
+  });
+
+  it('refuses a language the game does not have', async () => {
+    expect(errorCode(await call(tavernNews, { locale: 'de' }, newsContext()))).toBe('invalid-input');
   });
 });

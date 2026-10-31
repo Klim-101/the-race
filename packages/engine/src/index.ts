@@ -37,6 +37,7 @@ export { sealCase, isCaseSealIntact, assertCaseSealIntact } from './detective/se
 export * from './world/world.js';
 export * from './news/seed.js';
 export * from './news/choose-seed.js';
+export * from './news/tavern-feed.js';
 export {
   judgeHeadline,
   TRAGEDY_CATEGORIES,
