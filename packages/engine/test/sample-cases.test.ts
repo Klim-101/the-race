@@ -175,3 +175,23 @@ describe('sample cases', () => {
     });
   });
 });
+
+describe('traits and the sample cases', () => {
+  // The engine itself brings these scenes to any case: a talk, a second search, the evening, the next day.
+  const OF_THE_ENGINE = ['interrogation', 'reinspection', 'night', 'second-day'];
+  const tagged = new Set(
+    files.flatMap(({ json }) =>
+      [
+        ...(json.locations as { situations?: string[] }[]),
+        ...(json.clues as { situations?: string[] }[]),
+      ].flatMap(({ situations }) => situations ?? []),
+    ),
+  );
+
+  it.each(DETECTIVE_TRAITS.filter(({ effects }) => effects.every(({ kind }) => kind !== 'lock-out')))(
+    '$id has a scene to act in: one the engine brings or one a sample case has',
+    ({ trigger }) => {
+      expect(OF_THE_ENGINE.includes(trigger) || tagged.has(trigger)).toBe(true);
+    },
+  );
+});

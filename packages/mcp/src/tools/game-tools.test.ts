@@ -525,3 +525,34 @@ describe('the size of a link', () => {
     expect(after).toMatchObject({ turn: before.turn, clock: { minute: before.clock.minute } });
   });
 });
+
+describe('the hidden traits a turn showed', () => {
+  it('tells each trait once, and the view then holds it in the open and counts one fewer hidden', async () => {
+    const context = await activeRun();
+    const before = (await call(runView, {}, context)).body as { hiddenTraitCount: number };
+    const told: { trait: string; polarity: string; reason: string }[] = [];
+    let turn = 0;
+    for (const intent of [{ kind: 'look' }, { kind: 'search' }, { kind: 'rest' }, { kind: 'rest' }]) {
+      const result = await call(act, { turn, intent }, context);
+      expect(result.isError).toBe(false);
+      turn += 1;
+      told.push(...(result.body.revealed as typeof told));
+    }
+
+    const ids = told.map(({ trait }) => trait);
+    expect(new Set(ids).size).toBe(ids.length);
+    const after = (await call(runView, {}, context)).body as {
+      hiddenTraitCount: number;
+      revealedTraits: { id: string }[];
+    };
+    expect(after.revealedTraits.map(({ id }) => id).sort()).toEqual([...ids].sort());
+    expect(after.hiddenTraitCount).toBe(before.hiddenTraitCount - ids.length);
+    for (const entry of told) expect(['positive', 'negative', 'mixed']).toContain(entry.polarity);
+  });
+
+  it('is an empty list on a turn that showed nothing', async () => {
+    const result = await call(act, { turn: 0, intent: { kind: 'look' } }, await activeRun());
+
+    expect(result.body.revealed).toEqual([]);
+  });
+});
