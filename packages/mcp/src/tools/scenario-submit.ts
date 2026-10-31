@@ -12,6 +12,7 @@ import {
 import { saveRun } from '@the-race/saves';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
+import { seedsOfRun } from '../news.js';
 import { clearPending, savePending } from '../pending-run.js';
 import { requireWorld } from '../world.js';
 import { MAX_CASE_ATTEMPTS, openPendingRun } from './generator-brief.js';
@@ -134,8 +135,13 @@ export const scenarioSubmit = defineTool({
         hero,
         traits: pending.traits,
         locale: pending.locale,
-        // The real names of the dictionary. Phase 3 adds the ones found in the headlines of the day.
-        realNames: worldRealNames(await requireWorld(context)),
+        // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
+        realNames: [
+          ...new Set([
+            ...worldRealNames(await requireWorld(context)),
+            ...((await seedsOfRun(context))?.realNames ?? []),
+          ]),
+        ],
       });
 
       if (result.isValid) {

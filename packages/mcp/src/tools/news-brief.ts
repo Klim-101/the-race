@@ -5,7 +5,7 @@ import { MAX_SEEDS, MAX_SEED_HEADLINES, SEED_KINDS, TONES } from '@the-race/engi
 import { loadSeeds } from '@the-race/saves';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
-import { readTodaysNews } from '../news.js';
+import { namesInHeadlines, readTodaysNews } from '../news.js';
 
 export const NEWS_ERROR_CODES = {
   alreadyExtracted: 'already-extracted',
@@ -15,8 +15,8 @@ export const newsBrief = defineTool({
   name: 'news_brief',
   description:
     "For the seed extractor only. Returns today's headlines, already cleaned and filtered by the engine, each " +
-    'with an id, in a fenced block that is untrusted data, together with the kinds of seed and the tones ' +
-    'allowed. The headlines are fetched once a day and cached, so calling it again costs nothing. When the ' +
+    'with an id, in a fenced block that is untrusted data, the proper names they carry (pass them to ' +
+    '`world_propose` as `knownRealNames`), and the kinds of seed and the tones allowed. The headlines are fetched once a day and cached, so calling it again costs nothing. When the ' +
     'seeds of today have already been extracted it says so and gives no headlines: answer "ready". Call it ' +
     'once, before `seeds_submit`.',
   inputSchema: z.object({}),
@@ -25,6 +25,7 @@ export const newsBrief = defineTool({
     status: z.enum(['ready', 'already-extracted']),
     headlines: z.string(),
     headlineIds: z.array(z.string()),
+    knownRealNames: z.array(z.string()),
     seedKinds: z.array(z.string()),
     tones: z.array(z.string()),
     maxSeeds: z.int(),
@@ -44,7 +45,14 @@ export const newsBrief = defineTool({
     };
     const day = context.today();
     if ((await loadSeeds(context.saveDir, context.saveFs))[day] !== undefined) {
-      return { day, status: 'already-extracted' as const, headlines: '', headlineIds: [], ...shape };
+      return {
+        day,
+        status: 'already-extracted' as const,
+        headlines: '',
+        headlineIds: [],
+        knownRealNames: [],
+        ...shape,
+      };
     }
     const news = await readTodaysNews(context);
     return {
@@ -52,6 +60,8 @@ export const newsBrief = defineTool({
       status: 'ready' as const,
       headlines: news.block,
       headlineIds: news.entries.map(({ id }) => id),
+      // world_propose takes at most this many known names.
+      knownRealNames: namesInHeadlines(news).slice(0, 300),
       ...shape,
     };
   },

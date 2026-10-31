@@ -4,7 +4,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
-import { DETECTIVE_TRAITS, type DetectiveHero, type NewsSeed, type Trait } from '@the-race/engine';
+import {
+  DETECTIVE_TRAITS,
+  SEED_CRIMES,
+  type DetectiveHero,
+  type NewsSeed,
+  type Trait,
+} from '@the-race/engine';
 import { loadRun, runFiles, saveSeedsForDay, type SaveFs } from '@the-race/saves';
 import { afterEach, describe, expect, it } from 'vitest';
 import { offlineNews } from '../../test/fake-context.js';
@@ -160,37 +166,81 @@ describe('generator_brief', () => {
       theme: 'curious-theft',
       hero: { name: HERO.name, background: 'analyst', signal: { id: 'burnt-out', voice: 'flat-dry' } },
       attemptsLeft: 3,
-      seeds: [],
+      seed: null,
+      mirrorWorld: { name: 'The Draft', entries: [] },
     });
     expect(['serious', 'wry', 'absurd']).toContain(brief.body.tone);
-    expect(brief.body.seedsAreUntrusted).toMatch(/untrusted/);
+    expect(brief.body.seedIsUntrusted).toMatch(/untrusted/);
     for (const trait of DETECTIVE_TRAITS) expect(brief.text).not.toContain(trait.id);
     expect(brief.text).not.toMatch(/trait/i);
   });
 
-  it('hands over the seeds of the day, with no headline in them', async () => {
+  it('hands over the one seed the engine chose, with its crime and tone, and no headline', async () => {
     const fs = memoryFs();
-    await saveSeedsForDay(SAVE_DIR, '2026-10-31', [SEED], fs);
+    await saveSeedsForDay(
+      SAVE_DIR,
+      '2026-10-31',
+      { seeds: [{ ...SEED, tone: 'absurd' }], realNames: [] },
+      fs,
+    );
     const { call } = await start(pendingRun(), fs);
 
     const brief = await call('generator_brief', {});
 
-    expect(brief.body.seeds).toEqual([
-      { id: SEED.id, kind: SEED.kind, tone: SEED.tone, premise: SEED.premise },
-    ]);
+    expect(brief.body.seed).toEqual({ id: SEED.id, kind: SEED.kind, premise: SEED.premise });
+    expect(brief.body.tone).toBe('absurd');
+    expect(SEED_CRIMES.shortage).toContain(brief.body.theme);
     expect(brief.text).not.toContain(SEED.headlineIds[0]);
   });
 
-  it('follows the news lag: an older day, or none when nothing so old was extracted', async () => {
+  it('gives different heroes of the same news different crimes', async () => {
     const fs = memoryFs();
-    await saveSeedsForDay(SAVE_DIR, '2026-10-29', [SEED], fs);
-    await saveSeedsForDay(SAVE_DIR, '2026-10-31', [{ ...SEED, id: 'today-only' }], fs);
+    const kinds = ['shortage', 'scandal', 'outage', 'market-shock'] as const;
+    const seeds = kinds.map((kind) => ({ ...SEED, id: `${kind}-seed`, kind }));
+    await saveSeedsForDay(SAVE_DIR, '2026-10-31', { seeds, realNames: [] }, fs);
+
+    const themes = new Set<unknown>();
+    for (const seed of ['run-a', 'run-b', 'run-c', 'run-d', 'run-e', 'run-f']) {
+      const { call } = await start(pendingRun({ seed }), fs);
+      themes.add((await call('generator_brief', {})).body.theme);
+    }
+
+    expect(themes.size).toBeGreaterThan(1);
+  });
+
+  it('follows the news lag: an older day, or no seed when nothing so old was extracted', async () => {
+    const fs = memoryFs();
+    await saveSeedsForDay(SAVE_DIR, '2026-10-29', { seeds: [SEED], realNames: [] }, fs);
+    await saveSeedsForDay(
+      SAVE_DIR,
+      '2026-10-31',
+      { seeds: [{ ...SEED, id: 'today-only' }], realNames: [] },
+      fs,
+    );
 
     const lagged = await (await start(pendingRun(), fs, { newsLagDays: 2 })).call('generator_brief', {});
     const tooOld = await (await start(pendingRun(), fs, { newsLagDays: 5 })).call('generator_brief', {});
 
-    expect((lagged.body.seeds as { id: string }[]).map(({ id }) => id)).toEqual([SEED.id]);
-    expect(tooOld.body.seeds).toEqual([]);
+    expect(lagged.body.seed).toMatchObject({ id: SEED.id });
+    expect(tooOld.body.seed).toBeNull();
+  });
+
+  it('shows the mirror world as it stands, in the language of the run', async () => {
+    const fs = memoryFs();
+    const { call } = await start(pendingRun({ locale: 'ru' }), fs);
+    await call('world_propose', {
+      kind: 'country',
+      real: ['Россия', 'Russia'],
+      mirror: { ru: 'Вальдмарк', en: 'Valdmark' },
+    });
+
+    const brief = await call('generator_brief', {});
+
+    expect(brief.body.mirrorWorld).toEqual({
+      name: 'Черновик',
+      entries: [{ id: 'valdmark', kind: 'country', name: 'Вальдмарк' }],
+    });
+    expect(brief.text).not.toContain('Россия');
   });
 
   it('has no signal for a hero without one, and the same tone for the same seed', async () => {
@@ -518,5 +568,16 @@ describe('the mirror world dictionary', () => {
 
     fs.files.set(WORLD_FILE, '{broken');
     expect(errorCode(await submit(call, readCase('goose-of-elmwick.en.json')))).toBe('world-unusable');
+  });
+
+  it("keeps a real name of the day's headlines out of a case, whatever the dictionary holds", async () => {
+    const fs = memoryFs();
+    await saveSeedsForDay(SAVE_DIR, '2026-10-31', { seeds: [SEED], realNames: ['elmwick'] }, fs);
+    const { call } = await start(pendingRun(), fs);
+
+    const refused = await submit(call, readCase('goose-of-elmwick.en.json'));
+
+    expect(refused.body).toMatchObject({ accepted: false });
+    expect(JSON.stringify(refused.body)).toContain('real-name');
   });
 });

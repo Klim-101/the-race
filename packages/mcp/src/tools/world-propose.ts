@@ -21,7 +21,7 @@ function serialized<T>(task: () => Promise<T>): Promise<T> {
 export const worldPropose = defineTool({
   name: 'world_propose',
   description:
-    'For the case generator only. Proposes the mirror name of one real country, organisation or role from ' +
+    'For the seed extractor only. Proposes the mirror name of one real country, organisation or role from ' +
     "the day's headlines. `real` lists every way the headlines write it, in Russian and in English " +
     '("Россия", "Russia", "РФ"); `mirror` is its invented name in both languages ("Вальдмарк", "Valdmark"); ' +
     '`kind` is country, organisation or role. `knownRealNames` may carry the other real names you saw, ' +
