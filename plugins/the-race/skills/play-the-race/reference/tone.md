@@ -36,6 +36,7 @@ No violence or death as an event of the plot: no bodies, no assaults, no weapons
 
 ## Pacing
 
+- Never fewer than two sentences before a poll, and never a bare recap of the result: every turn gets at least one dressed detail or remark. Brevity is for the numbers, not for the voice.
 - A look or a move: two to four sentences. A talk: a short exchange, the suspect's words quoted. A search: a paragraph. A night: one paragraph. The verdict: the longest scene of the run.
 - Close on a beat that makes the next move tempting, then hand over to the poll. Do not enumerate the options in the prose; the poll does that.
 

@@ -46,7 +46,7 @@ import {
 } from './consumables.js';
 import { GearIdSchema, KitItemSchema, initialKit, viewKit, withGearState, type KitView } from './gear.js';
 import { buildNeighbors } from './obtainability.js';
-import { suspectPlace } from './random-events.js';
+import { isLocationClosed, suspectPlace } from './random-events.js';
 import { CASE_SEAL_PATTERN, isCaseSealIntact, sealCase } from './seal.js';
 
 /** A random event that has happened, and the day it happened on. */
@@ -397,7 +397,13 @@ export interface DetectiveRunView {
     readonly id: string;
     readonly name: string;
     readonly description: string;
-    readonly exits: readonly { readonly id: string; readonly name: string; readonly visited: boolean }[];
+    readonly exits: readonly {
+      readonly id: string;
+      readonly name: string;
+      readonly visited: boolean;
+      /** Why the way is shut right now, if it is: a door that wants a clue first, or a place an event closed. */
+      readonly blocked: 'locked' | 'closed' | null;
+    }[];
   };
   readonly suspects: readonly {
     readonly id: string;
@@ -431,14 +437,25 @@ function signalViewOf(run: DetectiveRunState): DetectiveRunView['signal'] {
     : { id: signal.id, voice: signal.voice, gift: signal.gift, cost: signal.cost };
 }
 
+/** Mirrors the refusals of a move, so the narrator never offers a way the engine will turn back. */
+function blockedWay(
+  run: DetectiveRunState,
+  id: string,
+  access: Location['access'],
+  visited: boolean,
+): 'locked' | 'closed' | null {
+  if (isLocationClosed(run, id)) return 'closed';
+  return !visited && access.kind === 'clue' && !run.foundClueIds.includes(access.clueId) ? 'locked' : null;
+}
+
 export function viewRun(run: DetectiveRunState): DetectiveRunView {
   const { case: detectiveCase } = run;
   const location = requireLocation(detectiveCase, run.locationId);
-  const exits = [...(buildNeighbors(detectiveCase.locations).get(location.id) ?? [])].map((id) => ({
-    id,
-    name: requireLocation(detectiveCase, id).name,
-    visited: run.visitedLocationIds.includes(id),
-  }));
+  const exits = [...(buildNeighbors(detectiveCase.locations).get(location.id) ?? [])].map((id) => {
+    const { name, access } = requireLocation(detectiveCase, id);
+    const visited = run.visitedLocationIds.includes(id);
+    return { id, name, visited, blocked: blockedWay(run, id, access, visited) };
+  });
   const pool = detectiveCase.randomEvents ?? [];
   return {
     title: detectiveCase.title,

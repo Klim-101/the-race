@@ -240,8 +240,8 @@ describe('viewRun', () => {
       insights: [],
     });
     expect(view.location.exits).toEqual([
-      { id: 'cheese-stall', name: 'Cheese stall', visited: false },
-      { id: 'storage-cellar', name: 'Storage cellar', visited: false },
+      { id: 'cheese-stall', name: 'Cheese stall', visited: false, blocked: null },
+      { id: 'storage-cellar', name: 'Storage cellar', visited: false, blocked: 'locked' },
     ]);
     expect(view.suspects.map(({ id }) => id)).toEqual(['baker', 'rival', 'mayor']);
     expect(view.suspects.find(({ id }) => id === 'baker')?.place?.id).toBe('cheese-stall');
@@ -271,7 +271,25 @@ describe('viewRun', () => {
     expect(view.insights.map(({ id }) => id)).toEqual(['motive-debt']);
     expect(view.hiddenTraitCount).toBe(1);
     expect(view.revealedTraits.map(({ id }) => id)).toEqual([traitId]);
-    expect(view.location.exits).toContainEqual({ id: 'market-square', name: 'Market square', visited: true });
+    expect(view.location.exits).toContainEqual({
+      id: 'market-square',
+      name: 'Market square',
+      visited: true,
+      blocked: null,
+    });
+  });
+
+  it('marks a way as locked until its clue is found, and as closed when an event shut it', () => {
+    const blockedOf = (run: ReturnType<typeof newRun>, id: string) =>
+      viewRun(run).location.exits.find((exit) => exit.id === id)?.blocked;
+    const run = newRun();
+
+    expect(blockedOf(run, 'storage-cellar')).toBe('locked');
+    expect(blockedOf(findClue(run, 'cellar-key'), 'storage-cellar')).toBeNull();
+    expect(
+      blockedOf({ ...run, visitedLocationIds: ['market-square', 'storage-cellar'] }, 'storage-cellar'),
+    ).toBeNull();
+    expect(blockedOf({ ...run, closedLocationIds: ['cheese-stall'] }, 'cheese-stall')).toBe('closed');
   });
 
   it('lists no exits for a location that connects to nothing', () => {
