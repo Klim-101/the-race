@@ -8,6 +8,8 @@ import { deduce } from './deduce.js';
 import { evidenceBoard } from './evidence-board.js';
 import { generatorBrief } from './generator-brief.js';
 import { heroCreate } from './hero-create.js';
+import { heroOffer } from './hero-offer.js';
+import { heroPick } from './hero-pick.js';
 import { newsBrief } from './news-brief.js';
 import { question } from './question.js';
 import { runGiveUp } from './run-give-up.js';
@@ -32,6 +34,8 @@ export const TOOLS: readonly Tool[] = [
   evidenceBoard,
   generatorBrief,
   heroCreate,
+  heroOffer,
+  heroPick,
   newsBrief,
   question,
   runGiveUp,

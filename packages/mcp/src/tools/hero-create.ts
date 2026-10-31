@@ -1,18 +1,10 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import {
-  BackgroundSchema,
-  DetectiveSkillSchema,
-  GenderSchema,
-  assembleHero,
-  createRng,
-  viewHero,
-} from '@the-race/engine';
+import { BackgroundSchema, DetectiveSkillSchema, GenderSchema, createRng } from '@the-race/engine';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
-import { loadPending, savePending } from '../pending-run.js';
-import { ToolFailure } from '../tool-error.js';
+import { requirePending, storeHero } from '../hero-assembly.js';
 
 export const heroCreate = defineTool({
   name: 'hero_create',
@@ -39,39 +31,7 @@ export const heroCreate = defineTool({
     hiddenTraitCount: z.int(),
   }),
   handler: async (input, context) => {
-    const pending = await loadPending(context.saveDir, context.saveFs);
-    if (pending === undefined) {
-      throw new ToolFailure({
-        code: 'no-pending-run',
-        message: 'There is no new run waiting for a hero.',
-        remediation: 'Call run_view. If no run exists, call run_new first; if one is active, resume it.',
-      });
-    }
-    const rng = createRng(pending.seed);
-    const assembled = assembleHero({ ...input, archetype: 'detective' }, rng);
-    if (!assembled.isValid) {
-      const reasons = assembled.issues.map(({ path, message }) => `${path}: ${message}`);
-      throw new ToolFailure({
-        code: 'invalid-hero',
-        message: `The hero is not valid. ${reasons.join(' ')}`,
-        remediation: 'Ask the player to adjust the choices and call hero_create again.',
-      });
-    }
-    await savePending(
-      context.saveDir,
-      {
-        ...pending,
-        hero: assembled.assembled.hero,
-        traits: [...assembled.assembled.traits],
-        rngState: rng.state(),
-      },
-      context.saveFs,
-    );
-    const view = viewHero(assembled.assembled);
-    return {
-      status: 'awaiting-case' as const,
-      hero: { ...view.hero },
-      hiddenTraitCount: view.hiddenTraitCount,
-    };
+    const pending = await requirePending(context);
+    return storeHero(context, pending, { ...input, archetype: 'detective' }, createRng(pending.seed));
   },
 });

@@ -30,6 +30,8 @@ export const PendingRunSchema = z.object({
   hero: DetectiveHeroSchema.nullable(),
   traits: z.array(TraitSchema),
   rngState: z.int().min(0).max(0xffffffff),
+  /** How many times the player has asked the tavern for another three heroes. */
+  offerRound: z.int().min(0).default(0),
   attempts: z.int().min(0).default(0),
   failed: z.boolean().default(false),
 });
@@ -56,6 +58,7 @@ export function newPendingRun(seed: string, locale: PendingRun['locale']): Pendi
     hero: null,
     traits: [],
     rngState: createRng(seed).state(),
+    offerRound: 0,
     attempts: 0,
     failed: false,
   };
