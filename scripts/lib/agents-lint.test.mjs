@@ -230,3 +230,29 @@ describe('triggering evals', () => {
     expect(group.some((entry) => !cyrillic(entry))).toBe(true);
   });
 });
+
+describe('talks with suspects', () => {
+  const REFERENCE = join(AGENTS, 'skills', 'play-the-race', 'reference');
+  const talks = read(join(REFERENCE, 'talks.md'));
+
+  // Every field of a questioning that the narrator voices; kept beside InterrogationOutcome in the engine.
+  it.each(['alibi', 'conceded', 'secret', 'stance', 'presented'])(
+    'says in talks.md what to do with the outcome field %s',
+    (field) => {
+      expect(talks).toContain(`\`${field}\``);
+      expect(read(join(REFERENCE, 'outcomes.md'))).toContain(`\`${field}\``);
+    },
+  );
+
+  it.each([
+    [join('skills', 'play-the-race', 'SKILL.md')],
+    [join('skills', 'play-the-race', 'reference', 'tone.md')],
+    [join('skills', 'play-the-race', 'reference', 'outcomes.md')],
+  ])('points to talks.md from %s', (file) => {
+    expect(read(join(AGENTS, file))).toContain('talks.md');
+  });
+
+  it('forbids a fact of the case in a talk that gives nothing away', () => {
+    expect(talks).toMatch(/no fact of the case/);
+  });
+});
