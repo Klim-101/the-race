@@ -78,6 +78,7 @@
   },
   "tabs": {
     "tabs": {
+      "board": "Board",
       "map": "Map",
       "suspects": "Suspects",
       "clues": "Clues and links",
@@ -311,6 +312,28 @@
         "newly-arrived": "newly arrived in town",
         "on-probation": "on probation"
       }
+    },
+    "corkboard": {
+      "title": "Corkboard",
+      "hint": "Click a clue, a person or a place to light up what ties to it. Click it again, or press Esc, to clear.",
+      "empty": "Nothing is pinned yet.",
+      "foundAt": "found at",
+      "step": "turn {n}",
+      "shownTo": "Shown to",
+      "nobody": "not shown to anyone yet",
+      "tried": "Links tried",
+      "noneTried": "No link has been tried yet.",
+      "results": {
+        "insight": "a conclusion",
+        "already-known": "already known",
+        "nothing": "led nowhere"
+      },
+      "effects": {
+        "breaks-lie": "broke a lie",
+        "no-effect": "no effect"
+      },
+      "legend": "Red thread: a link tried. Blue thread: a clue shown to a person.",
+      "shownHere": "Clues shown to them"
     }
   }
 }

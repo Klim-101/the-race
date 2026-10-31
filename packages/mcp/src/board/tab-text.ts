@@ -7,6 +7,7 @@ import { LOCALE_TEXT } from '../locales/index.js';
 /** What the tabs of the evidence board say. The case's own text is never here. */
 export interface TabText {
   readonly tabs: {
+    readonly board: string;
     readonly map: string;
     readonly suspects: string;
     readonly clues: string;
@@ -14,6 +15,24 @@ export interface TabText {
     readonly hero: string;
   };
   readonly nav: string;
+  /** The corkboard and the history the notebooks tell: where a clue was found, to whom it was shown, the links tried. */
+  readonly corkboard: {
+    readonly title: string;
+    readonly hint: string;
+    readonly empty: string;
+    readonly foundAt: string;
+    /** One turn of the run ({n}). */
+    readonly step: string;
+    readonly shownTo: string;
+    /** The heading, on a person's notebook page, of the clues they were shown. */
+    readonly shownHere: string;
+    readonly nobody: string;
+    readonly tried: string;
+    readonly noneTried: string;
+    readonly results: Record<'insight' | 'already-known' | 'nothing', string>;
+    readonly effects: Record<'breaks-lie' | 'no-effect', string>;
+    readonly legend: string;
+  };
   readonly map: {
     readonly title: string;
     readonly empty: string;

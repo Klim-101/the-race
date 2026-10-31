@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { DetectiveRunView } from '@the-race/engine';
+import { placeTokens, rel } from './board-relations.js';
 import { escapeHtml, truncate } from './escape-html.js';
 import type { TabText } from './tab-text.js';
 
@@ -119,7 +120,8 @@ export function renderMap(view: DetectiveRunView, text: TabText): string {
       clues === 0
         ? ''
         : `<circle class="badge" cx="${whole(x + NODE_WIDTH)}" cy="${whole(y)}" r="11"><title>${escapeHtml(text.map.cluesHere)}: ${String(clues)}</title></circle><text class="badge-n" x="${whole(x + NODE_WIDTH)}" y="${whole(y + 4)}" text-anchor="middle">${String(clues)}</text>`;
-    return `<g class="${classes}"><title>${escapeHtml(place.name)}${state === '' ? '' : ` (${escapeHtml(state)})`}</title><rect x="${whole(x)}" y="${whole(y)}" width="${String(NODE_WIDTH)}" height="${String(NODE_HEIGHT)}" rx="8"/><text class="name" x="${whole(x + NODE_WIDTH / 2)}" y="${whole(y + 24)}" text-anchor="middle">${escapeHtml(truncate(place.name, LABEL_LENGTH))}</text><text class="state" x="${whole(x + NODE_WIDTH / 2)}" y="${whole(y + 43)}" text-anchor="middle">${escapeHtml(state)}</text>${badge}</g>`;
+    const pick = `data-pick="place:${escapeHtml(place.id)}" data-rel="${escapeHtml(rel(placeTokens(view, place.id)))}" tabindex="0" role="button"`;
+    return `<g class="${classes}" ${pick}><title>${escapeHtml(place.name)}${state === '' ? '' : ` (${escapeHtml(state)})`}</title><rect x="${whole(x)}" y="${whole(y)}" width="${String(NODE_WIDTH)}" height="${String(NODE_HEIGHT)}" rx="8"/><text class="name" x="${whole(x + NODE_WIDTH / 2)}" y="${whole(y + 24)}" text-anchor="middle">${escapeHtml(truncate(place.name, LABEL_LENGTH))}</text><text class="state" x="${whole(x + NODE_WIDTH / 2)}" y="${whole(y + 43)}" text-anchor="middle">${escapeHtml(state)}</text>${badge}</g>`;
   });
 
   return `<div class="graph"><svg class="map" viewBox="0 0 ${String(layout.width)} ${String(layout.height)}" role="img" aria-label="${escapeHtml(text.map.title)}" style="min-width:${String(Math.min(layout.width, 520))}px"><g class="edges">${edges.join('')}</g>${nodes.join('')}</svg></div>
