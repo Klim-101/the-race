@@ -51,3 +51,15 @@ export const nodeSaveFs: SaveFs = {
     await rm(path, { force: true });
   },
 };
+
+/** Writes `data` so that `path` holds either its old content or the whole new content, never a mix. */
+export async function replaceFile(fs: SaveFs, path: string, data: string): Promise<void> {
+  const temporary = `${path}.tmp`;
+  try {
+    await fs.writeFileSynced(temporary, data);
+    await fs.rename(temporary, path);
+  } catch (error) {
+    await fs.remove(temporary).catch(() => undefined);
+    throw error;
+  }
+}

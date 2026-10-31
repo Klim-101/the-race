@@ -5,6 +5,7 @@ import {
   EMPTY_RUN_LOG,
   createDetectiveRun,
   validateCase,
+  worldRealNames,
   type CaseIssue,
   type CaseIssueCode,
 } from '@the-race/engine';
@@ -12,6 +13,7 @@ import { saveRun } from '@the-race/saves';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
 import { clearPending, savePending } from '../pending-run.js';
+import { requireWorld } from '../world.js';
 import { MAX_CASE_ATTEMPTS, openPendingRun } from './generator-brief.js';
 
 /** What a generator is told at most: a long list of issues helps nobody. */
@@ -132,8 +134,8 @@ export const scenarioSubmit = defineTool({
         hero,
         traits: pending.traits,
         locale: pending.locale,
-        // Phase 3 hands the names found in the headlines here; there are none yet.
-        realNames: [],
+        // The real names of the dictionary. Phase 3 adds the ones found in the headlines of the day.
+        realNames: worldRealNames(await requireWorld(context)),
       });
 
       if (result.isValid) {

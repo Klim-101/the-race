@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { findRealName } from './real-names.js';
+import { findRealName, replaceRealName } from './real-names.js';
 
 describe('findRealName', () => {
   it('finds a name regardless of case', () => {
@@ -34,5 +34,20 @@ describe('findRealName', () => {
 
   it('ignores blank names', () => {
     expect(findRealName('Anything at all.', ['  '])).toBeUndefined();
+  });
+});
+
+describe('replaceRealName', () => {
+  it('replaces an inflected name, whatever its case and ё', () => {
+    expect(replaceRealName('Пётр у Королёва и КОРОЛЕВ', 'Королёв', 'Икс')).toBe('Пётр у Икс и Икс');
+  });
+
+  it('leaves a text without the name, and a blank name, alone', () => {
+    expect(replaceRealName('Ничего', 'Германия', 'Икс')).toBe('Ничего');
+    expect(replaceRealName('Ничего', '  ', 'Икс')).toBe('Ничего');
+  });
+
+  it('does not read the replacement as a pattern', () => {
+    expect(replaceRealName('Norway talks', 'Norway', '$&$&')).toBe('$&$& talks');
   });
 });

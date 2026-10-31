@@ -10,6 +10,7 @@ Decisions that are hard to reverse, written down with the reasons, so that nobod
 | [0004](0004-full-mirror-world.md)                         | A full mirror world: real names never reach the player                                | Accepted |
 | [0005](0005-json-is-canonical.md)                         | JSON is canonical; Markdown and HTML are rendered from it                             | Accepted |
 | [0006](0006-keeping-the-narrator-blind-in-claude-code.md) | Keeping the narrator blind in Claude Code: saves outside the project and a guard hook | Accepted |
+| [0007](0007-append-only-world-dictionary.md)              | The world dictionary is local and append-only                                         | Accepted |
 
 ## Format
 
