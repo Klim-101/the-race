@@ -1,0 +1,5 @@
+# Changes to the gate, the workflows and the engine need the owner's eye.
+/.github/ @Klim-101
+/scripts/ @Klim-101
+/packages/engine/ @Klim-101
+/AGENTS.md @Klim-101

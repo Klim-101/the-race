@@ -79,6 +79,7 @@ jobs:
               --body 'Automated update of the roadmap progress table from milestones.'
           fi
           # The change touches only the generated section of the roadmap, so it needs no review.
-          # A private repository on the free plan has no branch protection, so there are no required
-          # checks to wait for and `--auto` would be refused; switch to `--auto` with P6-03.
-          gh pr merge "$SYNC_BRANCH" --squash --delete-branch
+          # `main` now requires checks, and a pull request opened with GITHUB_TOKEN never gets them, so
+          # the merge is refused; the pull request then stays open for the owner to merge with the bypass.
+          gh pr merge "$SYNC_BRANCH" --squash --delete-branch ||
+            echo "::warning::Roadmap pull request left open: main requires checks it cannot get."
