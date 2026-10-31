@@ -3,7 +3,8 @@
 
 import { defineSignal } from '../signals.js';
 
-// The first signals of the detective, three to show what the data can say; the real set is a content task.
+// The signals of the detective: moods and circumstances, each with a gift and a cost. Modifiers, a rule on a
+// meter and events are all the data they need, so a new one is a few lines and no code.
 // A partner is a role and never a name: the name, like the wording of every message, is not the engine's.
 
 export const IN_LOVE = defineSignal({
@@ -75,4 +76,80 @@ export const FEELING_LOW = defineSignal({
   ],
 });
 
-export const DETECTIVE_SIGNALS = [IN_LOVE, BURNT_OUT, FEELING_LOW];
+export const RESTLESS = defineSignal({
+  id: 'restless',
+  voice: 'jittery-quick',
+  gift: 'quick-to-notice',
+  cost: 'cannot-switch-off',
+  // Eyes everywhere; and a mind that does not let the body sleep, so the debt grows by a point each night.
+  modifiers: [{ skills: ['perception'], amount: 1 }],
+  meters: [{ meter: 'sleep-debt', drift: 1 }],
+});
+
+export const OVERCONFIDENT = defineSignal({
+  id: 'overconfident',
+  voice: 'brisk-cocky',
+  gift: 'sure-of-the-room',
+  cost: 'brushes-off-doubt',
+  // Leans on people with ease; and does not look twice at a place already searched.
+  modifiers: [
+    { skills: ['pressure'], amount: 1 },
+    { trigger: 'reinspection', skills: ['perception', 'reasoning'], amount: -1 },
+  ],
+});
+
+export const HOMESICK = defineSignal({
+  id: 'homesick',
+  voice: 'wistful-soft',
+  gift: 'a-letter-now-and-then',
+  cost: 'mind-far-away',
+  // At home in a crowd of strangers, as long as the first day lasts; from the second the mind drifts.
+  modifiers: [
+    { trigger: 'crowd', skills: ['social'], amount: 1 },
+    { trigger: 'second-day', skills: ['perception'], amount: -1 },
+  ],
+  events: [
+    {
+      id: 'letter-from-home',
+      chance: 30,
+      fromDay: 2,
+      role: 'family',
+      variants: [
+        {
+          tone: 'encouraging',
+          kind: 'letter-from-home-warm',
+          weight: 2,
+          effects: [{ kind: 'meter', meter: 'nerves', delta: 2 }],
+        },
+        {
+          tone: 'demoralising',
+          kind: 'letter-from-home-wistful',
+          weight: 1,
+          effects: [{ kind: 'meter', meter: 'nerves', delta: -1 }],
+        },
+      ],
+    },
+  ],
+});
+
+export const IN_A_HURRY = defineSignal({
+  id: 'in-a-hurry',
+  voice: 'clipped-brisk',
+  gift: 'no-time-to-waste',
+  cost: 'rushes-the-details',
+  // Calls in favours before the other side has finished picking up; and skims the columns of a ledger.
+  modifiers: [
+    { skills: ['contacts'], amount: 1 },
+    { trigger: 'financial-documents', skills: ['reasoning'], amount: -1 },
+  ],
+});
+
+export const DETECTIVE_SIGNALS = [
+  IN_LOVE,
+  BURNT_OUT,
+  FEELING_LOW,
+  RESTLESS,
+  OVERCONFIDENT,
+  HOMESICK,
+  IN_A_HURRY,
+];

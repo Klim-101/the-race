@@ -192,6 +192,16 @@ export function offerHeroes(seed: string, round: number, locale: Locale): HeroOf
   return [candidate('a', 0), candidate('b', 1), candidate('c', 2)];
 }
 
+/**
+ * The first name of someone who matters to the hero (a partner, a family member): drawn from the invented
+ * given names on dice of the run's own, so it is fictional, the same all the run and in both languages one
+ * person. Never a surname, and never a name the narrator has to make up.
+ */
+export function companionName(seed: string, locale: Locale, role: string): string {
+  const rng = createRng(`${seed}:companion:${role}`);
+  return pick(rng, GIVEN[pick(rng, GENDERS)])[locale];
+}
+
 /** One hero of the offer by their id. */
 export function offeredHero(seed: string, round: number, locale: Locale, id: CandidateId): HeroCandidate {
   const [a, b, c] = offerHeroes(seed, round, locale);

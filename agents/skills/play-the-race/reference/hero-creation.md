@@ -53,12 +53,16 @@ A card may also carry a `lifeState`, what the hero is going through at the start
 | `newly-arrived`  | Newly arrived: a notebook for the streets, a stranger to everyone.  | Недавно в городе: блокнот для улиц и чужой для всех.           |
 | `on-probation`   | On probation: someone is watching, so the nerves are kept in check. | На испытательном сроке: за ним следят, нервы держит лекарство. |
 
-| id (signal)   | English                                                                       | Русский                                                                          |
-| ------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `in-love`     | In love: warm and distracted; someone to come back to, a bad word hurts more. | Влюблён: рассеянно-тёплый; есть к кому возвращаться, плохое слово ранит сильнее. |
-| `burnt-out`   | Burnt out: flat and dry; nothing left to lose, never fully rested.            | Выгорел: сухой и ровный; терять нечего, никогда не отдыхает до конца.            |
-| `feeling-low` | Feeling low: quiet and heavy; notices more when brooding, dulled senses.      | Хандрит: тихий и тяжёлый; в раздумьях замечает больше, чувства притуплены.       |
-| none          | No signal.                                                                    | Без сигнала.                                                                     |
+| id (signal)     | English                                                                           | Русский                                                                                        |
+| --------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `in-love`       | In love: warm and distracted; someone to come back to, a bad word hurts more.     | Влюблён: рассеянно-тёплый; есть к кому возвращаться, плохое слово ранит сильнее.               |
+| `burnt-out`     | Burnt out: flat and dry; nothing left to lose, never fully rested.                | Выгорел: сухой и ровный; терять нечего, никогда не отдыхает до конца.                          |
+| `feeling-low`   | Feeling low: quiet and heavy; notices more when brooding, dulled senses.          | Хандрит: тихий и тяжёлый; в раздумьях замечает больше, чувства притуплены.                     |
+| `restless`      | Restless: quick and watchful; sees more, sleeps worse.                            | Неусидчив: быстрый и зоркий; видит больше, спит хуже.                                          |
+| `overconfident` | Overconfident: brisk and cocky; pushes well, rarely looks twice.                  | Самоуверен: бойкий и дерзкий; хорошо давит, редко смотрит дважды.                              |
+| `homesick`      | Homesick: wistful and soft; comfortable among people, drifting by the second day. | Тоскует по дому: мягкий и задумчивый; уютно среди людей, со второго дня рассеян.               |
+| `in-a-hurry`    | In a hurry: clipped and brisk; gets calls answered, skims the columns.            | Торопится: отрывистый и резкий; быстро добивается ответа на звонок, пробегает столбцы глазами. |
+| none            | No signal.                                                                        | Без сигнала.                                                                                   |
 
 | id (build)     | English                                             | Русский                                            |
 | -------------- | --------------------------------------------------- | -------------------------------------------------- |
