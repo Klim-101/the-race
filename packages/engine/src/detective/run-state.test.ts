@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { assembleHero } from '../assemble-hero.js';
 import { createRng } from '../dice.js';
+import { climateFor } from '../world/climate.js';
+import type { Setting } from '../world/setting.js';
 import { DAY_START_MINUTE, MAX_REPUTATION, MINUTES_PER_DAY, RUN_SCHEMA_VERSION } from '../run.js';
 import { DetectiveCaseSchema } from './case-schema.js';
 import { initialCondition } from './condition.js';
@@ -25,7 +27,7 @@ import {
   type DetectiveRunState,
 } from './run-state.js';
 
-function newRun(): DetectiveRunState {
+function newRun(setting?: Setting): DetectiveRunState {
   const rng = createRng('run');
   const result = assembleHero(buildHero(), rng);
   if (!result.isValid) throw new Error('The fixture hero is invalid.');
@@ -36,8 +38,40 @@ function newRun(): DetectiveRunState {
     seed: 'run',
     rngState: rng.state(),
     locale: 'en',
+    setting,
   });
 }
+
+const SETTING: Setting = {
+  id: 'valdmark',
+  name: { en: 'Valdmark', ru: 'Вальдмарк' },
+  climate: climateFor(['Norway'], 'neutral'),
+};
+
+describe('the setting of a run', () => {
+  it('is none unless the run is given one, and is kept through JSON', () => {
+    expect(newRun().setting).toBeNull();
+    expect(viewRun(newRun()).setting).toBeNull();
+
+    const run = newRun(SETTING);
+
+    expect(DetectiveRunStateSchema.parse(JSON.parse(JSON.stringify(run))).setting).toEqual(SETTING);
+  });
+
+  it('is an old save without one: the field has a default', () => {
+    const old: Record<string, unknown> = { ...newRun() };
+    delete old.setting;
+
+    expect(DetectiveRunStateSchema.parse(old).setting).toBeNull();
+  });
+
+  it('shows the name in the language of the run, with the climate', () => {
+    const view = viewRun(newRun(SETTING));
+
+    expect(view.setting).toEqual({ name: 'Valdmark', climate: SETTING.climate });
+    expect(viewRun({ ...newRun(SETTING), locale: 'ru' }).setting?.name).toBe('Вальдмарк');
+  });
+});
 
 describe('createDetectiveRun', () => {
   it('starts at the start location on day one with full reputation and nothing found', () => {

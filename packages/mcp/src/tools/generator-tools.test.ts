@@ -289,6 +289,23 @@ describe('scenario_submit', () => {
     expect(fs.files.has(pendingFile(SAVE_DIR))).toBe(false);
   });
 
+  it('keeps the country the case is set in, with its climate, in the run and its view', async () => {
+    const { fs, call } = await start(pendingRun({ locale: 'ru' }));
+    await call('world_propose', { kind: 'country', real: ['Norway', 'Норвегия'], region: 'north' });
+    const brief = await call('generator_brief', {});
+
+    const submitted = await submit(call, readCase('goose-of-elmwick.ru.json'));
+    expect(submitted.text).toBe('{"accepted":true}');
+
+    const loaded = await loadRun(SAVE_DIR, fs);
+    const setting = loaded.ok ? loaded.run.setting : null;
+    expect(setting?.climate.zone).toBe('subarctic');
+    // The brief named the very country the run keeps.
+    expect(brief.body.setting).toMatchObject({ id: setting?.id, name: setting?.name.ru });
+    const view = await call('run_view', {});
+    expect(view.body.setting).toMatchObject({ name: setting?.name.ru, climate: { zone: 'subarctic' } });
+  });
+
   it('refuses a second submission and a brief once a case is accepted, and keeps the first case', async () => {
     const { fs, call } = await start(pendingRun());
     await submit(call, readCase('goose-of-elmwick.en.json'));
@@ -504,6 +521,30 @@ describe('the mirror world dictionary', () => {
   };
   const WORLD_FILE = join(SAVE_DIR, 'world.json');
   const NORWAY = { kind: 'country', real: ['Norway', 'Норвегия'], region: 'north' };
+
+  it('gives a country the climate of the real one, by the table and by the region when it has no entry', async () => {
+    const { fs, call } = await start(null);
+    await call('world_propose', NORWAY);
+    await call('world_propose', { kind: 'country', real: ['Freedonia'], region: 'island' });
+    await call('world_propose', { kind: 'organisation', real: ['Gazprom'] });
+
+    const entries = (
+      JSON.parse(fs.files.get(join(SAVE_DIR, 'world.json')) ?? '{}') as {
+        entries: { real: string[]; climate?: { zone: string } }[];
+      }
+    ).entries;
+
+    expect(entries.map(({ climate }) => climate?.zone)).toEqual(['subarctic', 'tropical-wet', undefined]);
+    // The public view of the world holds no climate and no real name.
+    const view = await call('world_view', { locale: 'en' });
+    expect(JSON.stringify(view.body)).not.toMatch(/climate|Norway|Freedonia/);
+  });
+
+  it('has no country to set the case in while the world has none, and says so in the brief', async () => {
+    const { call } = await start(pendingRun());
+
+    expect((await call('generator_brief', {})).body.setting).toBeNull();
+  });
 
   it('names an entity itself when no mirror is given, the same way for every player', async () => {
     const first = await (await start(null)).call('world_propose', NORWAY);

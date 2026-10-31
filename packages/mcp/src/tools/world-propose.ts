@@ -6,6 +6,7 @@ import {
   NAME_REGIONS,
   NAME_STYLES,
   WorldProposalSchema,
+  climateFor,
   nameEntity,
   proposeEntry,
   type NameStyle,
@@ -46,11 +47,11 @@ export const worldPropose = defineTool({
     'the real entity; `style` is country, union (a descriptive name such as "Northern League") or brand, and ' +
     'defaults to country for a country and brand for an organisation. A role cannot be named by the engine: ' +
     'give its `mirror` yourself ("Вальдмарк" and "Valdmark" are one name in two scripts). `knownRealNames` ' +
-    'carries the other real names you saw, so that the name is checked against them too. The result is ' +
+    'carries the other real names you saw, so that the name is checked against them too. A country also keeps the climate of the real one, which the engine looks up. The result is ' +
     '{"accepted":true,"id":...,"mirror":{...}} and the name is then fixed for good in every run, or ' +
     '{"accepted":false,"issues":[...]} with what to change: a real name that already has an entry, a form in ' +
     'the wrong script, a mirror name that is real or taken. Entries are never edited or removed.',
-  inputSchema: WorldProposalSchema.omit({ mirror: true }).extend({
+  inputSchema: WorldProposalSchema.omit({ mirror: true, climate: true }).extend({
     mirror: MirrorFormsSchema.optional(),
     style: z.enum(NAME_STYLES).optional(),
     region: z.enum(NAME_REGIONS).default('neutral'),
@@ -82,6 +83,8 @@ export const worldPropose = defineTool({
         }
         proposal = named;
       }
+      // A country keeps the climate of the real one; the table decides it, not the agent.
+      if (proposal.kind === 'country') proposal = { ...proposal, climate: climateFor(proposal.real, region) };
       const result = proposeEntry(world, proposal, knownRealNames);
       if (!result.ok)
         return { accepted: false, issues: result.issues.map(({ code, message }) => ({ code, message })) };

@@ -3,6 +3,7 @@
 
 import {
   EMPTY_RUN_LOG,
+  chooseSetting,
   createDetectiveRun,
   validateCase,
   worldRealNames,
@@ -131,16 +132,14 @@ export const scenarioSubmit = defineTool({
         return { accepted: false, attemptsLeft: 0, final: true, reason: FINAL_REASON };
       }
 
+      const world = await requireWorld(context);
       const result = validateCase(readCase(input.case), {
         hero,
         traits: pending.traits,
         locale: pending.locale,
         // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
         realNames: [
-          ...new Set([
-            ...worldRealNames(await requireWorld(context)),
-            ...((await seedsOfRun(context))?.realNames ?? []),
-          ]),
+          ...new Set([...worldRealNames(world), ...((await seedsOfRun(context))?.realNames ?? [])]),
         ],
       });
 
@@ -153,6 +152,8 @@ export const scenarioSubmit = defineTool({
           seed: pending.seed,
           rngState: pending.rngState,
           locale: pending.locale,
+          // The same country the brief named for this seed; the run keeps it from here on.
+          setting: chooseSetting(world, pending.seed),
         });
         await saveRun(context.saveDir, run, context.saveFs, EMPTY_RUN_LOG);
         await clearPending(context.saveDir, context.saveFs);
