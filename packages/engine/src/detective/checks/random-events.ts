@@ -20,6 +20,7 @@ export function checkRandomEvents(
   hero: DetectiveHero,
   traits: readonly Trait[],
   locale: Locale,
+  minEvents: number,
 ): CaseIssue[] {
   const { days } = detectiveCase.clock;
   const locationIds = new Set(detectiveCase.locations.map(({ id }) => id));
@@ -37,7 +38,16 @@ export function checkRandomEvents(
   };
   const issues: CaseIssue[] = [];
 
-  (detectiveCase.randomEvents ?? []).forEach((event, index) => {
+  const pool = detectiveCase.randomEvents ?? [];
+  if (pool.length < minEvents) {
+    issues.push({
+      code: 'too-few-random-events',
+      path: 'randomEvents',
+      message: `The case needs at least ${String(minEvents)} random events, with fromDay and untilDay spread over its days; it has ${String(pool.length)}.`,
+    });
+  }
+
+  pool.forEach((event, index) => {
     const path = `randomEvents[${String(index)}]`;
     const outOfRange = (field: string, message: string): void => {
       issues.push({ code: 'random-event-out-of-range', path: `${path}.${field}`, message });

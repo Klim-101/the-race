@@ -301,5 +301,40 @@
         "description": "Пакет подставной фирмы выставлен на продажу. В зале шепчутся: кто продаёт первым, тот и знал первым."
       }
     ]
-  }
+  },
+  "randomEvents": [
+    {
+      "id": "ticker-glitch",
+      "description": "Биржевое табло на минуту заикается, и все трейдеры уверяют, что так и было задумано.",
+      "weight": 3,
+      "fromDay": 1,
+      "effect": { "kind": "flavor" },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": { "kind": "instant" }
+    },
+    {
+      "id": "tea-trolley",
+      "description": "Чайная тележка встаёт поперёк коридора и уносит с собой сорок минут утра.",
+      "weight": 3,
+      "fromDay": 1,
+      "effect": { "kind": "time-lost", "minutes": 45 },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": { "kind": "instant" }
+    },
+    {
+      "id": "unsigned-courier",
+      "description": "Курьер требует подпись человека, который ушёл из фирмы прошлой весной, и во всём здании портится настроение.",
+      "weight": 2,
+      "fromDay": 2,
+      "effect": { "kind": "nerves-cost", "points": 1 },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": { "kind": "instant" }
+    }
+  ]
 }

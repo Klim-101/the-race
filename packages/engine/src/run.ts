@@ -5,8 +5,11 @@ import { z } from 'zod';
 import { LocaleSchema } from './locale.js';
 
 export const RUN_SCHEMA_VERSION = 2;
-/** Bumped when a rule changes in a way that makes an old run play differently. */
-export const RULESET_VERSION = 5;
+/**
+ * Bumped when a rule changes in a way that makes an old run play differently. 6: random events are also drawn
+ * in the day, when the clock passes midday and the evening; a run of an older ruleset plays as it did.
+ */
+export const RULESET_VERSION = 6;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;

@@ -3,6 +3,7 @@
 
 import {
   EMPTY_RUN_LOG,
+  MIN_RANDOM_EVENTS,
   chooseSeed,
   chooseSetting,
   createDetectiveRun,
@@ -55,7 +56,8 @@ const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
   'random-event-out-of-range': 24,
   'random-event-cuts-solution': 25,
   'random-event-violence': 26,
-  'solution-after-culprit-flees': 27,
+  'too-few-random-events': 27,
+  'solution-after-culprit-flees': 28,
 };
 
 function priorityOf(issue: CaseIssue): number {
@@ -138,6 +140,7 @@ export const scenarioSubmit = defineTool({
         hero,
         traits: pending.traits,
         locale: pending.locale,
+        minRandomEvents: MIN_RANDOM_EVENTS,
         // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
         realNames: [
           ...new Set([...worldRealNames(world), ...((await seedsOfRun(context))?.realNames ?? [])]),

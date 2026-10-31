@@ -7,6 +7,7 @@ import type { DetectiveHero } from './archetype.js';
 import { DETECTIVE_TRAITS } from './traits.js';
 import type { Trait } from '../traits.js';
 import type { CaseIssueCode } from './case-issue.js';
+import { MIN_RANDOM_EVENTS } from './case-schema.js';
 import { validateCase, type CaseValidationContext } from './case-validator.js';
 
 function context(overrides: Partial<CaseValidationContext> = {}): CaseValidationContext {
@@ -487,5 +488,49 @@ describe('validateCase', () => {
         expect.arrayContaining(['unobtainable-clue', 'unobtainable-evidence']),
       );
     });
+  });
+});
+
+describe('the pool of random events a generated case must bring', () => {
+  const pool = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      id: `event-${String(index)}`,
+      description: `Something harmless happens, number ${String(index)}.`,
+      weight: 1,
+      fromDay: 1,
+      untilDay: null,
+      tones: [],
+      traitTriggers: [],
+      effect: { kind: 'flavor' },
+      duration: { kind: 'instant' },
+    }));
+
+  it('is not asked of a case when no minimum is given, as before the pool existed', () => {
+    expect(issueCodes(buildCheeseCase())).toEqual([]);
+  });
+
+  it('rejects a case with fewer events than the minimum, and says how many it has', () => {
+    for (const count of [0, 1, 2]) {
+      const detectiveCase = { ...buildCheeseCase(), randomEvents: pool(count) };
+      const result = validateCase(detectiveCase, context({ minRandomEvents: MIN_RANDOM_EVENTS }));
+
+      expect(result).toMatchObject({
+        isValid: false,
+        issues: [{ code: 'too-few-random-events', path: 'randomEvents' }],
+      });
+      expect(JSON.stringify(result)).toContain(`it has ${String(count)}`);
+    }
+  });
+
+  it('rejects a case without any pool at all', () => {
+    expect(issueCodes(buildCheeseCase(), context({ minRandomEvents: MIN_RANDOM_EVENTS }))).toEqual([
+      'too-few-random-events',
+    ]);
+  });
+
+  it('accepts a case with the minimum', () => {
+    const detectiveCase = { ...buildCheeseCase(), randomEvents: pool(MIN_RANDOM_EVENTS) };
+
+    expect(issueCodes(detectiveCase, context({ minRandomEvents: MIN_RANDOM_EVENTS }))).toEqual([]);
   });
 });

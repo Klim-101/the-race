@@ -21,7 +21,7 @@ import { isCollapse, passNight, type NightCause, type NightReport } from './nigh
 import { InterrogateIntentSchema, resolveInterrogate, type InterrogationOutcome } from './interrogation.js';
 import { UseIntentSchema, resolveUse, type UseOutcome } from './use-item.js';
 import { buildNeighbors } from './obtainability.js';
-import { closedSourcesOf, isLocationClosed } from './random-events.js';
+import { closedSourcesOf, drawDayEvents, isLocationClosed } from './random-events.js';
 import {
   changeReputation,
   endTurn,
@@ -318,7 +318,7 @@ export function resolveIntent(run: DetectiveRunState, input: unknown, rng: Rng):
   const resolution = applyFatigue(run, dispatched, rng);
   // The turn is settled here, once, for every kind of intent: the night, scheduled events and the ways to lose.
   const slept = sleepIfDue(resolution, run.clock.day, rng);
-  return { ...slept, run: settleClock(slept.run, run.clock.day) };
+  return { ...slept, run: settleClock(drawDayEvents(slept.run, run.clock, rng).run, run.clock.day) };
 }
 
 type Carried = Resolution & { ok: true };

@@ -3,17 +3,19 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
-import { createRng, type Rng } from '../dice.js';
+import { createRng, restoreRng, type Rng } from '../dice.js';
 import { MINUTES_PER_DAY } from '../run.js';
 import type { Trait } from '../traits.js';
 import { resolveIntent } from './actions.js';
 import { DetectiveCaseSchema, type RandomEvent } from './case-schema.js';
+import { EMPTY_RUN_LOG, recordResolution, replay, type RunLog } from './event-log.js';
 import {
   BASE_EVENT_CHANCE_PERCENT,
   DEADLINE_CHANCE_GROWTH_PERCENT,
   MAX_HARMFUL_EVENTS_PER_DAY,
   activeEffects,
   closedSourcesOf,
+  drawDayEvents,
   drawEvents,
   isHarmfulEffect,
   isLocationClosed,
@@ -22,6 +24,8 @@ import {
 } from './random-events.js';
 import { createDetectiveRun, endRun, viewRun, type DetectiveRunState } from './run-state.js';
 import { isSolvable } from './solvability.js';
+
+const SEEDS = Array.from({ length: 200 }, (_, index) => `day-seed-${String(index)}`);
 
 type EventInput = Partial<RandomEvent> & Pick<RandomEvent, 'id' | 'effect' | 'duration'>;
 
@@ -481,5 +485,101 @@ describe('drawEvents', () => {
   it('is the same for the same run and dice', () => {
     const run = runWith([TIME, FLAVOR]);
     expect(drawEvents(run, createRng('same'))).toEqual(drawEvents(run, createRng('same')));
+  });
+});
+
+describe('the events of the day', () => {
+  const PAIR = [
+    event({ id: 'fair-music', effect: { kind: 'flavor' }, duration: { kind: 'instant' } }),
+    event({ id: 'street-fair', effect: { kind: 'flavor' }, duration: { kind: 'instant' } }),
+  ];
+  const at = (run: DetectiveRunState, minute: number): DetectiveRunState => ({
+    ...run,
+    clock: { day: 1, minute },
+  });
+  const before = { day: 1, minute: 9 * 60 };
+
+  it('draws nothing, and rolls nothing, when the turn crossed no mark', () => {
+    const run = at(runWith(PAIR), 11 * 60);
+    const rng = SURE(2);
+    const drawn = drawDayEvents(run, before, rng);
+
+    expect(drawn).toEqual({ run, events: [] });
+    expect(rng.state()).toBe(0);
+  });
+
+  it('gives each mark one slot: midday one, midday and the evening two', () => {
+    const noon = drawDayEvents(at(runWith(PAIR), 12 * 60 + 5), before, SURE(2));
+    const both = drawDayEvents(at(runWith(PAIR), 18 * 60 + 30), before, SURE(2));
+
+    expect(noon.events).toHaveLength(1);
+    expect(both.events).toHaveLength(2);
+    expect(both.run.drawnEvents.map(({ day }) => day)).toEqual([1, 1]);
+  });
+
+  it('carries on from the dice that were rolled, also for a slot that brought nothing', () => {
+    // A roll of 100 is above any chance: the slot is empty, but one die was spent.
+    const empty = drawDayEvents(at(runWith(PAIR), 13 * 60), before, scripted(100));
+
+    expect(empty.events).toEqual([]);
+    expect(empty.run.rngState).toBe(1);
+  });
+
+  it('is not the night: a turn that ended on another day draws none here', () => {
+    const next = { ...runWith(PAIR), clock: { day: 2, minute: 8 * 60 } };
+
+    expect(drawDayEvents(next, { day: 1, minute: 20 * 60 }, SURE(2)).events).toEqual([]);
+  });
+
+  it('leaves a run of an older ruleset as it was, and a case without a pool', () => {
+    const old = { ...at(runWith(PAIR), 13 * 60), rulesetVersion: 5 };
+    const bare = at(runWith([]), 13 * 60);
+
+    expect(drawDayEvents(old, before, SURE(2)).events).toEqual([]);
+    expect(drawDayEvents(bare, before, SURE(2)).events).toEqual([]);
+  });
+
+  it('is the dice and the run, nothing else: the same state gives the same draw', () => {
+    for (const seed of SEEDS) {
+      const run = at(runWith(PAIR), 19 * 60);
+      expect(drawDayEvents(run, before, createRng(seed))).toEqual(
+        drawDayEvents(run, before, createRng(seed)),
+      );
+    }
+  });
+});
+
+describe('a run that never rests still meets events', () => {
+  const POOL = ['a', 'b', 'c', 'd', 'e'].map((id) =>
+    event({ id: `day-${id}`, effect: { kind: 'flavor' }, duration: { kind: 'instant' }, weight: 2 }),
+  );
+  const play = (seed: string): { run: DetectiveRunState; log: RunLog } => {
+    const initial = { ...runWith(POOL, { days: 5 }), seed, rngState: createRng(seed).state() };
+    let run = initial;
+    let log = EMPTY_RUN_LOG;
+    for (let turn = 0; turn < 40 && run.clock.day === 1 && run.status === 'active'; turn += 1) {
+      const intent = { kind: turn % 2 === 0 ? 'look' : 'search' };
+      const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
+      log = recordResolution(log, run, intent, resolution);
+      if (resolution.ok) run = resolution.run;
+    }
+    return { run, log };
+  };
+
+  it('over many seeds: events come in the first day, once each, and replay reproduces them', () => {
+    let metOnTheFirstDay = 0;
+    for (const seed of SEEDS) {
+      const initial = { ...runWith(POOL, { days: 5 }), seed, rngState: createRng(seed).state() };
+      const { run, log } = play(seed);
+      const ids = run.drawnEvents.map(({ eventId }) => eventId);
+
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(replay(initial, log)).toEqual({ ok: true, run });
+      expect(isSolvable(run.case, run.hero, run.traits, standingOf(run))).toBe(true);
+      if (run.drawnEvents.some(({ day }) => day === 1)) metOnTheFirstDay += 1;
+    }
+    // Midday and the evening bring an event 25% of the time each: well over a tenth of the runs, far from all.
+    expect(metOnTheFirstDay).toBeGreaterThan(SEEDS.length / 10);
+    expect(metOnTheFirstDay).toBeLessThan(SEEDS.length);
   });
 });

@@ -66,7 +66,10 @@ export async function prepareHero(context: ServerContext): Promise<void> {
 }
 
 /** What `scenario_submit` does later, written for a test: the pending hero and the case become a saved run. */
-export async function installCase(context: ServerContext): Promise<void> {
+export async function installCase(
+  context: ServerContext,
+  detectiveCase: DetectiveCase = sampleCase(),
+): Promise<void> {
   const pending = await loadPending(context.saveDir, context.saveFs);
   if (pending?.hero == null) throw new Error('No pending hero.');
   await saveRun(
@@ -74,7 +77,7 @@ export async function installCase(context: ServerContext): Promise<void> {
     createDetectiveRun({
       hero: pending.hero,
       traits: pending.traits,
-      case: sampleCase(),
+      case: detectiveCase,
       seed: pending.seed,
       rngState: pending.rngState,
       locale: pending.locale,

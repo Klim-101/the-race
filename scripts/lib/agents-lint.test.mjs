@@ -316,3 +316,19 @@ describe('the news is visible to the player', () => {
     expect(generator).toMatch(/keep it recognisable/);
   });
 });
+
+describe('the events of a turn', () => {
+  const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+  const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));
+  const generator = read(join(AGENTS, 'subagents', 'case-generator.md'));
+
+  it('has the narrator tell them as a scene, from the result of the turn', () => {
+    expect(skill).toMatch(/`events` is not empty[^.]*short scene/);
+    expect(outcomes).toContain('## Events of the turn');
+    expect(outcomes).toMatch(/`\{ outcome, events, view \}`/);
+  });
+
+  it('has the generator bring a pool of events, which the engine requires', () => {
+    expect(generator).toMatch(/\*\*randomEvents\*\* \(3 to 8, \*\*required\*\*/);
+  });
+});

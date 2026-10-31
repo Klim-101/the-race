@@ -155,6 +155,8 @@ export const RANDOM_EVENT_CONDITIONS = ['shaken', 'exhausted'] as const;
 export const MAX_RANDOM_EVENT_MINUTES = 120;
 export const MAX_RANDOM_EVENT_NERVES = 2;
 export const MAX_RANDOM_EVENTS = 40;
+/** What a generated case must bring, so that the days and the nights have something to draw from. */
+export const MIN_RANDOM_EVENTS = 3;
 
 /**
  * What a random event does. The vocabulary is closed on purpose: an event can move the world or the hero's
