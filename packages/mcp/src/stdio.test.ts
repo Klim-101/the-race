@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { defineTool } from './define-tool.js';
 import { SERVER_NAME, SERVER_VERSION } from './server-identity.js';
-import { createDefaultContext, serveStdio } from './stdio.js';
+import { MAX_NEWS_LAG_DAYS, createDefaultContext, newsLagDays, serveStdio } from './stdio.js';
 import { TOOLS } from './tools/index.js';
 import { ToolFailure } from './tool-error.js';
 import { fakeContext } from '../test/fake-context.js';
@@ -108,6 +108,16 @@ describe('createDefaultContext', () => {
     expect(context.newSeed()).not.toBe(context.newSeed());
   });
 
+  it('reads the clock, the network and the feed list at the edge, and the lag from the environment', async () => {
+    const context = createDefaultContext('some-dir', { RACE_NEWS_LAG_DAYS: '3' });
+
+    expect(context.today()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(typeof context.httpGet).toBe('function');
+    expect((await context.feeds()).length).toBeGreaterThan(5);
+    expect(context.newsLagDays).toBe(3);
+    expect(createDefaultContext('some-dir', {}).newsLagDays).toBe(0);
+  });
+
   it('defaults to the save directory resolved from the environment', () => {
     const home = resolve('temp-race-home');
     vi.stubEnv('RACE_HOME', home);
@@ -116,6 +126,14 @@ describe('createDefaultContext', () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+describe('newsLagDays', () => {
+  it('is a whole number of days up to two weeks, and 0 for anything else', () => {
+    expect(newsLagDays('2')).toBe(2);
+    expect(newsLagDays('99')).toBe(MAX_NEWS_LAG_DAYS);
+    for (const bad of [undefined, '', '0', '-1', '1.5', 'many']) expect(newsLagDays(bad)).toBe(0);
   });
 });
 

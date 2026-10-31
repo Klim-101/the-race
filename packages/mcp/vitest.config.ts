@@ -7,9 +7,10 @@ import { defineProject } from 'vitest/config';
 // Vitest loads its config through a default export. Coverage lives in the root config.
 export default defineProject({
   resolve: {
-    // Tests run against the sources of the engine and the saves, so they need no build of them first.
+    // Tests run against the sources of the engine, the news and the saves, so they need no build of them first.
     alias: {
       '@the-race/engine': fileURLToPath(new URL('../engine/src/index.ts', import.meta.url)),
+      '@the-race/news': fileURLToPath(new URL('../news/src/index.ts', import.meta.url)),
       '@the-race/saves': fileURLToPath(new URL('../saves/src/index.ts', import.meta.url)),
     },
   },

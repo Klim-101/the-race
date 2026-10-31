@@ -11,6 +11,8 @@ export {
   type FeedTopic,
 } from './feed-list.js';
 export { cleanText } from './clean-text.js';
+export { isDay, shiftDay } from './day.js';
+export { loadShippedFeeds } from './shipped-feeds.js';
 export { parseFeed, SUMMARY_LIMIT, TITLE_LIMIT, type Headline } from './parse-feed.js';
 export {
   createHttpGet,
@@ -29,7 +31,9 @@ export {
 export {
   DEFAULT_BLOCK_HEADLINES,
   headlineId,
+  listUntrustedHeadlines,
   normalizeHeadlines,
+  type ListedHeadline,
   renderUntrustedHeadlines,
   type HeadlineGroup,
 } from './untrusted-block.js';

@@ -14,6 +14,14 @@ export {
 } from './run-store.js';
 export { buildResumeSummary, RESUME_LABELS, type ResumeLabels } from './resume-summary.js';
 export {
+  loadSeeds,
+  saveSeedsForDay,
+  seedsFile,
+  seedsOnOrBefore,
+  SEED_DAYS_KEPT,
+  type SeedsByDay,
+} from './seed-store.js';
+export {
   loadWorld,
   saveWorld,
   worldFile,
