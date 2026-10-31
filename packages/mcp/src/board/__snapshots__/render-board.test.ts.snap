@@ -1,0 +1,88 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the clues and links tab > joins each conclusion to the clues it was drawn from and each clue to the place it was found 1`] = `
+"
+<h2>How it hangs together</h2>
+<div class="columns" aria-hidden="true"><span style="left:1%">Conclusions</span><span style="left:36%">Evidence</span><span style="left:71%">Where it was found</span></div>
+<div class="graph"><svg class="links" viewBox="0 0 1004 118" role="img" aria-label="How it hangs together" style="min-width:640px"><g class="edges"><g class="conclusion-link"><path d="M292 32 C327 32 327 32 362 32"/></g><g class="conclusion-link"><path d="M292 32 C327 32 327 86 362 86"/></g><g class="place-link"><path d="M642 32 C677 32 677 32 712 32"/></g><g class="place-link"><path d="M642 86 C677 86 677 86 712 86"/></g></g><g class="box conclusion"><title>The baker lied about the flour.</title><rect x="12" y="12" width="280" height="40" rx="6"/><text x="22" y="37">The baker lied about the flour.</text></g><g class="box clue"><title>A rusty key under the counter.</title><rect x="362" y="12" width="280" height="40" rx="6"/><text x="372" y="37">A rusty key under the counter.</text></g><g class="box clue"><title>Flour on the cellar steps.</title><rect x="362" y="66" width="280" height="40" rx="6"/><text x="372" y="91">Flour on the cellar steps.</text></g><g class="box place"><title>Stall</title><rect x="712" y="12" width="280" height="40" rx="6"/><text x="722" y="37">Stall</text></g><g class="box place"><title>Market</title><rect x="712" y="66" width="280" height="40" rx="6"/><text x="722" y="91">Market</text></g></svg></div>
+<h2>Evidence (2)</h2>
+<div class="card">
+<span class="tag">Stall</span>
+<p>A rusty key under the counter.</p>
+<p class="warn">read badly: read it again before it counts</p>
+</div>
+<div class="card">
+<span class="tag">Market</span>
+<p>Flour on the cellar steps.</p>
+</div>
+<h2>Conclusions (1)</h2>
+<div class="card"><p>The baker lied about the flour.</p></div>
+"
+`;
+
+exports[`the hero tab > shows the detective, how they hold up and what they carry 1`] = `
+"
+<h2>Hero and kit</h2>
+<div class="card">
+<p><strong>Mira</strong></p>
+<p class="tag">Was once: a police officer · Character: burnt out</p>
+<p>Skills: perception: 4, reasoning: 3</p>
+</div>
+<h3>Condition</h3>
+<div class="card">
+<p class="meter"><span>Reputation</span> <meter min="0" max="10" value="7">7</meter> <span class="tag">7 / 10</span></p>
+<p class="meter"><span>Nerves</span> <meter min="0" max="10" value="4">4</meter> <span class="tag">4 / 10</span></p>
+<p class="meter"><span>Sleep debt</span> <meter min="0" max="10" value="3">3</meter> <span class="tag">3 / 10</span></p>
+<p>Now:</p>
+<ul><li>exhausted <span class="tag">until the night</span></li><li>drunk <span class="tag">90 min left</span></li></ul>
+<ul><li><span class="warn">reputation is low: people will not open up</span></li></ul>
+</div>
+<h3>Kit</h3>
+<ul><li>phone</li><li>lock picks <span class="warn">(lost)</span></li></ul>
+<h3>Supplies</h3>
+<ul><li>coffee ×2</li></ul>
+<h3>On its way</h3><ul><li>coffee: -1 sleep debt <span class="tag">in 30 min</span></li><li>a drink: +2 nerves <span class="tag">at night</span></li></ul>
+<h3>Known traits</h3>
+<ul><li>a night owl</li><li>an-unlisted-trait</li></ul>
+<p class="tag">Still hidden: 2</p>
+
+"
+`;
+
+exports[`the map tab > draws the known places, marks where the hero is, and shows shut and unvisited ways 1`] = `
+"
+<h2>Known places</h2>
+<div class="graph"><svg class="map" viewBox="0 0 596 160" role="img" aria-label="Known places" style="min-width:520px"><g class="edges"><line x1="90" y1="80" x2="298" y2="40"/><line x1="90" y1="80" x2="298" y2="120"/><line x1="298" y1="40" x2="506" y2="80"/></g><g class="node visited current"><title>Market (you are here)</title><rect x="12" y="52" width="156" height="56" rx="8"/><text class="name" x="90" y="76" text-anchor="middle">Market</text><text class="state" x="90" y="95" text-anchor="middle">you are here</text></g><g class="node visited"><title>Stall</title><rect x="220" y="12" width="156" height="56" rx="8"/><text class="name" x="298" y="36" text-anchor="middle">Stall</text><text class="state" x="298" y="55" text-anchor="middle"></text></g><g class="node unvisited locked"><title>Cellar (locked)</title><rect x="220" y="92" width="156" height="56" rx="8"/><text class="name" x="298" y="116" text-anchor="middle">Cellar</text><text class="state" x="298" y="135" text-anchor="middle">locked</text></g><g class="node unvisited closed"><title>Chapel (closed)</title><rect x="428" y="52" width="156" height="56" rx="8"/><text class="name" x="506" y="76" text-anchor="middle">Chapel</text><text class="state" x="506" y="95" text-anchor="middle">closed</text></g></svg></div>
+<p class="tag">Only what the detective has seen is on the map.</p>
+
+"
+`;
+
+exports[`the suspects tab > shows who they are, where they were last seen and what each has said, in order 1`] = `
+"
+<h2>The cast</h2>
+<div class="card">
+<strong>Anna</strong>
+<p>Baker</p>
+<p class="tag">Last seen: right here</p>
+<h3>What they said</h3>
+<p class="statement"><span class="tag">day 1 · alibi</span><br>I was at the oven all night.</p>
+<p class="statement"><span class="tag">day 2 · gave ground</span><br>Fine, I left at nine.</p>
+<p class="statement"><span class="tag">day 2 · let a secret out</span><br>I owe the miller money.</p>
+</div>
+<div class="card">
+<strong>Cora</strong>
+<p>Mayor</p>
+<p class="tag">Last seen: anywhere, apparently</p>
+<h3>What they said</h3>
+<p class="empty">Nothing said yet.</p>
+</div>
+<div class="card">
+<strong>Boris</strong>
+<p>Rival</p>
+<p class="tag">Last seen: Stall</p>
+<h3>What they said</h3>
+<p class="empty">Nothing said yet.</p>
+</div>
+"
+`;

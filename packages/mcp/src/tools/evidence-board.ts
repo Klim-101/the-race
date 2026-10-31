@@ -13,8 +13,10 @@ import { requireRun } from '../play.js';
 export const evidenceBoard = defineTool({
   name: 'evidence_board',
   description:
-    'Writes the evidence board: a single HTML page the player opens in a browser, with the case, every clue ' +
-    'found so far, the conclusions, the cast with where each person can be found, and the news. It holds ' +
+    'Writes the evidence board: a single HTML page the player opens in a browser, in four tabs: the map of ' +
+    'the places the detective knows, the suspects with what each has said, the clues with the links between ' +
+    'them and the conclusions, and the hero with their condition, kit and the climate of the country. ' +
+    'The news of the world is on the map tab. It holds ' +
     'exactly what run_view shows and nothing more, which is why it is written to a folder of the player ' +
     '(not the closed save directory) that any browser account can open. Call it when the player asks to see ' +
     'the evidence, the board or the notes, and offer it now and then once there are several clues. It ' +
@@ -32,15 +34,10 @@ export const evidenceBoard = defineTool({
   handler: async (_input, context) => {
     const { run } = await requireRun(context);
     const view = viewRun(run);
-    // Only places where a clue was found are named, and the hero has been to every one of them.
-    const cluePlaceIds = new Set(view.clues.map(({ locationId }) => locationId));
-    const placeNames = new Map(
-      run.case.locations.filter(({ id }) => cluePlaceIds.has(id)).map(({ id, name }) => [id, name]),
-    );
     const path = join(context.boardDir, BOARD_FILE);
     await context.saveFs.mkdir(context.boardDir);
     // Replaced whole, so a browser that reloads at that moment gets the old page or the new one, never half.
-    await replaceFile(context.saveFs, path, renderEvidenceBoard(view, placeNames));
+    await replaceFile(context.saveFs, path, renderEvidenceBoard(view));
     return {
       path,
       link: pathToFileURL(path).href,
