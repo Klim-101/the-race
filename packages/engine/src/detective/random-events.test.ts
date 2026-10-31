@@ -245,6 +245,9 @@ describe('drawEvents', () => {
       const drawn = drawEvents(run, SURE()).run;
       expect(suspectPlace(drawn, baker)).toBe('side-alley');
       expect(suspectPlace(drawn, mayor)).toBeUndefined();
+      const seen = viewRun(drawn).suspects;
+      expect(seen.find(({ id }) => id === 'baker')?.place?.id).toBe('side-alley');
+      expect(seen.find(({ id }) => id === 'mayor')?.place).toBeNull();
       const atStall = { ...drawn, locationId: 'cheese-stall' };
       const asked = resolveIntent(
         atStall,

@@ -23,7 +23,9 @@ export const runNew = defineTool({
     'character signals (ids with a voice, a gift and a cost to be told from the locale text) and the ' +
     "languages. Next call hero_create with the player's choices.",
   inputSchema: z.object({
-    locale: LocaleSchema.describe('The language of the whole run, fixed from now on.'),
+    locale: LocaleSchema.describe(
+      'The language code of the whole run, "ru" or "en" (never a language name), fixed from now on.',
+    ),
     seed: z.string().trim().min(1).max(64).optional().describe('Only when the player gave one.'),
   }),
   outputSchema: z.object({

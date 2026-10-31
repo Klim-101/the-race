@@ -23,6 +23,7 @@ const NARRATOR_TOOLS = [
   'deduce',
   'accuse',
   'run_give_up',
+  'evidence_board',
 ];
 const GENERATOR_TOOLS = ['generator_brief', 'scenario_submit'];
 const NON_MCP_TOOLS_OF_NARRATOR = ['Agent', 'AskUserQuestion'];

@@ -9,6 +9,7 @@ import { pendingFile } from '../pending-run.js';
 import { accuse } from './accuse.js';
 import { act } from './act.js';
 import { deduce } from './deduce.js';
+import { evidenceBoard } from './evidence-board.js';
 import { question } from './question.js';
 import { runGiveUp } from './run-give-up.js';
 import { runNew } from './run-new.js';
@@ -197,5 +198,27 @@ describe('the turn tools', () => {
     expect(retry.isError).toBe(false);
     expect(retry.body).toMatchObject({ view: { status: 'gave-up', turn: 1 } });
     expect(errorCode(await call(runGiveUp, { turn: 0 }, context))).toBe('stale-turn');
+  });
+});
+
+describe('evidence_board', () => {
+  it('writes a page of the public view and returns where it is', async () => {
+    const context = await activeRun();
+    await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+
+    const result = await call(evidenceBoard, {}, context);
+
+    expect(result.isError).toBe(false);
+    const path = result.body.path as string;
+    expect(path.replaceAll('\\', '/')).toMatch(/board\/evidence\.html$/);
+    expect(result.body).toMatchObject({ clueCount: expect.any(Number) as unknown, insightCount: 0 });
+    const page = context.fs.files.get(path) ?? '';
+    expect(page).toContain('<!doctype html>');
+    expect(page).toContain('Last seen');
+  });
+
+  it('is refused when there is no run', async () => {
+    const result = await call(evidenceBoard, {}, gameContext());
+    expect(errorCode(result)).toBe('no-run');
   });
 });
