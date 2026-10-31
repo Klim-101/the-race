@@ -8,6 +8,12 @@ The plugin also ships a `PreToolUse` hook, `spoiler-guard`, that refuses any too
 
 The guard denies a shell command only when a recursive tool (`find`, `grep -r`, `ls -R`, `Get-ChildItem -Recurse` and the like) is actually run over a parent of the saves, or when a path names the saves. A recursive word in prose, in a comment or in the body of a heredoc that `cat` or `tee` only writes to a file does not count, so writing a mod or a document that mentions them is not refused. To write a mod it is simplest to use the file tools, which the guard checks by path alone.
 
+## The game folder
+
+At the first start Claude Code asks for the **Game folder** (a `userConfig` option of the plugin, `C:\the-race` by default). It holds two things: `saves/`, which is closed to the narrator, and `board/`, where the evidence board is written so that you can open it in any browser. The answer reaches the server as `RACE_GAME_FOLDER` and the spoiler guard as `CLAUDE_PLUGIN_OPTION_GAME_FOLDER`; both read it with the same rules. Change it later in `/config` (the plugin's rows) and start a new session. On macOS and Linux the default is a Windows path and is ignored: the folder is `the-race` in your home directory, unless you enter another.
+
+Saves made by an earlier version, in the platform's state directory, are found and kept while `saves/` does not exist yet; the guard keeps both closed. `RACE_HOME` (the save directory itself) and `RACE_BOARD_DIR` (the board folder) still override the two subfolders. To move to a new folder, copy the old saves into its `saves/` first.
+
 ## The HUD
 
 The plugin ships a HUD for Claude Code, a mod written against Claude Code's hooks-module API (early access). It has two parts, both listening to the game's own tools, so the narrator passes it nothing and it costs no turn:

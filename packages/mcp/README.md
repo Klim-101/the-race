@@ -12,7 +12,7 @@ npm run build
 node packages/mcp/dist/main.js
 ```
 
-Stdout carries the protocol, so the server writes nothing else to it. Saves go in the player's own state directory, never the working directory: `RACE_HOME` when set, else the platform's per-user state directory (see `@the-race/saves`).
+Stdout carries the protocol, so the server writes nothing else to it. Saves go in `saves/` of the game folder the player chose, never the working directory: `RACE_HOME` when set, else `<game folder>/saves` (see `@the-race/saves`). The plugin asks for the game folder at the first start (`C:	he-race` by default) and passes it as `RACE_GAME_FOLDER`.
 
 ## Tools
 
@@ -45,7 +45,7 @@ The short `view` that a turn tool returns carries the case title, the language a
 
 Every tool that changes a run takes `turn`, the run's turn from `run_view`. A call with another number is refused with `stale-turn` and changes nothing, so a retried call is never applied twice. A turn is saved together with its log entry; giving up is not a turn, so a given-up run is saved without its log.
 
-The evidence board is not written to the save directory, which sits in the profile of the account the agent runs under and is closed to the narrator: a browser under another account or profile could not open it. It goes to `~/Documents/the-race/evidence.html` (`<home>\Documents\the-race` on Windows), or to the folder `RACE_BOARD_DIR` names. The page holds what `run_view` shows and nothing more, and a test checks it, so it is safe outside the closed directory. It is one fixed file: a tab the player left open shows the new state after a reload.
+The evidence board is not written to the save directory, which is closed to the narrator, nor to a profile folder, which a browser under another account could not open. It goes to `board/evidence.html` in the game folder (`C:\the-race\board` by default), or to the folder `RACE_BOARD_DIR` names. If that folder cannot be written, the tool answers `board-unwritable` and says how to choose another one. The page holds what `run_view` shows and nothing more, and a test checks it, so it is safe outside the closed directory. It is one fixed file: a tab the player left open shows the new state after a reload.
 
 The news tools read the day, the network and the feed list from the context. `RACE_NEWS_LAG_DAYS` (0 to 14, default 0) sets how many days behind the news a run is; the seeds are kept in `<save dir>/seeds/seeds.json` for 14 days.
 

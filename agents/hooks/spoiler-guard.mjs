@@ -5,8 +5,8 @@
 // plain JSON. It ships inside the plugin, so it imports nothing from this repository: the directory is
 // resolved here with the same rules as `resolveSaveDir` in packages/saves, and a test keeps the two in step.
 //
-// The evidence board is not in this directory: it is written to the player's own Documents folder (or to
-// RACE_BOARD_DIR), where any browser account can open it. It holds only what the run_view tool shows, so
+// The evidence board is not in this directory: it is written to `board/` in the game folder (or to
+// RACE_BOARD_DIR), a folder the player chose, where any browser account can open it. It holds only what the run_view tool shows, so
 // the guard leaves it alone, and the narrator is told by the skill never to open it, to spare the turns.
 //
 // It is a guard against an accidental spoiler from the narrator, not a defence against the player (see
@@ -24,18 +24,41 @@ export const DENY_REASON =
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 const PATH_FIELDS = new Set(['file_path', 'notebook_path', 'path']);
 
-/** The per-user directory holding the saves; the same rules as `resolveSaveDir` in packages/saves. */
-export function resolveSaveDir({ env, platform, home }) {
-  if (env.RACE_HOME) return env.RACE_HOME;
+const APP_DIR = 'the-race';
+const WINDOWS_DRIVE_PATH = /^[A-Za-z]:[\\/]/;
+
+/** The folder that holds the saves and the board; the same rules as `resolveGameFolder` in packages/saves. */
+export function resolveGameFolder({ env, platform, home }) {
+  const chosen = env.RACE_GAME_FOLDER || env.CLAUDE_PLUGIN_OPTION_GAME_FOLDER;
+  if (chosen && (platform === 'win32' || !WINDOWS_DRIVE_PATH.test(chosen))) return chosen;
+  return platform === 'win32' ? path.win32.join('C:\\', APP_DIR) : path.posix.join(home, APP_DIR);
+}
+
+/** Where saves lived before the game had a folder of its own; the same rules as `legacySaveDir`. */
+function legacySaveDir({ env, platform, home }) {
   if (platform === 'win32') {
     const local = env.LOCALAPPDATA;
     const base = local ? local : path.win32.join(home, 'AppData', 'Local');
-    return path.win32.join(base, 'the-race');
+    return path.win32.join(base, APP_DIR);
   }
-  if (platform === 'darwin') return path.posix.join(home, 'Library', 'Application Support', 'the-race');
+  if (platform === 'darwin') return path.posix.join(home, 'Library', 'Application Support', APP_DIR);
   const state = env.XDG_STATE_HOME;
   const base = state && path.posix.isAbsolute(state) ? state : path.posix.join(home, '.local', 'state');
-  return path.posix.join(base, 'the-race');
+  return path.posix.join(base, APP_DIR);
+}
+
+/**
+ * Every directory that may hold the saves: `RACE_HOME` alone when it is set, else `saves/` in the game folder
+ * and the legacy directory. The server picks one of them by looking at the disk; the guard does not need to,
+ * and keeps both closed.
+ */
+export function resolveSaveDirs({ env, platform, home }) {
+  if (env.RACE_HOME) return [env.RACE_HOME];
+  const joined = (platform === 'win32' ? path.win32 : path.posix).join(
+    resolveGameFolder({ env, platform, home }),
+    'saves',
+  );
+  return [joined, legacySaveDir({ env, platform, home })];
 }
 
 function strings(value, out = []) {
@@ -116,7 +139,7 @@ function candidates(text) {
 const SAVE_FILE = /(^|[/\s])(pending(\/state)?\.json|run\/(state|log)(\.prev)?\.json)(?=$|[\s"'`;&|)])/;
 // The save directory spelled out for another home or another shell than the one resolved here.
 const SAVE_SHAPE =
-  /(^|[/\s])(state|local|application support)\/the-race(\/|$|[\s"'`;&|)])|(^|[/\s])the-race\/(run(\/|$|[\s"'`;&|)])|pending(\/|\.json))|(^|[/\s])\.race(\/|$|[\s"'`;&|)])/;
+  /(^|[/\s])(state|local|application support)\/the-race(\/|$|[\s"'`;&|)])|(^|[/\s])the-race\/(saves(\/|$|[\s"'`;&|)])|run(\/|$|[\s"'`;&|)])|pending(\/|\.json))|(^|[/\s])\.race(\/|$|[\s"'`;&|)])/;
 // A command that walks into every folder under a path it is given. A recursive tool counts when it is run: at
 // the start of a simple command, after a prefix such as sudo or xargs, or as the argument of `sh -c`. The same
 // word in prose, in a comment or in the text of a file being written is not a command, and treating it as one
@@ -144,14 +167,15 @@ function withoutWrittenBodies(text) {
 }
 
 function touchesSaves(text, context, { walks }) {
-  const { directory, pathApi, cwd } = context;
+  const { directories, pathApi, cwd } = context;
   for (const variant of variants(text, context)) {
     const flat = key(variant);
-    if (mentions(flat, directory) || SAVE_SHAPE.test(flat) || SAVE_FILE.test(flat)) return true;
+    if (SAVE_SHAPE.test(flat) || SAVE_FILE.test(flat)) return true;
+    if (directories.some((directory) => mentions(flat, directory))) return true;
     for (const candidate of candidates(variant)) {
       const resolved = key(pathApi.resolve(cwd, candidate));
-      if (isInside(resolved, directory)) return true;
-      if (walks && isAncestor(resolved, directory)) return true;
+      if (directories.some((directory) => isInside(resolved, directory))) return true;
+      if (walks && directories.some((directory) => isAncestor(resolved, directory))) return true;
     }
   }
   return false;
@@ -167,8 +191,8 @@ export function shouldDeny(input, options = {}) {
     typeof input.cwd === 'string' && pathApi.isAbsolute(input.cwd)
       ? input.cwd
       : (options.cwd ?? process.cwd());
-  const directory = key(pathApi.resolve(cwd, resolveSaveDir({ env, platform, home })));
-  const context = { env, platform, home, cwd, directory, pathApi };
+  const directories = resolveSaveDirs({ env, platform, home }).map((dir) => key(pathApi.resolve(cwd, dir)));
+  const context = { env, platform, home, cwd, directories, pathApi };
 
   const toolName = typeof input.tool_name === 'string' ? input.tool_name : '';
   const toolInput = input.tool_input;
@@ -193,7 +217,7 @@ export function shouldDeny(input, options = {}) {
       pathApi.resolve(cwd, typeof toolInput.path === 'string' ? expand(toolInput.path, context) : '.'),
     );
     const deep = toolName === 'Grep' || /\*\*/.test(String(toolInput.pattern ?? ''));
-    return deep && isAncestor(root, directory);
+    return deep && directories.some((directory) => isAncestor(root, directory));
   }
   return false;
 }

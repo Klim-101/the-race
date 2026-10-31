@@ -10,7 +10,7 @@ Status: Accepted, 2026-10-30
 
 Four layers, none of which is enough alone.
 
-- **Saves live outside the project.** They are kept in a per-user state directory (`RACE_HOME`, else the platform's local state directory, then `the-race` inside it), not in the folder the agent is working in. A search of the project cannot stumble on them.
+- **Saves live outside the project.** They are kept in `saves/` of the game folder the player chooses at the first start (`C:\the-race` by default; `RACE_HOME` names the save directory itself), not in the folder the agent is working in. A search of the project cannot stumble on them. Earlier versions kept them in the platform's state directory; that directory is still used when it holds the only saves, and the hook keeps both closed. The evidence board sits in the sibling `board/`, which the hook leaves open.
 - **A plugin `PreToolUse` hook denies access.** `agents/hooks/spoiler-guard.mjs` runs before every tool call and denies the file tools, shell commands and any other tool whose input names the save directory, with a short fixed reason that points to the game tools. It resolves the directory with the same rules as the saves package, and a test checks the two agree. It reads only the hook input, never the saves, and never prints what it read.
 - **The generator is isolated.** The case is built in its own context with two tools, and the engine takes the case straight from it ([ADR 0003](0003-isolated-generator-blind-narrator.md)).
 - **Tool results never carry the truth.** The narrator's tools return the public view only; the sealed solution leaves the engine in the verdict alone.

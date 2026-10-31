@@ -15,10 +15,17 @@ describe('resolveBoardDir', () => {
   const mac = { platform: 'darwin', homedir: '/Users/ann' } as const;
   const linux = { platform: 'linux', homedir: '/home/ann' } as const;
 
-  it('is the-race in the Documents folder of the user, on each platform', () => {
-    expect(resolveBoardDir({ ...win, env: {} })).toBe('C:\\Users\\ann\\Documents\\the-race');
-    expect(resolveBoardDir({ ...mac, env: {} })).toBe('/Users/ann/Documents/the-race');
-    expect(resolveBoardDir({ ...linux, env: {} })).toBe('/home/ann/Documents/the-race');
+  it('is board/ in the game folder, on each platform', () => {
+    expect(resolveBoardDir({ ...win, env: {} })).toBe('C:\\the-race\\board');
+    expect(resolveBoardDir({ ...mac, env: {} })).toBe('/Users/ann/the-race/board');
+    expect(resolveBoardDir({ ...linux, env: {} })).toBe('/home/ann/the-race/board');
+  });
+
+  it('follows the game folder the player chose', () => {
+    const chosen = '/srv/chosen';
+    expect(resolveBoardDir({ ...linux, env: { RACE_GAME_FOLDER: chosen } })).toBe(
+      `${resolve(chosen)}/board`.replace(/\//g, '/'),
+    );
   });
 
   it('uses RACE_BOARD_DIR, resolved, on any platform', () => {
@@ -30,7 +37,7 @@ describe('resolveBoardDir', () => {
   });
 
   it('ignores an empty RACE_BOARD_DIR', () => {
-    expect(resolveBoardDir({ ...linux, env: { RACE_BOARD_DIR: '' } })).toBe('/home/ann/Documents/the-race');
+    expect(resolveBoardDir({ ...linux, env: { RACE_BOARD_DIR: '' } })).toBe('/home/ann/the-race/board');
   });
 
   it('is never inside the save directory, which is closed to the narrator, nor the other way round', () => {
@@ -52,10 +59,10 @@ describe('defaultBoardDir', () => {
     expect(defaultBoardDir()).toBe(folder);
   });
 
-  it('is under the home directory without it', () => {
+  it('is in the game folder without it', () => {
     vi.stubEnv('RACE_BOARD_DIR', '');
 
-    expect(defaultBoardDir()).toMatch(/the-race$/);
+    expect(defaultBoardDir()).toMatch(/the-race[\\/]board$/);
   });
 });
 

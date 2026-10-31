@@ -80,6 +80,17 @@ describe('buildPlugin', () => {
     });
   });
 
+  it('hands the chosen game folder to the server only when the manifest declares the option', () => {
+    const meta = JSON.parse(readFileSync(join(agents(), 'plugin.json'), 'utf8'));
+    const server = () =>
+      JSON.parse(buildPlugin(agents()).get(`${PLUGIN_DIR}/.mcp.json`)).mcpServers['the-race'];
+    expect(server().env).toBeUndefined();
+
+    const declared = { type: 'directory', title: 'Game folder', description: 'Where the files go.' };
+    edit('plugin.json', JSON.stringify({ ...meta, userConfig: { game_folder: declared } }));
+    expect(server().env).toEqual({ RACE_GAME_FOLDER: '${user_config.game_folder}' });
+  });
+
   it('lists the plugin in the marketplace with a relative source', () => {
     const marketplace = JSON.parse(buildPlugin(agents()).get(MARKETPLACE_PATH));
     expect(marketplace.name).toBe('the-race');
