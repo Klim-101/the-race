@@ -35,6 +35,12 @@ export * from './detective/signal-events.js';
 export * from './detective/event-log.js';
 export { sealCase, isCaseSealIntact, assertCaseSealIntact } from './detective/seal.js';
 export * from './world/world.js';
+export {
+  judgeHeadline,
+  TRAGEDY_CATEGORIES,
+  type TragedyCategory,
+  type TragedyVerdict,
+} from './text/tragedy-filter.js';
 export { extractRealNames } from './text/extract-names.js';
 export { findRealName } from './text/real-names.js';
 export {

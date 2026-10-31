@@ -1,6 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { judgeHeadline } from '@the-race/engine';
 import { cleanText } from './clean-text.js';
 import type { FeedTopic } from './feed-list.js';
 import { SUMMARY_LIMIT, TITLE_LIMIT, type Headline } from './parse-feed.js';
@@ -28,19 +29,34 @@ const storyKey = (text: string): string =>
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim();
 
-/** One headline cleaned, or `undefined` when nothing is left of it or the story was already taken. */
-function admit(headline: Headline, seen: Set<string>): Headline | undefined {
+type Admission =
+  | { readonly kind: 'kept'; readonly headline: Headline }
+  /** The headline was about an armed conflict and is gone; only the fact of it remains. */
+  | { readonly kind: 'conflict' };
+
+/**
+ * One headline cleaned and judged, or `undefined` when nothing is left of it, the story was already taken
+ * or it is a tragedy (see `judgeHeadline`). Nothing that is not kept reaches the agent in any form.
+ */
+function admit(headline: Headline, seen: Set<string>): Admission | undefined {
   const title = plain(headline.title, TITLE_LIMIT);
   const key = storyKey(title);
   if (key === '' || seen.has(key)) return undefined;
   seen.add(key);
   const summary = plain(headline.summary ?? '', SUMMARY_LIMIT);
-  return summary === '' || storyKey(summary) === key ? { title } : { title, summary };
+  const verdict = judgeHeadline(`${title} ${summary}`);
+  if (verdict.verdict === 'drop') return undefined;
+  if (verdict.verdict === 'abstract') return { kind: 'conflict' };
+  return {
+    kind: 'kept',
+    headline: summary === '' || storyKey(summary) === key ? { title } : { title, summary },
+  };
 }
 
 /**
  * Headlines cleaned again and capped: only a title and a short summary survive, the same story is kept once,
- * and no more than `max` remain. Whatever came in (a feed, a cache a player edited), what goes out is bounded.
+ * tragedies and armed conflicts are gone, and no more than `max` remain. Whatever came in (a feed, a cache a
+ * player edited), what goes out is bounded.
  */
 export function normalizeHeadlines(headlines: readonly Headline[], max: number): Headline[] {
   const seen = new Set<string>();
@@ -48,10 +64,14 @@ export function normalizeHeadlines(headlines: readonly Headline[], max: number):
   for (const headline of headlines) {
     if (kept.length >= max) break;
     const admitted = admit(headline, seen);
-    if (admitted !== undefined) kept.push(admitted);
+    if (admitted?.kind === 'kept') kept.push(admitted.headline);
   }
   return kept;
 }
+
+const CONFLICT_LINE =
+  '[conflict] An armed conflict is under way somewhere in the world. No more is known and none of it may be ' +
+  'invented about a real place, side or event.';
 
 const OPEN = '<untrusted-headlines>';
 const CLOSE = '</untrusted-headlines>';
@@ -72,15 +92,17 @@ export function renderUntrustedHeadlines(
   const seen = new Set<string>();
   const lines: string[] = [];
   let count = 0;
+  let conflict = false;
   for (const { topic, headlines } of groups) {
     for (const headline of headlines) {
-      if (count >= max) break;
       const admitted = admit(headline, seen);
-      if (admitted === undefined) continue;
+      if (admitted?.kind === 'conflict') conflict = true;
+      if (admitted?.kind !== 'kept' || count >= max) continue;
       count += 1;
-      lines.push(`${String(count)}. [${topic}] ${admitted.title}`);
-      if (admitted.summary !== undefined) lines.push(`   ${admitted.summary}`);
+      lines.push(`${String(count)}. [${topic}] ${admitted.headline.title}`);
+      if (admitted.headline.summary !== undefined) lines.push(`   ${admitted.headline.summary}`);
     }
   }
+  if (conflict) lines.push(CONFLICT_LINE);
   return [OPEN, NOTICE, ...(lines.length === 0 ? ['(no headlines today)'] : lines), CLOSE].join('\n');
 }

@@ -121,3 +121,68 @@ describe('renderUntrustedHeadlines', () => {
     expect(renderUntrustedHeadlines(groups)).toBe(renderUntrustedHeadlines(groups));
   });
 });
+
+describe('the tragedy filter at the boundary', () => {
+  const groups = [
+    {
+      topic: 'world' as const,
+      headlines: [
+        { title: 'Dozens killed as a bus overturns' },
+        { title: 'Grain prices dip', summary: 'Farmers shrug.' },
+        { title: 'Shelling closes the port', summary: 'Ships wait at anchor.' },
+        { title: 'Troops mass near the border' },
+        { title: 'Teenager arrested over a school hack' },
+      ],
+    },
+  ];
+
+  it('lets no tragedy through, in any form', () => {
+    const block = renderUntrustedHeadlines(groups);
+
+    expect(block).toContain('1. [world] Grain prices dip');
+    for (const gone of ['killed', 'bus', 'Teenager', 'hack']) expect(block).not.toContain(gone);
+  });
+
+  it('reduces an armed conflict to the bare fact, once, and keeps nothing of the headline', () => {
+    const block = renderUntrustedHeadlines(groups);
+
+    expect(block.match(/\[conflict\]/g)).toHaveLength(1);
+    for (const gone of ['Shelling', 'port', 'anchor', 'Troops', 'border']) expect(block).not.toContain(gone);
+    expect(block.split('\n').at(-2)).toContain('armed conflict is under way somewhere');
+  });
+
+  it('is not an empty day when only a conflict remains', () => {
+    const block = renderUntrustedHeadlines([
+      { topic: 'world', headlines: [{ title: 'War enters a third year' }] },
+    ]);
+
+    expect(block).not.toContain('(no headlines today)');
+    expect(block).toContain('[conflict]');
+  });
+
+  it('does not count the conflict against the cap, and applies the cap to what is kept', () => {
+    const many = Array.from({ length: 5 }, (_, index) => ({ title: `Story ${String(index)}` }));
+    const block = renderUntrustedHeadlines(
+      [{ topic: 'world', headlines: [{ title: 'Missile alert' }, ...many] }],
+      2,
+    );
+
+    expect(block).toContain('2. [world] Story 1');
+    expect(block).not.toContain('Story 2');
+    expect(block).toContain('[conflict]');
+  });
+
+  it('drops tragedies from the normalised headlines too', () => {
+    expect(normalizeHeadlines(groups[0]?.headlines ?? [], 10)).toEqual([
+      { title: 'Grain prices dip', summary: 'Farmers shrug.' },
+    ]);
+  });
+
+  it('reads the summary as part of the headline', () => {
+    const block = renderUntrustedHeadlines([
+      { topic: 'world', headlines: [{ title: 'Port reopens', summary: 'A child was found safe.' }] },
+    ]);
+
+    expect(block).toContain('(no headlines today)');
+  });
+});
