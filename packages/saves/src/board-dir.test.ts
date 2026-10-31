@@ -23,9 +23,7 @@ describe('resolveBoardDir', () => {
 
   it('follows the game folder the player chose', () => {
     const chosen = '/srv/chosen';
-    expect(resolveBoardDir({ ...linux, env: { RACE_GAME_FOLDER: chosen } })).toBe(
-      `${resolve(chosen)}/board`.replace(/\//g, '/'),
-    );
+    expect(resolveBoardDir({ ...linux, env: { RACE_GAME_FOLDER: chosen } })).toBe(`${resolve(chosen)}/board`);
   });
 
   it('uses RACE_BOARD_DIR, resolved, on any platform', () => {
