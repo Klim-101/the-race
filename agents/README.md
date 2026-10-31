@@ -12,10 +12,11 @@ agents/
   subagents/<name>.md         Subagent. Frontmatter `name` (equal to the file name) and `description`, then the prompt
   commands/<name>.md          Slash command. Frontmatter `description`, then the prompt
   hooks/hooks.json            Optional. Hook configuration, with or without the outer {"hooks": ...} wrapper
-  hooks/<script>              Hook scripts, copied as they are
+  hooks/<script>              Hook scripts, copied as they are; a hooks module (the HUD) is listed under "modules" in hooks.json
+  types/index.d.ts            Optional. The contract of the values a hooks module keeps, named by "types" in plugin.json
 ```
 
-Frontmatter is flat `key: value` lines. `skills/` needs at least one skill; the other folders are optional. A hook command refers to its script as `${CLAUDE_PLUGIN_ROOT}/hooks/<script>`, and the generator fails if that script is not in `agents/hooks/`.
+Frontmatter is flat `key: value` lines. `skills/` needs at least one skill; the other folders are optional. A hook command refers to its script as `${CLAUDE_PLUGIN_ROOT}/hooks/<script>`, and the generator fails if that script is not in `agents/hooks/`; it fails the same way for a module listed under `modules`, and when `types` in `plugin.json` names a file that `agents/types/` does not hold.
 
 ## Generated tree
 
@@ -30,6 +31,7 @@ plugins/the-race/
   agents/<name>.md                         From agents/subagents/ (Claude Code calls them `agents`)
   commands/<name>.md                       From agents/commands/
   hooks/hooks.json, hooks/<script>         From agents/hooks/, always with the outer {"hooks": ...} wrapper
+  types/index.d.ts                         From agents/types/
   GENERATED.md                             Marker: this tree is generated
 ```
 

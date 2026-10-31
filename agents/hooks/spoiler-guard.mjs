@@ -117,7 +117,11 @@ const SAVE_FILE = /(^|[/\s])(pending(\/state)?\.json|run\/(state|log)(\.prev)?\.
 // The save directory spelled out for another home or another shell than the one resolved here.
 const SAVE_SHAPE =
   /(^|[/\s])(state|local|application support)\/the-race(\/|$|[\s"'`;&|)])|(^|[/\s])the-race\/(run(\/|$|[\s"'`;&|)])|pending(\/|\.json))|(^|[/\s])\.race(\/|$|[\s"'`;&|)])/;
-// A command that walks into every folder under a path it is given.
+// A command that walks into every folder under a path it is given. A recursive tool counts when it is run: at
+// the start of a simple command, after a prefix such as sudo or xargs, or as the argument of `sh -c`. The same
+// word in prose, in a comment or in the text of a file being written is not a command, and treating it as one
+// denied the writing of a hooks module under a mods folder.
+const COMMAND_START = String.raw`(?:^|[;&|(\n\`{]|\$\(|\b(?:then|do|else|sudo|time|xargs|env|exec|nohup|command)\s+|\s-(?:c|command)\s+["']?)\s*`;
 const RECURSIVE = [
   /\b(find|rg|tree|ag|ack|du)\b/i,
   /\b(grep|egrep|fgrep)\b[^;&|\n]*(\s-[a-zA-Z]*[rR]|--recursive)/,
@@ -125,7 +129,19 @@ const RECURSIVE = [
   /\b(Get-ChildItem|gci|dir|ls)\b[^;&|\n]*\s-(r|rec|recurse)\b/i,
   /\bdir\b[^;&|\n]*\s\/s\b/i,
   /\b(Select-String|sls)\b/i,
-];
+].map((pattern) => new RegExp(`${COMMAND_START}(?:${pattern.source})`, `${pattern.flags}m`));
+
+// The body of a heredoc that `cat` or `tee` only writes to a file, and of a here-string that is only stored or
+// written, is data: what a file will say is not what the command does. A body handed to an interpreter
+// (`node - <<EOF`) is code and stays, since its lines are commands too.
+function withoutWrittenBodies(text) {
+  return text
+    .replace(
+      /^([ \t]*(?:cat|tee)\b[^\n]*<<-?[ \t]*(['"]?)(\w+)\2[^\n]*)\n[\s\S]*?\n[ \t]*\3[ \t]*(?=\n|$)/gm,
+      '$1',
+    )
+    .replace(/((?:Set-Content|Add-Content|Out-File|\$\w+[ \t]*=)[^\n]*@(['"]))\n[\s\S]*?\n\2@/g, '$1');
+}
 
 function touchesSaves(text, context, { walks }) {
   const { directory, pathApi, cwd } = context;
@@ -163,7 +179,7 @@ export function shouldDeny(input, options = {}) {
   }
   // A shell command that recurses over a parent of the saves reaches them without naming them.
   const recursiveCommand = toolName === 'Bash' || toolName === 'PowerShell';
-  const wholeText = strings(toolInput);
+  const wholeText = strings(toolInput).map((text) => (recursiveCommand ? withoutWrittenBodies(text) : text));
   if (
     wholeText.some((text) =>
       touchesSaves(text, context, { walks: recursiveCommand && RECURSIVE.some((re) => re.test(text)) }),
