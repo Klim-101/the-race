@@ -66,6 +66,7 @@ export function applyResult(hud: Hud | null, data: Record<string, unknown>): Hud
       : [],
   );
 
+  const hidden = view['hiddenTraitCount'];
   const clues = view['clues'];
   const clueCount = Array.isArray(clues) ? clues.length : view['clueCount'];
   return {
@@ -77,6 +78,7 @@ export function applyResult(hud: Hud | null, data: Record<string, unknown>): Hud
     turn: typeof view['turn'] === 'number' ? view['turn'] : (hud?.turn ?? 0),
     locationId: current,
     clueCount: typeof clueCount === 'number' ? clueCount : (hud?.clueCount ?? 0),
+    hiddenTraits: typeof hidden === 'number' ? hidden : (hud?.hiddenTraits ?? 0),
     places,
     links,
   };
@@ -86,6 +88,7 @@ export const LABELS = {
   ru: {
     day: 'День',
     clues: 'улик',
+    hiddenTraits: 'скрытых черт',
     map: 'Карта',
     here: 'вы здесь',
     unvisited: 'не посещено',
@@ -97,6 +100,7 @@ export const LABELS = {
   en: {
     day: 'Day',
     clues: 'clues',
+    hiddenTraits: 'hidden traits',
     map: 'Map',
     here: 'you are here',
     unvisited: 'not visited',

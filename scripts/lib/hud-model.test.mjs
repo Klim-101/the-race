@@ -44,6 +44,7 @@ const FULL = {
   turn: 3,
   clock: { day: 2, minute: 14 * 60 + 20, totalDays: 7 },
   clues: [{}, {}],
+  hiddenTraitCount: 2,
   map: MAP,
 };
 /** The object without the named keys. */
@@ -59,6 +60,7 @@ const SHORT = {
     turn: 4,
     clock: { day: 2, minute: 14 * 60 + 35, totalDays: 7 },
     clueCount: 2,
+    hiddenTraitCount: 1,
     map: { ...MAP, current: 'archive' },
   },
 };
@@ -175,6 +177,16 @@ describe('applyResult', () => {
     expect(applyResult(null, withoutClues)?.clueCount).toBe(0);
   });
 
+  it('counts the traits still hidden: from a full view, from the short view of a turn, else from what it knew', () => {
+    expect(applyResult(null, FULL)?.hiddenTraits).toBe(2);
+    expect(applyResult(applyResult(null, FULL), SHORT)?.hiddenTraits).toBe(1);
+    expect(
+      applyResult(applyResult(null, FULL), { view: { ...SHORT.view, hiddenTraitCount: undefined } })
+        ?.hiddenTraits,
+    ).toBe(2);
+    expect(applyResult(null, without(FULL, 'hiddenTraitCount'))?.hiddenTraits).toBe(0);
+  });
+
   it('takes the language and the turn from the answer, else from what it knew, else English and zero', () => {
     const bare = without(FULL, 'locale', 'turn');
 
@@ -238,6 +250,7 @@ describe('what the HUD holds', () => {
   const ALLOWED = [
     'clueCount',
     'day',
+    'hiddenTraits',
     'links',
     'locale',
     'locationId',

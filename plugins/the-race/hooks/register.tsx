@@ -57,7 +57,7 @@ export const register: Register = (on) => {
         <Text> · {place}</Text>
         <Text dimColor>
           {' '}
-          · {text.clues} {state.clueCount}
+          · {text.clues} {state.clueCount} · {text.hiddenTraits} {state.hiddenTraits}
         </Text>
       </Box>
     );
@@ -73,6 +73,9 @@ export const register: Register = (on) => {
         <Text weight="bold">{state.title}</Text>
         <Text color="yellow">
           {text.day} {state.day}/{state.totalDays} {dayBar(state)} {clockText(state)}
+        </Text>
+        <Text dimColor>
+          {text.clues} {state.clueCount} · {text.hiddenTraits} {state.hiddenTraits}
         </Text>
         <Text> </Text>
         <Text dimColor>{text.map}</Text>
