@@ -4,14 +4,28 @@ Save and resume runs. The engine is pure and does no I/O; this package owns the 
 
 ## Where saves live
 
-A save holds the sealed truth as plain JSON, so it lives in the player's own state directory, never in the working
-directory. `resolveSaveDir({ env, platform, homedir })` is the one pure function that decides, and `defaultSaveDir()`
-calls it with the process values:
+A save holds the sealed truth as plain JSON, so it lives in the game folder the player chose, never in the working
+directory. The game folder holds `saves/` (closed to the narrator) and `board/` (the evidence board, which the
+player opens in a browser). `resolveGameFolder({ env, platform, homedir })` decides the folder, `resolveSaveDir`
+and `resolveBoardDir` the two subfolders, and `defaultSaveDir()` calls them with the process values.
 
-1. `RACE_HOME`, when set and non-empty (resolved to an absolute path).
-2. Windows: `%LOCALAPPDATA%\the-race`, else `<home>\AppData\Local\the-race`.
-3. macOS: `<home>/Library/Application Support/the-race`.
-4. Elsewhere: `$XDG_STATE_HOME/the-race` when it is set and absolute, else `<home>/.local/state/the-race`.
+The game folder is:
+
+1. `RACE_GAME_FOLDER` (the server) or `CLAUDE_PLUGIN_OPTION_GAME_FOLDER` (a hook), when set and non-empty: the
+   answer to the plugin's "Game folder" option, asked at the first start. A Windows drive path is ignored on
+   macOS and Linux, because the option's default is `C:\the-race`.
+2. Windows: `C:\the-race`. Elsewhere: `<home>/the-race`.
+
+Then the save directory is:
+
+1. `RACE_HOME`, when set and non-empty (resolved to an absolute path), as the save directory itself.
+2. `<game folder>/saves`, unless it does not exist yet and the directory of the earlier versions does
+   (`chooseSaveDir`): then the earlier saves, and the mirror world they hold, are kept where they are. That
+   directory is `%LOCALAPPDATA%\the-race` on Windows, `<home>/Library/Application Support/the-race` on macOS,
+   and `$XDG_STATE_HOME/the-race` (absolute) or `<home>/.local/state/the-race` elsewhere (`legacySaveDir`).
+
+The board folder is `RACE_BOARD_DIR`, else `<game folder>/board`. To move to a new game folder, copy the old saves
+into its `saves/` and change the option.
 
 ## Layout of the save directory
 

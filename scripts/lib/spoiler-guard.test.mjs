@@ -5,8 +5,13 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { resolveSaveDir as savesResolveSaveDir } from '../../packages/saves/src/save-dir.js';
-import { DENY_REASON, resolveSaveDir, shouldDeny } from '../../agents/hooks/spoiler-guard.mjs';
+import { resolveBoardDir } from '../../packages/saves/src/board-dir.js';
+import {
+  chooseSaveDir,
+  legacySaveDir,
+  resolveSaveDir as savesResolveSaveDir,
+} from '../../packages/saves/src/save-dir.js';
+import { DENY_REASON, resolveSaveDirs, shouldDeny } from '../../agents/hooks/spoiler-guard.mjs';
 
 const SCRIPT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -36,51 +41,63 @@ const call = (tool_name, tool_input, extra = {}) => ({ tool_name, tool_input, ..
 const denied = (input, options) => shouldDeny(input, options);
 
 // The hook cannot import the saves package, so it carries its own copy of the rules; this keeps the copy
-// honest by comparing it with `resolveSaveDir` from packages/saves over a table of environments.
-describe('resolveSaveDir agrees with packages/saves', () => {
-  it.each([
-    ['RACE_HOME wins', { platform: 'linux', home: '/h', env: { RACE_HOME: '/data/race' } }, '/data/race'],
-    [
-      'an empty RACE_HOME is ignored',
-      { platform: 'linux', home: '/h', env: { RACE_HOME: '' } },
-      '/h/.local/state/the-race',
-    ],
-    [
-      'windows LOCALAPPDATA',
-      { platform: 'win32', home: 'C:\\Users\\a', env: { LOCALAPPDATA: 'D:\\Local' } },
-      'D:\\Local\\the-race',
-    ],
-    [
-      'windows fallback',
-      { platform: 'win32', home: 'C:\\Users\\a', env: {} },
-      'C:\\Users\\a\\AppData\\Local\\the-race',
-    ],
-    [
-      'windows LOCALAPPDATA is taken as it is',
-      { platform: 'win32', home: 'C:\\Users\\a', env: { LOCALAPPDATA: 'rel' } },
-      'rel\\the-race',
-    ],
-    [
-      'macOS',
-      { platform: 'darwin', home: '/Users/a', env: {} },
-      '/Users/a/Library/Application Support/the-race',
-    ],
-    [
-      'XDG_STATE_HOME when absolute',
-      { platform: 'linux', home: '/h', env: { XDG_STATE_HOME: '/x/state' } },
-      '/x/state/the-race',
-    ],
-    [
-      'XDG_STATE_HOME when relative',
-      { platform: 'linux', home: '/h', env: { XDG_STATE_HOME: 'state' } },
-      '/h/.local/state/the-race',
-    ],
-    ['linux default', { platform: 'linux', home: '/h', env: {} }, '/h/.local/state/the-race'],
-  ])('%s', (_name, input, expected) => {
-    expect(resolveSaveDir(input)).toBe(expected);
-    // `resolve` only makes a RACE_HOME absolute, which the saves package does and the hook leaves to its cwd.
+// honest by comparing it with the saves package over a table of environments: the directory the server
+// would use, whichever of the two exists on disk, must always be one the hook closes.
+describe('resolveSaveDirs agrees with packages/saves', () => {
+  const inside = (list, expected) => expect(list.map((dir) => resolve(dir))).toContain(resolve(expected));
+  const agrees = (input) => {
     const { home, ...rest } = input;
-    expect(resolve(resolveSaveDir(input))).toBe(resolve(savesResolveSaveDir({ ...rest, homedir: home })));
+    const saves = { ...rest, homedir: home };
+    const closed = resolveSaveDirs(input);
+    inside(closed, savesResolveSaveDir(saves));
+    inside(
+      closed,
+      chooseSaveDir(saves, () => false),
+    );
+    inside(
+      closed,
+      chooseSaveDir(saves, () => true),
+    );
+    inside(
+      closed,
+      chooseSaveDir(saves, (path) => path === legacySaveDir(saves)),
+    );
+  };
+
+  it.each([
+    ['RACE_HOME wins', { platform: 'linux', home: '/h', env: { RACE_HOME: '/data/race' } }],
+    ['an empty RACE_HOME is ignored', { platform: 'linux', home: '/h', env: { RACE_HOME: '' } }],
+    ['windows default', { platform: 'win32', home: 'C:\\Users\\a', env: {} }],
+    ['windows LOCALAPPDATA', { platform: 'win32', home: 'C:\\Users\\a', env: { LOCALAPPDATA: 'D:\\Local' } }],
+    ['macOS', { platform: 'darwin', home: '/Users/a', env: {} }],
+    [
+      'macOS with the Windows default of the plugin',
+      { platform: 'darwin', home: '/Users/a', env: { RACE_GAME_FOLDER: 'C:\\the-race' } },
+    ],
+    ['XDG_STATE_HOME when absolute', { platform: 'linux', home: '/h', env: { XDG_STATE_HOME: '/x/state' } }],
+    ['linux folder chosen', { platform: 'linux', home: '/h', env: { RACE_GAME_FOLDER: '/srv/games' } }],
+    ['linux default', { platform: 'linux', home: '/h', env: {} }],
+  ])('%s', (_name, input) => agrees(input));
+
+  // A Windows drive path is only a path on a Windows host: elsewhere `resolve` reads it as a relative name, and
+  // the two sides, which join it differently, cannot be compared. The Windows runner covers these.
+  it.skipIf(process.platform !== 'win32').each([
+    [
+      'windows folder chosen',
+      { platform: 'win32', home: 'C:\\Users\\a', env: { RACE_GAME_FOLDER: 'D:\\play' } },
+    ],
+    [
+      'windows folder chosen through the plugin option',
+      { platform: 'win32', home: 'C:\\Users\\a', env: { CLAUDE_PLUGIN_OPTION_GAME_FOLDER: 'E:\\g' } },
+    ],
+  ])('%s', (_name, input) => agrees(input));
+
+  it('closes both the saves of the game folder and the legacy directory, but never the board', () => {
+    const input = { platform: 'linux', home: '/h', env: {} };
+    expect(resolveSaveDirs(input)).toEqual(['/h/the-race/saves', '/h/.local/state/the-race']);
+    expect(resolveSaveDirs(input)).not.toContain(
+      resolveBoardDir({ env: {}, platform: 'linux', homedir: '/h' }),
+    );
   });
 });
 
@@ -382,6 +399,41 @@ describe('denied', () => {
     ],
   ])('%s', (_name, input, options) => {
     expect(denied(input, options)).toBe(true);
+  });
+});
+
+describe('the game folder', () => {
+  const WIN_DEFAULT = { ...WIN, env: {} };
+  const CHOSEN = { ...WIN, env: { CLAUDE_PLUGIN_OPTION_GAME_FOLDER: 'D:\\play' } };
+
+  it.each([
+    [
+      'the saves of the default game folder',
+      call('Read', { file_path: 'C:\\the-race\\saves\\run\\state.json' }),
+    ],
+    ['a listing of the saves', call('Bash', { command: 'dir C:\\the-race\\saves' })],
+    [
+      'the legacy directory of earlier saves',
+      call('Read', { file_path: 'C:\\Users\\ann\\AppData\\Local\\the-race\\world.json' }),
+    ],
+    [
+      'a recursive search over the game folder',
+      call('Bash', { command: 'Get-ChildItem C:\\the-race -Recurse' }),
+    ],
+  ])('denies %s', (_name, input) => {
+    expect(denied(input, WIN_DEFAULT)).toBe(true);
+  });
+
+  it('denies the saves of a folder the player chose, and not the board beside them', () => {
+    expect(denied(call('Read', { file_path: 'D:\\play\\saves\\run\\state.json' }), CHOSEN)).toBe(true);
+    expect(denied(call('Read', { file_path: 'D:\\play\\board\\evidence.html' }), CHOSEN)).toBe(false);
+  });
+
+  it('lets the board of the default game folder be opened', () => {
+    expect(denied(call('Read', { file_path: 'C:\\the-race\\board\\evidence.html' }), WIN_DEFAULT)).toBe(
+      false,
+    );
+    expect(denied(call('Bash', { command: 'dir C:\\the-race\\board' }), WIN_DEFAULT)).toBe(false);
   });
 });
 

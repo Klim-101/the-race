@@ -268,6 +268,24 @@ describe('evidence_board', () => {
     );
   });
 
+  it('says in a way the player can act on that the board folder cannot be written', async () => {
+    const context = await activeRun();
+    const broken = {
+      ...context,
+      saveFs: {
+        ...context.saveFs,
+        mkdir: () => Promise.reject(new Error('EACCES: permission denied')),
+      },
+    };
+
+    const result = await call(evidenceBoard, {}, broken);
+
+    expect(result.isError).toBe(true);
+    expect(result.body).toMatchObject({ error: { code: 'board-unwritable' } });
+    expect(JSON.stringify(result.body)).not.toContain('EACCES');
+    expect(JSON.stringify(result.body)).toContain('Game folder');
+  });
+
   it('keeps one file between calls, so a tab left open follows the run', async () => {
     const context = await activeRun();
 

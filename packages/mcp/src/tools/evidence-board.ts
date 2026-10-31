@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { renderEvidenceBoard } from '../board/render-board.js';
 import { defineTool } from '../define-tool.js';
 import { requireRun } from '../play.js';
+import { ToolFailure } from '../tool-error.js';
 
 export const evidenceBoard = defineTool({
   name: 'evidence_board',
@@ -35,9 +36,21 @@ export const evidenceBoard = defineTool({
     const { run, log } = await requireRun(context);
     const view = viewRun(run);
     const path = join(context.boardDir, BOARD_FILE);
-    await context.saveFs.mkdir(context.boardDir);
-    // Replaced whole, so a browser that reloads at that moment gets the old page or the new one, never half.
-    await replaceFile(context.saveFs, path, renderEvidenceBoard(view, viewTurns(run, log)));
+    try {
+      await context.saveFs.mkdir(context.boardDir);
+      // Replaced whole, so a browser that reloads at that moment gets the old page or the new one, never half.
+      await replaceFile(context.saveFs, path, renderEvidenceBoard(view, viewTurns(run, log)));
+    } catch {
+      // The system message stays out of the answer; the folder is the player's own and is named in it.
+      throw new ToolFailure({
+        code: 'board-unwritable',
+        message: `The evidence board could not be written to ${context.boardDir}.`,
+        remediation:
+          'Tell the player in one plain sentence that the board folder cannot be written, and that they can ' +
+          'choose another game folder in the plugin settings (the "Game folder" option, or the RACE_GAME_FOLDER ' +
+          'variable) and start a new session. The run itself is fine: carry on without the board.',
+      });
+    }
     return {
       path,
       link: pathToFileURL(path).href,
