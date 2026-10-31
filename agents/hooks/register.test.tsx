@@ -99,13 +99,14 @@ test('a turn tool moves the line with its short view and its map, with no run_vi
       turn: 4,
       clock: { day: 2, minute: 14 * 60 + 35, totalDays: 7 },
       clueCount: 3,
+      hiddenTraitCount: 1,
       map: { ...MAP, current: 'archive' },
     },
   });
   await $.tool.call({ tool: `${TOOLS}act` } as never);
 
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal' });
-  expect((await ui.find({ type: 'Box' }))?.text).toMatch(/14:35 · Archive · clues 3/);
+  expect((await ui.find({ type: 'Box' }))?.text).toMatch(/14:35 · Archive · clues 3 · hidden traits 1/);
   await ui.unmount();
 });
 
@@ -143,6 +144,7 @@ test('the pane draws the known map from the game, marks the hero, and speaks the
     expect((await ui.find({ type: 'Text', text: /Archive/ }))?.text).toContain('○ Archive  (не посещено)');
     expect((await ui.find({ type: 'Text', text: /Office/ }))?.text).toContain('✖ Office  (заперто)');
     expect((await ui.find({ type: 'Text', text: /Chapel/ }))?.text).toContain('✖ Chapel  (закрыто)');
+    expect((await ui.find({ type: 'Text', text: /скрытых черт/ }))?.text).toMatch(/скрытых черт d+/);
     await ui.unmount();
   }
 });

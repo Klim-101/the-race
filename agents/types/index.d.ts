@@ -21,6 +21,8 @@ export type Hud = {
   /** The place the hero is at: the `current` of the known map. */
   locationId: string;
   clueCount: number;
+  /** How many of the hero's traits are still hidden; a number, never which. */
+  hiddenTraits: number;
   /** The known map, as the game sent it. */
   places: HudPlace[];
   links: { from: string; to: string }[];

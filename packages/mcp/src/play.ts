@@ -57,6 +57,8 @@ export const RunSummarySchema = z.object({
   }),
   clueCount: z.int(),
   insightCount: z.int(),
+  /** How many of the hero's traits are still hidden: a number and nothing about which. */
+  hiddenTraitCount: z.int(),
 });
 
 export function summarizeRun(run: DetectiveRunState): z.input<typeof RunSummarySchema> {
@@ -78,6 +80,7 @@ export function summarizeRun(run: DetectiveRunState): z.input<typeof RunSummaryS
     },
     clueCount: view.clues.length,
     insightCount: view.insights.length,
+    hiddenTraitCount: view.hiddenTraitCount,
   };
 }
 

@@ -556,3 +556,14 @@ describe('the hidden traits a turn showed', () => {
     expect(result.body.revealed).toEqual([]);
   });
 });
+
+describe('the count of hidden traits in the short view of a turn', () => {
+  it('is the same number run_view gives, a count and no more', async () => {
+    const context = await activeRun();
+    const full = (await call(runView, {}, context)).body as { hiddenTraitCount: number };
+    const result = await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+
+    expect((result.body.view as { hiddenTraitCount: number }).hiddenTraitCount).toBe(full.hiddenTraitCount);
+    expect(Object.keys(result.body.view as object)).not.toContain('traits');
+  });
+});
