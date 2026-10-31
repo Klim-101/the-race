@@ -21,6 +21,15 @@ import { settleClock } from './clock.js';
 import { isCollapse, passNight, type NightCause, type NightReport } from './night.js';
 import { InterrogateIntentSchema, resolveInterrogate, type InterrogationOutcome } from './interrogation.js';
 import { UseIntentSchema, resolveUse, type UseOutcome } from './use-item.js';
+import {
+  actingReveals,
+  applyReveals,
+  collectDebt,
+  lockOutReveals,
+  revealedBy,
+  sceneSituations,
+  type Revealed,
+} from './trait-reveal.js';
 import { buildNeighbors } from './obtainability.js';
 import { closedSourcesOf, drawDayEvents, isLocationClosed } from './random-events.js';
 import {
@@ -152,6 +161,8 @@ export type Resolution =
       readonly night?: NightReport;
       /** What the hero's signal did in this turn, when it did anything; told to the player, not logged. */
       readonly felt?: readonly SignalFelt[];
+      /** The hidden traits that showed themselves in this turn, and how; each trait is told once. */
+      readonly revealed?: readonly Revealed[];
     }
   | { readonly ok: false; readonly refusal: Refusal };
 
@@ -165,14 +176,19 @@ function roll(
   rng: Rng,
   check: SkillCheck,
   situations: readonly TraitTrigger[],
-): { result: SkillCheckResult; felt: SignalFelt[] } {
+): { result: SkillCheckResult; felt: SignalFelt[]; revealed: Revealed[] } {
+  const scene = sceneSituations(run, situations);
   const result = rollCheck(
     rng,
     run.hero.skills,
     check,
-    collectModifier(modifierSources(run), check.skill, situations),
+    collectModifier(modifierSources(run), check.skill, scene),
   );
-  return { result, felt: feltModifier(signalOfRun(run), situations, check.skill) };
+  return {
+    result,
+    felt: feltModifier(signalOfRun(run), scene, check.skill),
+    revealed: actingReveals(run, scene, check.skill),
+  };
 }
 
 /** Time spent, reputation lost for a critical failure, and the turn counted with the state of the dice. */
@@ -217,7 +233,7 @@ function resolveLook(run: DetectiveRunState, rng: Rng): Resolution {
   const next = found.reduce((state, clue) => findClue(state, clue.id), run);
   const settled = settle(next, rng, LOOK_MINUTES, []);
   const outcome: Outcome = { kind: 'look', foundClueIds: found.map(({ id }) => id), minutes: LOOK_MINUTES };
-  return { ok: true, run: settled.run, outcome, details: [] };
+  return { ok: true, run: settled.run, outcome, details: [], revealed: lockOutReveals(run, run.locationId) };
 }
 
 function resolveSearch(run: DetectiveRunState, rng: Rng): Resolution {
@@ -227,19 +243,32 @@ function resolveSearch(run: DetectiveRunState, rng: Rng): Resolution {
   const details: CheckDetail[] = [];
   const results: SkillCheckResult[] = [];
   const felt: SignalFelt[] = [];
+  const revealed: Revealed[] = lockOutReveals(run, location.id);
   const found: Clue[] = [];
 
   for (const clue of hidden) {
     const situations: TraitTrigger[] = [...location.situations, ...clue.situations];
     if (reinspection) situations.push('reinspection');
     const subject = { kind: 'clue', id: clue.id } as const;
-    if (clue.discovery === null || (reinspection && hasAutoDiscover(run.traits, situations))) {
+    const scene = sceneSituations(run, situations);
+    if (clue.discovery === null || (reinspection && hasAutoDiscover(run.traits, scene))) {
       found.push(clue);
       details.push({ subject, result: 'auto' });
+      if (clue.discovery !== null) {
+        revealed.push(
+          ...run.traits
+            .filter(
+              ({ trigger, effects }) =>
+                scene.includes(trigger) && effects.some((e) => e.kind === 'auto-discover'),
+            )
+            .map((trait) => revealedBy(trait, 'auto-discover')),
+        );
+      }
       continue;
     }
-    const { result, felt: moved } = roll(run, rng, clue.discovery, situations);
+    const { result, felt: moved, revealed: acted } = roll(run, rng, clue.discovery, situations);
     felt.push(...moved);
+    revealed.push(...acted);
     results.push(result);
     details.push({ subject, result });
     if (result.success) found.push(clue);
@@ -257,6 +286,7 @@ function resolveSearch(run: DetectiveRunState, rng: Rng): Resolution {
     outcome: { kind: 'search', foundClueIds: found.map(({ id }) => id), minutes, consequences },
     details,
     felt: distinctFelt([...felt, ...settled.felt]),
+    revealed,
   };
 }
 
@@ -282,6 +312,7 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
   const details: CheckDetail[] = [];
   const results: SkillCheckResult[] = [];
   const felt: SignalFelt[] = [];
+  const revealed: Revealed[] = [];
   let entered = true;
 
   if (!visited) {
@@ -294,8 +325,9 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
         }
         break;
       case 'skill': {
-        const { result, felt: moved } = roll(run, rng, access.check, destination.situations);
+        const { result, felt: moved, revealed: acted } = roll(run, rng, access.check, destination.situations);
         felt.push(...moved);
+        revealed.push(...acted);
         results.push(result);
         details.push({ subject: { kind: 'location', id: locationId }, result });
         entered = result.success;
@@ -317,6 +349,7 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
     outcome: { kind: 'move', from: run.locationId, to: locationId, entered, minutes, consequences },
     details,
     felt: distinctFelt([...felt, ...settled.felt]),
+    revealed,
   };
 }
 
@@ -326,14 +359,22 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
  * always give the same resolution, and the state it is given is left alone. An intent that cannot be carried
  * out is refused with a code, and then nothing changes and no dice are rolled.
  */
-export function resolveIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resolution {
+export function resolveIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resolved {
   const dispatched = dispatchIntent(run, input, rng);
   if (!dispatched.ok) return dispatched;
   const resolution = applyFatigue(run, dispatched, rng);
   // The turn is settled here, once, for every kind of intent: the night, scheduled events and the ways to lose.
   const slept = sleepIfDue(resolution, run.clock.day, rng);
-  return { ...slept, run: settleClock(drawDayEvents(slept.run, run.clock, rng).run, run.clock.day) };
+  const indebted = collectDebt(slept.run, run.clock.day);
+  const shown = applyReveals(indebted.run, [...(slept.revealed ?? []), ...indebted.revealed]);
+  const settled = settleClock(drawDayEvents(shown.run, run.clock, rng).run, run.clock.day);
+  return { ...slept, run: settled, revealed: shown.revealed };
 }
+
+/** What `resolveIntent` returns: every carried-out turn says which hidden traits it showed, often none. */
+export type Resolved =
+  | Extract<Resolution, { ok: false }>
+  | (Extract<Resolution, { ok: true }> & { readonly revealed: readonly Revealed[] });
 
 type Carried = Resolution & { ok: true };
 

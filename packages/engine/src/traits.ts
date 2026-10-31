@@ -156,3 +156,18 @@ export function hasAutoDiscover(traits: readonly Trait[], situations: readonly T
       situations.includes(trigger) && effects.some((effect) => effect.kind === 'auto-discover'),
   );
 }
+
+/** The traits whose modifier plays a part in a check of `skill` in the current situations. */
+export function traitsActing(
+  traits: readonly Trait[],
+  situations: readonly TraitTrigger[],
+  skill: string,
+): Trait[] {
+  return traits.filter(
+    ({ trigger, effects }) =>
+      situations.includes(trigger) &&
+      effects.some(
+        (effect) => effect.kind === 'modifier' && (effect.skills === 'all' || effect.skills.includes(skill)),
+      ),
+  );
+}

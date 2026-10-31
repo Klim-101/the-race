@@ -1,6 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { actingReveals, sceneSituations } from './trait-reveal.js';
 import { z } from 'zod';
 import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
 import { collectModifier } from '../modifiers.js';
@@ -123,10 +124,10 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
     MIN_INTERROGATION_DIFFICULTY,
     rules.difficulty - rules.easePerBrokenLie * breakable.length,
   );
-  const situations = [
+  const situations = sceneSituations(run, [
     'interrogation' as const,
     ...run.case.locations.flatMap(({ id, situations }) => (id === run.locationId ? situations : [])),
-  ];
+  ]);
   const result: SkillCheckResult = rollCheck(
     rng,
     run.hero.skills,
@@ -185,6 +186,7 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
     ok: true,
     run: next,
     felt,
+    revealed: actingReveals(run, situations, rules.skill),
     outcome: {
       kind: 'interrogate',
       suspectId: suspect.id,

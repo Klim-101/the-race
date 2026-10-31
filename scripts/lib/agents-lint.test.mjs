@@ -325,7 +325,7 @@ describe('the events of a turn', () => {
   it('has the narrator tell them as a scene, from the result of the turn', () => {
     expect(skill).toMatch(/`events` is not empty[^.]*short scene/);
     expect(outcomes).toContain('## Events of the turn');
-    expect(outcomes).toMatch(/`\{ outcome, events, felt, view \}`/);
+    expect(outcomes).toMatch(/`\{ outcome, events, felt, revealed, view \}`/);
   });
 
   it('has the generator bring a pool of events, which the engine requires', () => {
@@ -340,7 +340,7 @@ describe('the signal at work', () => {
   it('has the narrator show the gift and the cost of the signal when the turn result says they worked', () => {
     expect(skill).toMatch(/`felt` is not empty, one clause/);
     expect(outcomes).toContain('## The signal at work');
-    expect(outcomes).toMatch(/`\{ outcome, events, felt, view \}`/);
+    expect(outcomes).toMatch(/`\{ outcome, events, felt, revealed, view \}`/);
     for (const effect of ['helped', 'hindered', 'shielded']) expect(outcomes).toContain(`\`${effect}\``);
   });
 
@@ -361,5 +361,19 @@ describe('the size of a link', () => {
   it('explains the field and the refusal to the narrator', () => {
     expect(outcomes).toMatch(/`openLinks` \(how many clues each conclusion still to be made takes/);
     expect(outcomes).toContain('`wrong-link-size`');
+  });
+});
+
+describe('a trait shows itself', () => {
+  const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+  const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));
+
+  it('has the narrator tell a revealed trait once, from the result of the turn, and hint at none before', () => {
+    expect(skill).toMatch(/`revealed` is not empty, a hidden trait/);
+    expect(outcomes).toContain('## A trait shows itself');
+    for (const reason of ['modifier', 'auto-discover', 'lock-out', 'spawn-event']) {
+      expect(outcomes).toContain(`\`${reason}\``);
+    }
+    expect(outcomes).toMatch(/never hint at a trait that has not been revealed/);
   });
 });

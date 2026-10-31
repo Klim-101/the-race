@@ -8,6 +8,8 @@ import {
   viewRun,
   type DetectiveRunState,
   type RunLog,
+  REVEAL_REASONS,
+  type Revealed,
   type SignalFelt,
 } from '@the-race/engine';
 import { loadRun, saveRun, type LoadFailureReason } from '@the-race/saves';
@@ -97,12 +99,25 @@ export const FeltSignalSchema = z.object({
   meter: z.string().optional(),
 });
 
+/**
+ * A hidden trait that showed itself in the turn: from here on it is public, with its effects, in `run_view`.
+ * `reason` says how it showed: it shifted a `modifier`, found a clue without a roll (`auto-discover`), shut a
+ * source (`lock-out`) or brought a debt collector who cost an hour (`spawn-event`).
+ */
+export const RevealedTraitSchema = z.object({
+  trait: z.string(),
+  polarity: z.enum(['positive', 'negative', 'mixed']),
+  reason: z.enum(REVEAL_REASONS),
+});
+
 export const TurnResultSchema = z.object({
   outcome: OutcomeSchema,
   /** The random events this turn brought (in the day, at midday or in the evening, or in the night); often none. */
   events: z.array(TurnEventSchema).default([]),
   /** What the signal did in this turn; empty for a hero without a signal and for a turn it did not touch. */
   felt: z.array(FeltSignalSchema).default([]),
+  /** The hidden traits this turn showed, each told once; empty on most turns. */
+  revealed: z.array(RevealedTraitSchema).default([]),
   view: RunSummarySchema,
 });
 
@@ -172,6 +187,11 @@ function feltOfTurn(run: DetectiveRunState, felt: readonly SignalFelt[]): z.inpu
       );
 }
 
+/** The traits the engine showed in a turn, with the polarity the narrator needs for the tone. */
+function revealedOfTurn(revealed: readonly Revealed[]): z.input<typeof RevealedTraitSchema>[] {
+  return revealed.map(({ traitId, polarity, reason }) => ({ trait: traitId, polarity, reason }));
+}
+
 /** The random events drawn between two states of a run: what the turn brought, already applied by the engine. */
 function eventsOfTurn(
   before: DetectiveRunState,
@@ -208,6 +228,7 @@ export async function playIntent(
     outcome: { ...resolution.outcome },
     events: eventsOfTurn(run, resolution.run),
     felt: feltOfTurn(run, resolution.felt ?? []),
+    revealed: revealedOfTurn(resolution.revealed),
     view: summarizeRun(resolution.run),
   };
 }

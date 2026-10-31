@@ -20,7 +20,7 @@
       "description": "Bunting, folding chairs and a string quartet tuning up. Half the town has come to see who the goose's kidnapper might be, and all of them have an opinion.",
       "connections": ["museum-hall", "tea-shop", "boiler-room"],
       "access": { "kind": "open" },
-      "situations": ["crowd"]
+      "situations": ["crowd", "high-society"]
     },
     {
       "id": "tea-shop",
