@@ -91,6 +91,7 @@ export type RefusalCode =
   | 'not-found'
   | 'no-insight'
   | 'garbled-clue'
+  | 'wrong-link-size'
   | 'not-garbled'
   | 'unknown-item'
   | 'none-left';

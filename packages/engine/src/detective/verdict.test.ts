@@ -67,9 +67,9 @@ describe('deduce', () => {
     expect(result.run.insightIds).toEqual(['motive-debt']);
   });
 
-  it('a wrong link costs time and reveals nothing, close or not', () => {
+  it('a wrong link of a size the case has costs time and reveals nothing, close or not', () => {
     const run = newRun();
-    const close = okDeduce(deduce(run, link('oven-receipt', 'debt-ledger', 'blue-glove'), createRng(1)));
+    const close = okDeduce(deduce(run, link('oven-receipt', 'blue-glove'), createRng(1)));
     const far = okDeduce(deduce(run, link('blue-glove', 'cart-tracks'), createRng(1)));
     for (const result of [close, far]) {
       expect(result.outcome).toEqual({
@@ -83,6 +83,52 @@ describe('deduce', () => {
       expect(result.run.turn).toBe(1);
     }
     expect(close.outcome).toEqual(far.outcome);
+  });
+
+  describe('the size of a link is public', () => {
+    it('refuses a link no open conclusion can have, before any time is spent, naming the sizes and no clue', () => {
+      const run = newRun();
+      for (const clues of [
+        ['oven-receipt', 'debt-ledger', 'blue-glove'],
+        ['flour-crumbs', 'blue-glove', 'cart-tracks', 'debt-ledger'],
+      ]) {
+        const result = deduce(run, link(...clues), createRng(1));
+
+        expect(result).toEqual({
+          ok: false,
+          refusal: {
+            code: 'wrong-link-size',
+            message: 'No conclusion takes a link of that size. The links still to be made take 2 clues.',
+          },
+        });
+        expect(JSON.stringify(result)).not.toMatch(/ledger|receipt|glove|tracks|crumbs/);
+      }
+      expect(run.clock.minute).toBe(DAY_START_MINUTE);
+    });
+
+    it('says there is nothing left to link once every conclusion is drawn, and still knows a made one', () => {
+      const run = newRun(ALL_CLUES, ['motive-debt']);
+
+      const other = deduce(run, link('flour-crumbs', 'blue-glove'), createRng(1));
+      const again = okDeduce(deduce(run, link('oven-receipt', 'debt-ledger'), createRng(1)));
+
+      expect(other).toMatchObject({
+        ok: false,
+        refusal: {
+          code: 'wrong-link-size',
+          message: 'Every conclusion of this case has been drawn; there is nothing left to link.',
+        },
+      });
+      expect(again.outcome).toMatchObject({ result: 'already-known' });
+    });
+
+    it('lists the open sizes smallest first, drops a conclusion once it is drawn, and holds no clue', () => {
+      const open = viewRun(newRun()).openLinks;
+      const drawn = viewRun(newRun(ALL_CLUES, ['motive-debt'])).openLinks;
+
+      expect(open).toEqual([2]);
+      expect(drawn).toEqual([]);
+    });
   });
 
   it('gives the same answer for every wrong link, whatever the dice (property)', () => {

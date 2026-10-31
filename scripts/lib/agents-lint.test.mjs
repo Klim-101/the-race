@@ -348,3 +348,18 @@ describe('the signal at work', () => {
     expect(outcomes).toMatch(/never as a number or a skill name/);
   });
 });
+
+describe('the size of a link', () => {
+  const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+  const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));
+
+  it('has the narrator tell the sizes in the poll and never offer a size no open conclusion has', () => {
+    expect(skill).toContain('`openLinks`');
+    expect(skill).toMatch(/never offer a link whose size no open conclusion has/);
+  });
+
+  it('explains the field and the refusal to the narrator', () => {
+    expect(outcomes).toMatch(/`openLinks` \(how many clues each conclusion still to be made takes/);
+    expect(outcomes).toContain('`wrong-link-size`');
+  });
+});

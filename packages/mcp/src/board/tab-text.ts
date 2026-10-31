@@ -35,6 +35,10 @@ export interface TabText {
     readonly evidence: string;
     readonly places: string;
     readonly none: string;
+    /** The links still to be made by the number of clues each takes: the heading, one link ({n}) and the end. */
+    readonly open: string;
+    readonly size: string;
+    readonly allDrawn: string;
   };
   readonly chronicle: {
     readonly now: string;
@@ -149,6 +153,9 @@ export const TAB_TEXT: Record<Locale, TabText> = {
       evidence: 'Evidence',
       places: 'Where it was found',
       none: 'Nothing to connect yet.',
+      open: 'Links still to be made',
+      size: 'a link of {n}',
+      allDrawn: 'Every conclusion has been drawn.',
     },
     chronicle: {
       now: 'Now',
@@ -313,6 +320,9 @@ export const TAB_TEXT: Record<Locale, TabText> = {
       evidence: 'Улики',
       places: 'Где найдено',
       none: 'Связывать пока нечего.',
+      open: 'Связок ещё предстоит',
+      size: 'связка из {n}',
+      allDrawn: 'Все выводы сделаны.',
     },
     chronicle: {
       now: 'Сейчас',

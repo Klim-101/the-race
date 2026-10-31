@@ -477,3 +477,51 @@ describe('the cost and the shield of a signal in a turn', () => {
     expect([...effects].toSorted()).toEqual(['hindered', 'shielded']);
   });
 });
+
+describe('the size of a link', () => {
+  /** A case whose first clues lie in plain sight at the start, so that one look finds them. */
+  async function withFoundClues(count: number) {
+    const context = gameContext();
+    await call(runNew, { locale: 'en', seed: 'links' }, context);
+    await call(heroCreate, HERO_CHOICES, context);
+    const base = sampleCase();
+    const clues = base.clues.slice(0, count).map(({ id }) => id);
+    await installCase(context, {
+      ...base,
+      clues: base.clues.map((clue) =>
+        clues.includes(clue.id) ? { ...clue, locationId: base.startLocationId, discovery: null } : clue,
+      ),
+    });
+    if (count > 0) await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+    return { context, clues };
+  }
+
+  it('is in the view as numbers only, smallest first', async () => {
+    const { context } = await withFoundClues(0);
+
+    const view = (await call(runView, {}, context)).body as { openLinks: number[] };
+
+    expect(view.openLinks.length).toBeGreaterThan(0);
+    expect(view.openLinks.every((size) => Number.isInteger(size) && size >= 2)).toBe(true);
+    expect(view.openLinks).toEqual(view.openLinks.toSorted((a, b) => a - b));
+  });
+
+  it('refuses a set of another size before any time is spent, and names the sizes and no clue', async () => {
+    const { context, clues } = await withFoundClues(6);
+    const before = (await call(runView, {}, context)).body as {
+      turn: number;
+      openLinks: number[];
+      clock: { minute: number };
+    };
+    const wrong = [2, 3, 4, 5, 6].find((size) => !before.openLinks.includes(size)) ?? 6;
+
+    const refused = await call(deduce, { turn: before.turn, clueIds: clues.slice(0, wrong) }, context);
+
+    expect(refused.isError).toBe(true);
+    expect(refused.body).toMatchObject({ error: { code: 'wrong-link-size' } });
+    expect(JSON.stringify(refused.body)).toContain([...new Set(before.openLinks)].join(' or '));
+    for (const id of clues) expect(JSON.stringify(refused.body)).not.toContain(id);
+    const after = (await call(runView, {}, context)).body as { turn: number; clock: { minute: number } };
+    expect(after).toMatchObject({ turn: before.turn, clock: { minute: before.clock.minute } });
+  });
+});

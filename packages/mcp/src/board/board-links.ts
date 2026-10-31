@@ -48,13 +48,22 @@ function box(node: Node, kind: string): string {
   return `<g class="box ${kind}"><title>${escapeHtml(node.label)}</title><rect x="${whole(node.x)}" y="${whole(node.y)}" width="${String(NODE_WIDTH)}" height="${String(NODE_HEIGHT)}" rx="6"/><text x="${whole(node.x + 10)}" y="${whole(node.y + 25)}">${escapeHtml(truncate(node.label, LABEL_LENGTH))}</text></g>`;
 }
 
+/** What size of link is still to be made, as the engine says it: counts only, smallest first, never which clues. */
+function openLinks(view: DetectiveRunView, text: TabText): string {
+  const { open, size, allDrawn } = text.links;
+  const sizes = view.openLinks.map((n) => escapeHtml(size.replace('{n}', String(n)))).join(', ');
+  return `<p class="card"><strong>${escapeHtml(open)}:</strong> ${view.openLinks.length === 0 ? escapeHtml(allDrawn) : sizes}</p>
+`;
+}
+
 /**
  * The conclusions, the clues and the places as three columns, joined by what the player did: a conclusion to
  * each clue it was drawn from, a clue to the place it was found. Nothing says what a clue points at.
  */
 export function renderLinks(view: DetectiveRunView, text: TabText): string {
+  const open = openLinks(view, text);
   if (view.clues.length === 0 && view.insights.length === 0) {
-    return `<p class="empty">${escapeHtml(text.links.none)}</p>`;
+    return `${open}<p class="empty">${escapeHtml(text.links.none)}</p>`;
   }
   const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
   const placeIds = [...new Set(view.clues.map(({ locationId }) => locationId))];
@@ -93,6 +102,6 @@ export function renderLinks(view: DetectiveRunView, text: TabText): string {
   const heading = (index: number, label: string): string =>
     `<span style="left:${whole(((MARGIN + index * COLUMN_STEP) / width) * 100)}%">${escapeHtml(label)}</span>`;
 
-  return `<div class="columns" aria-hidden="true">${heading(0, text.links.conclusions)}${heading(1, text.links.evidence)}${heading(2, text.links.places)}</div>
+  return `${open}<div class="columns" aria-hidden="true">${heading(0, text.links.conclusions)}${heading(1, text.links.evidence)}${heading(2, text.links.places)}</div>
 <div class="graph"><svg class="links" viewBox="0 0 ${String(width)} ${String(height)}" role="img" aria-label="${escapeHtml(text.links.title)}" style="min-width:${String(Math.min(width, 640))}px"><g class="edges">${edges.join('')}</g>${conclusions.map((node) => box(node, 'conclusion')).join('')}${clues.map((node) => box(node, 'clue')).join('')}${places.map((node) => box(node, 'place')).join('')}</svg></div>`;
 }

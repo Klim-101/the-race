@@ -280,6 +280,16 @@ describe('what the view leaks', () => {
           for (const { clueIds } of view.insights) {
             for (const clueId of clueIds) expect(run.foundClueIds).toContain(clueId);
           }
+          // The sizes of the open links are counts and nothing more: sorted, so the order says nothing of which
+          // is the motive, with no id of a clue or of a conclusion in them.
+          const open = detectiveCase.deductions.filter(({ id }) => !run.insightIds.includes(id));
+          expect(view.openLinks).toEqual(
+            open.map(({ clueIds }) => new Set(clueIds).size).toSorted((x, y) => x - y),
+          );
+          expect(view.openLinks.every((size) => Number.isInteger(size) && size >= 2)).toBe(true);
+          for (const deduction of open) {
+            expect(JSON.stringify(view.openLinks)).not.toContain(deduction.id);
+          }
         }
       }
     });

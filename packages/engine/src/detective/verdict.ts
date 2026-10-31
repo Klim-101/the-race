@@ -6,7 +6,14 @@ import type { Rng } from '../dice.js';
 import { statusOfEndReason } from '../run.js';
 import { EntityIdSchema, type Truth } from './case-schema.js';
 import { GARBLED_REFUSAL_MESSAGE, anyGarbled } from './fatigue.js';
-import { addInsight, endRun, endTurn, spendTime, type DetectiveRunState } from './run-state.js';
+import {
+  addInsight,
+  endRun,
+  endTurn,
+  openLinkSizes,
+  spendTime,
+  type DetectiveRunState,
+} from './run-state.js';
 import { assertCaseSealIntact } from './seal.js';
 
 // Deduction and the accusation live apart from the other intents: they are the only ones that read the
@@ -35,7 +42,13 @@ export const DEDUCE_MINUTES = 10;
 export const FAILED_DEDUCTION_MINUTES = 20;
 
 export type VerdictRefusalCode =
-  'invalid-intent' | 'run-over' | 'unknown-suspect' | 'not-found' | 'no-insight' | 'garbled-clue';
+  | 'invalid-intent'
+  | 'run-over'
+  | 'unknown-suspect'
+  | 'not-found'
+  | 'no-insight'
+  | 'garbled-clue'
+  | 'wrong-link-size';
 
 /** Why an intent was not carried out. Nothing changed and no time passed. */
 export interface VerdictRefusal {
@@ -83,9 +96,17 @@ function refuse(code: VerdictRefusalCode, message: string): { ok: false; refusal
   return { ok: false, refusal: { code, message } };
 }
 
+/** What the player is told when a link is of a size that no open conclusion has: the sizes, and nothing else. */
+function wrongSizeMessage(sizes: readonly number[]): string {
+  return sizes.length === 0
+    ? 'Every conclusion of this case has been drawn; there is nothing left to link.'
+    : `No conclusion takes a link of that size. The links still to be made take ${sizes.join(' or ')} clues.`;
+}
+
 /**
  * Links found clues into an insight. A link that is exactly the clue set of a deduction of the case gives
- * that insight. Any other link costs time and reveals nothing, so it never tells whether it was close.
+ * that insight. Any other link of a size an open conclusion has costs time and reveals nothing, so it never
+ * tells whether it was close; one of a size none has is refused unspent (the sizes are public: `openLinks`).
  * An id that is not among the found clues is refused before anything is spent, and names nothing: the
  * same answer for a clue that does not exist and one that was not found.
  */
@@ -109,6 +130,8 @@ export function deduce(run: DetectiveRunState, input: unknown, rng: Rng): Deduce
       new Set(deduction.clueIds).size === link.size && deduction.clueIds.every((id) => link.has(id)),
   );
   if (!match) {
+    const sizes = [...new Set(openLinkSizes(run))];
+    if (!sizes.includes(link.size)) return refuse('wrong-link-size', wrongSizeMessage(sizes));
     return {
       ok: true,
       run: endTurn(spendTime(run, FAILED_DEDUCTION_MINUTES), rng),
