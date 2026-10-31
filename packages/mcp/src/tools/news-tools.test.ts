@@ -66,6 +66,12 @@ describe('news_brief', () => {
     expect(context.fetched).toEqual(['https://wire.test/world']);
   });
 
+  it('lists the proper names of the headlines, for the extractor to pass to world_propose', async () => {
+    const brief = await call(newsBrief, {}, newsContext());
+
+    expect(brief.body.knownRealNames).toEqual(expect.arrayContaining(['norway']));
+  });
+
   it('never carries a tragedy', async () => {
     const brief = await call(newsBrief, {}, newsContext());
 
@@ -98,7 +104,10 @@ describe('seeds_submit', () => {
     const second = await call(seedsSubmit, { seeds: [{ ...SEED, id: 'other-seed' }] }, context);
 
     expect(first.body).toEqual({ accepted: true, count: 1 });
-    expect(await loadSeeds(context.saveDir, context.saveFs)).toEqual({ '2026-10-31': [SEED] });
+    const kept = (await loadSeeds(context.saveDir, context.saveFs))['2026-10-31'];
+    expect(kept?.seeds).toEqual([SEED]);
+    // The names of the day stay with the seeds, for the check of the case that grows from them.
+    expect(kept?.realNames).toEqual(expect.arrayContaining(['norway']));
     expect(errorCode(second)).toBe('already-extracted');
   });
 

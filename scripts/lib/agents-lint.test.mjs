@@ -26,7 +26,7 @@ const NARRATOR_TOOLS = [
   'evidence_board',
 ];
 const GENERATOR_TOOLS = ['generator_brief', 'scenario_submit'];
-const EXTRACTOR_TOOLS = ['news_brief', 'seeds_submit'];
+const EXTRACTOR_TOOLS = ['news_brief', 'world_propose', 'seeds_submit'];
 const NON_MCP_TOOLS_OF_NARRATOR = ['Agent', 'AskUserQuestion'];
 
 function walk(dir) {
@@ -129,7 +129,7 @@ describe('tools', () => {
     expect(listed.toSorted()).toEqual(GENERATOR_TOOLS.map((tool) => PREFIX + tool).toSorted());
   });
 
-  it('the seed extractor may use exactly the two extractor tools', () => {
+  it('the seed extractor may use exactly the three extractor tools', () => {
     const { data } = parseFrontmatter(read(extractorPath));
     const listed = data.tools.split(',').map((tool) => tool.trim());
     expect(listed.toSorted()).toEqual(EXTRACTOR_TOOLS.map((tool) => PREFIX + tool).toSorted());

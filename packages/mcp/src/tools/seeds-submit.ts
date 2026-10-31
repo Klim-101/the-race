@@ -18,6 +18,10 @@ function serialized<T>(task: () => Promise<T>): Promise<T> {
   return next;
 }
 
+/** What the store accepts of the names: none too long to be a name, and no more than it can hold. */
+const storable = (names: readonly string[]): string[] =>
+  names.filter((name) => name.length <= 80).slice(0, 2000);
+
 export const seedsSubmit = defineTool({
   name: 'seeds_submit',
   description:
@@ -43,12 +47,15 @@ export const seedsSubmit = defineTool({
       }
       const news = await readTodaysNews(context);
       const world = await requireWorld(context);
-      const issues = validateSeeds(seeds, {
-        headlineIds: news.entries.map(({ id }) => id),
-        realNames: realNamesOfDay(news, world),
-      });
+      const realNames = realNamesOfDay(news, world);
+      const issues = validateSeeds(seeds, { headlineIds: news.entries.map(({ id }) => id), realNames });
       if (issues.length > 0) return { accepted: false, issues };
-      await saveSeedsForDay(context.saveDir, news.day, seeds, context.saveFs);
+      await saveSeedsForDay(
+        context.saveDir,
+        news.day,
+        { seeds, realNames: storable(realNames) },
+        context.saveFs,
+      );
       return { accepted: true, count: seeds.length };
     }),
 });

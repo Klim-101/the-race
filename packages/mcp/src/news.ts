@@ -1,14 +1,16 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { extractRealNames, type World } from '@the-race/engine';
+import { extractRealNames, worldRealNames, type World } from '@the-race/engine';
 import {
   listUntrustedHeadlines,
   loadHeadlines,
   renderUntrustedHeadlines,
+  shiftDay,
   type HeadlineGroup,
   type ListedHeadline,
 } from '@the-race/news';
+import { loadSeeds, seedsOnOrBefore } from '@the-race/saves';
 import type { ServerContext } from './context.js';
 import { ToolFailure } from './tool-error.js';
 
@@ -53,9 +55,22 @@ export async function readTodaysNews(context: ServerContext): Promise<DayNews> {
 
 /**
  * Every real name the seeds of a day must avoid: the names in the headlines it was given, in both scripts,
- * and every real name of the dictionary of the mirror world.
+ * and every real name of the dictionary of the mirror world, with its likely spellings in the other script.
  */
 export function realNamesOfDay(news: DayNews, world: World): string[] {
-  const texts = news.entries.flatMap(({ headline }) => [headline.title, headline.summary ?? '']);
-  return [...new Set([...extractRealNames(texts), ...world.entries.flatMap(({ real }) => real)])];
+  return [...new Set([...namesInHeadlines(news), ...worldRealNames(world)])];
+}
+
+/**
+ * The seeds a run draws on, with the real names of their day: those of the day the news lag points at, or of
+ * the latest earlier day that was extracted. `undefined` when no day was ever extracted.
+ */
+export async function seedsOfRun(context: ServerContext) {
+  const days = await loadSeeds(context.saveDir, context.saveFs);
+  return seedsOnOrBefore(days, shiftDay(context.today(), context.newsLagDays));
+}
+
+/** The proper names the headlines of the day carry, in both scripts. */
+export function namesInHeadlines(news: DayNews): string[] {
+  return extractRealNames(news.entries.flatMap(({ headline }) => [headline.title, headline.summary ?? '']));
 }

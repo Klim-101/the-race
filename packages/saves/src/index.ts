@@ -19,6 +19,7 @@ export {
   seedsFile,
   seedsOnOrBefore,
   SEED_DAYS_KEPT,
+  type DaySeeds,
   type SeedsByDay,
 } from './seed-store.js';
 export {
