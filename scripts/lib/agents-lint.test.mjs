@@ -258,3 +258,42 @@ describe('talks with suspects', () => {
     expect(talks).toMatch(/no fact of the case/);
   });
 });
+
+describe('the prompts carry no story of a canonical case', () => {
+  const CASES = join(AGENTS, '..', 'content', 'cases');
+  const prompts = walk(join(AGENTS, 'subagents')).map((path) => [relative(AGENTS, path), read(path)]);
+
+  // What identifies a sample case: its ids, as a model would copy them, and the names and the title it
+  // shows the player. A generator that sees them in its prompt writes that story again.
+  function identifiers(sample) {
+    const ids = [
+      ...sample.locations.map(({ id }) => id),
+      ...sample.clues.map(({ id }) => id),
+      ...sample.suspects.map(({ id }) => id),
+      ...sample.deductions.map(({ id }) => id),
+      ...(sample.randomEvents ?? []).map(({ id }) => id),
+    ].map((id) => `"${id}"`);
+    const names = [
+      sample.title,
+      ...sample.suspects.map(({ name }) => name),
+      ...sample.locations.map(({ name }) => name),
+    ];
+    return [...ids, ...names.filter((name) => name.length >= 6)];
+  }
+
+  const samples = readdirSync(CASES)
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => [file, JSON.parse(read(join(CASES, file)))]);
+
+  it('finds the sample cases', () => {
+    expect(samples.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it.each(samples)('%s leaves no id, name or title in a prompt', (_file, sample) => {
+    for (const [file, text] of prompts) {
+      for (const identifier of identifiers(sample)) {
+        expect(text.includes(identifier), `${file} contains ${identifier}`).toBe(false);
+      }
+    }
+  });
+});

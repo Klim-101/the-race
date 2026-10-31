@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { join } from 'node:path';
-import { DetectiveHeroSchema, LocaleSchema, TraitSchema, createRng } from '@the-race/engine';
+import { CRIME_TYPES, DetectiveHeroSchema, LocaleSchema, TraitSchema, createRng } from '@the-race/engine';
 import type { SaveFs } from '@the-race/saves';
 import { z } from 'zod';
 
 /**
- * The themes a new run may be told in, picked from the seed. They are crime types of the case schema, and
- * the sample cases show what each one looks like. A small list on purpose: a theme is a choice of data.
+ * The theme a new run falls back to when the news gave no seed: any crime type of the case schema, picked from
+ * the run's seed. With a seed the engine takes the theme from the seed's kind instead.
  */
-export const PENDING_THEMES = ['curious-theft', 'financial'] as const;
+export const PENDING_THEMES = CRIME_TYPES;
 const PendingThemeSchema = z.enum(PENDING_THEMES);
 
 /**
