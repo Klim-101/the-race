@@ -335,3 +335,35 @@ describe('a crash in the middle of a save', () => {
     expect(fs.files.has(FILES.previous)).toBe(false);
   });
 });
+
+describe('the history of the clues in a save', () => {
+  it('is rebuilt from the log for a save made before the history existed, instead of refusing it', async () => {
+    const fs = memoryFs();
+    const played = playTurns(newRun(), WALK);
+    await saveRun(DIR, played.run, fs, played.log);
+    expect(played.run.history.finds.length).toBeGreaterThan(0);
+
+    // The same save as an older version wrote it: the state has no history at all.
+    const old = JSON.parse(fs.files.get(FILES.current) ?? '') as Record<string, unknown>;
+    delete old.history;
+    fs.files.set(FILES.current, JSON.stringify(old));
+    const loaded = await loadRun(DIR, fs);
+
+    expect(loaded).toMatchObject({ ok: true });
+    expect(loaded.ok && loaded.run.history).toEqual(played.run.history);
+  });
+
+  it('is held to the log when the save has one: a history that the log does not give is refused', async () => {
+    const fs = memoryFs();
+    const played = playTurns(newRun(), WALK);
+    await saveRun(DIR, played.run, fs, played.log);
+
+    const tampered = JSON.parse(fs.files.get(FILES.current) ?? '') as {
+      history: { finds: { clueId: string }[] };
+    };
+    tampered.history.finds.pop();
+    fs.files.set(FILES.current, JSON.stringify(tampered));
+
+    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false });
+  });
+});
