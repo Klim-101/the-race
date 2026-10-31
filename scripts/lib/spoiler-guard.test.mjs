@@ -45,29 +45,7 @@ const denied = (input, options) => shouldDeny(input, options);
 // would use, whichever of the two exists on disk, must always be one the hook closes.
 describe('resolveSaveDirs agrees with packages/saves', () => {
   const inside = (list, expected) => expect(list.map((dir) => resolve(dir))).toContain(resolve(expected));
-
-  it.each([
-    ['RACE_HOME wins', { platform: 'linux', home: '/h', env: { RACE_HOME: '/data/race' } }],
-    ['an empty RACE_HOME is ignored', { platform: 'linux', home: '/h', env: { RACE_HOME: '' } }],
-    ['windows default', { platform: 'win32', home: 'C:\\Users\\a', env: {} }],
-    ['windows LOCALAPPDATA', { platform: 'win32', home: 'C:\\Users\\a', env: { LOCALAPPDATA: 'D:\\Local' } }],
-    [
-      'windows folder chosen',
-      { platform: 'win32', home: 'C:\\Users\\a', env: { RACE_GAME_FOLDER: 'D:\\play' } },
-    ],
-    [
-      'windows folder chosen through the plugin option',
-      { platform: 'win32', home: 'C:\\Users\\a', env: { CLAUDE_PLUGIN_OPTION_GAME_FOLDER: 'E:\\g' } },
-    ],
-    ['macOS', { platform: 'darwin', home: '/Users/a', env: {} }],
-    [
-      'macOS with the Windows default of the plugin',
-      { platform: 'darwin', home: '/Users/a', env: { RACE_GAME_FOLDER: 'C:\\the-race' } },
-    ],
-    ['XDG_STATE_HOME when absolute', { platform: 'linux', home: '/h', env: { XDG_STATE_HOME: '/x/state' } }],
-    ['linux folder chosen', { platform: 'linux', home: '/h', env: { RACE_GAME_FOLDER: '/srv/games' } }],
-    ['linux default', { platform: 'linux', home: '/h', env: {} }],
-  ])('%s', (_name, input) => {
+  const agrees = (input) => {
     const { home, ...rest } = input;
     const saves = { ...rest, homedir: home };
     const closed = resolveSaveDirs(input);
@@ -84,7 +62,35 @@ describe('resolveSaveDirs agrees with packages/saves', () => {
       closed,
       chooseSaveDir(saves, (path) => path === legacySaveDir(saves)),
     );
-  });
+  };
+
+  it.each([
+    ['RACE_HOME wins', { platform: 'linux', home: '/h', env: { RACE_HOME: '/data/race' } }],
+    ['an empty RACE_HOME is ignored', { platform: 'linux', home: '/h', env: { RACE_HOME: '' } }],
+    ['windows default', { platform: 'win32', home: 'C:\\Users\\a', env: {} }],
+    ['windows LOCALAPPDATA', { platform: 'win32', home: 'C:\\Users\\a', env: { LOCALAPPDATA: 'D:\\Local' } }],
+    ['macOS', { platform: 'darwin', home: '/Users/a', env: {} }],
+    [
+      'macOS with the Windows default of the plugin',
+      { platform: 'darwin', home: '/Users/a', env: { RACE_GAME_FOLDER: 'C:\\the-race' } },
+    ],
+    ['XDG_STATE_HOME when absolute', { platform: 'linux', home: '/h', env: { XDG_STATE_HOME: '/x/state' } }],
+    ['linux folder chosen', { platform: 'linux', home: '/h', env: { RACE_GAME_FOLDER: '/srv/games' } }],
+    ['linux default', { platform: 'linux', home: '/h', env: {} }],
+  ])('%s', (_name, input) => agrees(input));
+
+  // A Windows drive path is only a path on a Windows host: elsewhere `resolve` reads it as a relative name, and
+  // the two sides, which join it differently, cannot be compared. The Windows runner covers these.
+  it.skipIf(process.platform !== 'win32').each([
+    [
+      'windows folder chosen',
+      { platform: 'win32', home: 'C:\\Users\\a', env: { RACE_GAME_FOLDER: 'D:\\play' } },
+    ],
+    [
+      'windows folder chosen through the plugin option',
+      { platform: 'win32', home: 'C:\\Users\\a', env: { CLAUDE_PLUGIN_OPTION_GAME_FOLDER: 'E:\\g' } },
+    ],
+  ])('%s', (_name, input) => agrees(input));
 
   it('closes both the saves of the game folder and the legacy directory, but never the board', () => {
     const input = { platform: 'linux', home: '/h', env: {} };
