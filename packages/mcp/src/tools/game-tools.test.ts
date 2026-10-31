@@ -225,6 +225,8 @@ describe('evidence_board', () => {
     const page = context.fs.files.get(path) ?? '';
     expect(page).toContain('<!doctype html>');
     expect(page).toContain('Last seen');
+    // The chronicle tells what the player did, from the run's log.
+    expect(page).toContain('Looked around');
   });
 
   it('is written outside the save directory, with a file:// link to the same page', async () => {

@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { DetectiveRunView } from '@the-race/engine';
+import type { DetectiveRunView, TurnView } from '@the-race/engine';
 import { describe, expect, it } from 'vitest';
 import { layoutMap } from './board-map.js';
 import { escapeHtml, renderEvidenceBoard } from './render-board.js';
@@ -58,6 +58,7 @@ function viewOf(overrides: Partial<View> = {}): View {
     ],
     clues: [],
     insights: [],
+    chronicle: { activeMinutesLeft: 600, events: [] },
     ...overrides,
   } as unknown as View;
 }
@@ -90,14 +91,14 @@ describe('escapeHtml and truncate', () => {
 });
 
 describe('the page', () => {
-  it('is one document with four tabs and a header, in a locked-down frame', () => {
+  it('is one document with five tabs and a header, in a locked-down frame', () => {
     const page = renderEvidenceBoard(viewOf());
 
     expect(page).toContain('<title>Evidence board: The Vanishing Wheel</title>');
     expect(page).toContain('Day 2 of 3, 09:05');
     expect(page).toContain('Now at: <strong>Market</strong>');
     expect(page).toContain("default-src 'none'");
-    for (const id of ['map', 'suspects', 'clues', 'hero']) {
+    for (const id of ['map', 'suspects', 'clues', 'chronicle', 'hero']) {
       expect(page).toContain(`<a href="#${id}">`);
       expect(page).toContain(`<section class="tab" id="${id}">`);
     }
@@ -384,6 +385,211 @@ describe('the clues and links tab', () => {
 
     expect(clues).toContain('<svg class="links"');
     expect(clues).not.toContain('conclusion-link');
+  });
+});
+
+const TURNS: TurnView[] = [
+  { turn: 9, day: 2, minute: 600, kind: 'accuse' },
+  { turn: 8, day: 2, minute: 590, kind: 'use', item: 'coffee' },
+  { turn: 7, day: 2, minute: 580, kind: 'reread', clue: 'A rusty key under the counter.' },
+  { turn: 6, day: 2, minute: 570, kind: 'deduce', result: 'nothing', insight: null },
+  { turn: 5, day: 2, minute: 560, kind: 'deduce', result: 'already-known', insight: null },
+  {
+    turn: 4,
+    day: 2,
+    minute: 550,
+    kind: 'deduce',
+    result: 'insight',
+    insight: 'The baker hid the flour <b>.',
+  },
+  { turn: 3, day: 1, minute: 1100, kind: 'interrogate', suspect: 'Anna', approach: 'pressure', showed: 2 },
+  { turn: 2, day: 1, minute: 700, kind: 'search', found: 1 },
+  { turn: 1, day: 1, minute: 500, kind: 'rest' },
+  { turn: 0, day: 1, minute: 490, kind: 'look', found: 3 },
+  { turn: -1, day: 1, minute: 480, kind: 'move', to: 'Stall', entered: true },
+  { turn: -2, day: 1, minute: 470, kind: 'move', to: 'Cellar', entered: false },
+];
+
+describe('the chronicle tab', () => {
+  it('shows the day and the working time left', () => {
+    const chronicle = tab(
+      renderEvidenceBoard(viewOf({ chronicle: { activeMinutesLeft: 1000, events: [] } })),
+      'chronicle',
+    );
+
+    expect(chronicle).toContain('Now: Day 2 / 3, 09:05');
+    expect(chronicle).toContain('Working time left: <strong>16 h 40 min</strong>');
+  });
+
+  it('lists what the world has done with the day of each, and says so when nothing has happened', () => {
+    const quiet = tab(renderEvidenceBoard(viewOf()), 'chronicle');
+    const eventful = tab(
+      renderEvidenceBoard(
+        viewOf({
+          chronicle: {
+            activeMinutesLeft: 600,
+            events: [
+              { day: 1, text: 'The market closes early.' },
+              { day: 2, text: 'The mayor <resigns>.' },
+            ],
+          },
+        }),
+      ),
+      'chronicle',
+    );
+
+    expect(quiet).toContain('Nothing yet.');
+    expect(eventful).toContain('Day 1</span> The market closes early.');
+    expect(eventful).toContain('Day 2</span> The mayor &lt;resigns&gt;.');
+    expect(eventful).not.toContain('Nothing yet.');
+  });
+
+  it('lists what is still open from the public view: places, ways that are shut, people, clues to reread', () => {
+    const chronicle = tab(
+      renderEvidenceBoard(
+        viewOf({
+          map: {
+            current: 'market',
+            places: [
+              { id: 'market', name: 'Market', visited: true, blocked: null },
+              { id: 'lane', name: 'Lane', visited: false, blocked: null },
+              { id: 'cellar', name: 'Cellar', visited: false, blocked: 'locked' },
+              { id: 'chapel', name: 'Chapel', visited: false, blocked: 'closed' },
+            ],
+            links: [],
+          },
+          clues: [
+            { id: 'k', locationId: 'market', description: 'A rusty key.', garbled: true },
+            { id: 'f', locationId: 'market', description: 'Flour.', garbled: false },
+          ],
+        }),
+      ),
+      'chronicle',
+    );
+
+    for (const line of [
+      'Not yet visited: Lane',
+      'Locked: Cellar',
+      'Closed for now: Chapel',
+      'Not yet questioned: Anna',
+      'Not yet questioned: Cora',
+      'To be read again: A rusty key.',
+    ]) {
+      expect(chronicle).toContain(line);
+    }
+    expect(chronicle).not.toContain('To be read again: Flour');
+  });
+
+  it('says so when nothing is open', () => {
+    const asked = (name: string) => ({
+      id: name,
+      name,
+      persona: 'x',
+      place: null,
+      statements: [{ day: 1, kind: 'alibi', text: 'Here.' }],
+    });
+    const chronicle = tab(
+      renderEvidenceBoard(
+        viewOf({
+          map: {
+            current: 'market',
+            places: [{ id: 'market', name: 'Market', visited: true, blocked: null }],
+            links: [],
+          },
+          suspects: [asked('Anna')],
+        } as Partial<View>),
+      ),
+      'chronicle',
+    );
+
+    expect(chronicle).toContain('Every door tried, everyone asked.');
+  });
+
+  it("tells each kind of turn in the player's own terms, newest first, with the day and the hour", () => {
+    const chronicle = tab(renderEvidenceBoard(viewOf(), TURNS), 'chronicle');
+
+    for (const line of [
+      'Made the accusation',
+      'Took coffee',
+      'Read again: A rusty key under the counter.',
+      'Linked clues that led nowhere',
+      'Reached a conclusion that was already drawn',
+      'Concluded: The baker hid the flour &lt;b&gt;.',
+      'Questioned Anna, with pressure, showing 2 clues',
+      'Searched the place: found 1',
+      'Rested for the night',
+      'Looked around: found 3',
+      'Went to Stall',
+      'Tried to get into Cellar and could not',
+      'Day 1 · 18:20</span>',
+    ]) {
+      expect(chronicle, line).toContain(line);
+    }
+    expect(chronicle.indexOf('Made the accusation')).toBeLessThan(chronicle.indexOf('Went to Stall'));
+    expect(chronicle).toMatchSnapshot();
+  });
+
+  it('does not fail on a conclusion whose text is gone', () => {
+    const chronicle = tab(
+      renderEvidenceBoard(viewOf(), [
+        { turn: 1, day: 1, minute: 500, kind: 'deduce', result: 'insight', insight: null },
+      ]),
+      'chronicle',
+    );
+
+    expect(chronicle).toContain('Concluded: </li>');
+  });
+
+  it('says so when there is no turn yet', () => {
+    expect(tab(renderEvidenceBoard(viewOf()), 'chronicle')).toContain('No turns yet.');
+  });
+
+  it('is written in the language of the run', () => {
+    const chronicle = tab(
+      renderEvidenceBoard(
+        viewOf({
+          locale: 'ru',
+          chronicle: { activeMinutesLeft: 125, events: [{ day: 2, text: 'Рынок закрылся.' }] },
+        }),
+        TURNS,
+      ),
+      'chronicle',
+    );
+
+    expect(chronicle).toContain('Осталось рабочего времени: <strong>2 ч 5 мин</strong>');
+    expect(chronicle).toContain('Пошли в Stall');
+    expect(chronicle).toContain('Опросили: Anna, нажимом, показано улик: 2');
+    expect(chronicle).toContain('Приняли: кофе');
+    expect(chronicle).toContain('Ещё не опрошены: Anna');
+    expect(chronicle).toContain('День 2</span> Рынок закрылся.');
+  });
+
+  it('marks nothing as false or contradictory, in any language', () => {
+    for (const locale of ['en', 'ru'] as const) {
+      const chronicle = tab(
+        renderEvidenceBoard(
+          viewOf({
+            locale,
+            suspects: [
+              {
+                id: 'a',
+                name: 'Anna',
+                persona: 'x',
+                place: null,
+                statements: [
+                  { day: 1, kind: 'alibi', text: 'At the oven.' },
+                  { day: 2, kind: 'conceded', text: 'Left at nine.' },
+                ],
+              },
+            ],
+          }),
+          TURNS,
+        ),
+        'chronicle',
+      );
+
+      expect(chronicle).not.toMatch(/contradict|false|\blie[sd]?\b|противореч|ложь|лжёт|солгал/i);
+    }
   });
 });
 

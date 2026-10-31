@@ -9,6 +9,7 @@ export interface TabText {
     readonly map: string;
     readonly suspects: string;
     readonly clues: string;
+    readonly chronicle: string;
     readonly hero: string;
   };
   readonly nav: string;
@@ -34,6 +35,40 @@ export interface TabText {
     readonly evidence: string;
     readonly places: string;
     readonly none: string;
+  };
+  readonly chronicle: {
+    readonly now: string;
+    readonly day: string;
+    readonly left: string;
+    readonly hours: string;
+    readonly minutes: string;
+    readonly events: string;
+    readonly noEvents: string;
+    readonly open: string;
+    readonly nothingOpen: string;
+    readonly unvisited: string;
+    readonly locked: string;
+    readonly closed: string;
+    readonly unquestioned: string;
+    readonly reread: string;
+    readonly turns: string;
+    readonly noTurns: string;
+    /** One line for each kind of turn; {name}, {n}, {approach} and {text} are filled in. */
+    readonly turn: {
+      readonly look: string;
+      readonly move: string;
+      readonly moveFailed: string;
+      readonly search: string;
+      readonly rest: string;
+      readonly interrogate: string;
+      readonly insight: string;
+      readonly alreadyKnown: string;
+      readonly nothing: string;
+      readonly reread: string;
+      readonly use: string;
+      readonly accuse: string;
+    };
+    readonly approaches: Readonly<Record<string, string>>;
   };
   readonly hero: {
     readonly profile: string;
@@ -76,7 +111,13 @@ export const named = (words: Readonly<Record<string, string>>, id: string): stri
 
 export const TAB_TEXT: Record<Locale, TabText> = {
   en: {
-    tabs: { map: 'Map', suspects: 'Suspects', clues: 'Clues and links', hero: 'Hero and kit' },
+    tabs: {
+      map: 'Map',
+      suspects: 'Suspects',
+      clues: 'Clues and links',
+      chronicle: 'Chronicle',
+      hero: 'Hero and kit',
+    },
     nav: 'Sections of the board',
     map: {
       title: 'Known places',
@@ -100,6 +141,39 @@ export const TAB_TEXT: Record<Locale, TabText> = {
       evidence: 'Evidence',
       places: 'Where it was found',
       none: 'Nothing to connect yet.',
+    },
+    chronicle: {
+      now: 'Now',
+      day: 'Day',
+      left: 'Working time left',
+      hours: 'h',
+      minutes: 'min',
+      events: 'What has happened in the world',
+      noEvents: 'Nothing yet. The world is holding its breath.',
+      open: 'Still open',
+      nothingOpen: 'Every door tried, everyone asked. Suspicious.',
+      unvisited: 'Not yet visited',
+      locked: 'Locked',
+      closed: 'Closed for now',
+      unquestioned: 'Not yet questioned',
+      reread: 'To be read again',
+      turns: 'Latest turns',
+      noTurns: 'No turns yet.',
+      turn: {
+        look: 'Looked around: found {n}',
+        move: 'Went to {name}',
+        moveFailed: 'Tried to get into {name} and could not',
+        search: 'Searched the place: found {n}',
+        rest: 'Rested for the night',
+        interrogate: 'Questioned {name}, {approach}, showing {n} clues',
+        insight: 'Concluded: {text}',
+        alreadyKnown: 'Reached a conclusion that was already drawn',
+        nothing: 'Linked clues that led nowhere',
+        reread: 'Read again: {text}',
+        use: 'Took {name}',
+        accuse: 'Made the accusation',
+      },
+      approaches: { social: 'in a friendly way', pressure: 'with pressure' },
     },
     hero: {
       profile: 'The detective',
@@ -173,7 +247,13 @@ export const TAB_TEXT: Record<Locale, TabText> = {
     },
   },
   ru: {
-    tabs: { map: 'Карта', suspects: 'Подозреваемые', clues: 'Улики и связи', hero: 'Герой и снаряжение' },
+    tabs: {
+      map: 'Карта',
+      suspects: 'Подозреваемые',
+      clues: 'Улики и связи',
+      chronicle: 'Хроника',
+      hero: 'Герой и снаряжение',
+    },
     nav: 'Разделы доски',
     map: {
       title: 'Известные места',
@@ -197,6 +277,39 @@ export const TAB_TEXT: Record<Locale, TabText> = {
       evidence: 'Улики',
       places: 'Где найдено',
       none: 'Связывать пока нечего.',
+    },
+    chronicle: {
+      now: 'Сейчас',
+      day: 'День',
+      left: 'Осталось рабочего времени',
+      hours: 'ч',
+      minutes: 'мин',
+      events: 'Что случилось в мире',
+      noEvents: 'Пока ничего. Мир затаил дыхание.',
+      open: 'Ещё открыто',
+      nothingOpen: 'Все двери опробованы, все опрошены. Подозрительно.',
+      unvisited: 'Ещё не заходили',
+      locked: 'Заперто',
+      closed: 'Пока закрыто',
+      unquestioned: 'Ещё не опрошены',
+      reread: 'Перечитать',
+      turns: 'Последние ходы',
+      noTurns: 'Ходов пока не было.',
+      turn: {
+        look: 'Осмотрелись: найдено {n}',
+        move: 'Пошли в {name}',
+        moveFailed: 'Пытались попасть в {name}, но не вышло',
+        search: 'Обыскали место: найдено {n}',
+        rest: 'Заснули до утра',
+        interrogate: 'Опросили: {name}, {approach}, показано улик: {n}',
+        insight: 'Сделали вывод: {text}',
+        alreadyKnown: 'Пришли к выводу, который уже был',
+        nothing: 'Связали улики, но никуда не пришли',
+        reread: 'Перечитали: {text}',
+        use: 'Приняли: {name}',
+        accuse: 'Выдвинули обвинение',
+      },
+      approaches: { social: 'по-доброму', pressure: 'нажимом' },
     },
     hero: {
       profile: 'Детектив',

@@ -6,6 +6,7 @@ import type { Rng } from '../dice.js';
 import type { Locale } from '../locale.js';
 import {
   MAX_REPUTATION,
+  MINUTES_PER_DAY,
   RULESET_VERSION,
   DAY_START_MINUTE,
   RUN_SCHEMA_VERSION,
@@ -410,6 +411,14 @@ export interface DetectiveRunView {
   readonly warnings: readonly string[];
   /** What the world has done so far, as the player was told: events whose day has come. */
   readonly news: readonly string[];
+  /**
+   * The same events with the day each came, oldest first, and how much working time is left before the case
+   * runs out. Events that have not come are not here: what the world will do is not the player's to know.
+   */
+  readonly chronicle: {
+    readonly activeMinutesLeft: number;
+    readonly events: readonly { readonly day: number; readonly text: string }[];
+  };
   readonly hero: DetectiveHero;
   /** The hero's public character signal: ids only, so the narrator gets a voice and never a number. */
   readonly signal: {
@@ -489,6 +498,25 @@ function requireLocation(detectiveCase: DetectiveCase, id: string): Location {
   return location;
 }
 
+/** The events that have come with their days, and the working time left: today to midnight, then each full day. */
+function viewChronicle(run: DetectiveRunState): DetectiveRunView['chronicle'] {
+  const { worldEvents, days } = run.case.clock;
+  const pool = run.case.randomEvents ?? [];
+  const events = [
+    ...worldEvents
+      .filter(({ day }) => day <= run.clock.day)
+      .map(({ day, description }) => ({ day, text: description })),
+    ...run.drawnEvents.flatMap(({ eventId, day }) =>
+      pool.filter(({ id }) => id === eventId).map(({ description }) => ({ day, text: description })),
+    ),
+  ].sort((a, b) => a.day - b.day);
+  const activeMinutesLeft =
+    MINUTES_PER_DAY -
+    run.clock.minute +
+    Math.max(0, days - run.clock.day) * (MINUTES_PER_DAY - DAY_START_MINUTE);
+  return { activeMinutesLeft, events };
+}
+
 function signalViewOf(run: DetectiveRunState): DetectiveRunView['signal'] {
   const signal = signalOfRun(run);
   return signal === undefined
@@ -555,6 +583,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     supplies: viewSupplies(run.supplies),
     pending: viewPending(run.pendingEffects, absoluteMinute(run.clock)),
     warnings: warningsOfMeters(meterReadings(run)),
+    chronicle: viewChronicle(run),
     news: detectiveCase.clock.worldEvents
       .filter(({ day }) => day <= run.clock.day)
       .map(({ description }) => description)
