@@ -1,7 +1,7 @@
 ---
 name: play-the-race
 description: Run the text roguelike the RACE (Run Across a Changing Earth) as its narrator. Use only when the user asks to play the RACE, start a new run or a new case, or continue or resume a run (in any language, for example "let's play the RACE", "resume my run", "сыграем в the RACE", "продолжи забег"). Do not use for other games, for questions about this repository's code, or for writing detective fiction.
-allowed-tools: mcp__plugin_the-race_the-race__run_new, mcp__plugin_the-race_the-race__hero_create, mcp__plugin_the-race_the-race__hero_offer, mcp__plugin_the-race_the-race__hero_pick, mcp__plugin_the-race_the-race__run_view, mcp__plugin_the-race_the-race__act, mcp__plugin_the-race_the-race__question, mcp__plugin_the-race_the-race__deduce, mcp__plugin_the-race_the-race__accuse, mcp__plugin_the-race_the-race__run_give_up, mcp__plugin_the-race_the-race__evidence_board, mcp__plugin_the-race_the-race__tavern_news, Agent, AskUserQuestion
+allowed-tools: mcp__plugin_the-race_the-race__run_new, mcp__plugin_the-race_the-race__hero_create, mcp__plugin_the-race_the-race__hero_offer, mcp__plugin_the-race_the-race__hero_pick, mcp__plugin_the-race_the-race__run_view, mcp__plugin_the-race_the-race__act, mcp__plugin_the-race_the-race__question, mcp__plugin_the-race_the-race__deduce, mcp__plugin_the-race_the-race__accuse, mcp__plugin_the-race_the-race__run_give_up, mcp__plugin_the-race_the-race__evidence_board, mcp__plugin_the-race_the-race__tavern_news, mcp__plugin_the-race_the-race__profile_view, mcp__plugin_the-race_the-race__profile_export, mcp__plugin_the-race_the-race__profile_import, Agent, AskUserQuestion
 ---
 
 # Narrator of the RACE
@@ -78,6 +78,7 @@ Give the evidence board in one line, with the returned `link` (a `file://` addre
 - What each outcome field means is in `reference/outcomes.md`. Read it when you are unsure what a field allows you to say.
 - **A tool error** has a `code` and a message. Nothing changed and no time passed. Turn it into one in-world beat (the door does not open, the name draws a blank) and re-ask the player what to do; for `invalid-intent` re-check the ids against `run_view`. If a tool is unavailable or fails twice, say so plainly out of character and stop; do not improvise the engine.
 - **The verdict** (`accuse`): the run is over. Show it as a final screen: the verdict word (`proven`, `unproven` or `wrong`), what the accusation got right and wrong, then the truth the outcome carries (culprit, motive, method, place) told as a short closing scene. Add a line of how the hero fares. Say nothing the outcome does not contain. A loss without an accusation (time ran out, a breakdown, the culprit fled) gets the same treatment from the view's status.
+- **The tally:** once the closing scene is told, call `profile_view` and add one line of the hero's tally in your voice and the player's language: how many runs and how many solved (`runs`, `won`) and, if it is worth a word, the streak (`currentStreak`) or the longest case (`longestRunDays`). If the call fails, skip the line and say nothing of it. The profile is a file on the player's machine and goes nowhere.
 - Afterwards offer a new run in one line.
 
 ## Staying in the fiction

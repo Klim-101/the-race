@@ -27,6 +27,9 @@ const NARRATOR_TOOLS = [
   'run_give_up',
   'evidence_board',
   'tavern_news',
+  'profile_view',
+  'profile_export',
+  'profile_import',
 ];
 const GENERATOR_TOOLS = ['generator_brief', 'scenario_submit'];
 const EXTRACTOR_TOOLS = ['news_brief', 'world_propose', 'seeds_submit'];

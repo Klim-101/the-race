@@ -15,6 +15,7 @@ import {
 import { loadRun, saveRun, type LoadFailureReason } from '@the-race/saves';
 import { z } from 'zod';
 import type { ServerContext } from './context.js';
+import { keepProfile } from './profile.js';
 import { ToolFailure, refusalToToolError } from './tool-error.js';
 
 /**
@@ -221,12 +222,9 @@ export async function playIntent(
   assertFreshTurn(run, turn);
   const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
   if (!resolution.ok) throw new ToolFailure(refusalToToolError(resolution.refusal));
-  await saveRun(
-    context.saveDir,
-    resolution.run,
-    context.saveFs,
-    recordResolution(log, run, intent, resolution),
-  );
+  const recorded = recordResolution(log, run, intent, resolution);
+  await saveRun(context.saveDir, resolution.run, context.saveFs, recorded);
+  await keepProfile(context, resolution.run, recorded);
   return {
     outcome: { ...resolution.outcome },
     events: eventsOfTurn(run, resolution.run),

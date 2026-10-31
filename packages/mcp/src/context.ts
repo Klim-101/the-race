@@ -17,6 +17,11 @@ export interface ServerContext {
    * save directory. It is passed in so that a test writes the board to a disk of its own.
    */
   readonly boardDir: string;
+  /**
+   * The folder of the player's profile (see `resolveProfileDir`): the records of the runs that are over, and
+   * the `export.json` and `import.json` the player moves by hand. Nothing in it ever leaves the machine.
+   */
+  readonly profileDir: string;
   /** A fresh seed for a new run. Randomness enters the game here and only here. */
   readonly newSeed: () => string;
   /** Today as `YYYY-MM-DD`. The clock enters the game here and only here. */
