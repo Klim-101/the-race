@@ -106,7 +106,7 @@ describe('renderEvidenceBoard', () => {
           { id: 'k', locationId: 'stall', description: 'A rusty key.', garbled: true },
           { id: 'u', locationId: 'gone', description: 'Flour.', garbled: false },
         ],
-        insights: [{ id: 'i', insight: 'The baker lied.' }],
+        insights: [{ id: 'i', insight: 'The baker lied.', clueIds: ['k', 'u'] }],
         news: ['Prices rise.'],
       }),
       new Map([['stall', 'Stall']]),

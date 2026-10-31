@@ -170,6 +170,12 @@ describe('the turn tools', () => {
     const context = await activeRun();
     const result = await call(question, { turn: 0, suspectId: 'curator', approach: 'social' }, context);
     expect(result.body).toMatchObject({ outcome: { kind: 'interrogate' }, view: { turn: 1 } });
+    // What the suspect said is kept with the run, so it replays and shows in the view after a reload.
+    const reloaded = await call(runView, {}, context);
+    const curator = (reloaded.body.suspects as { id: string; statements: { kind: string }[] }[]).find(
+      ({ id }) => id === 'curator',
+    );
+    expect(curator?.statements[0]?.kind).toBe('alibi');
   });
 
   it('end the run with an accusation, once, and show the truth only then', async () => {
