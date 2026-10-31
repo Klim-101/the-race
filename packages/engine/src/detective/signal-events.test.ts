@@ -19,6 +19,7 @@ import {
   type DetectiveRunState,
 } from './run-state.js';
 import { settleSignalAtNight } from './signal-events.js';
+import { companionName } from './tavern.js';
 import { BURNT_OUT, DETECTIVE_SIGNALS, FEELING_LOW, IN_LOVE } from './signals.js';
 import { defineSignal, type SignalEffect } from '../signals.js';
 
@@ -42,13 +43,21 @@ describe('the data of the first signals', () => {
   it('are all on the detective, with distinct ids, and are public heroes’ choices', () => {
     expect(DETECTIVE.signals).toBe(DETECTIVE_SIGNALS);
     expect(new Set(DETECTIVE_SIGNALS.map(({ id }) => id)).size).toBe(DETECTIVE_SIGNALS.length);
-    expect(DETECTIVE_SIGNALS.map(({ id }) => id)).toEqual(['in-love', 'burnt-out', 'feeling-low']);
+    expect(DETECTIVE_SIGNALS.map(({ id }) => id)).toEqual([
+      'in-love',
+      'burnt-out',
+      'feeling-low',
+      'restless',
+      'overconfident',
+      'homesick',
+      'in-a-hurry',
+    ]);
   });
 
   it('start only conditions the detective has, and name only roles for people', () => {
     for (const signal of DETECTIVE_SIGNALS) {
       for (const event of signal.events) {
-        expect(event.role === undefined || event.role === 'partner').toBe(true);
+        expect(event.role === undefined || event.role === 'partner' || event.role === 'family').toBe(true);
         for (const variant of event.variants) {
           for (const effect of variant.effects) {
             if (effect.kind === 'condition') {
@@ -301,10 +310,29 @@ describe('signals at the table', () => {
       cost: IN_LOVE.cost,
     });
     expect(view.signalEvents).toHaveLength(1);
-    expect(Object.keys(view.signalEvents[0] ?? {})).toEqual(['kind']);
+    // The event of a partner carries the partner's first name, drawn by the engine and the same all the run.
+    expect(Object.keys(view.signalEvents[0] ?? {})).toEqual(['kind', 'companion']);
+    expect(view.signalEvents[0]?.companion).toBe(companionName(run.seed, run.locale, 'partner'));
     expect(JSON.stringify(view)).not.toMatch(/demoralising|encouraging/);
     // Only the events of today are shown.
     expect(viewRun({ ...run, clock: { ...run.clock, day: run.clock.day + 1 } }).signalEvents).toEqual([]);
+  });
+
+  it('name nobody for an event that comes from no one, and the family for a letter from home', () => {
+    let cold = newRun('feeling-low');
+    for (let seed = 0; seed < 200 && cold.signalEvents.length === 0; seed += 1) {
+      cold = settleSignalAtNight(cold, createRng(seed)).run;
+    }
+    expect(cold.signalEvents).not.toHaveLength(0);
+    expect(viewRun(cold).signalEvents).toEqual([{ kind: 'caught-a-cold' }]);
+
+    let home = { ...newRun('homesick'), clock: { day: 2, minute: 0 } };
+    for (let seed = 0; seed < 200 && home.signalEvents.length === 0; seed += 1) {
+      home = settleSignalAtNight(home, createRng(seed)).run;
+    }
+    const [letter] = viewRun(home).signalEvents;
+    expect(letter?.kind).toMatch(/^letter-from-home-/);
+    expect(letter?.companion).toBe(companionName(home.seed, home.locale, 'family'));
   });
 
   it('are recorded in the night report and the log, and a replay reproduces them', () => {

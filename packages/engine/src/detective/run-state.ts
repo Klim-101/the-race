@@ -23,6 +23,7 @@ import { TraitSchema, type Trait } from '../traits.js';
 import type { ClimateProfile } from '../world/climate.js';
 import { SeedKindSchema } from '../news/seed.js';
 import { SettingSchema, type Setting } from '../world/setting.js';
+import { companionName } from './tavern.js';
 import { DETECTIVE, DetectiveHeroSchema, type DetectiveHero } from './archetype.js';
 import {
   HeroConditionSchema,
@@ -444,7 +445,7 @@ export interface DetectiveRunView {
     readonly cost: string;
   } | null;
   /** Signal events of the day the run is at, by kind only: the engine chose their tone and effect. */
-  readonly signalEvents: readonly { readonly kind: string }[];
+  readonly signalEvents: readonly { readonly kind: string; readonly companion?: string }[];
   readonly hiddenTraitCount: number;
   readonly revealedTraits: readonly Trait[];
   /** Where the case is set, in the language of the run, and what the weather there is like. */
@@ -626,7 +627,9 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
       ),
     hero: run.hero,
     signal: signalViewOf(run),
-    signalEvents: run.signalEvents.filter(({ day }) => day === run.clock.day).map(({ kind }) => ({ kind })),
+    signalEvents: run.signalEvents
+      .filter(({ day }) => day === run.clock.day)
+      .map(({ eventId, kind }) => companionOfEvent(run, eventId, kind)),
     hiddenTraitCount: run.traits.length - run.revealedTraitIds.length,
     revealedTraits: run.traits.filter(({ id }) => run.revealedTraitIds.includes(id)),
     setting: run.setting && { name: run.setting.name[run.locale], climate: run.setting.climate },
@@ -664,4 +667,16 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         clueIds: clueIds.filter((clueId) => run.foundClueIds.includes(clueId)),
       })),
   };
+}
+
+/** A signal event as the view tells it: its kind, and the first name of the person it comes from, if it comes from one. */
+function companionOfEvent(
+  run: DetectiveRunState,
+  eventId: string,
+  kind: string,
+): { readonly kind: string; readonly companion?: string } {
+  const role = findSignal(DETECTIVE.signals, run.hero.signalId)?.events.find(
+    ({ id }) => id === eventId,
+  )?.role;
+  return role === undefined ? { kind } : { kind, companion: companionName(run.seed, run.locale, role) };
 }

@@ -212,7 +212,11 @@
       "signals": {
         "in-love": "in love",
         "burnt-out": "burnt out",
-        "feeling-low": "feeling low"
+        "feeling-low": "feeling low",
+        "restless": "restless",
+        "overconfident": "overconfident",
+        "homesick": "homesick",
+        "in-a-hurry": "in a hurry"
       },
       "gift": "Gift",
       "cost": "Cost",
@@ -228,6 +232,22 @@
         "feeling-low": {
           "gift": "Brooding sees more: reasoning comes easier at night.",
           "cost": "Dull senses: details are easier to miss."
+        },
+        "restless": {
+          "gift": "Eyes everywhere: details are harder to miss.",
+          "cost": "Cannot switch off: sleep debt grows by a point every night."
+        },
+        "overconfident": {
+          "gift": "Sure of the room: leaning on people comes easier.",
+          "cost": "Brushes off doubt: a place searched twice is searched worse."
+        },
+        "homesick": {
+          "gift": "A letter now and then: at home in a crowd, and a warm word from family may come.",
+          "cost": "Mind far away: from the second day details slip past."
+        },
+        "in-a-hurry": {
+          "gift": "No time to waste: favours are called in faster.",
+          "cost": "Rushes the details: ledgers and accounts are skimmed."
         }
       },
       "skillNames": {
