@@ -500,12 +500,26 @@ export interface DetectiveRunView {
     /** Read badly: the clue counts as found, but it has to be read again before it is used as proof. */
     readonly garbled: boolean;
   }[];
+  /**
+   * How many clues each conclusion still to be made takes, smallest first: a number for each, so the player
+   * knows what size of link to try and how many are left. Never which clues, and never which conclusion is the
+   * motive; a conclusion that has been drawn drops out.
+   */
+  readonly openLinks: readonly number[];
   /** Each conclusion with the clues it was drawn from, all of them found. */
   readonly insights: readonly {
     readonly id: string;
     readonly insight: string;
     readonly clueIds: readonly string[];
   }[];
+}
+
+/** The clue count of each conclusion not yet made, smallest first. */
+export function openLinkSizes(run: DetectiveRunState): number[] {
+  return run.case.deductions
+    .filter(({ id }) => !run.insightIds.includes(id))
+    .map(({ clueIds }) => new Set(clueIds).size)
+    .toSorted((a, b) => a - b);
 }
 
 function requireLocation(detectiveCase: DetectiveCase, id: string): Location {
@@ -640,6 +654,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         description,
         garbled: run.garbledClueIds.includes(id),
       })),
+    openLinks: openLinkSizes(run),
     insights: detectiveCase.deductions
       .filter(({ id }) => run.insightIds.includes(id))
       .map(({ id, insight, clueIds }) => ({

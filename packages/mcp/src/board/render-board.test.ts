@@ -58,6 +58,7 @@ function viewOf(overrides: Partial<View> = {}): View {
       { id: 'c', name: 'Cora', persona: 'Mayor', place: null, statements: [] },
     ],
     clues: [],
+    openLinks: [],
     insights: [],
     chronicle: { activeMinutesLeft: 600, events: [] },
     ...overrides,
@@ -752,5 +753,29 @@ describe('the gift and the cost of a signal on the hero tab', () => {
   it('are left out for a hero without a signal and for a signal the board has no words for', () => {
     expect(hero({ signal: null })).not.toContain('Gift:');
     expect(hero({ signal: { id: 'unknown-mood', voice: 'x', gift: 'x', cost: 'y' } })).not.toContain('Gift:');
+  });
+});
+
+describe('the links still to be made', () => {
+  const links = (view: Partial<View>) => tab(renderEvidenceBoard(viewOf(view)), 'clues');
+
+  it('says how many clues each open conclusion takes, smallest first, with no clue and no id', () => {
+    const page = links({ openLinks: [2, 3, 3] });
+
+    expect(page).toContain('Links still to be made:');
+    expect(page).toContain('a link of 2, a link of 3, a link of 3');
+  });
+
+  it('is told in Russian too, and also before any clue is found', () => {
+    const page = links({ locale: 'ru', openLinks: [2], clues: [], insights: [] });
+
+    expect(page).toContain('Связок ещё предстоит:');
+    expect(page).toContain('связка из 2');
+    expect(page).toContain('Связывать пока нечего');
+  });
+
+  it('says that every conclusion is drawn once none is open', () => {
+    expect(links({ openLinks: [] })).toContain('Every conclusion has been drawn.');
+    expect(links({ openLinks: [], locale: 'ru' })).toContain('Все выводы сделаны.');
   });
 });
