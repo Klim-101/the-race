@@ -30,7 +30,7 @@ const MirrorNameSchema = z
   .regex(/^\p{L}[\p{L}\p{M}' -]*$/u, 'Use letters, spaces, hyphens and apostrophes only.');
 
 /** One form of the mirror name for every language: Вальдмарк and Valdmark are one place. */
-const MirrorFormsSchema = z.strictObject({ ru: MirrorNameSchema, en: MirrorNameSchema });
+export const MirrorFormsSchema = z.strictObject({ ru: MirrorNameSchema, en: MirrorNameSchema });
 export type MirrorForms = z.infer<typeof MirrorFormsSchema>;
 
 /** What an agent proposes: the real side is every way the headlines may write the entity. */

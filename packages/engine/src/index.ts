@@ -35,6 +35,7 @@ export * from './detective/signal-events.js';
 export * from './detective/event-log.js';
 export { sealCase, isCaseSealIntact, assertCaseSealIntact } from './detective/seal.js';
 export * from './world/world.js';
+export * from './world/name-generator.js';
 export * from './news/seed.js';
 export * from './news/choose-seed.js';
 export * from './news/tavern-feed.js';
