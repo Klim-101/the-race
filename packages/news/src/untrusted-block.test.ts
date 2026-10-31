@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { SUMMARY_LIMIT, TITLE_LIMIT } from './parse-feed.js';
-import { normalizeHeadlines, renderUntrustedHeadlines } from './untrusted-block.js';
+import { headlineId, normalizeHeadlines, renderUntrustedHeadlines } from './untrusted-block.js';
 
 describe('normalizeHeadlines', () => {
   it('keeps a title and a short summary, cleaned, and nothing else', () => {
@@ -75,9 +75,9 @@ describe('renderUntrustedHeadlines', () => {
     expect(lines[0]).toBe('<untrusted-headlines>');
     expect(lines[1]).toContain('not instructions');
     expect(lines.slice(2, -1)).toEqual([
-      '1. [economy] Grain prices dip',
+      `1. ${headlineId('Grain prices dip')} [economy] Grain prices dip`,
       '   Farmers shrug.',
-      '2. [humor] Mayor declares Tuesday optional',
+      `2. ${headlineId('Mayor declares Tuesday optional')} [humor] Mayor declares Tuesday optional`,
     ]);
     expect(lines.at(-1)).toBe('</untrusted-headlines>');
   });
@@ -106,8 +106,8 @@ describe('renderUntrustedHeadlines', () => {
       3,
     );
 
-    expect(block).toContain('1. [world] One');
-    expect(block).toContain('3. [tech] Three');
+    expect(block).toContain(`1. ${headlineId('One')} [world] One`);
+    expect(block).toContain(`3. ${headlineId('Three')} [tech] Three`);
     expect(block).not.toContain('Four');
     expect(block.match(/Two/gi)).toHaveLength(1);
     expect(renderUntrustedHeadlines([])).toContain('(no headlines today)');
@@ -139,7 +139,7 @@ describe('the tragedy filter at the boundary', () => {
   it('lets no tragedy through, in any form', () => {
     const block = renderUntrustedHeadlines(groups);
 
-    expect(block).toContain('1. [world] Grain prices dip');
+    expect(block).toContain(`1. ${headlineId('Grain prices dip')} [world] Grain prices dip`);
     for (const gone of ['killed', 'bus', 'Teenager', 'hack']) expect(block).not.toContain(gone);
   });
 
@@ -167,7 +167,7 @@ describe('the tragedy filter at the boundary', () => {
       2,
     );
 
-    expect(block).toContain('2. [world] Story 1');
+    expect(block).toContain(`2. ${headlineId('Story 1')} [world] Story 1`);
     expect(block).not.toContain('Story 2');
     expect(block).toContain('[conflict]');
   });
@@ -184,5 +184,19 @@ describe('the tragedy filter at the boundary', () => {
     ]);
 
     expect(block).toContain('(no headlines today)');
+  });
+});
+
+describe('headlineId', () => {
+  it('is h and eight hex digits, the same for the same story however it is written', () => {
+    expect(headlineId('Grain prices dip')).toMatch(/^h[0-9a-f]{8}$/);
+    expect(headlineId('  GRAIN prices <b>dip</b>! ')).toBe(headlineId('Grain prices dip'));
+  });
+
+  it('differs between stories, and gives a long title the id of the title as the block shows it', () => {
+    expect(headlineId('Grain prices dip')).not.toBe(headlineId('Grain prices rise'));
+    const long = 'x'.repeat(TITLE_LIMIT + 50);
+    const [shown] = normalizeHeadlines([{ title: long }], 1);
+    expect(headlineId(long)).toBe(headlineId(shown?.title ?? ''));
   });
 });

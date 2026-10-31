@@ -28,6 +28,7 @@ export {
 } from './load-headlines.js';
 export {
   DEFAULT_BLOCK_HEADLINES,
+  headlineId,
   normalizeHeadlines,
   renderUntrustedHeadlines,
   type HeadlineGroup,
