@@ -17,6 +17,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@the-race/engine": "0.0.0",
     "@the-race/saves": "0.0.0",
     "zod": "4.6.7"
   }

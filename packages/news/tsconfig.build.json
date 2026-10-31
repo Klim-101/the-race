@@ -6,5 +6,5 @@
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"],
-  "references": [{ "path": "../saves/tsconfig.build.json" }]
+  "references": [{ "path": "../engine/tsconfig.build.json" }, { "path": "../saves/tsconfig.build.json" }]
 }
