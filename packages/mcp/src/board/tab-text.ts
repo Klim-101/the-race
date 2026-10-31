@@ -42,6 +42,10 @@ export interface TabText {
     readonly left: string;
     readonly hours: string;
     readonly minutes: string;
+    /** The heading of what the case grew from, the line when it grew from nothing, and the kinds of trouble. */
+    readonly inspired: string;
+    readonly inspiredNone: string;
+    readonly seedKinds: Readonly<Record<string, string>>;
     readonly events: string;
     readonly noEvents: string;
     readonly open: string;
@@ -148,6 +152,18 @@ export const TAB_TEXT: Record<Locale, TabText> = {
       left: 'Working time left',
       hours: 'h',
       minutes: 'min',
+      inspired: 'What in the news the case grew from',
+      inspiredNone: "The case was not built on the news: today's feeds gave no seed.",
+      seedKinds: {
+        shortage: 'A shortage',
+        scandal: 'A scandal',
+        outage: 'An outage',
+        leak: 'A leak',
+        'market-shock': 'A market shock',
+        dispute: 'A dispute',
+        reform: 'A reform',
+        curiosity: 'A curiosity',
+      },
       events: 'What has happened in the world',
       noEvents: 'Nothing yet. The world is holding its breath.',
       open: 'Still open',
@@ -284,6 +300,18 @@ export const TAB_TEXT: Record<Locale, TabText> = {
       left: 'Осталось рабочего времени',
       hours: 'ч',
       minutes: 'мин',
+      inspired: 'Из чего выросло дело (из новостей)',
+      inspiredNone: 'Дело не строилось на новостях: лента не дала зерна.',
+      seedKinds: {
+        shortage: 'Дефицит',
+        scandal: 'Скандал',
+        outage: 'Сбой',
+        leak: 'Утечка',
+        'market-shock': 'Потрясение рынка',
+        dispute: 'Спор',
+        reform: 'Реформа',
+        curiosity: 'Курьёз',
+      },
       events: 'Что случилось в мире',
       noEvents: 'Пока ничего. Мир затаил дыхание.',
       open: 'Ещё открыто',

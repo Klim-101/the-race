@@ -107,7 +107,7 @@ function parseRunText(
 
 /**
  * Whether playing `log` from the start of the run reaches `run`. The start is rebuilt from the run itself:
- * hero, traits, case, seed, locale and setting never change during a run, and the dice a run started with are the
+ * hero, traits, case, seed, locale, setting and inspiration never change during a run, and the dice a run started with are the
  * dice before its first logged turn (or, with no turns, the dice it has now). So the log file needs to hold
  * nothing but the log.
  */
@@ -121,6 +121,7 @@ function replaysTo(run: DetectiveRunState, log: RunLog): boolean {
       rngState: log[0]?.rngStateBefore ?? run.rngState,
       locale: run.locale,
       setting: run.setting,
+      inspiration: run.inspiration,
     }),
     // A save keeps the versions it was made with; replay must not fail over a version stamp.
     schemaVersion: run.schemaVersion,

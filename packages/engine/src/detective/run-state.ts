@@ -21,6 +21,7 @@ import { warningsOfMeters } from '../meters.js';
 import { DrawnSignalEventSchema, findSignal, signalIgnores, type Signal } from '../signals.js';
 import { TraitSchema, type Trait } from '../traits.js';
 import type { ClimateProfile } from '../world/climate.js';
+import { SeedKindSchema } from '../news/seed.js';
 import { SettingSchema, type Setting } from '../world/setting.js';
 import { DETECTIVE, DetectiveHeroSchema, type DetectiveHero } from './archetype.js';
 import {
@@ -74,6 +75,16 @@ export const StatementSchema = z.strictObject({
 });
 export type Statement = z.infer<typeof StatementSchema>;
 
+/**
+ * What the case grew from: the kind of trouble a seed of the day names, and the sentence the seed extractor
+ * invented for it. A seed is abstract by construction (no headline, no real name), so it is safe to show.
+ */
+export const InspirationSchema = z.strictObject({
+  kind: SeedKindSchema,
+  premise: z.string().min(1).max(400),
+});
+export type Inspiration = z.infer<typeof InspirationSchema>;
+
 export const DetectiveRunStateSchema = z
   .object({
     ...runBaseShape,
@@ -114,6 +125,8 @@ export const DetectiveRunStateSchema = z
     setting: SettingSchema.nullable().default(null),
     /** What suspects have said at questioning, in the order they said it. Old saves have none. */
     statements: z.array(StatementSchema).default([]),
+    /** The pattern of news the case grew from, when it grew from one. Old saves have none. */
+    inspiration: InspirationSchema.nullable().default(null),
   })
   .superRefine((run, context) => {
     if (!isCaseSealIntact(run)) {
@@ -182,6 +195,8 @@ export interface NewDetectiveRun {
   readonly locale: Locale;
   /** The country the case is set in; none when the world has no country with a climate yet. */
   readonly setting?: Setting | null | undefined;
+  /** The seed of the day the case was built on; none when the news gave no seed. */
+  readonly inspiration?: Inspiration | null | undefined;
 }
 
 export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
@@ -218,6 +233,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     pendingEffects: [],
     setting: input.setting ?? null,
     statements: [],
+    inspiration: input.inspiration ?? null,
   });
 }
 
@@ -433,6 +449,8 @@ export interface DetectiveRunView {
   readonly revealedTraits: readonly Trait[];
   /** Where the case is set, in the language of the run, and what the weather there is like. */
   readonly setting: { readonly name: string; readonly climate: ClimateProfile } | null;
+  /** What in the news the case grew from: the kind of trouble and the invented sentence, never a headline. */
+  readonly inspiration: Inspiration | null;
   readonly location: {
     readonly id: string;
     readonly name: string;
@@ -598,6 +616,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     hiddenTraitCount: run.traits.length - run.revealedTraitIds.length,
     revealedTraits: run.traits.filter(({ id }) => run.revealedTraitIds.includes(id)),
     setting: run.setting && { name: run.setting.name[run.locale], climate: run.setting.climate },
+    inspiration: run.inspiration,
     location: { id: location.id, name: location.name, description: location.description, exits },
     map: viewMap(run),
     suspects: detectiveCase.suspects.map((suspect) => {

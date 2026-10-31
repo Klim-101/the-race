@@ -35,6 +35,7 @@ function viewOf(overrides: Partial<View> = {}): View {
     hiddenTraitCount: 2,
     revealedTraits: [],
     setting: null,
+    inspiration: null,
     news: [],
     location: { id: 'market', name: 'Market', description: '', exits: [] },
     map: {
@@ -706,5 +707,27 @@ describe('the climate in the hero tab', () => {
     expect(hero).toContain('<h3>Климат</h3>');
     expect(hero).toContain('<li>зима: снег</li>');
     expect(hero).toContain('Погода, с которой придётся считаться: ничего особенного');
+  });
+});
+
+describe('what the case grew from', () => {
+  const chronicle = (view: Partial<View>) => tab(renderEvidenceBoard(viewOf(view)), 'chronicle');
+  const inspiration = {
+    kind: 'shortage',
+    premise: 'A staple has gone missing <b>from</b> every shelf.',
+  } as const;
+
+  it('shows the kind of trouble and the sentence, escaped, in the chronicle', () => {
+    const page = chronicle({ inspiration });
+
+    expect(page).toContain('A shortage');
+    expect(page).toContain('A staple has gone missing &lt;b&gt;from&lt;/b&gt; every shelf.');
+    expect(page).not.toContain('<b>from</b>');
+  });
+
+  it('says in the language of the run, and says so when there was no news seed', () => {
+    expect(chronicle({ locale: 'ru', inspiration })).toContain('Дефицит');
+    expect(chronicle({ locale: 'ru', inspiration: null })).toContain('лента не дала зерна');
+    expect(chronicle({ inspiration: null })).toContain('feeds gave no seed');
   });
 });
