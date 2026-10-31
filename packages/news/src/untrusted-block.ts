@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { judgeHeadline } from '@the-race/engine';
+import { judgeHeadline, sha256Hex } from '@the-race/engine';
 import { cleanText } from './clean-text.js';
 import type { FeedTopic } from './feed-list.js';
 import { SUMMARY_LIMIT, TITLE_LIMIT, type Headline } from './parse-feed.js';
@@ -28,6 +28,14 @@ const storyKey = (text: string): string =>
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim();
+
+/**
+ * The id of a headline: `h` and eight hex digits of a digest of its cleaned title. The same story has the same
+ * id on every day and in every feed, so a seed can name a headline without quoting it.
+ */
+export function headlineId(title: string): string {
+  return `h${sha256Hex(storyKey(plain(title, TITLE_LIMIT))).slice(0, 8)}`;
+}
 
 type Admission =
   | { readonly kind: 'kept'; readonly headline: Headline }
@@ -99,7 +107,9 @@ export function renderUntrustedHeadlines(
       if (admitted?.kind === 'conflict') conflict = true;
       if (admitted?.kind !== 'kept' || count >= max) continue;
       count += 1;
-      lines.push(`${String(count)}. [${topic}] ${admitted.headline.title}`);
+      lines.push(
+        `${String(count)}. ${headlineId(admitted.headline.title)} [${topic}] ${admitted.headline.title}`,
+      );
       if (admitted.headline.summary !== undefined) lines.push(`   ${admitted.headline.summary}`);
     }
   }
