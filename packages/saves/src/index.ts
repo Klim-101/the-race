@@ -13,3 +13,11 @@ export {
   type LoadRunResult,
 } from './run-store.js';
 export { buildResumeSummary, RESUME_LABELS, type ResumeLabels } from './resume-summary.js';
+export {
+  loadWorld,
+  saveWorld,
+  worldFile,
+  WORLD_LOAD_FAILURE_REASONS,
+  type LoadWorldResult,
+  type WorldLoadFailureReason,
+} from './world-store.js';

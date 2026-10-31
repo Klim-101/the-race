@@ -14,6 +14,8 @@ import { runNew } from './run-new.js';
 import { runView } from './run-view.js';
 import { scenarioSubmit } from './scenario-submit.js';
 import { serverInfo } from './server-info.js';
+import { worldPropose } from './world-propose.js';
+import { worldView } from './world-view.js';
 
 /**
  * Every tool the server offers, one file each. Adding a tool is one import and one line here, which keeps
@@ -32,4 +34,6 @@ export const TOOLS: readonly Tool[] = [
   runNew,
   runView,
   scenarioSubmit,
+  worldPropose,
+  worldView,
 ];

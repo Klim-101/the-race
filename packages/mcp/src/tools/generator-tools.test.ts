@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { DETECTIVE_TRAITS, type DetectiveHero, type Trait } from '@the-race/engine';
 import { loadRun, runFiles, type SaveFs } from '@the-race/saves';
@@ -402,5 +403,80 @@ describe('pending run record', () => {
     const failing = { ...fs, rename: () => Promise.reject(new Error('no')) };
     await expect(savePending(SAVE_DIR, pendingRun(), failing)).rejects.toThrow('no');
     expect(fs.files.size).toBe(0);
+  });
+});
+
+describe('the mirror world dictionary', () => {
+  const RUSSIA = {
+    kind: 'country',
+    real: ['Россия', 'Russia'],
+    mirror: { ru: 'Вальдмарк', en: 'Valdmark' },
+  };
+  const WORLD_FILE = join(SAVE_DIR, 'world.json');
+
+  it('takes a proposal once, keeps it and shows only the mirror side', async () => {
+    const { fs, call } = await start(null);
+
+    const accepted = await call('world_propose', RUSSIA);
+    expect(accepted.body).toEqual({ accepted: true, id: 'valdmark' });
+    expect(JSON.parse(fs.files.get(WORLD_FILE) ?? '{}')).toMatchObject({ entries: [{ id: 'valdmark' }] });
+
+    const again = await call('world_propose', { ...RUSSIA, mirror: { ru: 'Другой', en: 'Other' } });
+    expect(again.body).toMatchObject({
+      accepted: false,
+      issues: [{ code: 'alias-taken' }, { code: 'alias-taken' }],
+    });
+
+    const view = await call('world_view', { locale: 'ru' });
+    expect(view.body).toEqual({
+      name: 'Черновик',
+      entries: [{ id: 'valdmark', kind: 'country', name: 'Вальдмарк' }],
+    });
+    expect(view.text).not.toMatch(/Россия|Russia/);
+  });
+
+  it('takes proposals made at the same time, one after the other', async () => {
+    const { call } = await start(null);
+    const other = { kind: 'organisation', real: ['Банк'], mirror: { ru: 'Норделл', en: 'Nordell' } };
+
+    const both = await Promise.all([call('world_propose', RUSSIA), call('world_propose', other)]);
+
+    expect(both.map(({ body }) => body.accepted)).toEqual([true, true]);
+    expect(((await call('world_view', { locale: 'en' })).body.entries as unknown[]).length).toBe(2);
+  });
+
+  it('checks a proposal against the real names the generator saw', async () => {
+    const { call } = await start(null);
+
+    const refused = await call('world_propose', { ...RUSSIA, knownRealNames: ['Valdmark'] });
+
+    expect(refused.body).toMatchObject({ accepted: false, issues: [{ code: 'mirror-is-real' }] });
+  });
+
+  it('stops at a dictionary it cannot use, and never replaces it', async () => {
+    const fs = memoryFs();
+    fs.files.set(WORLD_FILE, '{broken');
+    const { call } = await start(null, fs);
+
+    expect(errorCode(await call('world_propose', RUSSIA))).toBe('world-unusable');
+    expect(errorCode(await call('world_view', { locale: 'en' }))).toBe('world-unusable');
+    expect(fs.files.get(WORLD_FILE)).toBe('{broken');
+  });
+
+  it('keeps a real name of the dictionary out of a case, and a damaged dictionary from starting one', async () => {
+    const fs = memoryFs();
+    const { call } = await start(pendingRun(), fs);
+    await call('world_propose', {
+      kind: 'country',
+      real: ['Elmwick'],
+      mirror: { ru: 'Квилльхейвен', en: 'Quillhaven' },
+    });
+
+    const refused = await submit(call, readCase('goose-of-elmwick.en.json'));
+    expect(refused.body).toMatchObject({ accepted: false });
+    expect(JSON.stringify(refused.body)).toContain('real-name');
+
+    fs.files.set(WORLD_FILE, '{broken');
+    expect(errorCode(await submit(call, readCase('goose-of-elmwick.en.json')))).toBe('world-unusable');
   });
 });

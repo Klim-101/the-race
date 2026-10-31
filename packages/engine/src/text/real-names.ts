@@ -16,6 +16,18 @@ export function findRealName(text: string, realNames: readonly string[]): string
   });
 }
 
+/**
+ * The text with every occurrence of the name, inflected or not, replaced. The text is folded to NFKC first,
+ * so the result is that folded text. `ё` and `е` are the same letter, as in `findRealName`.
+ */
+export function replaceRealName(text: string, name: string, replacement: string): string {
+  const normalizedName = normalize(name.trim());
+  if (normalizedName.length === 0) return text;
+  const pattern = buildNamePattern(normalizedName);
+  const loose = new RegExp(pattern.source.replaceAll('е', '[её]'), 'giu');
+  return text.normalize('NFKC').replace(loose, () => replacement);
+}
+
 function buildNamePattern(normalizedName: string): RegExp {
   const canInflect = normalizedName.length >= MIN_LENGTH_FOR_INFLECTION;
   const stem = canInflect ? normalizedName.replace(RUSSIAN_ENDING, '') : normalizedName;

@@ -16,7 +16,7 @@ import {
   type RunLog,
   type RunMigrationRegistry,
 } from '@the-race/engine';
-import { nodeSaveFs, type SaveFs } from './save-fs.js';
+import { nodeSaveFs, replaceFile, type SaveFs } from './save-fs.js';
 
 export interface RunFiles {
   readonly directory: string;
@@ -199,18 +199,6 @@ export async function loadRun(
   }
   // Both are unusable. Report the current pair's problem unless there was no current file at all.
   return current.reason === 'missing' ? previous : current;
-}
-
-/** Writes `data` so that `path` holds either its old content or the whole new content, never a mix. */
-async function replaceFile(fs: SaveFs, path: string, data: string): Promise<void> {
-  const temporary = `${path}.tmp`;
-  try {
-    await fs.writeFileSynced(temporary, data);
-    await fs.rename(temporary, path);
-  } catch (error) {
-    await fs.remove(temporary).catch(() => undefined);
-    throw error;
-  }
 }
 
 /**
