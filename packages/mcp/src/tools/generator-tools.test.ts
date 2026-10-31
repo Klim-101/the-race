@@ -4,8 +4,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
-import { DETECTIVE_TRAITS, type DetectiveHero, type Trait } from '@the-race/engine';
-import { loadRun, runFiles, type SaveFs } from '@the-race/saves';
+import { DETECTIVE_TRAITS, type DetectiveHero, type NewsSeed, type Trait } from '@the-race/engine';
+import { loadRun, runFiles, saveSeedsForDay, type SaveFs } from '@the-race/saves';
 import { afterEach, describe, expect, it } from 'vitest';
 import { offlineNews } from '../../test/fake-context.js';
 import type { ServerContext } from '../context.js';
@@ -39,6 +39,14 @@ function memoryFs(files = new Map<string, string>()): SaveFs & { files: Map<stri
     },
   };
 }
+
+const SEED: NewsSeed = {
+  id: 'grain-shortage',
+  headlineIds: ['h0a1b2c3d'],
+  kind: 'shortage',
+  tone: 'wry',
+  premise: 'A staple runs short and everyone suspects the middlemen.',
+};
 
 const HERO: DetectiveHero = {
   name: 'Mira Kos, former auditor',
@@ -103,12 +111,13 @@ afterEach(async () => {
   for (const close of closers.splice(0)) await close();
 });
 
-async function start(pending: PendingRun | null, fs = memoryFs()) {
+async function start(pending: PendingRun | null, fs = memoryFs(), overrides: Partial<ServerContext> = {}) {
   const context: ServerContext = {
     saveDir: SAVE_DIR,
     saveFs: fs,
     newSeed: () => 'unused',
     ...offlineNews(),
+    ...overrides,
   };
   if (pending) await savePending(SAVE_DIR, pending, fs);
   const peer = new Peer();
@@ -151,12 +160,37 @@ describe('generator_brief', () => {
       theme: 'curious-theft',
       hero: { name: HERO.name, background: 'analyst', signal: { id: 'burnt-out', voice: 'flat-dry' } },
       attemptsLeft: 3,
-      headlines: [],
+      seeds: [],
     });
     expect(['serious', 'wry', 'absurd']).toContain(brief.body.tone);
-    expect(brief.body.headlinesAreUntrusted).toMatch(/untrusted/);
+    expect(brief.body.seedsAreUntrusted).toMatch(/untrusted/);
     for (const trait of DETECTIVE_TRAITS) expect(brief.text).not.toContain(trait.id);
     expect(brief.text).not.toMatch(/trait/i);
+  });
+
+  it('hands over the seeds of the day, with no headline in them', async () => {
+    const fs = memoryFs();
+    await saveSeedsForDay(SAVE_DIR, '2026-10-31', [SEED], fs);
+    const { call } = await start(pendingRun(), fs);
+
+    const brief = await call('generator_brief', {});
+
+    expect(brief.body.seeds).toEqual([
+      { id: SEED.id, kind: SEED.kind, tone: SEED.tone, premise: SEED.premise },
+    ]);
+    expect(brief.text).not.toContain(SEED.headlineIds[0]);
+  });
+
+  it('follows the news lag: an older day, or none when nothing so old was extracted', async () => {
+    const fs = memoryFs();
+    await saveSeedsForDay(SAVE_DIR, '2026-10-29', [SEED], fs);
+    await saveSeedsForDay(SAVE_DIR, '2026-10-31', [{ ...SEED, id: 'today-only' }], fs);
+
+    const lagged = await (await start(pendingRun(), fs, { newsLagDays: 2 })).call('generator_brief', {});
+    const tooOld = await (await start(pendingRun(), fs, { newsLagDays: 5 })).call('generator_brief', {});
+
+    expect((lagged.body.seeds as { id: string }[]).map(({ id }) => id)).toEqual([SEED.id]);
+    expect(tooOld.body.seeds).toEqual([]);
   });
 
   it('has no signal for a hero without one, and the same tone for the same seed', async () => {
