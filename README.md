@@ -19,7 +19,39 @@ _The world changed overnight. Run._
 
 A text roguelike that runs inside [Claude Code](https://claude.com/claude-code) on your own subscription. Every run is one hero in a **mirror world** rebuilt from today's world news: the conflicts are real, the names are fictional. The hero dies for good. Tomorrow the world is different.
 
-> **Status:** early prototype. Nothing is playable yet: the engine can already run a detective case from the first look to the final accusation, and the agent side that tells the story is next. See the [roadmap](docs/public/ROADMAP.md).
+> **Status:** early prototype, playable. A detective run works from the tavern to the final accusation inside Claude Code, in Russian or English, on a case built from the day's news. The roguelike loop around it (the hall of fallen heroes, legacy between runs) and further archetypes are still ahead. See the [roadmap](docs/public/ROADMAP.md).
+
+## Getting started
+
+You need [Claude Code](https://claude.com/claude-code) on your own subscription and [Node.js](https://nodejs.org) 22.12 or newer. There is nothing else to sign up for: no account, no API key.
+
+1. **Get the code and build it**
+
+   ```sh
+   git clone https://github.com/Klim-101/the-race.git
+   cd the-race
+   npm ci
+   npm run build
+   ```
+
+2. **Install the plugin.** In Claude Code, in any folder:
+
+   ```
+   /plugin marketplace add <path to the cloned repository>
+   /plugin install the-race@the-race
+   ```
+
+3. **Choose the game folder** when Claude Code asks. It keeps your saves and the evidence board, which you can open in any browser. Pick a plain folder without a cloud drive in the path. You can change it later in `/config`.
+
+4. **Start a new Claude Code session** so the plugin's server loads, then run:
+
+   ```
+   /race
+   ```
+
+   `/race` starts a new run or resumes the current one. `/race-help` explains how to play in a few lines.
+
+The game is played in **your language**: the narrator answers in the language you write in (Russian and English are supported), and you describe what you do in your own words. Headlines are fetched from public feeds; if they cannot be reached, the run still starts, just without the day's news. More on the plugin, the game folder and the HUD: [PLUGIN.md](docs/public/PLUGIN.md).
 
 ## The idea
 
@@ -27,7 +59,7 @@ A text roguelike that runs inside [Claude Code](https://claude.com/claude-code) 
 
 - **One hero, one life.** You pick from three heroes in a tavern, spend your skill points, and head out. Death is permanent; the next hero starts in a different world.
 - **A mirror world.** A stock-market crash becomes a crash on the exchange of a country that does not exist, caused by a company that is not real. The substance stays, the names change. Real names are rejected by the engine, and recent tragedies never become a plot.
-- **Hidden traits.** Every hero carries traits you cannot see and did not choose. The engine rolls them up front and they reveal themselves in play: a former accountant reads ledgers well, a claustrophobe falls apart in a lift.
+- **Hidden traits.** Every hero carries traits you cannot see and did not choose. You find out who you are by playing.
 - **A hero is more than numbers.** Long days, rough luck and hard conversations leave a mark, and the story shows it.
 - **Play in your own words.** You describe what you do in free text. The agent turns it into an action, the engine rolls the dice, the agent tells you what happened.
 - **The world remembers.** Fallen heroes leave notes and a reputation behind for the ones who come after.
@@ -63,8 +95,12 @@ The model tends to agree with the player, and in a roguelike with permadeath tha
 
 ```
 packages/engine   Deterministic game rules, the case schema and the solvability validator
+packages/news     Headlines from feeds, cleaned before any model sees them
 packages/saves    Saving and resuming a run, as a local file
-content           Hand-written sample cases in English and Russian
+packages/mcp      The local server that gives the agent its typed tools and draws the evidence board
+agents            The plugin's source: the narrator, the subagents, commands and the HUD
+plugins           The installable plugin, generated from agents/
+content           Feeds and hand-written sample cases in English and Russian
 docs/public       Public documentation, including the roadmap
 docs/adr          Records of the decisions that are hard to reverse
 scripts           Repository checks (LLM SDK denylist, license allowlist)
