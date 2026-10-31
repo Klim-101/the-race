@@ -19,6 +19,8 @@ import {
 import { warningsOfMeters } from '../meters.js';
 import { DrawnSignalEventSchema, findSignal, signalIgnores, type Signal } from '../signals.js';
 import { TraitSchema, type Trait } from '../traits.js';
+import type { ClimateProfile } from '../world/climate.js';
+import { SettingSchema, type Setting } from '../world/setting.js';
 import { DETECTIVE, DetectiveHeroSchema, type DetectiveHero } from './archetype.js';
 import {
   HeroConditionSchema,
@@ -93,6 +95,8 @@ export const DetectiveRunStateSchema = z
     supplies: SuppliesSchema.default({}),
     /** Prices of consumables that have not landed yet; the clock and the night apply them. */
     pendingEffects: z.array(PendingEffectSchema).default([]),
+    /** The country of the mirror world the run is set in, with its climate. Old saves have none. */
+    setting: SettingSchema.nullable().default(null),
   })
   .superRefine((run, context) => {
     if (!isCaseSealIntact(run)) {
@@ -154,6 +158,8 @@ export interface NewDetectiveRun {
   readonly seed: string;
   readonly rngState: number;
   readonly locale: Locale;
+  /** The country the case is set in; none when the world has no country with a climate yet. */
+  readonly setting?: Setting | null | undefined;
 }
 
 export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
@@ -188,6 +194,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     garbledClueIds: [],
     supplies: initialSupplies(input.hero.background),
     pendingEffects: [],
+    setting: input.setting ?? null,
   });
 }
 
@@ -393,6 +400,8 @@ export interface DetectiveRunView {
   readonly signalEvents: readonly { readonly kind: string }[];
   readonly hiddenTraitCount: number;
   readonly revealedTraits: readonly Trait[];
+  /** Where the case is set, in the language of the run, and what the weather there is like. */
+  readonly setting: { readonly name: string; readonly climate: ClimateProfile } | null;
   readonly location: {
     readonly id: string;
     readonly name: string;
@@ -483,6 +492,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     signalEvents: run.signalEvents.filter(({ day }) => day === run.clock.day).map(({ kind }) => ({ kind })),
     hiddenTraitCount: run.traits.length - run.revealedTraitIds.length,
     revealedTraits: run.traits.filter(({ id }) => run.revealedTraitIds.includes(id)),
+    setting: run.setting && { name: run.setting.name[run.locale], climate: run.setting.climate },
     location: { id: location.id, name: location.name, description: location.description, exits },
     suspects: detectiveCase.suspects.map((suspect) => {
       const placeId = suspectPlace(run, suspect);

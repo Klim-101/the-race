@@ -31,6 +31,7 @@ function viewOf(overrides: Partial<DetectiveRunView> = {}): DetectiveRunView {
     ],
     clues: [],
     insights: [],
+    setting: null,
     ...overrides,
   } as unknown as DetectiveRunView;
 }
@@ -38,6 +39,48 @@ function viewOf(overrides: Partial<DetectiveRunView> = {}): DetectiveRunView {
 describe('escapeHtml', () => {
   it('escapes every character that could open markup', () => {
     expect(escapeHtml(`<b onclick="x">&'`)).toBe('&lt;b onclick=&quot;x&quot;&gt;&amp;&#39;');
+  });
+});
+
+describe('the climate summary', () => {
+  const setting = {
+    name: 'Val<script>dmark',
+    climate: {
+      zone: 'subarctic',
+      seasons: [
+        { id: 'winter', weather: 'snow' },
+        { id: 'summer', weather: 'mild' },
+      ],
+      hazards: ['blizzard', 'ice'],
+    },
+  };
+
+  it('says nothing when the case is set nowhere in particular', () => {
+    expect(renderEvidenceBoard(viewOf(), new Map())).not.toContain('Climate');
+  });
+
+  it('gives the country, the zone, each season with its weather and the hazards', () => {
+    const page = renderEvidenceBoard(viewOf({ setting } as Partial<DetectiveRunView>), new Map());
+
+    expect(page).toContain('<h2>Climate</h2>');
+    expect(page).toContain('The case is set in: <strong>Val&lt;script&gt;dmark</strong>');
+    expect(page).toContain('Zone: subarctic');
+    expect(page).toContain('<li>winter: snow</li>');
+    expect(page).toContain('<li>summer: mild</li>');
+    expect(page).toContain('Weather to plan around: blizzards, ice on the roads');
+    expect(page).not.toContain('<script>');
+  });
+
+  it('is written in the language of the run, and says so when there is no hazard', () => {
+    const calm = { ...setting, climate: { ...setting.climate, hazards: [] } };
+    const page = renderEvidenceBoard(
+      viewOf({ locale: 'ru', setting: calm } as Partial<DetectiveRunView>),
+      new Map(),
+    );
+
+    expect(page).toContain('<h2>Климат</h2>');
+    expect(page).toContain('<li>зима: снег</li>');
+    expect(page).toContain('Погода, с которой придётся считаться: ничего особенного');
   });
 });
 

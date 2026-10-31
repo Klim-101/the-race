@@ -82,6 +82,27 @@ export function renderEvidenceBoard(view: DetectiveRunView, placeNames: Readonly
     )
     .join('\n');
 
+  const climate =
+    view.setting === null
+      ? ''
+      : `<h2>${e(text.climate.title)}</h2>
+<div class="card">
+<p>${e(text.climate.setIn)}: <strong>${e(view.setting.name)}</strong></p>
+<p class="tag">${e(text.climate.zone)}: ${e(text.climate.zones[view.setting.climate.zone])}</p>
+<p>${e(text.climate.seasons)}:</p>
+<ul>${view.setting.climate.seasons
+          .map(
+            ({ id, weather }) =>
+              `<li>${e(text.climate.seasonNames[id])}: ${e(text.climate.weathers[weather])}</li>`,
+          )
+          .join('')}</ul>
+<p>${e(text.climate.hazards)}: ${e(
+          view.setting.climate.hazards.length === 0
+            ? text.climate.noHazards
+            : view.setting.climate.hazards.map((hazard) => text.climate.hazardNames[hazard]).join(', '),
+        )}</p>
+</div>`;
+
   const news =
     view.news.length === 0
       ? ''
@@ -109,6 +130,7 @@ ${clues}
 ${insights}
 <h2>${e(text.suspects)}</h2>
 ${suspects}
+${climate}
 ${news}
 </main>
 </body>

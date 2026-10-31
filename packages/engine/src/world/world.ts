@@ -6,6 +6,7 @@ import { EntityIdSchema } from '../detective/case-schema.js';
 import { LOCALES, type Locale } from '../locale.js';
 import type { RunMigrationRegistry } from '../migrations.js';
 import { findRealName, replaceRealName } from '../text/real-names.js';
+import { ClimateProfileSchema } from './climate.js';
 import { isInLocaleScript } from '../text/script.js';
 import { transliterate } from '../text/transliterate.js';
 
@@ -38,6 +39,8 @@ export const WorldProposalSchema = z.strictObject({
   kind: EntityKindSchema,
   real: z.array(z.string().trim().min(2).max(60)).min(1).max(12),
   mirror: MirrorFormsSchema,
+  /** A country keeps the climate of the real one; stored with the entry, so it never changes. */
+  climate: ClimateProfileSchema.optional(),
 });
 export type WorldProposal = z.infer<typeof WorldProposalSchema>;
 
