@@ -14,9 +14,10 @@ import { ToolFailure } from '../tool-error.js';
 export const evidenceBoard = defineTool({
   name: 'evidence_board',
   description:
-    'Writes the evidence board: a single HTML page the player opens in a browser, in five tabs: the map of ' +
-    'the places the detective knows with the news of the world, the suspects with what each has said, the ' +
-    'clues with the links between them and the conclusions, a chronicle (the time left, what the world has ' +
+    'Writes the evidence board: a single HTML page the player opens in a browser, in six tabs: a corkboard ' +
+    'with the people as photographs, the clues as cards and thread for the links tried and the clues shown, ' +
+    'the suspects and the clues as notebooks (where each clue was found, to whom it was shown, the links ' +
+    'tried), the map of the places the detective knows with the news of the world, the conclusions, a chronicle (the time left, what the world has ' +
     'done, what is still open and the last turns the player took) and the hero with their condition, kit ' +
     'and the climate of the country. It holds exactly what the player may know and nothing more, which is why it is written to a folder of the player ' +
     '(not the closed save directory) that any browser account can open. Call it when the player asks to see ' +

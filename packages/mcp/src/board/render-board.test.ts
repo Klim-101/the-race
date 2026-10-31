@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { DetectiveRunView, TurnView } from '@the-race/engine';
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { layoutMap } from './board-map.js';
-import { escapeHtml, renderEvidenceBoard } from './render-board.js';
+import { SCRIPT, escapeHtml, renderEvidenceBoard } from './render-board.js';
 import { truncate } from './escape-html.js';
 
 type View = DetectiveRunView;
@@ -30,6 +31,7 @@ function viewOf(overrides: Partial<View> = {}): View {
       skills: { perception: 4, reasoning: 3 },
       background: 'police',
     },
+    history: { finds: [], shown: [], links: [] },
     signal: null,
     signalEvents: [],
     hiddenTraitCount: 2,
@@ -67,7 +69,7 @@ function viewOf(overrides: Partial<View> = {}): View {
 
 /** The markup of one tab, to be read by itself. */
 function tab(page: string, id: string): string {
-  const match = new RegExp(`<section class="tab" id="${id}">([\\s\\S]*?)</section>`).exec(page);
+  const match = new RegExp(`<section class="tab(?: notebook)?" id="${id}">([\\s\\S]*?)</section>`).exec(page);
   if (match?.[1] === undefined) throw new Error(`No tab ${id}.`);
   return match[1];
 }
@@ -93,25 +95,41 @@ describe('escapeHtml and truncate', () => {
 });
 
 describe('the page', () => {
-  it('is one document with five tabs and a header, in a locked-down frame', () => {
+  it('is one document with six tabs and a header, in a locked-down frame', () => {
     const page = renderEvidenceBoard(viewOf());
 
     expect(page).toContain('<title>Evidence board: The Vanishing Wheel</title>');
     expect(page).toContain('Day 2 of 3, 09:05');
     expect(page).toContain('Now at: <strong>Market</strong>');
     expect(page).toContain("default-src 'none'");
-    for (const id of ['map', 'suspects', 'clues', 'chronicle', 'hero']) {
+    for (const id of ['board', 'suspects', 'clues', 'map', 'chronicle', 'hero']) {
       expect(page).toContain(`<a href="#${id}">`);
-      expect(page).toContain(`<section class="tab" id="${id}">`);
+      expect(page).toMatch(new RegExp(`<section class="tab(?: notebook)?" id="${id}">`));
     }
-    expect(page).not.toMatch(/<script|<link|<img|src=|url\(/);
+    expect(page).not.toMatch(/<link|<img|src=|url\(/);
+  });
+
+  it('holds one small script, whose hash is the only script the frame allows', () => {
+    const page = renderEvidenceBoard(viewOf());
+    const scripts = [...page.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+
+    expect(scripts).toHaveLength(1);
+    const hash = createHash('sha256')
+      .update(scripts[0]?.[1] ?? '')
+      .digest('base64');
+    expect(page).toContain(`script-src 'sha256-${hash}'`);
+    expect(page).not.toMatch(/script-src[^"]*unsafe/);
+    // It only picks: no network, no storage, no eval.
+    expect(SCRIPT).not.toMatch(
+      /fetch|XMLHttp|localStorage|sessionStorage|eval|innerHTML|document\.write|import\(/,
+    );
   });
 
   it('keeps the tab through a reload with the address alone, shows the first by default and all when printed', () => {
     const page = renderEvidenceBoard(viewOf());
 
     expect(page).toContain('.tab:target{display:block}');
-    expect(page).toContain('main:not(:has(.tab:target)) #map{display:block}');
+    expect(page).toContain('main:not(:has(.tab:target)) #board{display:block}');
     expect(page).toContain('main:has(#hero:target) nav a[href="#hero"]');
     expect(page).toContain('@media print{');
     expect(page).toContain('@media (prefers-color-scheme:dark)');
@@ -164,7 +182,8 @@ describe('the page', () => {
       } as unknown as Partial<View>),
     );
 
-    expect(page).not.toContain('<script>');
+    expect(page).not.toContain(evil);
+    expect(page.match(/<script>/g)).toHaveLength(1);
     expect(page).not.toContain('<img');
     expect(page).toContain('&lt;script&gt;');
   });
