@@ -209,9 +209,34 @@ function collectHooks(agentsDir, out) {
       );
     }
   }
+  // A hooks module that was never shipped is not loaded, and nothing says so: fail here instead.
+  for (const module of Array.isArray(wrapped.modules) ? wrapped.modules : []) {
+    const script = String(module).replace(/^\.\//, '');
+    if (!files.includes(script)) {
+      throw new GeneratorError(
+        `agents/hooks/hooks.json lists the module ${module}, which is not in agents/hooks/`,
+      );
+    }
+  }
   out.set(`${PLUGIN_DIR}/hooks/hooks.json`, json(wrapped));
   for (const file of files) {
     if (file !== 'hooks.json') out.set(`${PLUGIN_DIR}/hooks/${file}`, readText(join(root, file)));
+  }
+}
+
+// The contract of the values a hooks module keeps in the session, named by `types` in plugin.json.
+function collectTypes(agentsDir, meta, out) {
+  const root = join(agentsDir, 'types');
+  if (!existsSync(root)) {
+    if (meta.types !== undefined) {
+      throw new GeneratorError('agents/plugin.json names "types", but agents/types/ is missing');
+    }
+    return;
+  }
+  for (const file of listFiles(root)) out.set(`${PLUGIN_DIR}/types/${file}`, readText(join(root, file)));
+  const named = typeof meta.types === 'string' ? meta.types.replace(/^\.\//, '') : undefined;
+  if (named === undefined || !out.has(`${PLUGIN_DIR}/${named}`)) {
+    throw new GeneratorError('agents/plugin.json: "types" must name a file in agents/types/');
   }
 }
 
@@ -227,6 +252,7 @@ export function buildPlugin(agentsDir) {
   collectMarkdownDir(agentsDir, 'subagents', ['name', 'description'], out);
   collectMarkdownDir(agentsDir, 'commands', ['description'], out);
   collectHooks(agentsDir, out);
+  collectTypes(agentsDir, meta, out);
   out.set(
     `${PLUGIN_DIR}/.mcp.json`,
     json({ mcpServers: { [MCP_SERVER_NAME]: { command: 'node', args: MCP_SERVER_ARGS } } }),

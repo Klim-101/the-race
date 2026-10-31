@@ -29,6 +29,9 @@ export const TurnSchema = z
 
 /** What a tool says after a turn: enough to carry on, nothing the player has not seen. Full state is run_view. */
 export const RunSummarySchema = z.object({
+  /** The case's title and the language of the run: a HUD that listens to the tools tells one run from the next. */
+  title: z.string(),
+  locale: z.enum(['ru', 'en']),
   turn: z.int().min(0),
   status: z.enum(['active', 'won', 'lost', 'gave-up']),
   endReason: z.string().nullable(),
@@ -36,6 +39,19 @@ export const RunSummarySchema = z.object({
   reputation: z.int(),
   warnings: z.array(z.string()),
   location: z.object({ id: z.string(), name: z.string() }),
+  /** The places the hero knows, as in `run_view`, so a HUD never has to rebuild the map from the exits. */
+  map: z.object({
+    current: z.string(),
+    places: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        visited: z.boolean(),
+        blocked: z.enum(['locked', 'closed']).nullable(),
+      }),
+    ),
+    links: z.array(z.object({ from: z.string(), to: z.string() })),
+  }),
   clueCount: z.int(),
   insightCount: z.int(),
 });
@@ -43,6 +59,8 @@ export const RunSummarySchema = z.object({
 export function summarizeRun(run: DetectiveRunState): z.input<typeof RunSummarySchema> {
   const view = viewRun(run);
   return {
+    title: view.title,
+    locale: view.locale,
     turn: view.turn,
     status: view.status,
     endReason: run.endReason,
@@ -50,6 +68,11 @@ export function summarizeRun(run: DetectiveRunState): z.input<typeof RunSummaryS
     reputation: view.reputation,
     warnings: [...view.warnings],
     location: { id: view.location.id, name: view.location.name },
+    map: {
+      current: view.map.current,
+      places: view.map.places.map((place) => ({ ...place })),
+      links: view.map.links.map((link) => ({ ...link })),
+    },
     clueCount: view.clues.length,
     insightCount: view.insights.length,
   };

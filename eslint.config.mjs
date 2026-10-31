@@ -54,6 +54,11 @@ export default tseslint.config(
       '.claude/worktrees/**',
       // Generated from agents/, which is linted at the source.
       'plugins/the-race/**',
+      // The HUD mod runs in Claude Code's own hooks environment (no DOM, no Node) and is typed against the
+      // `claude-code` API that the engine writes beside a mod it loads, which this repository does not hold.
+      // `claude plugin validate`, `claude plugin test` and the tests in scripts/ cover it instead.
+      'agents/hooks/**/*.{ts,tsx}',
+      'agents/types/**',
     ],
   },
   js.configs.recommended,

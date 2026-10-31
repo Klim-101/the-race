@@ -12,5 +12,6 @@
     "detective",
     "text-adventure",
     "narrator"
-  ]
+  ],
+  "types": "./types/index.d.ts"
 }

@@ -211,6 +211,30 @@ describe('the turn tools', () => {
   });
 });
 
+describe('the summary of a turn', () => {
+  it('carries the known map, the title and the language, the same as run_view, after every kind of turn', async () => {
+    const context = await activeRun();
+    const first = (await call(runView, {}, context)).body as {
+      title: string;
+      locale: string;
+      location: { exits: { id: string }[] };
+    };
+    const exit = first.location.exits[0]?.id ?? '';
+
+    const looked = await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+    const moved = await call(act, { turn: 1, intent: { kind: 'move', locationId: exit } }, context);
+    const after = (await call(runView, {}, context)).body as { map: unknown };
+
+    for (const result of [looked, moved]) {
+      expect(result.body).toMatchObject({ view: { title: first.title, locale: first.locale } });
+    }
+    expect((moved.body.view as { map: unknown }).map).toEqual(after.map);
+    expect((looked.body.view as { map: { current: string } }).map.current).not.toBe(
+      (moved.body.view as { map: { current: string } }).map.current,
+    );
+  });
+});
+
 describe('evidence_board', () => {
   it('writes a page of the public view and returns where it is', async () => {
     const context = await activeRun();

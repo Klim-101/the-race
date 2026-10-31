@@ -131,6 +131,35 @@ describe('allowed', () => {
     ],
     ['Bash in the project', call('Bash', { command: 'npm test && git status' }), LINUX],
     ['Bash listing the parent of the saves', call('Bash', { command: 'ls ~/.local/state' }), LINUX],
+    // A recursive tool counts when it is run, not when its name stands in prose or in a file being written.
+    [
+      'Bash writing a hooks module under a mods folder, with prose about a tree and a dir in it',
+      call('Bash', {
+        command:
+          "cat > ~/.claude/dev-mods/abc/race-hud/hooks/hud-model.ts <<'EOF'\n// Find the dir / the tree of places.\nfind the nearest dir / x\nEOF",
+      }),
+      LINUX,
+    ],
+    [
+      'Bash with a recursive word in an echoed sentence',
+      call('Bash', { command: 'echo "find the place . / x"' }),
+      LINUX,
+    ],
+    [
+      'Bash running a script that mentions a tree in a comment',
+      call('Bash', { command: "node - <<'EOF'\n// the whole tree / the dir\nconsole.log(1)\nEOF" }),
+      LINUX,
+    ],
+    [
+      'PowerShell writing a file from a here-string with prose in it',
+      call('PowerShell', { command: "Set-Content -Path x.md -Value @'\nfind the dir / x\n'@" }),
+      WIN,
+    ],
+    [
+      'Bash listing a mods folder',
+      call('Bash', { command: 'ls ~/.claude/dev-mods/abc/race-hud/hooks' }),
+      LINUX,
+    ],
     ['PowerShell listing the parent', call('Bash', { command: 'Get-ChildItem $env:LOCALAPPDATA' }), WIN],
     [
       'Write of a doc that mentions the folder',
@@ -284,6 +313,22 @@ describe('denied', () => {
     ['Bash find of the parent', call('Bash', { command: 'find ~/.local -name state.json' }), LINUX],
     ['Bash grep -r of the parent', call('Bash', { command: 'grep -r culprit ~/.local/state' }), LINUX],
     ['Bash ls -R of the parent', call('Bash', { command: 'ls -R /home/ann/.local' }), LINUX],
+    // Still denied when it is run, whatever stands before it.
+    ['Bash find of the root', call('Bash', { command: 'find / -name state.json' }), LINUX],
+    ['Bash sudo find of the home', call('Bash', { command: 'sudo find ~ -name state.json' }), LINUX],
+    ['Bash find after a pipe', call('Bash', { command: 'echo x | xargs grep -r culprit /home' }), LINUX],
+    ['Bash find after cd and &&', call('Bash', { command: 'cd /home/ann && find . -name run' }), LINUX],
+    ['Bash find inside sh -c', call('Bash', { command: 'sh -c "find / -name state.json"' }), LINUX],
+    [
+      'Bash find in a script handed to an interpreter',
+      call('Bash', { command: "bash <<'EOF'\nls\nfind / -name state.json\nEOF" }),
+      LINUX,
+    ],
+    [
+      'PowerShell Get-ChildItem -Recurse of the root after a pipe',
+      call('PowerShell', { command: 'echo x; Get-ChildItem -Recurse C:\\' }),
+      WIN,
+    ],
     [
       'Bash Get-ChildItem -Recurse of the parent',
       call('Bash', { command: 'Get-ChildItem -Recurse $env:LOCALAPPDATA' }),

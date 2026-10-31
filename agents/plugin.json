@@ -2,7 +2,10 @@
   "name": "the-race",
   "version": "0.0.0",
   "description": "the RACE: a text roguelike you play in your own words. A deterministic engine owns the dice and the truth; the agent tells the story.",
-  "author": { "name": "The RACE Authors" },
+  "author": {
+    "name": "The RACE Authors"
+  },
   "license": "Apache-2.0",
-  "keywords": ["game", "roguelike", "detective", "text-adventure", "narrator"]
+  "keywords": ["game", "roguelike", "detective", "text-adventure", "narrator"],
+  "types": "./types/index.d.ts"
 }
