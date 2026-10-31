@@ -11,6 +11,7 @@ import {
   endRun,
   endTurn,
   openLinkSizes,
+  recordLink,
   spendTime,
   type DetectiveRunState,
 } from './run-state.js';
@@ -134,7 +135,7 @@ export function deduce(run: DetectiveRunState, input: unknown, rng: Rng): Deduce
     if (!sizes.includes(link.size)) return refuse('wrong-link-size', wrongSizeMessage(sizes));
     return {
       ok: true,
-      run: endTurn(spendTime(run, FAILED_DEDUCTION_MINUTES), rng),
+      run: endTurn(spendTime(recordLink(run, [...link], 'nothing'), FAILED_DEDUCTION_MINUTES), rng),
       outcome: {
         kind: 'deduce',
         result: 'nothing',
@@ -144,7 +145,8 @@ export function deduce(run: DetectiveRunState, input: unknown, rng: Rng): Deduce
     };
   }
   const known = run.insightIds.includes(match.id);
-  const next = endTurn(spendTime(known ? run : addInsight(run, match.id), DEDUCE_MINUTES), rng);
+  const linked = recordLink(run, [...link], known ? 'already-known' : 'insight');
+  const next = endTurn(spendTime(known ? linked : addInsight(linked, match.id), DEDUCE_MINUTES), rng);
   return {
     ok: true,
     run: next,

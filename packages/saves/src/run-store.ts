@@ -110,8 +110,12 @@ function parseRunText(
  * hero, traits, case, seed, locale, setting and inspiration never change during a run, and the dice a run started with are the
  * dice before its first logged turn (or, with no turns, the dice it has now). So the log file needs to hold
  * nothing but the log.
+ *
+ * Playing the log also gives the run's history of the clues. A save made before that history existed holds none,
+ * and must not be refused for it: its history is left out of the comparison, and the caller takes the replayed
+ * one. A save that holds a history is held to it.
  */
-function replaysTo(run: DetectiveRunState, log: RunLog): boolean {
+function replayed(run: DetectiveRunState, log: RunLog): DetectiveRunState | undefined {
   const initial = {
     ...createDetectiveRun({
       hero: run.hero,
@@ -127,9 +131,15 @@ function replaysTo(run: DetectiveRunState, log: RunLog): boolean {
     schemaVersion: run.schemaVersion,
     rulesetVersion: run.rulesetVersion,
   };
-  const replayed = replay(initial, log);
-  return replayed.ok && canonicalJson(replayed.run) === canonicalJson(run);
+  const played = replay(initial, log);
+  if (!played.ok) return undefined;
+  const { finds, shown, links } = run.history;
+  const hasHistory = finds.length + shown.length + links.length > 0;
+  const expected = hasHistory ? played.run : { ...played.run, history: run.history };
+  return canonicalJson(expected) === canonicalJson(run) ? played.run : undefined;
 }
+
+const replaysTo = (run: DetectiveRunState, log: RunLog): boolean => replayed(run, log) !== undefined;
 
 /**
  * Turns the texts of a state file and its log file into a run with its log. A log file that does not exist
@@ -149,10 +159,14 @@ function parsePair(stateText: string, logText: string | undefined, migrations: R
   if (!parsed.success) {
     return { ok: false, reason: 'corrupt', detail: 'The log file does not match the log schema.' };
   }
-  if (!replaysTo(state.run, parsed.data)) {
+  const played = replayed(state.run, parsed.data);
+  if (played === undefined) {
     return { ok: false, reason: 'log-mismatch', detail: 'The log does not replay to the saved state.' };
   }
-  return { ok: true, run: state.run, log: parsed.data };
+  const { finds, shown, links } = state.run.history;
+  const run =
+    finds.length + shown.length + links.length === 0 ? { ...state.run, history: played.history } : state.run;
+  return { ok: true, run, log: parsed.data };
 }
 
 async function readPair(

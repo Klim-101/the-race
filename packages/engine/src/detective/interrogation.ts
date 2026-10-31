@@ -1,6 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { recordShown } from './run-state.js';
 import { actingReveals, sceneSituations } from './trait-reveal.js';
 import { z } from 'zod';
 import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
@@ -167,11 +168,18 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
     ...fallen.map(({ statement }) => said('conceded', statement)),
     ...(secret === null ? [] : [said('secret', secret)]),
   ];
-  const withLies: DetectiveRunState = {
-    ...run,
-    concededLieIds: [...run.concededLieIds, ...fallen.map(({ id }) => id)],
-    statements: [...run.statements, ...statements],
-  };
+  const withLies: DetectiveRunState = recordShown(
+    {
+      ...run,
+      concededLieIds: [...run.concededLieIds, ...fallen.map(({ id }) => id)],
+      statements: [...run.statements, ...statements],
+    },
+    suspect.id,
+    shown.map((clueId) => ({
+      clueId,
+      effect: fallen.some((lie) => lie.brokenBy.includes(clueId)) ? 'breaks-lie' : 'no-effect',
+    })),
+  );
   const strained = result.critical === 'failure' ? strainNerves(withLies) : withLies;
   const next = endTurn(spendTime(changeReputation(strained, reputationChange), minutes), rng);
   const details: CheckDetail[] = [{ subject: { kind: 'suspect', id: suspect.id }, result }];

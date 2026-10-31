@@ -86,6 +86,33 @@ export const InspirationSchema = z.strictObject({
 });
 export type Inspiration = z.infer<typeof InspirationSchema>;
 
+export const SHOWN_EFFECTS = ['breaks-lie', 'no-effect'] as const;
+export type ShownEffect = (typeof SHOWN_EFFECTS)[number];
+export const LINK_RESULTS = ['insight', 'already-known', 'nothing'] as const;
+export type LinkResult = (typeof LINK_RESULTS)[number];
+
+/**
+ * What the hero has done with the clues, in the order it happened. All of it is public: the player did it and
+ * was told the outcome. A link that came to nothing says nothing of how close it was.
+ */
+export const RunHistorySchema = z.object({
+  finds: z.array(z.object({ clueId: EntityIdSchema, locationId: EntityIdSchema, turn: z.int().min(1) })),
+  shown: z.array(
+    z.object({
+      suspectId: EntityIdSchema,
+      clueId: EntityIdSchema,
+      effect: z.enum(SHOWN_EFFECTS),
+      turn: z.int().min(1),
+    }),
+  ),
+  links: z.array(
+    z.object({ clueIds: z.array(EntityIdSchema).min(2), result: z.enum(LINK_RESULTS), turn: z.int().min(1) }),
+  ),
+});
+export type RunHistory = z.infer<typeof RunHistorySchema>;
+
+const emptyHistory = (): RunHistory => ({ finds: [], shown: [], links: [] });
+
 export const DetectiveRunStateSchema = z
   .object({
     ...runBaseShape,
@@ -126,6 +153,8 @@ export const DetectiveRunStateSchema = z
     setting: SettingSchema.nullable().default(null),
     /** What suspects have said at questioning, in the order they said it. Old saves have none. */
     statements: z.array(StatementSchema).default([]),
+    /** What the hero has done with the clues, for the board: where each was found, to whom it was shown, the links tried. */
+    history: RunHistorySchema.default(() => emptyHistory()),
     /** The pattern of news the case grew from, when it grew from one. Old saves have none. */
     inspiration: InspirationSchema.nullable().default(null),
   })
@@ -234,6 +263,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     pendingEffects: [],
     setting: input.setting ?? null,
     statements: [],
+    history: emptyHistory(),
     inspiration: input.inspiration ?? null,
   });
 }
@@ -284,7 +314,49 @@ export function findClue(run: DetectiveRunState, clueId: string): DetectiveRunSt
     clueId,
     run.case.clues.map(({ id }) => id),
   );
-  return { ...run, foundClueIds: addOnce(run.foundClueIds, clueId) };
+  if (run.foundClueIds.includes(clueId)) return run;
+  // The place is the clue's own, public once the clue is found; `requireId` has proved there is one such clue.
+  const found = run.case.clues.flatMap(({ id, locationId }) =>
+    id === clueId ? [{ clueId, locationId, turn: run.turn + 1 }] : [],
+  );
+  return {
+    ...run,
+    foundClueIds: [...run.foundClueIds, clueId],
+    history: { ...run.history, finds: [...run.history.finds, ...found] },
+  };
+}
+
+/** Writes down that clues were shown to a suspect in the turn being played, with what the showing did. */
+export function recordShown(
+  run: DetectiveRunState,
+  suspectId: string,
+  shown: readonly { readonly clueId: string; readonly effect: ShownEffect }[],
+): DetectiveRunState {
+  return {
+    ...run,
+    history: {
+      ...run.history,
+      shown: [
+        ...run.history.shown,
+        ...shown.map(({ clueId, effect }) => ({ suspectId, clueId, effect, turn: run.turn + 1 })),
+      ],
+    },
+  };
+}
+
+/** Writes down that the hero tried to link these clues in the turn being played, and what came of it. */
+export function recordLink(
+  run: DetectiveRunState,
+  clueIds: readonly string[],
+  result: LinkResult,
+): DetectiveRunState {
+  return {
+    ...run,
+    history: {
+      ...run.history,
+      links: [...run.history.links, { clueIds: [...clueIds], result, turn: run.turn + 1 }],
+    },
+  };
 }
 
 export function addInsight(run: DetectiveRunState, deductionId: string): DetectiveRunState {
@@ -437,6 +509,8 @@ export interface DetectiveRunView {
     readonly events: readonly { readonly day: number; readonly text: string }[];
   };
   readonly hero: DetectiveHero;
+  /** Where each clue was found, to whom it was shown and the links tried, in order; the board draws it. */
+  readonly history: RunHistory;
   /** The hero's public character signal: ids only, so the narrator gets a voice and never a number. */
   readonly signal: {
     readonly id: string;
@@ -626,6 +700,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         ),
       ),
     hero: run.hero,
+    history: run.history,
     signal: signalViewOf(run),
     signalEvents: run.signalEvents
       .filter(({ day }) => day === run.clock.day)
