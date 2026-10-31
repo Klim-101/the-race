@@ -8,7 +8,14 @@ import type { CheckDetail, Consequence, Resolution } from './actions.js';
 import { modifierSources } from './condition.js';
 import { EntityIdSchema, type Lie, type Suspect } from './case-schema.js';
 import { suspectPlace } from './random-events.js';
-import { changeReputation, endTurn, spendTime, strainNerves, type DetectiveRunState } from './run-state.js';
+import {
+  changeReputation,
+  endTurn,
+  spendTime,
+  strainNerves,
+  type DetectiveRunState,
+  type Statement,
+} from './run-state.js';
 
 // This file depends on `actions.ts` for types only: `actions.ts` imports the intent schema from here.
 
@@ -141,9 +148,26 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
   if (reputationChange < 0) consequences.push('reputation-lost');
 
   const minutes = INTERROGATE_MINUTES + (result.success ? 0 : FAILED_INTERROGATION_MINUTES);
+  // What the suspect said aloud, in the order they said it: the alibi the first time, then each lie that fell,
+  // then the secret a perfect roll won. The lies that still hold are never written down.
+  const said = (kind: Statement['kind'], text: string): Statement => ({
+    suspectId: suspect.id,
+    day: run.clock.day,
+    kind,
+    text,
+  });
+  const toldAlibi = run.statements.some(
+    ({ suspectId, kind }) => suspectId === suspect.id && kind === 'alibi',
+  );
+  const statements = [
+    ...(toldAlibi ? [] : [said('alibi', suspect.alibi)]),
+    ...fallen.map(({ statement }) => said('conceded', statement)),
+    ...(secret === null ? [] : [said('secret', secret)]),
+  ];
   const withLies: DetectiveRunState = {
     ...run,
     concededLieIds: [...run.concededLieIds, ...fallen.map(({ id }) => id)],
+    statements: [...run.statements, ...statements],
   };
   const strained = result.critical === 'failure' ? strainNerves(withLies) : withLies;
   const next = endTurn(spendTime(changeReputation(strained, reputationChange), minutes), rng);

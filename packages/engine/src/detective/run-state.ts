@@ -59,6 +59,20 @@ export type DrawnEvent = z.infer<typeof DrawnEventSchema>;
  * Everything about one detective run. It holds the secrets of the case and the hero's hidden traits, so
  * it never goes to the narrator or the player as it is: they get `viewRun`.
  */
+export const STATEMENT_KINDS = ['alibi', 'conceded', 'secret'] as const;
+
+/**
+ * A line a suspect said to the hero: their alibi (once), a lie they gave up, or a secret a perfect roll won.
+ * Only what the suspect said aloud; the lies that still hold and the sealed truth are never recorded.
+ */
+export const StatementSchema = z.strictObject({
+  suspectId: EntityIdSchema,
+  day: z.int().min(1),
+  kind: z.enum(STATEMENT_KINDS),
+  text: z.string().min(1),
+});
+export type Statement = z.infer<typeof StatementSchema>;
+
 export const DetectiveRunStateSchema = z
   .object({
     ...runBaseShape,
@@ -97,6 +111,8 @@ export const DetectiveRunStateSchema = z
     pendingEffects: z.array(PendingEffectSchema).default([]),
     /** The country of the mirror world the run is set in, with its climate. Old saves have none. */
     setting: SettingSchema.nullable().default(null),
+    /** What suspects have said at questioning, in the order they said it. Old saves have none. */
+    statements: z.array(StatementSchema).default([]),
   })
   .superRefine((run, context) => {
     if (!isCaseSealIntact(run)) {
@@ -134,6 +150,11 @@ export const DetectiveRunStateSchema = z
     );
     known('garbledClueIds', run.garbledClueIds, new Set(run.case.clues.map(({ id }) => id)));
     known('closedLocationIds', run.closedLocationIds, locationIds);
+    known(
+      'statements',
+      run.statements.map(({ suspectId }) => suspectId),
+      new Set(run.case.suspects.map(({ id }) => id)),
+    );
     known(
       'drawnEvents',
       run.drawnEvents.map(({ eventId }) => eventId),
@@ -195,6 +216,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     supplies: initialSupplies(input.hero.background),
     pendingEffects: [],
     setting: input.setting ?? null,
+    statements: [],
   });
 }
 
@@ -414,12 +436,35 @@ export interface DetectiveRunView {
       readonly blocked: 'locked' | 'closed' | null;
     }[];
   };
+  /**
+   * The places the hero knows, as a graph: every place visited, and every place next to one of them, which
+   * stays a name until the hero goes there. Nothing beyond what the hero has seen is in it.
+   */
+  readonly map: {
+    /** The place the hero is at. */
+    readonly current: string;
+    readonly places: readonly {
+      readonly id: string;
+      readonly name: string;
+      readonly visited: boolean;
+      /** Why the way in is shut right now, as for an exit. */
+      readonly blocked: 'locked' | 'closed' | null;
+    }[];
+    /** Each way between two known places once, with `from` before `to` in the order of `places`. */
+    readonly links: readonly { readonly from: string; readonly to: string }[];
+  };
   readonly suspects: readonly {
     readonly id: string;
     readonly name: string;
     readonly persona: string;
     /** Where the suspect can be found now; `null` when the case ties them to no place (ask anywhere). */
     readonly place: { readonly id: string; readonly name: string } | null;
+    /** What the suspect has said at questioning, in the order they said it. */
+    readonly statements: readonly {
+      readonly day: number;
+      readonly kind: (typeof STATEMENT_KINDS)[number];
+      readonly text: string;
+    }[];
   }[];
   readonly clues: readonly {
     readonly id: string;
@@ -428,7 +473,12 @@ export interface DetectiveRunView {
     /** Read badly: the clue counts as found, but it has to be read again before it is used as proof. */
     readonly garbled: boolean;
   }[];
-  readonly insights: readonly { readonly id: string; readonly insight: string }[];
+  /** Each conclusion with the clues it was drawn from, all of them found. */
+  readonly insights: readonly {
+    readonly id: string;
+    readonly insight: string;
+    readonly clueIds: readonly string[];
+  }[];
 }
 
 function requireLocation(detectiveCase: DetectiveCase, id: string): Location {
@@ -455,6 +505,32 @@ function blockedWay(
 ): 'locked' | 'closed' | null {
   if (isLocationClosed(run, id)) return 'closed';
   return !visited && access.kind === 'clue' && !run.foundClueIds.includes(access.clueId) ? 'locked' : null;
+}
+
+/** The known map: visited places and their neighbours, with the ways between them. See `DetectiveRunView.map`. */
+function viewMap(run: DetectiveRunState): DetectiveRunView['map'] {
+  const { locations } = run.case;
+  const neighbors = buildNeighbors(locations);
+  const known = new Set(run.visitedLocationIds);
+  for (const id of run.visitedLocationIds) for (const next of neighbors.get(id) ?? []) known.add(next);
+  const places = locations
+    .filter(({ id }) => known.has(id))
+    .map(({ id, name, access }) => {
+      const visited = run.visitedLocationIds.includes(id);
+      return { id, name, visited, blocked: blockedWay(run, id, access, visited) };
+    });
+  const linked = (a: string, b: string): boolean =>
+    locations.some(
+      ({ id, connections }) => (id === a && connections.includes(b)) || (id === b && connections.includes(a)),
+    );
+  // A way is known when one end of it has been visited, and is listed once, from the earlier place.
+  const links = places.flatMap((place, index) =>
+    places
+      .slice(index + 1)
+      .filter((other) => linked(place.id, other.id) && (place.visited || other.visited))
+      .map((other) => ({ from: place.id, to: other.id })),
+  );
+  return { current: run.locationId, places, links };
 }
 
 export function viewRun(run: DetectiveRunState): DetectiveRunView {
@@ -494,6 +570,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     revealedTraits: run.traits.filter(({ id }) => run.revealedTraitIds.includes(id)),
     setting: run.setting && { name: run.setting.name[run.locale], climate: run.setting.climate },
     location: { id: location.id, name: location.name, description: location.description, exits },
+    map: viewMap(run),
     suspects: detectiveCase.suspects.map((suspect) => {
       const placeId = suspectPlace(run, suspect);
       const place = placeId === undefined ? undefined : requireLocation(detectiveCase, placeId);
@@ -502,6 +579,9 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         name: suspect.name,
         persona: suspect.persona,
         place: place === undefined ? null : { id: place.id, name: place.name },
+        statements: run.statements
+          .filter(({ suspectId }) => suspectId === suspect.id)
+          .map(({ day, kind, text }) => ({ day, kind, text })),
       };
     }),
     clues: detectiveCase.clues
@@ -514,6 +594,11 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
       })),
     insights: detectiveCase.deductions
       .filter(({ id }) => run.insightIds.includes(id))
-      .map(({ id, insight }) => ({ id, insight })),
+      .map(({ id, insight, clueIds }) => ({
+        id,
+        insight,
+        // Only clues the hero has found: a conclusion never points at something still hidden.
+        clueIds: clueIds.filter((clueId) => run.foundClueIds.includes(clueId)),
+      })),
   };
 }
