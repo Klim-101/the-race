@@ -1,7 +1,8 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { DetectiveRunView } from '@the-race/engine';
+import type { DetectiveRunView, TurnView } from '@the-race/engine';
+import { renderChronicle } from './board-chronicle.js';
 import { renderHero } from './board-hero.js';
 import { renderLinks } from './board-links.js';
 import { renderMap } from './board-map.js';
@@ -11,7 +12,7 @@ import { TAB_TEXT, type TabText } from './tab-text.js';
 
 export { escapeHtml } from './escape-html.js';
 
-const TAB_IDS = ['map', 'suspects', 'clues', 'hero'] as const;
+const TAB_IDS = ['map', 'suspects', 'clues', 'chronicle', 'hero'] as const;
 
 // The tabs need no script: a panel is shown while it is the target of the address, and the first one when
 // none is, so a reload keeps the tab the player was on. A browser without `:has` shows every panel in turn.
@@ -128,10 +129,11 @@ ${insights}`;
 
 /**
  * The player's evidence board: one self-contained page (no script, no outside resource) made from the public
- * view of the run, so it can hold nothing the narrator may not know. Four tabs switched by the address alone:
- * the known map, the suspects with what they said, the clues with how they hang together, and the hero.
+ * view of the run and the turns the player took, so it can hold nothing the narrator may not know. Five tabs
+ * switched by the address alone: the known map, the suspects with what they said, the clues with how they hang
+ * together, the chronicle, and the hero.
  */
-export function renderEvidenceBoard(view: DetectiveRunView): string {
+export function renderEvidenceBoard(view: DetectiveRunView, turns: readonly TurnView[] = []): string {
   const board = BOARD_TEXT[view.locale];
   const text = TAB_TEXT[view.locale];
   const e = escapeHtml;
@@ -170,6 +172,10 @@ ${renderSuspects(view, board, text)}
 </section>
 <section class="tab" id="clues">
 ${renderClues(view, board, text)}
+</section>
+<section class="tab" id="chronicle">
+<h2>${e(text.tabs.chronicle)}</h2>
+${renderChronicle(view, turns, text)}
 </section>
 <section class="tab" id="hero">
 <h2>${e(text.tabs.hero)}</h2>

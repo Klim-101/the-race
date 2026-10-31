@@ -1,5 +1,21 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`the chronicle tab > tells each kind of turn in the player's own terms, newest first, with the day and the hour 1`] = `
+"
+<h2>Chronicle</h2>
+<div class="card">
+<p>Now: Day 2 / 3, 09:05</p>
+<p>Working time left: <strong>10 h 0 min</strong></p>
+</div>
+<h3>What has happened in the world</h3>
+<p class="empty">Nothing yet. The world is holding its breath.</p>
+<h3>Still open</h3>
+<ul><li>Locked: Cellar</li><li>Closed for now: Chapel</li><li>Not yet questioned: Anna</li><li>Not yet questioned: Boris</li><li>Not yet questioned: Cora</li></ul>
+<h3>Latest turns</h3>
+<ul><li><span class="tag">Day 2 · 10:00</span> Made the accusation</li><li><span class="tag">Day 2 · 09:50</span> Took coffee</li><li><span class="tag">Day 2 · 09:40</span> Read again: A rusty key under the counter.</li><li><span class="tag">Day 2 · 09:30</span> Linked clues that led nowhere</li><li><span class="tag">Day 2 · 09:20</span> Reached a conclusion that was already drawn</li><li><span class="tag">Day 2 · 09:10</span> Concluded: The baker hid the flour &lt;b&gt;.</li><li><span class="tag">Day 1 · 18:20</span> Questioned Anna, with pressure, showing 2 clues</li><li><span class="tag">Day 1 · 11:40</span> Searched the place: found 1</li><li><span class="tag">Day 1 · 08:20</span> Rested for the night</li><li><span class="tag">Day 1 · 08:10</span> Looked around: found 3</li><li><span class="tag">Day 1 · 08:00</span> Went to Stall</li><li><span class="tag">Day 1 · 07:50</span> Tried to get into Cellar and could not</li></ul>
+"
+`;
+
 exports[`the clues and links tab > joins each conclusion to the clues it was drawn from and each clue to the place it was found 1`] = `
 "
 <h2>How it hangs together</h2>
