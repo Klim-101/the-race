@@ -16,8 +16,8 @@ import {
 const DIR = 'pending-save';
 
 describe('pending run', () => {
-  it('picks the same theme for the same seed, from the list, and both themes occur', () => {
-    const themes = new Set(Array.from({ length: 40 }, (_, index) => themeOfSeed(`seed-${String(index)}`)));
+  it('picks the same theme for the same seed, from the list, and every theme occurs', () => {
+    const themes = new Set(Array.from({ length: 400 }, (_, index) => themeOfSeed(`seed-${String(index)}`)));
     expect([...themes].sort()).toEqual([...PENDING_THEMES].sort());
     expect(themeOfSeed('x')).toBe(themeOfSeed('x'));
   });

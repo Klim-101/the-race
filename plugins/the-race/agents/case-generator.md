@@ -48,93 +48,92 @@ Top level: `schemaVersion` 1, `locale`, `crimeType` (financial, cyber, political
 - **Every id is unique and every reference resolves.** One id names one thing.
 - No real names, the right script for the language, text of the stated language only.
 
-## Compact example (shape only, shortened from a curious-theft case)
+## The shape of a case (placeholders only)
+
+This skeleton shows the fields and how they refer to each other, nothing else. Every id, name and text below is a placeholder: **the story is yours**, built from the brief's `theme`, `tone`, seed, setting and the mirror world. Do not reuse a placeholder id, and do not carry over any plot, place, object or person that you may have seen in a sample or a test; invent places, objects and people that suit this theme and this country.
 
 ```json
 {
   "schemaVersion": 1,
   "locale": "en",
-  "crimeType": "curious-theft",
-  "tone": "absurd",
+  "crimeType": "<the brief's theme>",
+  "tone": "<the brief's tone>",
   "title": "...",
   "premise": "...",
-  "startLocationId": "museum-hall",
+  "startLocationId": "location-1",
   "locations": [
     {
-      "id": "museum-hall",
+      "id": "location-1",
       "name": "...",
       "description": "...",
-      "connections": ["courtyard", "archive"],
+      "connections": ["location-2"],
       "access": { "kind": "open" }
     },
     {
-      "id": "archive",
+      "id": "location-2",
       "name": "...",
       "description": "...",
-      "connections": ["museum-hall"],
-      "access": { "kind": "clue", "clueId": "archive-key" }
+      "connections": ["location-1"],
+      "access": { "kind": "clue", "clueId": "clue-1" }
     }
   ],
   "clues": [
     {
-      "id": "archive-key",
-      "locationId": "courtyard",
+      "id": "clue-1",
+      "locationId": "location-1",
       "description": "...",
       "discovery": null,
       "pointsTo": [],
       "isRedHerring": false
     },
     {
-      "id": "feather-trail",
-      "locationId": "museum-hall",
+      "id": "clue-2",
+      "locationId": "location-1",
       "description": "...",
       "discovery": { "skill": "perception", "difficulty": 9 },
-      "pointsTo": ["postmaster"],
+      "pointsTo": ["suspect-1"],
       "isRedHerring": false
     },
     {
-      "id": "ransom-note",
-      "locationId": "museum-hall",
+      "id": "clue-3",
+      "locationId": "location-1",
       "description": "...",
       "discovery": null,
-      "pointsTo": ["caterer"],
+      "pointsTo": ["suspect-2"],
       "isRedHerring": true
     }
   ],
   "suspects": [
     {
-      "id": "postmaster",
-      "locationId": "post-office",
+      "id": "suspect-1",
+      "locationId": "location-2",
       "name": "...",
       "persona": "...",
       "secret": "...",
       "alibi": "...",
-      "lies": [{ "id": "postmaster-parcels", "statement": "...", "brokenBy": ["door-log", "hatbox-witness"] }]
+      "lies": [{ "id": "lie-1", "statement": "...", "brokenBy": ["clue-2", "clue-4"] }]
     }
   ],
-  "deductions": [
-    { "id": "motive-love-letters", "clueIds": ["stand-hollow", "letters-rumour"], "insight": "..." }
-  ],
+  "deductions": [{ "id": "deduction-1", "clueIds": ["clue-2", "clue-4"], "insight": "..." }],
   "truth": {
-    "culpritId": "postmaster",
+    "culpritId": "suspect-1",
     "motive": "...",
     "method": "...",
-    "crimeLocationId": "museum-hall",
+    "crimeLocationId": "location-1",
     "crimeAtMinute": 130,
-    "timeline": [{ "atMinute": 130, "actorId": "postmaster", "locationId": "museum-hall", "action": "..." }]
+    "timeline": [{ "atMinute": 130, "actorId": "suspect-1", "locationId": "location-1", "action": "..." }]
   },
   "solution": {
-    "motiveDeductionId": "motive-love-letters",
+    "motiveDeductionId": "deduction-1",
     "evidenceChains": [
-      ["feather-trail", "ink-smudge", "stand-hollow"],
-      ["hatbox-witness", "letters-rumour"],
-      ["door-log", "apprentice-confession"]
+      ["clue-2", "clue-4"],
+      ["clue-5", "clue-6"]
     ]
   },
   "clock": { "days": 3, "worldEvents": [{ "day": 2, "description": "..." }] },
   "randomEvents": [
     {
-      "id": "pigeon-parade",
+      "id": "event-1",
       "description": "...",
       "weight": 3,
       "fromDay": 1,
@@ -148,4 +147,4 @@ Top level: `schemaVersion` 1, `locale`, `crimeType` (financial, cyber, political
 }
 ```
 
-Notes from the example: the culprit has two or three independent routes (physical trace, witness, a technical log); every innocent suspect keeps a secret that explains their suspicious behaviour; the red herrings are tempting but contradicted elsewhere; the motive is human and specific. Build your own case from the brief's theme, not this one.
+What a good case has, whatever its story: the culprit has two or three independent routes (a physical trace, a witness, a record or a technical log); every innocent suspect keeps a secret that explains their suspicious behaviour; the red herrings are tempting but contradicted elsewhere; the motive is human and specific; the places, objects and people belong to this theme and this country, not to a stock detective story.
