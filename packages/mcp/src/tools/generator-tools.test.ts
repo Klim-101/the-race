@@ -503,12 +503,91 @@ describe('the mirror world dictionary', () => {
     mirror: { ru: 'Вальдмарк', en: 'Valdmark' },
   };
   const WORLD_FILE = join(SAVE_DIR, 'world.json');
+  const NORWAY = { kind: 'country', real: ['Norway', 'Норвегия'], region: 'north' };
+
+  it('names an entity itself when no mirror is given, the same way for every player', async () => {
+    const first = await (await start(null)).call('world_propose', NORWAY);
+    const second = await (await start(null)).call('world_propose', NORWAY);
+
+    expect(first.body).toMatchObject({ accepted: true });
+    expect(first.body.mirror).toEqual(second.body.mirror);
+    const { en, ru } = first.body.mirror as { en: string; ru: string };
+    expect(en).toMatch(/(mark|heim|gard|vik)$/);
+    expect(ru).toMatch(/^[А-ЯЁ][а-яё]+$/);
+    expect(first.body.id).toBe(en.toLowerCase());
+  });
+
+  it("never gives two entities one name, and shows the engine's names with the others", async () => {
+    const { call } = await start(null);
+    await call('world_propose', RUSSIA);
+    const second = await call('world_propose', NORWAY);
+
+    const view = await call('world_view', { locale: 'en' });
+
+    expect(second.body).toMatchObject({ accepted: true });
+    const names = (view.body.entries as { name: string }[]).map(({ name }) => name);
+    expect(names).toHaveLength(2);
+    expect(new Set(names).size).toBe(2);
+  });
+
+  it('names an organisation as a brand by default and a union when asked', async () => {
+    const { call } = await start(null);
+    const brand = await call('world_propose', { kind: 'organisation', real: ['Gazprom'] });
+    const union = await call('world_propose', {
+      kind: 'organisation',
+      real: ['Eurasian Union'],
+      style: 'union',
+    });
+
+    expect((brand.body.mirror as { en: string }).en).toMatch(/(tek|ron|ix|ora|ent|ium)$/);
+    expect((union.body.mirror as { en: string }).en).toMatch(/^\w+ \w+$/);
+  });
+
+  it('does not name a role, but takes one that is named by hand', async () => {
+    const { call } = await start(null);
+    const role = { kind: 'role', real: ['central bank governor'] };
+
+    const refused = await call('world_propose', role);
+    const accepted = await call('world_propose', { ...role, mirror: { ru: 'Хранитель', en: 'Warden' } });
+
+    expect(refused.body).toMatchObject({ accepted: false, issues: [{ code: 'mirror-required' }] });
+    expect(accepted.body).toMatchObject({ accepted: true, id: 'warden' });
+  });
+
+  it('says so when every name that could be made is a real one', async () => {
+    const { call } = await start(null);
+    const adjectives = [
+      'Northern',
+      'Eastern',
+      'Southern',
+      'Western',
+      'Amber',
+      'Silver',
+      'Iron',
+      'Coastal',
+      'Free',
+    ];
+    const nouns = ['Union', 'League', 'Accord', 'Alliance', 'Compact', 'Commonwealth'];
+
+    const refused = await call('world_propose', {
+      kind: 'organisation',
+      real: ['Some Pact'],
+      style: 'union',
+      knownRealNames: adjectives.flatMap((adjective) => nouns.map((noun) => `${adjective} ${noun}`)),
+    });
+
+    expect(refused.body).toMatchObject({ accepted: false, issues: [{ code: 'no-name' }] });
+  });
 
   it('takes a proposal once, keeps it and shows only the mirror side', async () => {
     const { fs, call } = await start(null);
 
     const accepted = await call('world_propose', RUSSIA);
-    expect(accepted.body).toEqual({ accepted: true, id: 'valdmark' });
+    expect(accepted.body).toEqual({
+      accepted: true,
+      id: 'valdmark',
+      mirror: { ru: 'Вальдмарк', en: 'Valdmark' },
+    });
     expect(JSON.parse(fs.files.get(WORLD_FILE) ?? '{}')).toMatchObject({ entries: [{ id: 'valdmark' }] });
 
     const again = await call('world_propose', { ...RUSSIA, mirror: { ru: 'Другой', en: 'Other' } });
