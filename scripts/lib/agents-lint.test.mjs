@@ -26,6 +26,7 @@ const NARRATOR_TOOLS = [
   'evidence_board',
 ];
 const GENERATOR_TOOLS = ['generator_brief', 'scenario_submit'];
+const EXTRACTOR_TOOLS = ['news_brief', 'seeds_submit'];
 const NON_MCP_TOOLS_OF_NARRATOR = ['Agent', 'AskUserQuestion'];
 
 function walk(dir) {
@@ -59,6 +60,7 @@ const subagentFiles = files.filter((path) => /[\\/]subagents[\\/][^\\/]+\.md$/.t
 const commandFiles = files.filter((path) => /[\\/]commands[\\/][^\\/]+\.md$/.test(path));
 const narratorPath = join(AGENTS, 'skills', 'play-the-race', 'SKILL.md');
 const generatorPath = join(AGENTS, 'subagents', 'case-generator.md');
+const extractorPath = join(AGENTS, 'subagents', 'seed-extractor.md');
 
 const toolsMentioned = (text) => [...text.matchAll(/mcp__[a-z0-9-]+__[a-z_]+/g)].map(([tool]) => tool);
 const name = (path) => relative(AGENTS, path).replaceAll('\\', '/');
@@ -109,7 +111,7 @@ describe('tools', () => {
   it.each([narratorPath, ...commandFiles])('%s mentions no tool outside the narrator contract', (path) => {
     const mentioned = toolsMentioned(read(path));
     for (const tool of mentioned) expect(allowedForNarrator.has(tool), `${name(path)}: ${tool}`).toBe(true);
-    expect(read(path)).not.toMatch(/generator_brief|scenario_submit/);
+    expect(read(path)).not.toMatch(/generator_brief|scenario_submit|news_brief|seeds_submit/);
   });
 
   it('the narrator pre-approves only contract tools, the subagent launcher and the poll', () => {
@@ -125,6 +127,25 @@ describe('tools', () => {
     const { data } = parseFrontmatter(read(generatorPath));
     const listed = data.tools.split(',').map((tool) => tool.trim());
     expect(listed.toSorted()).toEqual(GENERATOR_TOOLS.map((tool) => PREFIX + tool).toSorted());
+  });
+
+  it('the seed extractor may use exactly the two extractor tools', () => {
+    const { data } = parseFrontmatter(read(extractorPath));
+    const listed = data.tools.split(',').map((tool) => tool.trim());
+    expect(listed.toSorted()).toEqual(EXTRACTOR_TOOLS.map((tool) => PREFIX + tool).toSorted());
+  });
+
+  it('the seed extractor is told to answer with a bare verdict and to cite headlines by id', () => {
+    const body = read(extractorPath);
+    expect(body).toContain('`ready`');
+    expect(body).toContain('`failed: <short reason>`');
+    expect(body).toMatch(/by id, never by text/);
+  });
+
+  it('the narrator starts the seed extractor before the case generator', () => {
+    const body = read(narratorPath);
+    expect(body).toContain('the-race:seed-extractor');
+    expect(body.indexOf('the-race:seed-extractor')).toBeLessThan(body.indexOf('the-race:case-generator'));
   });
 
   it('the case generator is told to answer with a bare verdict', () => {
