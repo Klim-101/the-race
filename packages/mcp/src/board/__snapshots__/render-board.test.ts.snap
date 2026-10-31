@@ -44,6 +44,8 @@ exports[`the hero tab > shows the detective, how they hold up and what they carr
 <div class="card">
 <p><strong>Mira</strong></p>
 <p class="tag">Was once: a police officer · Character: burnt out</p>
+<p>Gift: Nothing left to lose: a blunder no longer frays the nerves.</p>
+<p>Cost: Never fully rested, and people are harder to win over.</p>
 <p>Skills: perception: 4, reasoning: 3</p>
 </div>
 <h3>Condition</h3>

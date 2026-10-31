@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
 import { collectModifier } from '../modifiers.js';
+import { feltModifier, feltShield } from '../signals.js';
 import type { CheckDetail, Consequence, Resolution } from './actions.js';
 import { modifierSources } from './condition.js';
 import { EntityIdSchema, type Lie, type Suspect } from './case-schema.js';
@@ -11,6 +12,7 @@ import { suspectPlace } from './random-events.js';
 import {
   changeReputation,
   endTurn,
+  signalOfRun,
   spendTime,
   strainNerves,
   type DetectiveRunState,
@@ -172,10 +174,17 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
   const strained = result.critical === 'failure' ? strainNerves(withLies) : withLies;
   const next = endTurn(spendTime(changeReputation(strained, reputationChange), minutes), rng);
   const details: CheckDetail[] = [{ subject: { kind: 'suspect', id: suspect.id }, result }];
+  // What the signal did: the gift or cost on the roll, and the nerves it spared on a blunder.
+  const signal = signalOfRun(run);
+  const felt = [
+    ...feltModifier(signal, situations, rules.skill),
+    ...(result.critical === 'failure' ? feltShield(signal, 'nerves', 'failure') : []),
+  ];
 
   return {
     ok: true,
     run: next,
+    felt,
     outcome: {
       kind: 'interrogate',
       suspectId: suspect.id,

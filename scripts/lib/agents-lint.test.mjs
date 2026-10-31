@@ -325,10 +325,26 @@ describe('the events of a turn', () => {
   it('has the narrator tell them as a scene, from the result of the turn', () => {
     expect(skill).toMatch(/`events` is not empty[^.]*short scene/);
     expect(outcomes).toContain('## Events of the turn');
-    expect(outcomes).toMatch(/`\{ outcome, events, view \}`/);
+    expect(outcomes).toMatch(/`\{ outcome, events, felt, view \}`/);
   });
 
   it('has the generator bring a pool of events, which the engine requires', () => {
     expect(generator).toMatch(/\*\*randomEvents\*\* \(3 to 8, \*\*required\*\*/);
+  });
+});
+
+describe('the signal at work', () => {
+  const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+  const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));
+
+  it('has the narrator show the gift and the cost of the signal when the turn result says they worked', () => {
+    expect(skill).toMatch(/`felt` is not empty, one clause/);
+    expect(outcomes).toContain('## The signal at work');
+    expect(outcomes).toMatch(/`\{ outcome, events, felt, view \}`/);
+    for (const effect of ['helped', 'hindered', 'shielded']) expect(outcomes).toContain(`\`${effect}\``);
+  });
+
+  it('keeps numbers and skill names out of the telling', () => {
+    expect(outcomes).toMatch(/never as a number or a skill name/);
   });
 });

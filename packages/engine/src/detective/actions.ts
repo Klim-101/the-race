@@ -6,6 +6,7 @@ import { assertNever } from '../assert-never.js';
 import { endReasonOfMeters } from '../meters.js';
 import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
 import { collectModifier } from '../modifiers.js';
+import { distinctFelt, feltModifier, feltShield, type SignalFelt } from '../signals.js';
 import { hasAutoDiscover, type TraitTrigger } from '../traits.js';
 import {
   EntityIdSchema,
@@ -28,6 +29,7 @@ import {
   findClue,
   markSearched,
   moveTo,
+  signalOfRun,
   spendTime,
   strainNerves,
   type DetectiveRunState,
@@ -147,6 +149,8 @@ export type Resolution =
       readonly details: readonly CheckDetail[];
       /** Set when the turn ended in a night: what the night did, for the engine's log. */
       readonly night?: NightReport;
+      /** What the hero's signal did in this turn, when it did anything; told to the player, not logged. */
+      readonly felt?: readonly SignalFelt[];
     }
   | { readonly ok: false; readonly refusal: Refusal };
 
@@ -154,19 +158,20 @@ function refuse(code: RefusalCode, message: string): Resolution {
   return { ok: false, refusal: { code, message } };
 }
 
-/** The hero's own roll for a check, with the modifier their traits give in the scene. */
+/** The hero's own roll for a check, with the modifier their traits give in the scene, and what the signal added. */
 function roll(
   run: DetectiveRunState,
   rng: Rng,
   check: SkillCheck,
   situations: readonly TraitTrigger[],
-): SkillCheckResult {
-  return rollCheck(
+): { result: SkillCheckResult; felt: SignalFelt[] } {
+  const result = rollCheck(
     rng,
     run.hero.skills,
     check,
     collectModifier(modifierSources(run), check.skill, situations),
   );
+  return { result, felt: feltModifier(signalOfRun(run), situations, check.skill) };
 }
 
 /** Time spent, reputation lost for a critical failure, and the turn counted with the state of the dice. */
@@ -175,14 +180,16 @@ function settle(
   rng: Rng,
   minutes: number,
   results: readonly SkillCheckResult[],
-): { run: DetectiveRunState; consequences: Consequence[] } {
+): { run: DetectiveRunState; consequences: Consequence[]; felt: SignalFelt[] } {
   const consequences: Consequence[] = [];
+  const felt: SignalFelt[] = [];
   let next = run;
   if (results.some((result) => result.critical === 'failure')) {
     next = strainNerves(changeReputation(next, -CRITICAL_FAILURE_REPUTATION));
     consequences.push('reputation-lost');
+    felt.push(...feltShield(signalOfRun(run), 'nerves', 'failure'));
   }
-  return { run: endTurn(spendTime(next, minutes), rng), consequences };
+  return { run: endTurn(spendTime(next, minutes), rng), consequences, felt };
 }
 
 function locationById(detectiveCase: DetectiveCase, id: string): Location {
@@ -218,6 +225,7 @@ function resolveSearch(run: DetectiveRunState, rng: Rng): Resolution {
   const hidden = hiddenClues(run, location.id);
   const details: CheckDetail[] = [];
   const results: SkillCheckResult[] = [];
+  const felt: SignalFelt[] = [];
   const found: Clue[] = [];
 
   for (const clue of hidden) {
@@ -229,7 +237,8 @@ function resolveSearch(run: DetectiveRunState, rng: Rng): Resolution {
       details.push({ subject, result: 'auto' });
       continue;
     }
-    const result = roll(run, rng, clue.discovery, situations);
+    const { result, felt: moved } = roll(run, rng, clue.discovery, situations);
+    felt.push(...moved);
     results.push(result);
     details.push({ subject, result });
     if (result.success) found.push(clue);
@@ -246,6 +255,7 @@ function resolveSearch(run: DetectiveRunState, rng: Rng): Resolution {
     run: settled.run,
     outcome: { kind: 'search', foundClueIds: found.map(({ id }) => id), minutes, consequences },
     details,
+    felt: distinctFelt([...felt, ...settled.felt]),
   };
 }
 
@@ -270,6 +280,7 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
   const visited = run.visitedLocationIds.includes(locationId);
   const details: CheckDetail[] = [];
   const results: SkillCheckResult[] = [];
+  const felt: SignalFelt[] = [];
   let entered = true;
 
   if (!visited) {
@@ -282,7 +293,8 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
         }
         break;
       case 'skill': {
-        const result = roll(run, rng, access.check, destination.situations);
+        const { result, felt: moved } = roll(run, rng, access.check, destination.situations);
+        felt.push(...moved);
         results.push(result);
         details.push({ subject: { kind: 'location', id: locationId }, result });
         entered = result.success;
@@ -303,6 +315,7 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
     run: settled.run,
     outcome: { kind: 'move', from: run.locationId, to: locationId, entered, minutes, consequences },
     details,
+    felt: distinctFelt([...felt, ...settled.felt]),
   };
 }
 

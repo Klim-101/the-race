@@ -138,6 +138,37 @@ export function signalModifier(
   return total;
 }
 
+/**
+ * What the player may be told that the signal did in a turn: a check it moved (a gift when the amount is
+ * above zero, a cost when it is below), or a loss it absorbed. Public data of the hero: it names the signal's
+ * own effect and no hidden trait.
+ */
+export type SignalFelt =
+  | { readonly kind: 'modifier'; readonly skill: string; readonly amount: number }
+  | { readonly kind: 'shield'; readonly meter: string };
+
+/** What the signal added to a check of `skill` in these situations; nothing when its modifier is zero. */
+export function feltModifier(
+  signal: Signal | undefined,
+  situations: readonly TraitTrigger[],
+  skill: string,
+): SignalFelt[] {
+  const amount = signalModifier(signal, situations, skill);
+  return amount === 0 ? [] : [{ kind: 'modifier', skill, amount }];
+}
+
+/** The loss of the meter, for the reason, that the signal absorbed; nothing when it absorbs none. */
+export function feltShield(signal: Signal | undefined, meter: string, reason: string): SignalFelt[] {
+  return signalIgnores(signal, meter, reason) ? [{ kind: 'shield', meter }] : [];
+}
+
+/** The same effect once, in the order it was first felt. */
+export function distinctFelt(felt: readonly SignalFelt[]): SignalFelt[] {
+  return felt.filter(
+    (item, at) => felt.findIndex((other) => JSON.stringify(other) === JSON.stringify(item)) === at,
+  );
+}
+
 /** Whether the signal makes the hero ignore losses of the meter for the reason. */
 export function signalIgnores(signal: Signal | undefined, meter: string, reason: string): boolean {
   return (signal?.meters ?? []).some(
