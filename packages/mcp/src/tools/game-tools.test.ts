@@ -410,3 +410,70 @@ describe('a case without a pool of events', () => {
     expect(turn).toBeGreaterThan(0);
   });
 });
+
+describe('what the character signal did in a turn', () => {
+  async function talkTo(context: Awaited<ReturnType<typeof activeRun>>, approach: 'social' | 'pressure') {
+    const view = (await call(runView, {}, context)).body as {
+      turn: number;
+      location: { id: string };
+      suspects: { id: string; place: { id: string } | null }[];
+    };
+    const suspect = view.suspects.find(({ place }) => place === null || place.id === view.location.id);
+    if (!suspect) throw new Error('The sample case has a suspect at the start.');
+    return call(question, { turn: view.turn, suspectId: suspect.id, approach, clueIds: [] }, context);
+  }
+
+  it('is told in words: in love helped a social talk, and nothing for the other approach', async () => {
+    const helped = await talkTo(await activeRun(), 'social');
+    const plain = await talkTo(await activeRun(), 'pressure');
+
+    expect(helped.body.felt).toEqual([{ signal: 'in-love', effect: 'helped', skill: 'social' }]);
+    expect(plain.body.felt).toEqual([]);
+    expect(JSON.stringify(helped.body.felt)).not.toMatch(/\d/);
+  });
+
+  it('is an empty list for a hero without a signal, and for a turn with no roll', async () => {
+    const context = gameContext();
+    await call(runNew, { locale: 'en', seed: 'no-signal' }, context);
+    await call(
+      heroCreate,
+      Object.fromEntries(Object.entries(HERO_CHOICES).filter(([key]) => key !== 'signalId')),
+      context,
+    );
+    await installCase(context);
+
+    expect((await talkTo(context, 'social')).body.felt).toEqual([]);
+    const look = await call(act, { turn: 1, intent: { kind: 'look' } }, context);
+    expect(look.body.felt).toEqual([]);
+  });
+});
+
+describe('the cost and the shield of a signal in a turn', () => {
+  it('burnt out hinders a social talk always, and shields the nerves on a blunder', async () => {
+    const effects = new Set<string>();
+    for (let index = 0; index < 120 && !effects.has('shielded'); index += 1) {
+      const context = gameContext();
+      await call(runNew, { locale: 'en', seed: `burnt-${String(index)}` }, context);
+      await call(heroCreate, { ...HERO_CHOICES, signalId: 'burnt-out' }, context);
+      await installCase(context);
+      const view = (await call(runView, {}, context)).body as {
+        suspects: { id: string; place: { id: string } | null }[];
+        location: { id: string };
+      };
+      const suspect = view.suspects.find(({ place }) => place === null || place.id === view.location.id);
+      const result = await call(
+        question,
+        { turn: 0, suspectId: suspect?.id ?? '', approach: 'social', clueIds: [] },
+        context,
+      );
+      const felt = result.body.felt as { signal: string; effect: string; skill?: string; meter?: string }[];
+
+      expect(felt).toContainEqual({ signal: 'burnt-out', effect: 'hindered', skill: 'social' });
+      for (const { effect, meter } of felt) {
+        effects.add(effect);
+        if (effect === 'shielded') expect(meter).toBe('nerves');
+      }
+    }
+    expect([...effects].toSorted()).toEqual(['hindered', 'shielded']);
+  });
+});

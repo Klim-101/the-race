@@ -84,10 +84,18 @@ export function renderHero(view: DetectiveRunView, board: BoardText, text: TabTe
       ? `<p class="empty">${e(t.noTraits)}</p>`
       : list(view.revealedTraits.map(({ id }) => e(named(t.traitNames, id))));
 
+  const note = view.signal === null ? undefined : t.signalNotes[view.signal.id];
+  const signalNote =
+    note === undefined
+      ? ''
+      : `<p>${e(t.gift)}: ${e(note.gift)}</p>
+<p>${e(t.cost)}: ${e(note.cost)}</p>
+`;
+
   return `<div class="card">
 <p><strong>${e(view.hero.name)}</strong></p>
 <p class="tag">${e(t.background)}: ${e(named(t.backgrounds, view.hero.background))}${view.signal === null ? '' : ` · ${e(t.signal)}: ${e(named(t.signals, view.signal.id))}`}</p>
-<p>${e(t.skills)}: ${skills.join(', ')}</p>
+${signalNote}<p>${e(t.skills)}: ${skills.join(', ')}</p>
 </div>
 <h3>${e(t.condition)}</h3>
 <div class="card">

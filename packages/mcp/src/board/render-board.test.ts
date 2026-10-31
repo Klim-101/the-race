@@ -731,3 +731,26 @@ describe('what the case grew from', () => {
     expect(chronicle({ inspiration: null })).toContain('feeds gave no seed');
   });
 });
+
+describe('the gift and the cost of a signal on the hero tab', () => {
+  const hero = (view: Partial<View>) => tab(renderEvidenceBoard(viewOf(view)), 'hero');
+
+  it.each(['in-love', 'burnt-out', 'feeling-low'])('are told in words for %s, in both languages', (id) => {
+    const signal = { id, voice: 'x', gift: 'x', cost: 'y' };
+
+    const en = hero({ signal });
+    const ru = hero({ signal, locale: 'ru' });
+
+    expect(en).toMatch(/Gift: [A-Z]/);
+    expect(en).toMatch(/Cost: [A-Z]/);
+    expect(ru).toMatch(/Дар: [А-Я]/);
+    expect(ru).toMatch(/Цена: [А-Я]/);
+    // Words, not numbers and not the engine's own ids of the gift.
+    expect(en).not.toContain('someone-to-come-back-to');
+  });
+
+  it('are left out for a hero without a signal and for a signal the board has no words for', () => {
+    expect(hero({ signal: null })).not.toContain('Gift:');
+    expect(hero({ signal: { id: 'unknown-mood', voice: 'x', gift: 'x', cost: 'y' } })).not.toContain('Gift:');
+  });
+});

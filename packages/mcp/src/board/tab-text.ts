@@ -100,6 +100,10 @@ export interface TabText {
     readonly hidden: string;
     readonly backgrounds: Readonly<Record<string, string>>;
     readonly signals: Readonly<Record<string, string>>;
+    /** The gift and the cost of each signal, in words, and the labels of the two. */
+    readonly gift: string;
+    readonly cost: string;
+    readonly signalNotes: Readonly<Record<string, { readonly gift: string; readonly cost: string }>>;
     readonly skillNames: Readonly<Record<string, string>>;
     readonly conditionNames: Readonly<Record<string, string>>;
     readonly gear: Readonly<Record<string, string>>;
@@ -222,6 +226,22 @@ export const TAB_TEXT: Record<Locale, TabText> = {
         analyst: 'an analyst',
       },
       signals: { 'in-love': 'in love', 'burnt-out': 'burnt out', 'feeling-low': 'feeling low' },
+      gift: 'Gift',
+      cost: 'Cost',
+      signalNotes: {
+        'in-love': {
+          gift: 'Someone to come back to: a talk goes a little easier.',
+          cost: 'A bad word hurts more.',
+        },
+        'burnt-out': {
+          gift: 'Nothing left to lose: a blunder no longer frays the nerves.',
+          cost: 'Never fully rested, and people are harder to win over.',
+        },
+        'feeling-low': {
+          gift: 'Brooding sees more: reasoning comes easier at night.',
+          cost: 'Dull senses: details are easier to miss.',
+        },
+      },
       skillNames: {
         perception: 'perception',
         reasoning: 'reasoning',
@@ -370,6 +390,22 @@ export const TAB_TEXT: Record<Locale, TabText> = {
         analyst: 'аналитик',
       },
       signals: { 'in-love': 'влюблён', 'burnt-out': 'выгорел', 'feeling-low': 'на нуле' },
+      gift: 'Дар',
+      cost: 'Цена',
+      signalNotes: {
+        'in-love': {
+          gift: 'Есть к кому возвращаться: разговор идёт чуть легче.',
+          cost: 'Плохое слово ранит сильнее.',
+        },
+        'burnt-out': {
+          gift: 'Терять нечего: промах больше не треплет нервы.',
+          cost: 'Не отдыхает до конца, а людей разговорить труднее.',
+        },
+        'feeling-low': {
+          gift: 'В раздумьях замечает больше: ночью лучше думается.',
+          cost: 'Чувства притуплены: детали проще упустить.',
+        },
+      },
       skillNames: {
         perception: 'внимательность',
         reasoning: 'логика',

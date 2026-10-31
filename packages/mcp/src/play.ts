@@ -8,6 +8,7 @@ import {
   viewRun,
   type DetectiveRunState,
   type RunLog,
+  type SignalFelt,
 } from '@the-race/engine';
 import { loadRun, saveRun, type LoadFailureReason } from '@the-race/saves';
 import { z } from 'zod';
@@ -85,10 +86,23 @@ export const OutcomeSchema = z.looseObject({ kind: z.string() });
 /** A random event that happened during the turn, in the words of the case and by the kind of effect it had. */
 export const TurnEventSchema = z.object({ description: z.string(), effect: z.string() });
 
+/**
+ * What the hero's character signal did in the turn, in words and never as a number: it `helped` or `hindered` a
+ * check of a skill, or `shielded` a meter from a loss. Public data of the hero, like the signal itself.
+ */
+export const FeltSignalSchema = z.object({
+  signal: z.string(),
+  effect: z.enum(['helped', 'hindered', 'shielded']),
+  skill: z.string().optional(),
+  meter: z.string().optional(),
+});
+
 export const TurnResultSchema = z.object({
   outcome: OutcomeSchema,
   /** The random events this turn brought (in the day, at midday or in the evening, or in the night); often none. */
   events: z.array(TurnEventSchema).default([]),
+  /** What the signal did in this turn; empty for a hero without a signal and for a turn it did not touch. */
+  felt: z.array(FeltSignalSchema).default([]),
   view: RunSummarySchema,
 });
 
@@ -142,6 +156,22 @@ export function assertFreshTurn(run: DetectiveRunState, turn: number): void {
   }
 }
 
+/** The engine's `felt` effects of a turn, named by the signal of the hero and put into words. */
+function feltOfTurn(run: DetectiveRunState, felt: readonly SignalFelt[]): z.input<typeof FeltSignalSchema>[] {
+  const signal = run.hero.signalId;
+  return signal === undefined
+    ? []
+    : felt.map((item) =>
+        item.kind === 'shield'
+          ? { signal, effect: 'shielded' as const, meter: item.meter }
+          : {
+              signal,
+              effect: item.amount > 0 ? ('helped' as const) : ('hindered' as const),
+              skill: item.skill,
+            },
+      );
+}
+
 /** The random events drawn between two states of a run: what the turn brought, already applied by the engine. */
 function eventsOfTurn(
   before: DetectiveRunState,
@@ -177,6 +207,7 @@ export async function playIntent(
   return {
     outcome: { ...resolution.outcome },
     events: eventsOfTurn(run, resolution.run),
+    felt: feltOfTurn(run, resolution.felt ?? []),
     view: summarizeRun(resolution.run),
   };
 }
