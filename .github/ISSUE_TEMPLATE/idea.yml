@@ -1,0 +1,15 @@
+name: Idea
+description: Suggest a mechanic, a hero archetype or an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What would it add to a run? Keep in mind the boundaries in AGENTS.md (the engine owns the truth, mirror world only).
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
