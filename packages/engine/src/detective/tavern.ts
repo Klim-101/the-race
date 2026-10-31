@@ -6,7 +6,8 @@ import type { Gender } from '../archetype.js';
 import type { Locale } from '../locale.js';
 import { DETECTIVE } from './archetype.js';
 import { BACKGROUNDS, type Background } from './gear.js';
-import { DETECTIVE_SKILL_PRESETS, type SkillPreset } from './skill-presets.js';
+import { LIFE_STATES, type LifeState } from './life-state.js';
+import { BACKGROUND_BUILDS, DETECTIVE_SKILL_PRESETS, type SkillPreset } from './skill-presets.js';
 
 // The tavern offers the player three heroes and the player walks into the run with one of them. The offer is
 // the engine's: the same seed and the same round always give the same three, and nothing in them is the
@@ -26,6 +27,8 @@ export interface HeroCandidate {
   readonly name: string;
   readonly gender: Gender;
   readonly background: Background;
+  /** What the hero is going through, or absent for one who is simply starting out. */
+  readonly lifeState?: LifeState;
   /** The id of the ready-made build the skills come from; the locale files name it. */
   readonly build: string;
   readonly skills: SkillPreset['skills'];
@@ -53,6 +56,12 @@ const GIVEN: Readonly<Record<Gender, readonly Spelled[]>> = {
     spelled('Nell', 'Нелл'),
     spelled('Sabine', 'Сабина'),
     spelled('Odile', 'Одиль'),
+    spelled('Greta', 'Грета'),
+    spelled('Imke', 'Имке'),
+    spelled('Liv', 'Лив'),
+    spelled('Marta', 'Марта'),
+    spelled('Petra', 'Петра'),
+    spelled('Yara', 'Яра'),
   ],
   male: [
     spelled('Anton', 'Антон'),
@@ -61,6 +70,12 @@ const GIVEN: Readonly<Record<Gender, readonly Spelled[]>> = {
     spelled('Emil', 'Эмиль'),
     spelled('Hollis', 'Холлис'),
     spelled('Lev', 'Лев'),
+    spelled('Dmitri', 'Дмитрий'),
+    spelled('Gideon', 'Гидеон'),
+    spelled('Jonas', 'Йонас'),
+    spelled('Matej', 'Матей'),
+    spelled('Nils', 'Нильс'),
+    spelled('Teodor', 'Теодор'),
   ],
   nonbinary: [
     spelled('Robin', 'Робин'),
@@ -69,6 +84,12 @@ const GIVEN: Readonly<Record<Gender, readonly Spelled[]>> = {
     spelled('Wren', 'Рен'),
     spelled('Ari', 'Ари'),
     spelled('Quinn', 'Куинн'),
+    spelled('Alex', 'Алекс'),
+    spelled('Eli', 'Эли'),
+    spelled('Jules', 'Жюль'),
+    spelled('Noor', 'Нур'),
+    spelled('Sam', 'Сэм'),
+    spelled('Toni', 'Тони'),
   ],
 };
 
@@ -85,9 +106,23 @@ const SURNAMES: readonly Spelled[] = [
   spelled('Pellegrin', 'Пеллегрин'),
   spelled('Ashgrove', 'Эшгроув'),
   spelled('Lindqvist', 'Линдквист'),
+  spelled('Aldermoor', 'Олдермур'),
+  spelled('Corvane', 'Корвейн'),
+  spelled('Draycott', 'Дрейкотт'),
+  spelled('Eastlake', 'Истлейк'),
+  spelled('Garrow', 'Гэрроу'),
+  spelled('Holloway', 'Холлоуэй'),
+  spelled('Ironside', 'Айронсайд'),
+  spelled('Keswick', 'Кесвик'),
+  spelled('Lanyon', 'Ланьон'),
+  spelled('Merrick', 'Мэррик'),
+  spelled('Northcott', 'Норткотт'),
+  spelled('Pryor', 'Прайор'),
 ];
 
 const GENDERS: readonly Gender[] = ['female', 'male', 'nonbinary'];
+// "No life state" is one of the options too: not everyone is in the middle of something.
+const LIFE_STATE_OPTIONS: readonly (LifeState | undefined)[] = [undefined, ...LIFE_STATES];
 // "No signal" is one of the options, as it is in the hand-made poll.
 const SIGNALS: readonly (string | undefined)[] = [undefined, ...DETECTIVE.signals.map((signal) => signal.id)];
 
@@ -111,27 +146,44 @@ function shuffled<T>(rng: Rng, items: readonly T[]): T[] {
   return copy;
 }
 
+/** One of the two builds that suit a background; the one another hero of the round has not taken, if there is one. */
+function buildFor(rng: Rng, background: Background, taken: readonly string[]): SkillPreset {
+  const suited = BACKGROUND_BUILDS[background];
+  const free = suited.filter((id) => !taken.includes(id));
+  const id = pick(rng, free.length > 0 ? free : suited);
+  // The ids come from the ready-made builds themselves (a test holds `BACKGROUND_BUILDS` to them), so one is there.
+  return at(
+    DETECTIVE_SKILL_PRESETS.filter((preset) => preset.id === id),
+    0,
+  );
+}
+
 /**
- * Three heroes for a run: three different backgrounds and three different builds, so the choice is between
- * kinds of detective and not between three of one. Dice of their own, seeded from the run's seed and the
+ * Three heroes for a run: three different backgrounds, each with a build that suits who they were (a different
+ * one for each when the backgrounds allow it), so the choice is between kinds of detective and not between
+ * three of one. Dice of their own, seeded from the run's seed and the
  * round, so asking again never moves any other roll of the run.
  */
 export function offerHeroes(seed: string, round: number, locale: Locale): HeroOffer {
   const rng = createRng(`${seed}:tavern:${String(round)}`);
   const backgrounds = shuffled(rng, BACKGROUNDS);
-  const builds = shuffled(rng, DETECTIVE_SKILL_PRESETS);
+  const taken: string[] = [];
   const surnames = shuffled(rng, SURNAMES);
   const candidate = (id: CandidateId, slot: number): HeroCandidate => {
     const gender = pick(rng, GENDERS);
     const signalId = pick(rng, SIGNALS);
-    const build = at(builds, slot);
+    const background = at(backgrounds, slot);
+    const build = buildFor(rng, background, taken);
+    taken.push(build.id);
+    const lifeState = pick(rng, LIFE_STATE_OPTIONS);
     const given = pick(rng, GIVEN[gender])[locale];
     const surname = at(surnames, slot)[locale];
     return {
       id,
       name: `${given} ${surname}`,
       gender,
-      background: at(backgrounds, slot),
+      background,
+      ...(lifeState === undefined ? {} : { lifeState }),
       build: build.id,
       skills: build.skills,
       ...(signalId === undefined ? {} : { signalId }),
@@ -153,6 +205,7 @@ export function candidateHeroInput(candidate: HeroCandidate, name?: string) {
     gender: candidate.gender,
     archetype: 'detective' as const,
     background: candidate.background,
+    ...(candidate.lifeState === undefined ? {} : { lifeState: candidate.lifeState }),
     skills: candidate.skills,
     ...(candidate.signalId === undefined ? {} : { signalId: candidate.signalId }),
   };

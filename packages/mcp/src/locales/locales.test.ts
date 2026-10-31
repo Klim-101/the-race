@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { LOCALES } from '@the-race/engine';
+import { BACKGROUNDS, LIFE_STATES, LOCALES } from '@the-race/engine';
 import { describe, expect, it } from 'vitest';
 import { LOCALE_TEXT } from './index.js';
 
@@ -36,5 +36,11 @@ describe('locale files', () => {
     for (const [path, text] of english) {
       expect([path, placeholders(own.get(path) ?? '').sort()]).toEqual([path, placeholders(text).sort()]);
     }
+  });
+
+  it.each(LOCALES)('%s has a word for every background and every life state of the engine', (locale) => {
+    const { backgrounds, lifeStates } = LOCALE_TEXT[locale].tabs.hero;
+    expect(Object.keys(backgrounds).sort()).toEqual([...BACKGROUNDS].sort());
+    expect(Object.keys(lifeStates).sort()).toEqual([...LIFE_STATES].sort());
   });
 });

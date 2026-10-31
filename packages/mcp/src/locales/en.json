@@ -191,7 +191,23 @@
         "police": "a police officer",
         "journalist": "a journalist",
         "locksmith": "a locksmith",
-        "analyst": "an analyst"
+        "analyst": "an analyst",
+        "bus-driver": "a bus driver",
+        "nurse": "a nurse",
+        "schoolteacher": "a schoolteacher",
+        "electrician": "an electrician",
+        "sommelier": "a sommelier",
+        "accountant": "an accountant",
+        "courier": "a courier",
+        "bailiff": "a bailiff",
+        "translator": "a translator",
+        "librarian": "a librarian",
+        "pharmacist": "a pharmacist",
+        "radio-presenter": "a radio presenter",
+        "retired-inspector": "a retired inspector",
+        "dismissed-auditor": "a dismissed auditor",
+        "investigative-blogger": "an investigative blogger",
+        "street-private-eye": "a street private eye"
       },
       "signals": {
         "in-love": "in love",
@@ -265,6 +281,15 @@
         "hothead": "a hothead",
         "insomniac": "an insomniac",
         "showman": "a showman"
+      },
+      "lifeState": "Situation",
+      "lifeStates": {
+        "just-dismissed": "just dismissed",
+        "retired": "retired",
+        "on-leave": "on leave",
+        "in-debt": "in debt",
+        "newly-arrived": "newly arrived in town",
+        "on-probation": "on probation"
       }
     }
   }

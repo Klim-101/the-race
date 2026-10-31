@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import type { ModifierEffect } from '../meters.js';
 import type { ModifierItem } from '../modifiers.js';
+import { LIFE_STATE_SHIFTS, type LifeState } from './life-state.js';
 
 // Gear is what the hero carries: data, like a condition, that moves a check only through `collectModifier`.
 // It never touches evidence. A robbery or a spill takes a piece of gear, and the piece stays lost, as a
@@ -37,7 +38,28 @@ export const DETECTIVE_GEAR: Readonly<Record<GearId, GearDefinition>> = {
   picks: { nameKey: 'gear.picks', effects: [{ skills: ['perception'], amount: 1 }], lostEffects: [] },
 };
 
-export const BACKGROUNDS = ['police', 'journalist', 'locksmith', 'analyst'] as const;
+export const BACKGROUNDS = [
+  'police',
+  'journalist',
+  'locksmith',
+  'analyst',
+  'bus-driver',
+  'nurse',
+  'schoolteacher',
+  'electrician',
+  'sommelier',
+  'accountant',
+  'courier',
+  'bailiff',
+  'translator',
+  'librarian',
+  'pharmacist',
+  'radio-presenter',
+  'retired-inspector',
+  'dismissed-auditor',
+  'investigative-blogger',
+  'street-private-eye',
+] as const;
 export const BackgroundSchema = z.enum(BACKGROUNDS);
 export type Background = z.infer<typeof BackgroundSchema>;
 /** A hero who names no background was a policeman. */
@@ -49,6 +71,22 @@ export const BACKGROUND_KITS: Readonly<Record<Background, readonly GearId[]>> = 
   journalist: ['phone', 'notebook', 'laptop'],
   locksmith: ['phone', 'picks'],
   analyst: ['notebook', 'laptop'],
+  'bus-driver': ['phone'],
+  nurse: ['phone', 'notebook'],
+  schoolteacher: ['notebook'],
+  electrician: ['phone', 'picks'],
+  sommelier: ['phone'],
+  accountant: ['notebook', 'laptop'],
+  courier: ['phone'],
+  bailiff: ['phone', 'notebook'],
+  translator: ['laptop', 'notebook'],
+  librarian: ['notebook', 'laptop'],
+  pharmacist: ['notebook', 'phone'],
+  'radio-presenter': ['phone', 'laptop'],
+  'retired-inspector': ['notebook', 'phone'],
+  'dismissed-auditor': ['notebook', 'laptop'],
+  'investigative-blogger': ['phone', 'laptop'],
+  'street-private-eye': ['phone', 'picks'],
 };
 
 export const GearStateSchema = z.enum(['owned', 'lost']);
@@ -57,8 +95,12 @@ export type GearState = z.infer<typeof GearStateSchema>;
 export const KitItemSchema = z.object({ id: GearIdSchema, state: GearStateSchema });
 export type KitItem = z.infer<typeof KitItemSchema>;
 
-export function initialKit(background: Background): KitItem[] {
-  return BACKGROUND_KITS[background].map((id) => ({ id, state: 'owned' }));
+/** The kit of a background, with the piece a life state adds when the hero does not already carry it. */
+export function initialKit(background: Background, lifeState?: LifeState): KitItem[] {
+  const own = BACKGROUND_KITS[background];
+  const added = lifeState === undefined ? undefined : LIFE_STATE_SHIFTS[lifeState].gear;
+  const kit = added === undefined || own.includes(added) ? own : [...own, added];
+  return kit.map((id) => ({ id, state: 'owned' }));
 }
 
 /** The same kit with one piece set to `state`; a piece that is not in the kit is a bug in the caller. */

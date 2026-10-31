@@ -66,6 +66,7 @@ describe('hero_offer', () => {
           'name',
           'skills',
           ...('signalId' in candidate ? ['signalId'] : []),
+          ...('lifeState' in candidate ? ['lifeState'] : []),
         ].toSorted(),
       );
     }
