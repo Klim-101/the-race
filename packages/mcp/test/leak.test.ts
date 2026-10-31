@@ -107,7 +107,7 @@ describe('the game tools over the server', () => {
       expect(text).not.toContain(truth.method);
       expect(keys.filter((key) => FORBIDDEN_KEYS.has(key))).toEqual([]);
       for (const suspect of (result as { suspects?: Record<string, unknown>[] }).suspects ?? []) {
-        expect(Object.keys(suspect).sort()).toEqual(['id', 'name', 'persona']);
+        expect(Object.keys(suspect).sort()).toEqual(['id', 'name', 'persona', 'place']);
       }
     };
 

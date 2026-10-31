@@ -5,6 +5,7 @@ import type { Tool } from '../define-tool.js';
 import { accuse } from './accuse.js';
 import { act } from './act.js';
 import { deduce } from './deduce.js';
+import { evidenceBoard } from './evidence-board.js';
 import { generatorBrief } from './generator-brief.js';
 import { heroCreate } from './hero-create.js';
 import { question } from './question.js';
@@ -23,6 +24,7 @@ export const TOOLS: readonly Tool[] = [
   accuse,
   act,
   deduce,
+  evidenceBoard,
   generatorBrief,
   heroCreate,
   question,

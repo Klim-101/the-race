@@ -244,6 +244,17 @@ describe('viewRun', () => {
       { id: 'storage-cellar', name: 'Storage cellar', visited: false },
     ]);
     expect(view.suspects.map(({ id }) => id)).toEqual(['baker', 'rival', 'mayor']);
+    expect(view.suspects.find(({ id }) => id === 'baker')?.place?.id).toBe('cheese-stall');
+  });
+
+  it('shows no place for a suspect the case ties to none', () => {
+    const run = newRun();
+    const loose = {
+      ...run.case,
+      suspects: run.case.suspects.map((suspect) => ({ ...suspect, locationId: undefined })),
+    };
+
+    expect(viewRun({ ...run, case: loose }).suspects.map(({ place }) => place)).toEqual([null, null, null]);
   });
 
   it('shows only what has been found, made or revealed', () => {

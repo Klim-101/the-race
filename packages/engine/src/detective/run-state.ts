@@ -46,6 +46,7 @@ import {
 } from './consumables.js';
 import { GearIdSchema, KitItemSchema, initialKit, viewKit, withGearState, type KitView } from './gear.js';
 import { buildNeighbors } from './obtainability.js';
+import { suspectPlace } from './random-events.js';
 import { CASE_SEAL_PATTERN, isCaseSealIntact, sealCase } from './seal.js';
 
 /** A random event that has happened, and the day it happened on. */
@@ -398,7 +399,13 @@ export interface DetectiveRunView {
     readonly description: string;
     readonly exits: readonly { readonly id: string; readonly name: string; readonly visited: boolean }[];
   };
-  readonly suspects: readonly { readonly id: string; readonly name: string; readonly persona: string }[];
+  readonly suspects: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly persona: string;
+    /** Where the suspect can be found now; `null` when the case ties them to no place (ask anywhere). */
+    readonly place: { readonly id: string; readonly name: string } | null;
+  }[];
   readonly clues: readonly {
     readonly id: string;
     readonly locationId: string;
@@ -460,7 +467,16 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     hiddenTraitCount: run.traits.length - run.revealedTraitIds.length,
     revealedTraits: run.traits.filter(({ id }) => run.revealedTraitIds.includes(id)),
     location: { id: location.id, name: location.name, description: location.description, exits },
-    suspects: detectiveCase.suspects.map(({ id, name, persona }) => ({ id, name, persona })),
+    suspects: detectiveCase.suspects.map((suspect) => {
+      const placeId = suspectPlace(run, suspect);
+      const place = placeId === undefined ? undefined : requireLocation(detectiveCase, placeId);
+      return {
+        id: suspect.id,
+        name: suspect.name,
+        persona: suspect.persona,
+        place: place === undefined ? null : { id: place.id, name: place.name },
+      };
+    }),
     clues: detectiveCase.clues
       .filter(({ id }) => run.foundClueIds.includes(id))
       .map(({ id, locationId, description }) => ({
