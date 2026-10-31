@@ -13,6 +13,7 @@ import {
   MAX_REROLLS,
   OFFER_SIZE,
   candidateHeroInput,
+  companionName,
   offerHeroes,
   offeredHero,
 } from './tavern.js';
@@ -139,5 +140,21 @@ describe('offeredHero', () => {
         expect(offeredHero(seed, 1, 'ru', id)).toEqual(offer[at]);
       }
     }
+  });
+});
+
+describe('companionName', () => {
+  it('is a first name only, the same for a seed and a role, and differs between roles and languages', () => {
+    for (const seed of SEEDS) {
+      const name = companionName(seed, 'en', 'partner');
+      expect(name).toMatch(/^[A-Z][a-z]+$/);
+      expect(companionName(seed, 'en', 'partner')).toBe(name);
+      expect(companionName(seed, 'ru', 'partner')).toMatch(/^[А-ЯЁ][а-яё]+$/);
+    }
+    const names = SEEDS.map((seed) => companionName(seed, 'en', 'partner'));
+    expect(new Set(names).size).toBeGreaterThan(10);
+    expect(
+      SEEDS.some((seed) => companionName(seed, 'en', 'partner') !== companionName(seed, 'en', 'family')),
+    ).toBe(true);
   });
 });

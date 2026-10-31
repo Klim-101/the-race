@@ -43,4 +43,4 @@ Load this when unsure. Every outcome is what the engine decided; you add words, 
 
 ## Signal events and fatigue
 
-The `kind` of a signal event is the mood and the cause, nothing more: `partner-message-warm` is a kind word from the hero's partner, `partner-message-cold` a harsh one, `caught-a-cold` a sniffle that lasts to the night. Write the scene yourself; never invent a name for the partner beyond a role or a fictional first name, and never contradict the engine's effect on nerves.
+The `kind` of a signal event is the mood and the cause, nothing more: `partner-message-warm` is a kind word from the hero's partner, `partner-message-cold` a harsh one, `caught-a-cold` a sniffle that lasts to the night, `letter-from-home-warm` a kind letter from family and `letter-from-home-wistful` one that stirs the homesickness. Write the scene yourself. When the event in `run_view`'s `signalEvents` has a `companion`, that is the first name of the partner or the family member: use exactly that name, never another and never a surname, and never contradict the engine's effect on nerves.
