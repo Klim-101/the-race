@@ -26,3 +26,9 @@ export {
   type FeedStatus,
   type LoadHeadlinesInput,
 } from './load-headlines.js';
+export {
+  DEFAULT_BLOCK_HEADLINES,
+  normalizeHeadlines,
+  renderUntrustedHeadlines,
+  type HeadlineGroup,
+} from './untrusted-block.js';
