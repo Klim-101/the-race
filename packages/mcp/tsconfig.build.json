@@ -2,9 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "resolveJsonModule": true
   },
-  "include": ["src"],
+  "include": ["src", "src/locales/*.json"],
   "exclude": ["src/**/*.test.ts"],
   "references": [
     { "path": "../engine/tsconfig.build.json" },
