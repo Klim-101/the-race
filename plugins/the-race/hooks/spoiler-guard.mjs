@@ -5,6 +5,10 @@
 // plain JSON. It ships inside the plugin, so it imports nothing from this repository: the directory is
 // resolved here with the same rules as `resolveSaveDir` in packages/saves, and a test keeps the two in step.
 //
+// The evidence board is not in this directory: it is written to the player's own Documents folder (or to
+// RACE_BOARD_DIR), where any browser account can open it. It holds only what the run_view tool shows, so
+// the guard leaves it alone, and the narrator is told by the skill never to open it, to spare the turns.
+//
 // It is a guard against an accidental spoiler from the narrator, not a defence against the player (see
 // docs/adr/0006). It errs towards denying a doubtful shell command, fails open on input it cannot parse, and
 // never prints anything it read: the reason it gives is fixed text.
