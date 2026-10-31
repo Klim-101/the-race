@@ -6,6 +6,7 @@ import { createHeroSchema, defineArchetype } from '../archetype.js';
 import { defineMeter } from '../meters.js';
 import { MAX_REPUTATION } from '../run.js';
 import { BackgroundSchema, DEFAULT_BACKGROUND } from './gear.js';
+import { LifeStateSchema } from './life-state.js';
 import { DETECTIVE_SIGNALS } from './signals.js';
 import { DETECTIVE_TRAITS } from './traits.js';
 
@@ -62,6 +63,8 @@ export type DetectiveSkill = z.infer<typeof DetectiveSkillSchema>;
 /** Who the hero was before: it decides the starting kit (see `gear.ts`). Old saves without one are policemen. */
 export const DetectiveHeroSchema = createHeroSchema(DETECTIVE).extend({
   background: BackgroundSchema.default(DEFAULT_BACKGROUND),
+  /** What the hero is going through at the start; heroes made before it existed have none. */
+  lifeState: LifeStateSchema.optional(),
 });
 export type DetectiveHero = z.infer<typeof DetectiveHeroSchema>;
 export type DetectiveSkillLevels = DetectiveHero['skills'];

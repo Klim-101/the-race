@@ -24,6 +24,22 @@ export const BACKGROUND_CRIMES: Readonly<Record<Background, readonly CrimeType[]
   journalist: ['political-leak', 'corporate-espionage', 'missing-person'],
   locksmith: ['curious-theft', 'forgery', 'corporate-espionage'],
   analyst: ['financial', 'cyber', 'forgery'],
+  'bus-driver': ['missing-person', 'curious-theft'],
+  nurse: ['missing-person', 'forgery', 'curious-theft'],
+  schoolteacher: ['forgery', 'missing-person', 'political-leak'],
+  electrician: ['cyber', 'corporate-espionage', 'curious-theft'],
+  sommelier: ['forgery', 'curious-theft', 'corporate-espionage'],
+  accountant: ['financial', 'forgery', 'corporate-espionage'],
+  courier: ['curious-theft', 'missing-person', 'corporate-espionage'],
+  bailiff: ['financial', 'missing-person', 'curious-theft'],
+  translator: ['political-leak', 'corporate-espionage', 'cyber'],
+  librarian: ['forgery', 'political-leak', 'curious-theft'],
+  pharmacist: ['forgery', 'missing-person', 'financial'],
+  'radio-presenter': ['political-leak', 'missing-person', 'corporate-espionage'],
+  'retired-inspector': ['missing-person', 'curious-theft', 'forgery'],
+  'dismissed-auditor': ['financial', 'corporate-espionage', 'forgery'],
+  'investigative-blogger': ['political-leak', 'cyber', 'corporate-espionage'],
+  'street-private-eye': ['missing-person', 'curious-theft', 'corporate-espionage'],
 };
 
 export const FITTING_WEIGHT = 3;

@@ -13,6 +13,7 @@ export const CandidateSchema = z.object({
   name: z.string(),
   gender: z.string(),
   background: z.string(),
+  lifeState: z.string().optional(),
   build: z.string(),
   skills: z.record(z.string(), z.int()),
   signalId: z.string().optional(),

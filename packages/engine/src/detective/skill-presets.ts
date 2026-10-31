@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { DetectiveSkill } from './archetype.js';
+import type { Background } from './gear.js';
 
 // Ready-made ways to spend the skill points, so that making a hero is a choice among a few builds and not a
 // sum to get right. They are data of the engine, not something the narrator writes: the narrator names them
@@ -32,3 +33,30 @@ export const DETECTIVE_SKILL_PRESETS: readonly SkillPreset[] = [
     skills: { perception: 2, reasoning: 2, social: 3, pressure: 0, tech: 0, contacts: 3 },
   },
 ];
+
+/**
+ * The ready-made builds that suit each background, the better fit first: the tavern draws a hero's build from
+ * these two, so who the hero was shows in what they are good at.
+ */
+export const BACKGROUND_BUILDS: Readonly<Record<Background, readonly [string, string]>> = {
+  police: ['interrogator', 'observer'],
+  journalist: ['networker', 'observer'],
+  locksmith: ['observer', 'interrogator'],
+  analyst: ['analyst', 'observer'],
+  'bus-driver': ['observer', 'networker'],
+  nurse: ['observer', 'networker'],
+  schoolteacher: ['networker', 'interrogator'],
+  electrician: ['observer', 'analyst'],
+  sommelier: ['observer', 'networker'],
+  accountant: ['analyst', 'observer'],
+  courier: ['networker', 'observer'],
+  bailiff: ['interrogator', 'networker'],
+  translator: ['networker', 'analyst'],
+  librarian: ['analyst', 'observer'],
+  pharmacist: ['analyst', 'observer'],
+  'radio-presenter': ['networker', 'interrogator'],
+  'retired-inspector': ['interrogator', 'observer'],
+  'dismissed-auditor': ['analyst', 'interrogator'],
+  'investigative-blogger': ['networker', 'analyst'],
+  'street-private-eye': ['interrogator', 'networker'],
+};

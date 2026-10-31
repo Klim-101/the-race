@@ -191,7 +191,23 @@
         "police": "полицейский",
         "journalist": "журналист",
         "locksmith": "слесарь-взломщик",
-        "analyst": "аналитик"
+        "analyst": "аналитик",
+        "bus-driver": "водитель автобуса",
+        "nurse": "медсестра или медбрат",
+        "schoolteacher": "школьный учитель",
+        "electrician": "электрик",
+        "sommelier": "сомелье",
+        "accountant": "бухгалтер",
+        "courier": "курьер",
+        "bailiff": "судебный пристав",
+        "translator": "переводчик",
+        "librarian": "библиотекарь",
+        "pharmacist": "фармацевт",
+        "radio-presenter": "радиоведущий",
+        "retired-inspector": "инспектор в отставке",
+        "dismissed-auditor": "уволенный аудитор",
+        "investigative-blogger": "блогер-расследователь",
+        "street-private-eye": "частный сыщик с улицы"
       },
       "signals": {
         "in-love": "влюблён",
@@ -265,6 +281,15 @@
         "hothead": "вспыльчив",
         "insomniac": "страдает бессонницей",
         "showman": "любит быть в центре внимания"
+      },
+      "lifeState": "Положение",
+      "lifeStates": {
+        "just-dismissed": "только что уволен",
+        "retired": "на пенсии",
+        "on-leave": "в отпуске",
+        "in-debt": "в долгах",
+        "newly-arrived": "недавно в городе",
+        "on-probation": "на испытательном сроке"
       }
     }
   }

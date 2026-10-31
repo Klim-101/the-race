@@ -1,7 +1,13 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { BackgroundSchema, DetectiveSkillSchema, GenderSchema, createRng } from '@the-race/engine';
+import {
+  BackgroundSchema,
+  DetectiveSkillSchema,
+  GenderSchema,
+  LifeStateSchema,
+  createRng,
+} from '@the-race/engine';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
 import { requirePending, storeHero } from '../hero-assembly.js';
@@ -22,6 +28,9 @@ export const heroCreate = defineTool({
     name: z.string().trim().min(1).max(60),
     gender: GenderSchema,
     background: BackgroundSchema,
+    lifeState: LifeStateSchema.optional().describe(
+      'One of the `lifeStates` from run_new; leave out for none.',
+    ),
     signalId: z.string().optional().describe('One of the signal ids from run_new; leave out for none.'),
     skills: z.record(DetectiveSkillSchema, z.int()).describe('Points per skill, for every skill.'),
   }),

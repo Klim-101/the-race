@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { DETECTIVE_NERVES, DETECTIVE_SLEEP_DEBT } from './archetype.js';
 import { ConditionIdSchema, type HeroCondition } from './condition.js';
 import type { Background } from './gear.js';
+import { LIFE_STATE_SHIFTS, type LifeState } from './life-state.js';
 
 // A consumable is data: a name key, what it gives at once (the benefit) and what it costs (the price), both
 // written in one small closed vocabulary. Every benefit has a visible price, so a definition with no price is
@@ -81,14 +82,33 @@ export const BACKGROUND_SUPPLIES: Readonly<
   journalist: { coffee: 2 },
   locksmith: { coffee: 1 },
   analyst: { coffee: 1, sedative: 1 },
+  'bus-driver': { coffee: 2 },
+  nurse: { coffee: 1, sedative: 1 },
+  schoolteacher: { coffee: 1 },
+  electrician: { coffee: 1 },
+  sommelier: { alcohol: 1 },
+  accountant: { coffee: 1 },
+  courier: { coffee: 1 },
+  bailiff: { coffee: 1 },
+  translator: { coffee: 1 },
+  librarian: { coffee: 1 },
+  pharmacist: { coffee: 1, sedative: 1 },
+  'radio-presenter': { coffee: 2 },
+  'retired-inspector': { coffee: 1 },
+  'dismissed-auditor': { coffee: 1 },
+  'investigative-blogger': { coffee: 2 },
+  'street-private-eye': { coffee: 1, alcohol: 1 },
 };
 
 /** Counts of what the hero has; an item that is used up is not listed. Old saves have none. */
 export const SuppliesSchema = z.partialRecord(ConsumableIdSchema, z.int().min(1));
 export type Supplies = z.infer<typeof SuppliesSchema>;
 
-export function initialSupplies(background: Background): Supplies {
-  return { ...BACKGROUND_SUPPLIES[background] };
+/** The supplies of a background, with one more of what a life state adds. */
+export function initialSupplies(background: Background, lifeState?: LifeState): Supplies {
+  const supplies: Supplies = { ...BACKGROUND_SUPPLIES[background] };
+  const added = lifeState === undefined ? undefined : LIFE_STATE_SHIFTS[lifeState].supply;
+  return added === undefined ? supplies : { ...supplies, [added]: (supplies[added] ?? 0) + 1 };
 }
 
 /** The supplies with one of `id` used; the caller has checked that there is one. */

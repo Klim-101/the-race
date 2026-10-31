@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { assembleHero } from '../assemble-hero.js';
 import { createRng } from '../dice.js';
 import { DETECTIVE } from './archetype.js';
+import { BACKGROUNDS } from './gear.js';
+import { LIFE_STATES } from './life-state.js';
 import { DETECTIVE_SKILL_PRESETS } from './skill-presets.js';
 import {
   CANDIDATE_IDS,
@@ -34,12 +36,11 @@ describe('offerHeroes', () => {
     }
   });
 
-  it('offers kinds of detective, not three of one: distinct backgrounds, builds, surnames', () => {
+  it('offers kinds of detective, not three of one: distinct backgrounds and surnames', () => {
     for (const seed of SEEDS) {
       for (const round of [0, 1]) {
         const heroes = offerHeroes(seed, round, 'en');
         expect(new Set(heroes.map(({ background }) => background)).size).toBe(OFFER_SIZE);
-        expect(new Set(heroes.map(({ build }) => build)).size).toBe(OFFER_SIZE);
         expect(new Set(heroes.map(({ name }) => name.split(' ')[1])).size).toBe(OFFER_SIZE);
       }
     }
@@ -77,10 +78,14 @@ describe('offerHeroes', () => {
     expect(different.length).toBe(SEEDS.length);
   });
 
-  it('varies over seeds: every background and build, every gender, and heroes with and without a signal', () => {
+  it('varies over seeds: every background and build, every life state, every gender, and heroes with and without a signal', () => {
     const all = SEEDS.flatMap((seed) => offerHeroes(seed, 0, 'en'));
-    expect(new Set(all.map(({ background }) => background)).size).toBe(4);
+    expect(new Set(all.map(({ background }) => background)).size).toBe(BACKGROUNDS.length);
     expect(new Set(all.map(({ build }) => build)).size).toBe(DETECTIVE_SKILL_PRESETS.length);
+    expect(new Set(all.flatMap(({ lifeState }) => (lifeState === undefined ? [] : [lifeState]))).size).toBe(
+      LIFE_STATES.length,
+    );
+    expect(all.some(({ lifeState }) => lifeState === undefined)).toBe(true);
     expect(new Set(all.map(({ gender }) => gender))).toEqual(new Set(['female', 'male', 'nonbinary']));
     expect(all.some(({ signalId }) => signalId === undefined)).toBe(true);
     expect(new Set(all.flatMap(({ signalId }) => (signalId === undefined ? [] : [signalId]))).size).toBe(
@@ -100,6 +105,7 @@ describe('offerHeroes', () => {
             'name',
             'skills',
             ...(candidate.signalId === undefined ? [] : ['signalId']),
+            ...(candidate.lifeState === undefined ? [] : ['lifeState']),
           ].toSorted(),
         );
       }

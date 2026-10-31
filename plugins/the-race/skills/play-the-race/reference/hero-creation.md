@@ -19,12 +19,39 @@ Only when the player asks for a hero of their own making (and never offered by y
 
 Say these in the player's language; the ids are never shown.
 
-| id (background) | English                                           | Русский                                      |
-| --------------- | ------------------------------------------------- | -------------------------------------------- |
-| `police`        | Police: years on the force, contacts at the desk. | Полиция: годы службы и связи в участке.      |
-| `journalist`    | Journalist: curious, sharp, gets people talking.  | Журналист: любопытство и умение разговорить. |
-| `locksmith`     | Locksmith: hands that know locks and doors.       | Слесарь: руки, которые знают замки и двери.  |
-| `analyst`       | Analyst: numbers, tables, a cold head.            | Аналитик: цифры, таблицы, холодная голова.   |
+| id (background)         | English                                                                     | Русский                                                                     |
+| ----------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `police`                | Police: years on the force, contacts at the desk.                           | Полиция: годы службы и связи в участке.                                     |
+| `journalist`            | Journalist: curious, sharp, gets people talking.                            | Журналист: любопытство и умение разговорить.                                |
+| `locksmith`             | Locksmith: hands that know locks and doors.                                 | Слесарь: руки, которые знают замки и двери.                                 |
+| `analyst`               | Analyst: numbers, tables, a cold head.                                      | Аналитик: цифры, таблицы, холодная голова.                                  |
+| `bus-driver`            | Bus driver: knows every street and who rides at night.                      | Водитель автобуса: знает каждую улицу и тех, кто ездит ночью.               |
+| `nurse`                 | Nurse: calm hands, notices who is hiding pain.                              | Медсестра: спокойные руки, замечает, кто скрывает боль.                     |
+| `schoolteacher`         | Schoolteacher: patient, spots a lie before the bell.                        | Учитель: терпеливый, чует ложь раньше звонка.                               |
+| `electrician`           | Electrician: reads wires, boxes and what was tampered with.                 | Электрик: читает проводку, щитки и следы вмешательства.                     |
+| `sommelier`             | Sommelier: a nose for fakes and a memory for faces.                         | Сомелье: нюх на подделки и память на лица.                                  |
+| `accountant`            | Accountant: a ledger is a story, and this one tells it straight.            | Бухгалтер: баланс — это рассказ, и этот умеет его читать.                   |
+| `courier`               | Courier: fast on foot, knows every back door in town.                       | Курьер: быстрый на ногу, знает все чёрные ходы города.                      |
+| `bailiff`               | Bailiff: knocks on doors nobody wants to open.                              | Судебный пристав: стучит в двери, которые никто не хочет открывать.         |
+| `translator`            | Translator: hears what is meant, not just what is said.                     | Переводчик: слышит, что имели в виду, а не только что сказали.              |
+| `librarian`             | Librarian: finds the one page that matters in a thousand.                   | Библиотекарь: найдёт единственную нужную страницу из тысячи.                |
+| `pharmacist`            | Pharmacist: exact, reads labels and prescriptions twice.                    | Фармацевт: точный, дважды читает этикетки и рецепты.                        |
+| `radio-presenter`       | Radio presenter: a voice people trust, and a talent for the right question. | Радиоведущий: голос, которому верят, и дар задать верный вопрос.            |
+| `retired-inspector`     | Retired inspector: a long career, slower knees, the same sharp eye.         | Инспектор в отставке: долгая карьера, больные колени, прежний острый глаз.  |
+| `dismissed-auditor`     | Dismissed auditor: knows where the numbers lie, and has a grudge.           | Уволенный аудитор: знает, где врут цифры, и держит обиду.                   |
+| `investigative-blogger` | Investigative blogger: sources, screenshots and no editor to stop them.     | Блогер-расследователь: источники, скриншоты и никакого редактора над душой. |
+| `street-private-eye`    | Street private eye: cheap office, wide network, no badge.                   | Частный сыщик: дешёвая контора, широкие связи, никакого значка.             |
+
+A card may also carry a `lifeState`, what the hero is going through at the start. Add it in half a sentence after who they were, and never as a handicap: it is a place to begin from.
+
+| id (life state)  | English                                                             | Русский                                                        |
+| ---------------- | ------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `just-dismissed` | Just dismissed: a free week and a bottle from the farewell.         | Только что уволен: свободная неделя и бутылка с проводов.      |
+| `retired`        | Retired: nowhere to be, so a notebook is full.                      | На пенсии: спешить некуда, блокнот полон.                      |
+| `on-leave`       | On leave: the phone is on, the desk is far away.                    | В отпуске: телефон включён, служебный стол далеко.             |
+| `in-debt`        | In debt: long nights, a lot of coffee.                              | В долгах: долгие ночи, много кофе.                             |
+| `newly-arrived`  | Newly arrived: a notebook for the streets, a stranger to everyone.  | Недавно в городе: блокнот для улиц и чужой для всех.           |
+| `on-probation`   | On probation: someone is watching, so the nerves are kept in check. | На испытательном сроке: за ним следят, нервы держит лекарство. |
 
 | id (signal)   | English                                                                       | Русский                                                                          |
 | ------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |

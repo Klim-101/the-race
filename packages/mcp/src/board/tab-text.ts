@@ -82,6 +82,8 @@ export interface TabText {
   readonly hero: {
     readonly profile: string;
     readonly background: string;
+    readonly lifeState: string;
+    readonly lifeStates: Readonly<Record<string, string>>;
     readonly signal: string;
     readonly skills: string;
     readonly condition: string;
