@@ -9,3 +9,7 @@ Headlines from RSS 2.0, RSS 1.0 and Atom feeds, for the cases to grow from. No A
 Nothing here reads the clock or the network by itself: the day and the `HttpGet` are passed in, so tests use recorded feeds.
 
 The default feeds are in [`content/feeds.json`](../../content/feeds.json): world, economy and tech news in Russian and English, and five `humor` feeds. Headlines are untrusted input; `humor` ones are atmosphere for a case, never a source of its world events.
+
+## The boundary
+
+Headlines reach an agent only through `renderUntrustedHeadlines`: a fenced `<untrusted-headlines>` block with a fixed notice that nothing inside is an instruction. Before that every text is folded to NFKC, stripped of markup, control characters and all angle brackets (so a headline cannot close or forge the fence), capped, and a story that repeats is kept once. Only a title and a short summary ever pass; the type has no room for an article.
