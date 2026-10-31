@@ -97,6 +97,12 @@ export function renderChronicle(view: DetectiveRunView, turns: readonly TurnView
 <p>${e(t.now)}: ${e(t.day)} ${String(view.clock.day)} / ${String(view.clock.totalDays)}, ${clock(view.clock.minute)}</p>
 <p>${e(t.left)}: <strong>${e(duration(view.chronicle.activeMinutesLeft, t))}</strong></p>
 </div>
+<h3>${e(t.inspired)}</h3>
+${
+  view.inspiration === null
+    ? `<p class="empty">${e(t.inspiredNone)}</p>`
+    : `<p><span class="tag">${e(named(t.seedKinds, view.inspiration.kind))}</span> ${e(view.inspiration.premise)}</p>`
+}
 <h3>${e(t.events)}</h3>
 ${
   view.chronicle.events.length === 0

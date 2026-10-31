@@ -290,6 +290,32 @@ describe('scenario_submit', () => {
     expect(fs.files.has(pendingFile(SAVE_DIR))).toBe(false);
   });
 
+  it('keeps what the case grew from, as a kind and a sentence and no headline, in the run and its view', async () => {
+    const fs = memoryFs();
+    await saveSeedsForDay(SAVE_DIR, '2026-10-31', { seeds: [SEED], realNames: [] }, fs);
+    const { call } = await start(pendingRun({ locale: 'en' }), fs);
+    const brief = await call('generator_brief', {});
+
+    await submit(call, readCase('goose-of-elmwick.en.json'));
+
+    const loaded = await loadRun(SAVE_DIR, fs);
+    const inspiration = { kind: SEED.kind, premise: SEED.premise };
+    expect(brief.body.seed).toMatchObject(inspiration);
+    expect(loaded.ok && loaded.run.inspiration).toEqual(inspiration);
+    expect((await call('run_view', {})).body.inspiration).toEqual(inspiration);
+    expect((await call('run_view', {})).text).not.toContain(SEED.headlineIds[0]);
+  });
+
+  it('keeps nothing of the news when there was no seed', async () => {
+    const { fs, call } = await start(pendingRun({ locale: 'en' }));
+
+    await submit(call, readCase('goose-of-elmwick.en.json'));
+
+    const loaded = await loadRun(SAVE_DIR, fs);
+    expect(loaded.ok && loaded.run.inspiration).toBeNull();
+    expect((await call('run_view', {})).body.inspiration).toBeNull();
+  });
+
   it('keeps the country the case is set in, with its climate, in the run and its view', async () => {
     const { fs, call } = await start(pendingRun({ locale: 'ru' }));
     await call('world_propose', { kind: 'country', real: ['Norway', 'Норвегия'], region: 'north' });

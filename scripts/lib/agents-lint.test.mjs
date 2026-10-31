@@ -297,3 +297,22 @@ describe('the prompts carry no story of a canonical case', () => {
     }
   });
 });
+
+describe('the news is visible to the player', () => {
+  const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+  const generator = read(join(AGENTS, 'subagents', 'case-generator.md'));
+
+  it('has the narrator say, once and out of the fiction, when the news did not come through', () => {
+    expect(skill).toMatch(/If `items` is empty[^.]*say so in one plain line out of the fiction/);
+    expect(skill).toMatch(/On `failed`[^.]*say so to the player/);
+  });
+
+  it('has the narrator nod to what the case grew from, and only when the view has it', () => {
+    expect(skill).toContain('`inspiration`');
+    expect(skill).toContain('`inspiration: null`');
+  });
+
+  it('has the generator keep the seed recognisable in the case', () => {
+    expect(generator).toMatch(/keep it recognisable/);
+  });
+});

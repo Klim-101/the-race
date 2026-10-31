@@ -3,6 +3,7 @@
 
 import {
   EMPTY_RUN_LOG,
+  chooseSeed,
   chooseSetting,
   createDetectiveRun,
   validateCase,
@@ -144,6 +145,11 @@ export const scenarioSubmit = defineTool({
       });
 
       if (result.isValid) {
+        // The seed the brief gave the generator: the same choice from the same news, hero and seed.
+        const chosen = chooseSeed((await seedsOfRun(context))?.seeds ?? [], {
+          background: hero.background,
+          runSeed: pending.seed,
+        });
         // The run continues the dice the hero was made with: the pending record holds their state.
         const run = createDetectiveRun({
           hero,
@@ -154,6 +160,8 @@ export const scenarioSubmit = defineTool({
           locale: pending.locale,
           // The same country the brief named for this seed; the run keeps it from here on.
           setting: chooseSetting(world, pending.seed),
+          // Shown to the player later, as what the case grew from.
+          inspiration: chosen && { kind: chosen.seed.kind, premise: chosen.seed.premise },
         });
         await saveRun(context.saveDir, run, context.saveFs, EMPTY_RUN_LOG);
         await clearPending(context.saveDir, context.saveFs);

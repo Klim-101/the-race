@@ -14,6 +14,7 @@ import {
   DetectiveRunStateSchema,
   addInsight,
   changeReputation,
+  InspirationSchema,
   createDetectiveRun,
   endRun,
   endTurn,
@@ -25,9 +26,10 @@ import {
   strainNerves,
   viewRun,
   type DetectiveRunState,
+  type Inspiration,
 } from './run-state.js';
 
-function newRun(setting?: Setting): DetectiveRunState {
+function newRun(setting?: Setting, inspiration?: Inspiration): DetectiveRunState {
   const rng = createRng('run');
   const result = assembleHero(buildHero(), rng);
   if (!result.isValid) throw new Error('The fixture hero is invalid.');
@@ -39,6 +41,7 @@ function newRun(setting?: Setting): DetectiveRunState {
     rngState: rng.state(),
     locale: 'en',
     setting,
+    inspiration,
   });
 }
 
@@ -70,6 +73,36 @@ describe('the setting of a run', () => {
 
     expect(view.setting).toEqual({ name: 'Valdmark', climate: SETTING.climate });
     expect(viewRun({ ...newRun(SETTING), locale: 'ru' }).setting?.name).toBe('Вальдмарк');
+  });
+});
+
+const INSPIRATION: Inspiration = {
+  kind: 'shortage',
+  premise: 'A staple has gone missing from every shelf, and the shopkeepers blame each other.',
+};
+
+describe('what the case grew from', () => {
+  it('is none unless the run is given a seed, and is kept through JSON', () => {
+    expect(newRun().inspiration).toBeNull();
+    expect(viewRun(newRun()).inspiration).toBeNull();
+
+    const run = newRun(undefined, INSPIRATION);
+
+    expect(DetectiveRunStateSchema.parse(JSON.parse(JSON.stringify(run))).inspiration).toEqual(INSPIRATION);
+    expect(viewRun(run).inspiration).toEqual(INSPIRATION);
+  });
+
+  it('is an old save without one: the field has a default', () => {
+    const old: Record<string, unknown> = { ...newRun() };
+    delete old.inspiration;
+
+    expect(DetectiveRunStateSchema.parse(old).inspiration).toBeNull();
+  });
+
+  it('holds a kind and a sentence and nothing more, so a headline has no place in it', () => {
+    expect(InspirationSchema.safeParse({ ...INSPIRATION, headline: 'x' }).success).toBe(false);
+    expect(InspirationSchema.safeParse({ ...INSPIRATION, kind: 'not-a-kind' }).success).toBe(false);
+    expect(InspirationSchema.safeParse({ ...INSPIRATION, premise: '' }).success).toBe(false);
   });
 });
 

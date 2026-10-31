@@ -14,6 +14,12 @@ At the first start Claude Code asks for the **Game folder** (a `userConfig` opti
 
 Saves made by an earlier version, in the platform's state directory, are found and kept while `saves/` does not exist yet; the guard keeps both closed. `RACE_HOME` (the save directory itself) and `RACE_BOARD_DIR` (the board folder) still override the two subfolders. To move to a new folder, copy the old saves into its `saves/` first.
 
+## The news, and how to tell that it worked
+
+Each day a subagent reads the cleaned headlines once and leaves a handful of **seeds** (a kind of trouble, a tone and one invented sentence, never a headline or a real name). The tavern tells them as rumours, and the case of a run grows from the one seed the engine chooses for the hero. What it grew from is shown in the **Chronicle** tab of the evidence board ("What in the news the case grew from") and kept in the run (`inspiration`).
+
+If the feed did not answer, the narrator says so in one line and the case is built without a seed; the board then says the case was not built on the news. The seeds of the last two weeks are in `seeds/seeds.json` inside the saves folder of your game folder: if it is missing or has no entry for the day, nothing was extracted that day. The file is yours to open; the narrator is kept out of it, like the rest of the saves. `RACE_NEWS_LAG_DAYS` (0 to 14) sets how many days behind the news a run is.
+
 ## The HUD
 
 The plugin ships a HUD for Claude Code, a mod written against Claude Code's hooks-module API (early access). It has two parts, both listening to the game's own tools, so the narrator passes it nothing and it costs no turn:
