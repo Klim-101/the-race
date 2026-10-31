@@ -1,10 +1,14 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { DETECTIVE_SKILL_PRESETS } from '@the-race/engine';
-import { runFiles } from '@the-race/saves';
+import { loadRun, runFiles } from '@the-race/saves';
 import { describe, expect, it } from 'vitest';
+import { TEST_BOARD_DIR } from '../../test/fake-context.js';
 import { HERO_CHOICES, call, gameContext, installCase, prepareHero } from '../../test/game.js';
+import { escapeHtml } from '../board/render-board.js';
 import { pendingFile } from '../pending-run.js';
 import { accuse } from './accuse.js';
 import { act } from './act.js';
@@ -210,11 +214,77 @@ describe('evidence_board', () => {
 
     expect(result.isError).toBe(false);
     const path = result.body.path as string;
-    expect(path.replaceAll('\\', '/')).toMatch(/board\/evidence\.html$/);
+    expect(path).toBe(join(TEST_BOARD_DIR, 'evidence.html'));
     expect(result.body).toMatchObject({ clueCount: expect.any(Number) as unknown, insightCount: 0 });
     const page = context.fs.files.get(path) ?? '';
     expect(page).toContain('<!doctype html>');
     expect(page).toContain('Last seen');
+  });
+
+  it('is written outside the save directory, with a file:// link to the same page', async () => {
+    const context = await activeRun();
+
+    const result = await call(evidenceBoard, {}, context);
+
+    const path = result.body.path as string;
+    expect(path.startsWith(context.saveDir)).toBe(false);
+    expect(path.startsWith(context.boardDir)).toBe(true);
+    expect(result.body.link).toBe(pathToFileURL(path).href);
+    expect(result.body.link).toMatch(/^file:\/\/\/.*evidence\.html$/);
+    expect([...context.fs.files.keys()].filter((file) => file.startsWith(context.saveDir))).not.toContain(
+      path,
+    );
+  });
+
+  it('keeps one file between calls, so a tab left open follows the run', async () => {
+    const context = await activeRun();
+
+    const first = await call(evidenceBoard, {}, context);
+    await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+    const second = await call(evidenceBoard, {}, context);
+
+    expect(second.body.path).toBe(first.body.path);
+    expect(second.body.link).toBe(first.body.link);
+    const boards = [...context.fs.files.keys()].filter((file) => file.startsWith(context.boardDir));
+    expect(boards).toEqual([first.body.path]);
+  });
+
+  it('holds nothing beyond what run_view shows: no truth, no hidden trait, no clue not yet found', async () => {
+    const context = await activeRun();
+    await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+    const view = (await call(runView, {}, context)).body as {
+      clues: { description: string }[];
+      suspects: { name: string; persona: string }[];
+    };
+    const board = (await call(evidenceBoard, {}, context)).body.path as string;
+    const page = context.fs.files.get(board) ?? '';
+    const run = await loadRun(context.saveDir, context.saveFs);
+    if (!run.ok) throw new Error('The run must load.');
+    const sealed = run.run.case;
+    const shown = new Set(view.clues.map(({ description }) => description));
+
+    // What the player may see is on the page, as the view has it.
+    for (const description of shown) expect(page).toContain(escapeHtml(description));
+    for (const { name, persona } of view.suspects) {
+      expect(page).toContain(escapeHtml(name));
+      expect(page).toContain(escapeHtml(persona));
+    }
+    // What the sealed case keeps back is not.
+    const hidden = [
+      sealed.truth.motive,
+      sealed.truth.method,
+      ...sealed.truth.timeline.map(({ action }) => action),
+      ...sealed.suspects.flatMap(({ secret, alibi, lies }) => [
+        secret,
+        alibi,
+        ...lies.map((lie) => lie.statement),
+      ]),
+      ...sealed.clues.map(({ description }) => description).filter((text) => !shown.has(text)),
+      ...run.run.traits.map(({ id }) => id),
+    ];
+    expect(hidden.length).toBeGreaterThan(10);
+    for (const text of hidden) expect(page).not.toContain(escapeHtml(text));
+    expect(page).not.toMatch(/culprit|isRedHerring|pointsTo|rngState|caseSeal/);
   });
 
   it('is refused when there is no run', async () => {

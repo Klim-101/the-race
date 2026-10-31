@@ -63,7 +63,7 @@ The engine validates strictly, and a malformed call only wastes the turn. Use ex
 - `deduce`: `{ "turn": 4, "clueIds": ["a", "b"] }` with the ones the player chose.
 - `evidence_board`: `{}`. It writes a page for the player and costs no time.
 
-Give the evidence board in one line, with the returned `path` as a clickable link (the board lists the suspects and the clues), and never open or read the file yourself.
+Give the evidence board in one line, with the returned `link` (a `file://` address) as the clickable link and the `path` beside it in words, so a player whose browser does not open the link can paste the path (the board lists the suspects and the clues). It is always the same file, so a tab left open shows the new state after a reload. Never open or read the file yourself.
 
 ## Rendering the hero's state
 

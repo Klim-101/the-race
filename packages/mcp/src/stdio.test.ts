@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { defineTool } from './define-tool.js';
 import { SERVER_NAME, SERVER_VERSION } from './server-identity.js';
+import { defaultBoardDir } from '@the-race/saves';
 import { MAX_NEWS_LAG_DAYS, createDefaultContext, newsLagDays, serveStdio } from './stdio.js';
 import { TOOLS } from './tools/index.js';
 import { ToolFailure } from './tool-error.js';
@@ -104,6 +105,8 @@ describe('createDefaultContext', () => {
   it('keeps saves in the directory it is given and draws a different seed each time', () => {
     const context = createDefaultContext('some-dir');
     expect(context.saveDir).toBe('some-dir');
+    expect(context.boardDir).toBe(defaultBoardDir());
+    expect(createDefaultContext('some-dir', {}, 'board-dir').boardDir).toBe('board-dir');
     expect(context.newSeed()).toMatch(/^[0-9a-f]{16}$/);
     expect(context.newSeed()).not.toBe(context.newSeed());
   });
