@@ -27,6 +27,7 @@ export type CaseIssueCode =
   | 'random-event-cuts-solution'
   | 'random-event-violence'
   | 'too-few-random-events'
+  | 'random-events-miss-a-day'
   | 'map-too-small'
   | 'map-too-large'
   | 'too-few-outdoor-places'

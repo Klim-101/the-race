@@ -10,8 +10,10 @@ export const RUN_SCHEMA_VERSION = 2;
  * in the day, when the clock passes midday and the evening; a run of an older ruleset plays as it did.
  * 9: a failed pressure talk, a link that leads nowhere and a search that finds nothing fray the nerves too,
  * up to a few points a day (see `strainByAction`).
+ * 10: every day has an event of its own: the night leaves the pool enough for the days still to come, and
+ * an evening with none drawn brings one (see `random-events.ts`).
  */
-export const RULESET_VERSION = 9;
+export const RULESET_VERSION = 10;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;

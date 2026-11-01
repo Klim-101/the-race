@@ -280,8 +280,12 @@ describe('the night draws the random events of the next day', () => {
       expect(replay(initial, log)).toEqual({ ok: true, run });
       for (const entry of log) {
         const ids = entry.randomEvents.map(({ eventId }) => eventId);
-        // A turn with a night has drawn the night's events alone; the others may have drawn the day's.
-        if (entry.night !== null) expect(ids).toEqual(entry.night.events);
+        // A turn with a night has drawn the night's events, and the day's owed event if the hero turned in early;
+        // the others may have drawn the day's.
+        const ofNight = entry.randomEvents
+          .filter(({ phase }) => phase === 'night')
+          .map(({ eventId }) => eventId);
+        if (entry.night !== null) expect(ofNight).toEqual(entry.night.events);
         drawn += ids.length;
       }
       // No drawn event ever cuts the last route: the case stays solvable on every day.

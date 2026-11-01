@@ -39,12 +39,27 @@ export function checkRandomEvents(
   const issues: CaseIssue[] = [];
 
   const pool = detectiveCase.randomEvents ?? [];
-  if (pool.length < minEvents) {
+  // A case that must have a pool needs an event for every day, and at least `minEvents`.
+  const needed = minEvents > 0 ? Math.max(minEvents, days) : 0;
+  if (pool.length < needed) {
     issues.push({
       code: 'too-few-random-events',
       path: 'randomEvents',
-      message: `The case needs at least ${String(minEvents)} random events, with fromDay and untilDay spread over its days; it has ${String(pool.length)}.`,
+      message: `The case needs at least ${String(needed)} random events (as many as it has days, and not fewer than ${String(minEvents)}), with fromDay and untilDay spread over its days; it has ${String(pool.length)}.`,
     });
+  }
+  if (needed > 0 && pool.length > 0) {
+    const uncovered = Array.from({ length: days }, (_, index) => index + 1).filter(
+      (day) =>
+        !pool.some(({ fromDay, untilDay }) => fromDay <= day && (untilDay === null || untilDay >= day)),
+    );
+    if (uncovered.length > 0) {
+      issues.push({
+        code: 'random-events-miss-a-day',
+        path: 'randomEvents',
+        message: `Every day of the case needs an event that may happen on it; no event covers day ${uncovered.map(String).join(', ')} (see fromDay and untilDay).`,
+      });
+    }
   }
 
   pool.forEach((event, index) => {

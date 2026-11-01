@@ -29,6 +29,8 @@ export const EVENT_SLOTS_PER_DRAW = 2;
 export const BASE_EVENT_CHANCE_PERCENT = 35;
 /** The first ruleset in which events are also drawn in the day. */
 export const DAY_EVENTS_RULESET_VERSION = 6;
+/** The first ruleset in which each day is promised an event and the night leaves the pool for the days to come. */
+export const EVERY_DAY_RULESET_VERSION = 10;
 /** The clock marks at which the day may bring an event: midday and the evening. */
 export const DAY_EVENT_MARKS = [12 * 60, 18 * 60] as const;
 /** The chance of an event at one mark of the day, in percent, before the growth towards the deadline. */
@@ -202,7 +204,23 @@ export interface EventDraw {
  * deterministic in the run and the dice. A run that is over, or a case without a pool, draws nothing.
  */
 export function drawEvents(run: DetectiveRunState, rng: Rng): EventDraw {
-  return drawSlots(run, rng, EVENT_SLOTS_PER_DRAW, BASE_EVENT_CHANCE_PERCENT);
+  return drawSlots(run, rng, EVENT_SLOTS_PER_DRAW, BASE_EVENT_CHANCE_PERCENT, 'night');
+}
+
+/** The days of the case from this one to the last, this one included. */
+function daysLeftOf(run: DetectiveRunState): number {
+  return Math.max(1, run.case.clock.days - run.clock.day + 1);
+}
+
+/** Events of the pool that have not happened yet. */
+function eventsLeftOf(run: DetectiveRunState): number {
+  const drawn = new Set(run.drawnEvents.map(({ eventId }) => eventId));
+  return poolOf(run).filter(({ id }) => !drawn.has(id)).length;
+}
+
+/** Whether the day has had an event at a mark of the clock already. */
+function dayEventToday(run: DetectiveRunState): boolean {
+  return run.drawnEvents.some(({ day, phase }) => day === run.clock.day && phase === 'day');
 }
 
 /**
@@ -215,24 +233,54 @@ export function drawDayEvents(run: DetectiveRunState, before: RunClock, rng: Rng
   const crossed = DAY_EVENT_MARKS.filter((mark) => before.minute < mark && run.clock.minute >= mark).length;
   if (!sameDay || crossed === 0 || run.rulesetVersion < DAY_EVENTS_RULESET_VERSION)
     return { run, events: [] };
-  const drawn = drawSlots(run, rng, crossed, DAY_EVENT_CHANCE_PERCENT);
+  // From the ruleset of the daily event, an evening with none drawn that day brings one for certain.
+  const promised =
+    run.rulesetVersion >= EVERY_DAY_RULESET_VERSION &&
+    before.minute < DAY_EVENT_MARKS[1] &&
+    run.clock.minute >= DAY_EVENT_MARKS[1];
+  const drawn = drawSlots(run, rng, crossed, DAY_EVENT_CHANCE_PERCENT, 'day', promised);
   // The dice rolled for a slot that brought nothing are spent all the same: the run must carry on from here.
   return { ...drawn, run: { ...drawn.run, rngState: rng.state() } };
 }
 
-function drawSlots(run: DetectiveRunState, rng: Rng, slots: number, baseChance: number): EventDraw {
+/**
+ * The event a day is owed when the hero turns in before the evening mark was reached (a rest, or a collapse):
+ * it comes as they lie down, on the day that is closing, so a day cut short is not a day without one. From the
+ * ruleset of the daily event only, and only for a day that has had none at a mark of the clock.
+ */
+export function drawOwedDayEvent(run: DetectiveRunState, rng: Rng): EventDraw {
+  if (run.rulesetVersion < EVERY_DAY_RULESET_VERSION || dayEventToday(run)) return { run, events: [] };
+  const drawn = drawSlots(run, rng, 1, DAY_EVENT_CHANCE_PERCENT, 'day', true);
+  return { ...drawn, run: { ...drawn.run, rngState: rng.state() } };
+}
+
+function drawSlots(
+  run: DetectiveRunState,
+  rng: Rng,
+  slots: number,
+  baseChance: number,
+  phase: 'day' | 'night',
+  promiseLast = false,
+): EventDraw {
   let current = run;
   const events: DrawnEvent[] = [];
   if (run.status !== 'active') return { run, events };
+  const reserving = run.rulesetVersion >= EVERY_DAY_RULESET_VERSION;
   for (let slot = 0; slot < slots; slot += 1) {
     if (poolOf(current).length === 0) break;
-    const chance = baseChance + Math.round(pressureOf(current) * DEADLINE_CHANCE_GROWTH_PERCENT);
+    const owed = promiseLast && slot === slots - 1 && !dayEventToday(current);
+    // Each day to come keeps one event of the pool. The night is for the morning of a day that is still owed
+    // its own, so it keeps one more; a day's chance draw leaves what the days after it are owed.
+    const spare = eventsLeftOf(current) - daysLeftOf(current);
+    if (reserving && phase === 'night' && spare < 1) break;
+    if (reserving && phase === 'day' && !owed && spare < 0) continue;
+    const chance = owed ? 100 : baseChance + Math.round(pressureOf(current) * DEADLINE_CHANCE_GROWTH_PERCENT);
     if (rng.roll(100) > chance) continue;
     const [first, ...others] = candidatesOf(current);
     if (first === undefined) continue;
     const { id, effect } = pick(first, others, rng);
-    current = applyEffect(recordDrawnEvent(current, id), effect);
-    events.push({ eventId: id, day: current.clock.day });
+    current = applyEffect(recordDrawnEvent(current, id, phase), effect);
+    events.push({ eventId: id, day: current.clock.day, phase });
   }
   return { run: current, events };
 }

@@ -134,9 +134,12 @@ describe('the log of a turn', () => {
       [],
     );
 
-    const drawn = drawEvents(resolution.run, { ...createRng('log'), roll: () => 1 });
+    const drawn = drawEvents(
+      { ...resolution.run, rulesetVersion: 9 },
+      { ...createRng('log'), roll: () => 1 },
+    );
     const log = recordResolution(EMPTY_RUN_LOG, before, { kind: 'look' }, { ...resolution, run: drawn.run });
-    expect(log[0]?.randomEvents).toEqual([{ eventId: 'fair-music', day: 1 }]);
+    expect(log[0]?.randomEvents).toEqual([{ eventId: 'fair-music', day: 1, phase: 'night' }]);
 
     const older: Record<string, unknown> = { ...log[0] };
     delete older.randomEvents;

@@ -12,6 +12,7 @@ import { EMPTY_RUN_LOG, recordResolution, replay, type RunLog } from './event-lo
 import {
   BASE_EVENT_CHANCE_PERCENT,
   DEADLINE_CHANCE_GROWTH_PERCENT,
+  EVERY_DAY_RULESET_VERSION,
   MAX_HARMFUL_EVENTS_PER_DAY,
   activeEffects,
   closedSourcesOf,
@@ -50,7 +51,7 @@ const TIME = event({
 
 function runWith(
   events: readonly Record<string, unknown>[],
-  options: { days?: number; traits?: readonly Trait[]; tone?: string } = {},
+  options: { days?: number; traits?: readonly Trait[]; tone?: string; ruleset?: number } = {},
 ): DetectiveRunState {
   const raw = buildCheeseCase();
   raw.locations.push(ALLEY);
@@ -58,7 +59,7 @@ function runWith(
   raw.clock.days = options.days ?? 3;
   if (options.tone !== undefined) raw.tone = options.tone;
   raw.randomEvents = [...events];
-  return createDetectiveRun({
+  const run = createDetectiveRun({
     hero: buildHero(),
     traits: options.traits ?? [],
     case: DetectiveCaseSchema.parse(raw),
@@ -66,6 +67,9 @@ function runWith(
     rngState: 1,
     locale: 'en',
   });
+  // These tests are of the drawing as it was before each day was promised an event; the ruleset of the
+  // promise has its own tests (every-day-event.test.ts).
+  return { ...run, rulesetVersion: options.ruleset ?? EVERY_DAY_RULESET_VERSION - 1 };
 }
 
 /** Dice that give the values the test names, in order, whatever the sides. */
@@ -105,7 +109,7 @@ describe('drawEvents', () => {
 
   it('brings an event when the chance roll hits, and records it with its day', () => {
     const drawn = drawEvents(runWith([FLAVOR]), SURE());
-    expect(drawn.events).toEqual([{ eventId: 'fair-music', day: 1 }]);
+    expect(drawn.events).toEqual([{ eventId: 'fair-music', day: 1, phase: 'night' }]);
     expect(drawn.run.drawnEvents).toEqual(drawn.events);
     expect(viewRun(drawn.run).news).toContain('Something happens: fair-music.');
   });

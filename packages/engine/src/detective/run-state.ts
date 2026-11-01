@@ -65,7 +65,12 @@ import { isLocationClosed, suspectPlace } from './random-events.js';
 import { CASE_SEAL_PATTERN, isCaseSealIntact, sealCase } from './seal.js';
 
 /** A random event that has happened, and the day it happened on. */
-export const DrawnEventSchema = z.object({ eventId: EntityIdSchema, day: z.int().min(1) });
+export const DrawnEventSchema = z.object({
+  eventId: EntityIdSchema,
+  day: z.int().min(1),
+  /** When in the day it was drawn: at a mark of the clock, or in the night for the morning. Older runs have none. */
+  phase: z.enum(['day', 'night']).optional(),
+});
 export type DrawnEvent = z.infer<typeof DrawnEventSchema>;
 
 /**
@@ -501,14 +506,19 @@ export function closeLocation(run: DetectiveRunState, locationId: string): Detec
 }
 
 /** Writes down that a random event of the case's pool has happened today; its effects are applied elsewhere. */
-export function recordDrawnEvent(run: DetectiveRunState, eventId: string): DetectiveRunState {
+export function recordDrawnEvent(
+  run: DetectiveRunState,
+  eventId: string,
+  phase?: DrawnEvent['phase'],
+): DetectiveRunState {
   assertActive(run);
   requireId(
     'random event',
     eventId,
     (run.case.randomEvents ?? []).map(({ id }) => id),
   );
-  return { ...run, drawnEvents: [...run.drawnEvents, { eventId, day: run.clock.day }] };
+  const drawn = { eventId, day: run.clock.day, ...(phase === undefined ? {} : { phase }) };
+  return { ...run, drawnEvents: [...run.drawnEvents, drawn] };
 }
 
 /** What the player and the narrator may know. It leaves out the truth, the solution and unrevealed traits. */

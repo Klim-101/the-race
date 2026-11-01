@@ -62,6 +62,7 @@ const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
   'random-event-cuts-solution': 25,
   'random-event-violence': 26,
   'too-few-random-events': 27,
+  'random-events-miss-a-day': 27.5,
   'solution-after-culprit-flees': 28,
 };
 
