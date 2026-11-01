@@ -35,6 +35,12 @@ function placeOf(value: unknown): HudPlace | undefined {
   return { id, name, visited, blocked: blocked === 'locked' || blocked === 'closed' ? blocked : null };
 }
 
+/** The hero's composure as a word, from the warnings the game shows while the bands apply; the worst band wins. */
+function composureOf(warnings: readonly unknown[]): Hud['composure'] {
+  if (warnings.includes('ragged-nerves')) return 'ragged';
+  return warnings.includes('frayed-nerves') ? 'frayed' : 'steady';
+}
+
 /**
  * Folds what a game tool said into the HUD. `run_view` is the full public view and the turn tools carry a
  * short `view` of the same run, both with the known map. An answer that is not a view of a run in progress
@@ -66,6 +72,7 @@ export function applyResult(hud: Hud | null, data: Record<string, unknown>): Hud
       : [],
   );
 
+  const warnings = view['warnings'];
   const hidden = view['hiddenTraitCount'];
   const clues = view['clues'];
   const clueCount = Array.isArray(clues) ? clues.length : view['clueCount'];
@@ -79,6 +86,7 @@ export function applyResult(hud: Hud | null, data: Record<string, unknown>): Hud
     locationId: current,
     clueCount: typeof clueCount === 'number' ? clueCount : (hud?.clueCount ?? 0),
     hiddenTraits: typeof hidden === 'number' ? hidden : (hud?.hiddenTraits ?? 0),
+    composure: Array.isArray(warnings) ? composureOf(warnings) : (hud?.composure ?? 'steady'),
     places,
     links,
   };
@@ -89,6 +97,7 @@ export const LABELS = {
     day: 'День',
     clues: 'улик',
     hiddenTraits: 'скрытых черт',
+    nerves: { steady: 'нервы в порядке', frayed: 'нервы на взводе', ragged: 'нервы на пределе' },
     map: 'Карта',
     here: 'вы здесь',
     unvisited: 'не посещено',
@@ -101,6 +110,7 @@ export const LABELS = {
     day: 'Day',
     clues: 'clues',
     hiddenTraits: 'hidden traits',
+    nerves: { steady: 'nerves steady', frayed: 'nerves frayed', ragged: 'nerves ragged' },
     map: 'Map',
     here: 'you are here',
     unvisited: 'not visited',

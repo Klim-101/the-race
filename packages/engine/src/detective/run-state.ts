@@ -29,6 +29,8 @@ import { DETECTIVE, DetectiveHeroSchema, type DetectiveHero } from './archetype.
 import {
   HeroConditionSchema,
   absoluteMinute,
+  ACTION_STRAIN_CAP_PER_DAY,
+  ACTION_STRAIN_RULESET_VERSION,
   initialCondition,
   passTime,
   withCondition,
@@ -143,6 +145,10 @@ export const DetectiveRunStateSchema = z
     concededLieIds: z.array(EntityIdSchema).default([]),
     /** Nerves, sleep debt and timed conditions; see `condition.ts`. */
     condition: HeroConditionSchema.default(() => initialCondition()),
+    /** The points of nerves that failed work has taken on `day`, so that no day takes more than a few. */
+    actionStrain: z
+      .object({ day: z.int().min(1), spent: z.int().min(0) })
+      .default(() => ({ day: 1, spent: 0 })),
     /** The hero's gear and whether each piece is in hand; it comes from their background. Old saves have none. */
     kit: z.array(KitItemSchema).default([]),
     /** Places that a scheduled event has closed; the hero cannot enter them any more. */
@@ -265,6 +271,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     insightIds: [],
     concededLieIds: [],
     condition: initialCondition(),
+    actionStrain: { day: 1, spent: 0 },
     kit: initialKit(input.hero.background, input.hero.lifeState),
     closedLocationIds: [],
     drawnEvents: [],
@@ -421,6 +428,19 @@ export function strainNerves(
   assertActive(run);
   if (cause === 'failure' && signalIgnores(signalOfRun(run), 'nerves', 'failure')) return run;
   return { ...run, condition: withNervesStrained(run.condition) };
+}
+
+/**
+ * A failure of the work itself (a talk that did not move anyone, a link that led nowhere, a search that found
+ * nothing although something was there) frays the nerves by a point, up to `ACTION_STRAIN_CAP_PER_DAY` a day.
+ * A blunder already costs its own point and is not counted again. A run of an older ruleset plays as before.
+ */
+export function strainByAction(run: DetectiveRunState): DetectiveRunState {
+  assertActive(run);
+  if (run.rulesetVersion < ACTION_STRAIN_RULESET_VERSION) return run;
+  const spent = run.actionStrain.day === run.clock.day ? run.actionStrain.spent : 0;
+  if (spent >= ACTION_STRAIN_CAP_PER_DAY) return run;
+  return { ...strainNerves(run), actionStrain: { day: run.clock.day, spent: spent + 1 } };
 }
 
 /** Puts a timed condition on the hero. */

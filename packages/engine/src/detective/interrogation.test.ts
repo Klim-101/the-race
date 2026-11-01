@@ -201,7 +201,7 @@ describe('a clue that breaks a lie', () => {
       succeeded: false,
       minutes: INTERROGATE_MINUTES + FAILED_INTERROGATION_MINUTES,
       reputationChange: -1,
-      consequences: ['time-lost', 'reputation-lost'],
+      consequences: ['time-lost', 'reputation-lost', 'nerves-lost'],
     });
     expect(next.reputation).toBe(MAX_REPUTATION - 1);
   });

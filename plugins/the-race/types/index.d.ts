@@ -23,6 +23,8 @@ export type Hud = {
   clueCount: number;
   /** How many of the hero's traits are still hidden; a number, never which. */
   hiddenTraits: number;
+  /** How the hero's nerves are, as the game's own warnings say it: a word, never a number. */
+  composure: 'steady' | 'frayed' | 'ragged';
   /** The known map, as the game sent it. */
   places: HudPlace[];
   links: { from: string; to: string }[];

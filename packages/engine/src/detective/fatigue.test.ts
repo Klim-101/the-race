@@ -124,7 +124,10 @@ describe('mishaps', () => {
     const result = ok(
       resolveIntent(run, { kind: 'deduce', clueIds: ['cellar-key', 'flour-crumbs'] }, scripted(1, 1)),
     );
-    expect(result.outcome).toMatchObject({ result: 'nothing', consequences: ['time-lost', 'mishap'] });
+    expect(result.outcome).toMatchObject({
+      result: 'nothing',
+      consequences: ['time-lost', 'nerves-lost', 'mishap'],
+    });
   });
 
   it('never follow the accusation, which ends the run', () => {

@@ -59,6 +59,13 @@ export const register: Register = (on) => {
           {' '}
           · {text.clues} {state.clueCount} · {text.hiddenTraits} {state.hiddenTraits}
         </Text>
+        <Text
+          color={state.composure === 'steady' ? undefined : 'yellow'}
+          dimColor={state.composure === 'steady'}
+        >
+          {' '}
+          · {text.nerves[state.composure]}
+        </Text>
       </Box>
     );
   });
@@ -88,6 +95,7 @@ export const register: Register = (on) => {
         <Text dimColor>
           {text.clues} {state.clueCount} · {text.hiddenTraits} {state.hiddenTraits}
         </Text>
+        <Text dimColor>{text.nerves[state.composure]}</Text>
         <Text> </Text>
         <Text dimColor>{text.map}</Text>
         {mapRows(state).map(({ prefix, place, here }) => {

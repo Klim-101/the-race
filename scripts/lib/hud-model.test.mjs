@@ -187,6 +187,21 @@ describe('applyResult', () => {
     expect(applyResult(null, without(FULL, 'hiddenTraitCount'))?.hiddenTraits).toBe(0);
   });
 
+  it('tells the hero\u2019s composure as a word from the warnings, the worst band winning, else what it knew', () => {
+    const warned = (...warnings) => ({ ...FULL, warnings });
+
+    expect(applyResult(null, warned())?.composure).toBe('steady');
+    expect(applyResult(null, warned('frayed-nerves'))?.composure).toBe('frayed');
+    expect(applyResult(null, warned('frayed-nerves', 'ragged-nerves'))?.composure).toBe('ragged');
+    expect(applyResult(null, warned('low-reputation'))?.composure).toBe('steady');
+    // The short view of a turn carries the warnings too; an answer without them keeps what was known.
+    expect(applyResult(null, { view: { ...SHORT.view, warnings: ['frayed-nerves'] } })?.composure).toBe(
+      'frayed',
+    );
+    expect(applyResult(applyResult(null, warned('ragged-nerves')), SHORT)?.composure).toBe('ragged');
+    expect(applyResult(null, FULL)?.composure).toBe('steady');
+  });
+
   it('takes the language and the turn from the answer, else from what it knew, else English and zero', () => {
     const bare = without(FULL, 'locale', 'turn');
 
@@ -249,6 +264,7 @@ describe('what the HUD holds', () => {
   );
   const ALLOWED = [
     'clueCount',
+    'composure',
     'day',
     'hiddenTraits',
     'links',

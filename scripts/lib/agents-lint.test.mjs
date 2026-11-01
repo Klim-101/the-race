@@ -367,6 +367,16 @@ describe('the size of a link', () => {
   });
 });
 
+describe('the nerves of the hero', () => {
+  const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));
+
+  it('tells the narrator the new cost and the warnings as feelings, never as numbers', () => {
+    expect(outcomes).toContain('`nerves-lost`');
+    expect(outcomes).toContain('`frayed-nerves` and `ragged-nerves`');
+    expect(outcomes).toMatch(/never name the number or the meter/);
+  });
+});
+
 describe('a save that cannot be read', () => {
   const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
   const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));

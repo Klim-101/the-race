@@ -16,6 +16,7 @@ import {
   endTurn,
   signalOfRun,
   spendTime,
+  strainByAction,
   strainNerves,
   type DetectiveRunState,
   type Statement,
@@ -180,7 +181,16 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
       effect: fallen.some((lie) => lie.brokenBy.includes(clueId)) ? 'breaks-lie' : 'no-effect',
     })),
   );
-  const strained = result.critical === 'failure' ? strainNerves(withLies) : withLies;
+  // A blunder costs its own point; any other failed pressure talk costs one more, up to the day's cap.
+  const strained =
+    result.critical === 'failure'
+      ? strainNerves(withLies)
+      : !result.success && intent.approach === 'pressure'
+        ? strainByAction(withLies)
+        : withLies;
+  if (strained.condition.nerves < run.condition.nerves && result.critical !== 'failure') {
+    consequences.push('nerves-lost');
+  }
   const next = endTurn(spendTime(changeReputation(strained, reputationChange), minutes), rng);
   const details: CheckDetail[] = [{ subject: { kind: 'suspect', id: suspect.id }, result }];
   // What the signal did: the gift or cost on the roll, and the nerves it spared on a blunder.

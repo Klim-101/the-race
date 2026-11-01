@@ -296,7 +296,9 @@
         "sleepDebt": "sleep debt"
       },
       "warningNames": {
-        "low-reputation": "reputation is low: people will not open up"
+        "low-reputation": "reputation is low: people will not open up",
+        "frayed-nerves": "nerves are frayed: everything is a little harder",
+        "ragged-nerves": "nerves are at the limit: hands slip and notes come out garbled"
       },
       "traitNames": {
         "former-accountant": "a former accountant",
