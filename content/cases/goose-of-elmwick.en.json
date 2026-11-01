@@ -19,7 +19,7 @@
       "id": "courtyard",
       "name": "Gala courtyard",
       "description": "Bunting, folding chairs and a string quartet tuning up. Half the town has come to see who the goose's kidnapper might be, and all of them have an opinion.",
-      "connections": ["museum-hall", "tea-shop", "boiler-room"],
+      "connections": ["museum-hall", "boiler-room", "elm-street"],
       "access": { "kind": "open" },
       "exposure": "outdoor",
       "situations": ["crowd", "high-society"]
@@ -28,7 +28,7 @@
       "id": "tea-shop",
       "name": "The Copper Kettle tea shop",
       "description": "A tea shop across the courtyard where the waitresses see everything and forgive nothing. The scones are excellent.",
-      "connections": ["courtyard", "post-office"],
+      "connections": ["elm-street"],
       "access": { "kind": "open" },
       "exposure": "indoor"
     },
@@ -36,7 +36,7 @@
       "id": "post-office",
       "name": "Elmwick post office",
       "description": "A sleepy counter with a brass bell, a sorting wall of pigeonholes and an old telegraph operator who has been retired for twenty years and still comes in daily.",
-      "connections": ["tea-shop"],
+      "connections": ["bell-square"],
       "access": { "kind": "open" },
       "exposure": "indoor"
     },
@@ -64,6 +64,22 @@
       "access": { "kind": "open" },
       "exposure": "indoor",
       "situations": ["confined-space"]
+    },
+    {
+      "id": "elm-street",
+      "name": "Elm Street",
+      "description": "The one proper street of Elmwick: lime trees, a gutter that gurgles and a clear view of everyone’s business.",
+      "connections": ["courtyard", "tea-shop", "bell-square"],
+      "access": { "kind": "open" },
+      "exposure": "outdoor"
+    },
+    {
+      "id": "bell-square",
+      "name": "Bell Square",
+      "description": "A small cobbled square with a dry fountain and a clock that has run four minutes fast since last spring.",
+      "connections": ["elm-street", "post-office"],
+      "access": { "kind": "open" },
+      "exposure": "outdoor"
     }
   ],
   "clues": [

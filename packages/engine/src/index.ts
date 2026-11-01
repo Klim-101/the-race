@@ -34,6 +34,7 @@ export * from './detective/random-events.js';
 export * from './detective/trait-reveal.js';
 export * from './detective/life-state.js';
 export * from './detective/road.js';
+export { GENERATED_MAP, checkMapShape, type MapRules } from './detective/checks/map-shape.js';
 export * from './detective/weather.js';
 export * from './profile.js';
 export * from './detective/night.js';

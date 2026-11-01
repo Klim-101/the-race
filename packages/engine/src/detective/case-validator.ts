@@ -8,6 +8,7 @@ import type { CaseIssue } from './case-issue.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { checkFleeDeadline } from './checks/flee-deadline.js';
 import { checkLies } from './checks/lies.js';
+import { checkMapShape, type MapRules } from './checks/map-shape.js';
 import { checkRandomEvents } from './checks/random-events.js';
 import { checkReachability } from './checks/reachability.js';
 import { checkRedHerrings } from './checks/red-herrings.js';
@@ -36,6 +37,11 @@ export interface CaseValidationContext {
    * case without a pool is accepted, as the cases of before the pool were.
    */
   readonly minRandomEvents?: number;
+  /**
+   * The shape of the map the case must have (`GENERATED_MAP` for a generated one): enough places, streets or
+   * squares between the buildings, and more than one building. Left out, any map is accepted.
+   */
+  readonly map?: MapRules;
 }
 
 export type CaseValidationResult =
@@ -81,6 +87,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
       context.locale,
       context.minRandomEvents ?? 0,
     ),
+    ...(context.map === undefined ? [] : checkMapShape(detectiveCase, context.map)),
     ...checkFleeDeadline(detectiveCase, context.hero, context.traits),
     ...checkRedHerrings(detectiveCase),
     ...checkTexts(detectiveCase, context.locale, context.realNames),
