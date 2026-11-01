@@ -12,7 +12,10 @@ export const accuse = defineTool({
     'The final accusation, and it ends the run for good: it cannot be undone. `culpritId` is a suspect from ' +
     'run_view, `motiveInsightId` the id of an insight the hero has made as the motive (or null for none) and ' +
     '`evidenceClueIds` the found clues laid out as proof. Call it only after the player has confirmed these ' +
-    'three choices; never to test a theory. Pass `turn` from run_view: a stale one is refused with ' +
+    'three choices; never to test a theory. The fields are exactly `turn`, `culpritId`, `motiveInsightId` and ' +
+    '`evidenceClueIds`, and they are easy to confuse with the neighbouring tools: `culpritId` is not ' +
+    '`suspectId`, `motiveInsightId` is not `insightId`, `evidenceClueIds` is not `clueIds`; `turn` is a ' +
+    'number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with ' +
     '"stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ' +
     '("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, ' +
     'place): the run is over, so this is the only place the truth is ever shown. Tell it as the closing ' +
