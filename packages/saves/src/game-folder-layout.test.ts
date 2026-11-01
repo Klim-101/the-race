@@ -17,8 +17,13 @@ describe('the game folder', () => {
     { platform: 'darwin', homedir: '/Users/ann', env: {}, path: posix },
     { platform: 'linux', homedir: '/home/ann', env: { RACE_GAME_FOLDER: '/srv/race' }, path: posix },
   ] as const;
+  // A chosen Windows folder is resolved by the host (`resolve`), so it means nothing on another system.
+  const here = cases.filter(
+    ({ platform, env }) =>
+      platform !== 'win32' || !('RACE_GAME_FOLDER' in env) || process.platform === 'win32',
+  );
 
-  it.each(cases)(
+  it.each(here)(
     'holds the saves, the board and the profile, on $platform with $env',
     ({ path, ...inputs }) => {
       const folder = resolveGameFolder(inputs);
