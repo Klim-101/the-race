@@ -452,3 +452,11 @@ describe('the language of the hero', () => {
     expect(endings).toMatch(/«я оставляю папку на столе/);
   });
 });
+
+describe('the rumours of the tavern', () => {
+  it('are told freshly in each run, as the tool says and the skill repeats', () => {
+    const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+
+    expect(skill).toMatch(/this run's own rumours, so tell them freshly, in different words each time/);
+  });
+});

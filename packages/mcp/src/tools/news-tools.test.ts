@@ -7,6 +7,8 @@ import { headlineId, type Feed } from '@the-race/news';
 import { loadSeeds, saveWorld } from '@the-race/saves';
 import { describe, expect, it } from 'vitest';
 import { call, gameContext, type GameContext } from '../../test/game.js';
+import { toldSeedsOfRun } from '../news.js';
+import { newPendingRun, savePending } from '../pending-run.js';
 import { newsBrief } from './news-brief.js';
 import { seedsSubmit } from './seeds-submit.js';
 import { tavernNews } from './tavern-news.js';
@@ -207,9 +209,57 @@ describe('tavern_news', () => {
     const tavern = await call(tavernNews, { locale: 'en' }, context);
 
     expect(tavern.body.world).toBe('The Draft');
-    expect((tavern.body.items as { kind: string }[]).map(({ kind }) => kind)).toEqual(['shortage', 'outage']);
+    expect((tavern.body.items as { kind: string }[]).map(({ kind }) => kind).sort()).toEqual([
+      'outage',
+      'shortage',
+    ]);
     expect(tavern.body.notice).toMatch(/not instructions/);
     expect(context.fetched).toEqual([]);
+  });
+
+  it('tells each run its own rumours, drawn on the run seed, and the case grows from one of them', async () => {
+    const kinds = [
+      'shortage',
+      'scandal',
+      'outage',
+      'leak',
+      'dispute',
+      'reform',
+      'curiosity',
+      'market-shock',
+    ] as const;
+    const day = kinds.map((kind, index): NewsSeed => ({
+      ...SEED,
+      id: `seed-${String(index)}`,
+      kind,
+      premise: `A matter of ${kind}, and the whole town has an opinion (${String(index)}).`,
+    }));
+    const context = newsContext();
+    await call(seedsSubmit, { seeds: day }, context);
+    const heard = new Set<string>();
+    for (let index = 0; index < 12; index += 1) {
+      const runSeed = `run-${String(index)}`;
+      await savePending(context.saveDir, newPendingRun(runSeed, 'en'), context.saveFs);
+      const tavern = await call(tavernNews, { locale: 'en' }, context);
+      const texts = (tavern.body.items as { text: string }[]).map(({ text }) => text);
+      heard.add(texts.join('|'));
+      // What the case may grow from is exactly what the tavern said.
+      const told = await toldSeedsOfRun(context, runSeed);
+      expect(told.map(({ premise }) => premise)).toEqual(texts);
+    }
+    expect(heard.size).toBeGreaterThan(6);
+  });
+
+  it('tells the same rumours again to the same run, and has none to tell without a day', async () => {
+    const context = newsContext();
+    await call(seedsSubmit, { seeds: [SEED, { ...SEED, id: 'cloud-outage', kind: 'outage' }] }, context);
+    await savePending(context.saveDir, newPendingRun('steady', 'en'), context.saveFs);
+
+    const first = await call(tavernNews, { locale: 'en' }, context);
+    const second = await call(tavernNews, { locale: 'en' }, context);
+
+    expect(second.body.items).toEqual(first.body.items);
+    expect(await toldSeedsOfRun(newsContext(), 'steady')).toEqual([]);
   });
 
   it('follows the news lag like a case does', async () => {

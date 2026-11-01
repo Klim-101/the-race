@@ -15,7 +15,7 @@ import { loadRun } from '@the-race/saves';
 import { z } from 'zod';
 import type { ServerContext } from '../context.js';
 import { defineTool } from '../define-tool.js';
-import { seedsOfRun } from '../news.js';
+import { toldSeedsOfRun } from '../news.js';
 import { clearPending, loadPending, type PendingRun } from '../pending-run.js';
 import { ToolFailure } from '../tool-error.js';
 import { requireWorld } from '../world.js';
@@ -133,7 +133,7 @@ export const generatorBrief = defineTool({
       });
     }
     // The engine picks the seed and the crime, so the same news gives other heroes other cases.
-    const choice = chooseSeed((await seedsOfRun(context))?.seeds ?? [], {
+    const choice = chooseSeed(await toldSeedsOfRun(context, pending.seed), {
       background: hero.background,
       runSeed: pending.seed,
     });
