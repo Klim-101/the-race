@@ -109,7 +109,12 @@ describe('mishaps', () => {
 
   it('are listed among the consequences of an outcome that has them', () => {
     const result = ok(
-      resolveIntent(newRun(TIRED), { kind: 'move', locationId: 'cheese-stall' }, scripted(1, 1)),
+      // A run of the ruleset before the road, whose walks draw no dice of their own (see `road.test.ts`).
+      resolveIntent(
+        { ...newRun(TIRED), rulesetVersion: 7 },
+        { kind: 'move', locationId: 'cheese-stall' },
+        scripted(1, 1),
+      ),
     );
     expect(result.outcome).toMatchObject({ kind: 'move', consequences: ['mishap'], mishap: MISHAPS[0].id });
   });

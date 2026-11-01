@@ -95,7 +95,9 @@ export function renderChronicle(view: DetectiveRunView, turns: readonly TurnView
   const open = openQuestions(view, t);
   return `<div class="card">
 <p>${e(t.now)}: ${e(t.day)} ${String(view.clock.day)} / ${String(view.clock.totalDays)}, ${clock(view.clock.minute)}</p>
-<p>${e(t.left)}: <strong>${e(duration(view.chronicle.activeMinutesLeft, t))}</strong></p>
+<p>${e(t.left)}: <strong>${e(duration(view.chronicle.activeMinutesLeft, t))}</strong></p>${
+    view.weather === null ? '' : `\n<p>${e(t.weatherToday)}: ${e(named(t.weathers, view.weather))}</p>`
+  }
 </div>
 <h3>${e(t.inspired)}</h3>
 ${

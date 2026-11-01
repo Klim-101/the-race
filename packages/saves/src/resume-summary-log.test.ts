@@ -12,7 +12,8 @@ const DIR = join('save-root');
 
 describe('the resume summary and the log', () => {
   it('is built from the run alone: the log neither changes it nor leaks into it', async () => {
-    const { run, log } = playTurns(newRun(), WALK);
+    // A run of the ruleset before the road, so that the walk draws no dice and the same clues are missed as when this was written.
+    const { run, log } = playTurns({ ...newRun(), rulesetVersion: 7 }, WALK);
     const fs = memoryFs();
     await saveRun(DIR, run, fs, log);
     const loaded = await loadRun(DIR, fs);

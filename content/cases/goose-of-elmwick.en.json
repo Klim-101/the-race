@@ -12,7 +12,8 @@
       "name": "Museum hall",
       "description": "A long hall of brass scales, mail sacks and glass cases. At its far end stands an empty plinth with a polite little sign: 'Admiral Quill, please do not touch.'",
       "connections": ["courtyard", "archive", "curator-office"],
-      "access": { "kind": "open" }
+      "access": { "kind": "open" },
+      "exposure": "indoor"
     },
     {
       "id": "courtyard",
@@ -20,6 +21,7 @@
       "description": "Bunting, folding chairs and a string quartet tuning up. Half the town has come to see who the goose's kidnapper might be, and all of them have an opinion.",
       "connections": ["museum-hall", "tea-shop", "boiler-room"],
       "access": { "kind": "open" },
+      "exposure": "outdoor",
       "situations": ["crowd", "high-society"]
     },
     {
@@ -27,28 +29,32 @@
       "name": "The Copper Kettle tea shop",
       "description": "A tea shop across the courtyard where the waitresses see everything and forgive nothing. The scones are excellent.",
       "connections": ["courtyard", "post-office"],
-      "access": { "kind": "open" }
+      "access": { "kind": "open" },
+      "exposure": "indoor"
     },
     {
       "id": "post-office",
       "name": "Elmwick post office",
       "description": "A sleepy counter with a brass bell, a sorting wall of pigeonholes and an old telegraph operator who has been retired for twenty years and still comes in daily.",
       "connections": ["tea-shop"],
-      "access": { "kind": "open" }
+      "access": { "kind": "open" },
+      "exposure": "indoor"
     },
     {
       "id": "archive",
       "name": "Museum archive",
       "description": "Shelves of undelivered letters, tied in ribbon and stamped 'Return to nobody'. The door has a stout lock and the key is, naturally, missing.",
       "connections": ["museum-hall"],
-      "access": { "kind": "clue", "clueId": "archive-key" }
+      "access": { "kind": "clue", "clueId": "archive-key" },
+      "exposure": "indoor"
     },
     {
       "id": "curator-office",
       "name": "Curator's office",
       "description": "A cramped office with a sofa, a kettle and a door guarded by the curator's secretary, who treats every visitor as a personal insult to the collection.",
       "connections": ["museum-hall"],
-      "access": { "kind": "skill", "check": { "skill": "social", "difficulty": 11 } }
+      "access": { "kind": "skill", "check": { "skill": "social", "difficulty": 11 } },
+      "exposure": "indoor"
     },
     {
       "id": "boiler-room",
@@ -56,6 +62,7 @@
       "description": "A low, hot cellar under the courtyard, full of pipes that knock like impatient visitors. There is room to stand and not much room to turn around.",
       "connections": ["courtyard"],
       "access": { "kind": "open" },
+      "exposure": "indoor",
       "situations": ["confined-space"]
     }
   ],

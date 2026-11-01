@@ -47,6 +47,11 @@ export const LODGING_SAFETIES = ['safe', 'ordinary', 'risky'] as const;
 export const LodgingSafetySchema = z.enum(LODGING_SAFETIES);
 export type LodgingSafety = z.infer<typeof LodgingSafetySchema>;
 
+/** Whether a place is inside a building or out of doors: the weather and the road only touch the second. */
+export const EXPOSURES = ['indoor', 'outdoor'] as const;
+export const ExposureSchema = z.enum(EXPOSURES);
+export type Exposure = z.infer<typeof ExposureSchema>;
+
 /** Connections are two-way: listing a connection on either location links both. */
 export const LocationSchema = z.object({
   id: EntityIdSchema,
@@ -54,6 +59,8 @@ export const LocationSchema = z.object({
   description: NarrativeTextSchema,
   connections: z.array(EntityIdSchema),
   access: LocationAccessSchema,
+  /** Indoors or out of doors; a place that does not say (every case before it was asked for) is out of doors. */
+  exposure: ExposureSchema.default('outdoor'),
   /** What the scene is like (a cramped cellar, a crowd); the hero's traits react to it. */
   situations: z.array(TraitTriggerSchema).default([]),
   /** How safe the hero's night is if they sleep here; optional, and a place without it is an ordinary one. */

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { assertNever } from '../assert-never.js';
 import { endReasonOfMeters } from '../meters.js';
 import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
+import type { Weather } from '../world/climate.js';
 import { collectModifier } from '../modifiers.js';
 import { distinctFelt, feltModifier, feltShield, type SignalFelt } from '../signals.js';
 import { hasAutoDiscover, type TraitTrigger } from '../traits.js';
@@ -20,6 +21,7 @@ import { RereadIntentSchema, applyFatigue, resolveReread, type Fatigue } from '.
 import { settleClock } from './clock.js';
 import { isCollapse, passNight, type NightCause, type NightReport } from './night.js';
 import { InterrogateIntentSchema, resolveInterrogate, type InterrogationOutcome } from './interrogation.js';
+import { applyMishap, walk } from './road.js';
 import { UseIntentSchema, resolveUse, type UseOutcome } from './use-item.js';
 import {
   actingReveals,
@@ -127,6 +129,10 @@ export type Outcome = (
       readonly entered: boolean;
       readonly minutes: number;
       readonly consequences: readonly Consequence[];
+      /** The weather of a walk out of doors, which made it slower by the minutes it adds (see `road.ts`). */
+      readonly weather?: Weather;
+      /** The small, comic thing that happened on the road, by id, if one did. */
+      readonly roadMishap?: string;
     }
   | {
       readonly kind: 'search';
@@ -339,14 +345,29 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
     }
   }
 
-  const moved = entered ? moveTo(run, locationId) : run;
-  const minutes = MOVE_MINUTES + (entered ? 0 : FAILED_ENTRY_MINUTES);
+  const arrived = entered ? moveTo(run, locationId) : run;
+  // The walk itself: the weather's minutes and, now and then, a small mishap; only a walk that was made.
+  const road = entered
+    ? walk(run, locationById(detectiveCase, run.locationId), destination, rng)
+    : { extraMinutes: 0 };
+  const moved = road.mishap === undefined ? arrived : applyMishap(arrived, road.mishap);
+  const minutes =
+    MOVE_MINUTES + road.extraMinutes + (road.mishap?.minutes ?? 0) + (entered ? 0 : FAILED_ENTRY_MINUTES);
   const settled = settle(moved, rng, minutes, results);
   const consequences: Consequence[] = [...(entered ? [] : (['time-lost'] as const)), ...settled.consequences];
   return {
     ok: true,
     run: settled.run,
-    outcome: { kind: 'move', from: run.locationId, to: locationId, entered, minutes, consequences },
+    outcome: {
+      kind: 'move',
+      from: run.locationId,
+      to: locationId,
+      entered,
+      minutes,
+      consequences,
+      ...(road.weather === undefined ? {} : { weather: road.weather }),
+      ...(road.mishap === undefined ? {} : { roadMishap: road.mishap.id }),
+    },
     details,
     felt: distinctFelt([...felt, ...settled.felt]),
     revealed,

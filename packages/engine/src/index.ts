@@ -33,6 +33,8 @@ export * from './detective/clock.js';
 export * from './detective/random-events.js';
 export * from './detective/trait-reveal.js';
 export * from './detective/life-state.js';
+export * from './detective/road.js';
+export * from './detective/weather.js';
 export * from './profile.js';
 export * from './detective/night.js';
 export * from './detective/signals.js';

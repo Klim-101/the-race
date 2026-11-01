@@ -31,6 +31,7 @@ function viewOf(overrides: Partial<View> = {}): View {
       skills: { perception: 4, reasoning: 3 },
       background: 'police',
     },
+    weather: null,
     history: { finds: [], shown: [], links: [] },
     signal: null,
     signalEvents: [],
@@ -827,5 +828,15 @@ describe('the life state and the new backgrounds on the hero tab', () => {
 
   it('says nothing of a situation for a hero who has none', () => {
     expect(hero(undefined, 'nurse')).not.toContain('Situation');
+  });
+});
+
+describe('the weather in the chronicle', () => {
+  const chronicle = (view: Partial<View>) => tab(renderEvidenceBoard(viewOf(view)), 'chronicle');
+
+  it('names the weather of today in the language of the run, and says nothing when there is none', () => {
+    expect(chronicle({ weather: 'cold-rain' })).toContain('Weather today: cold rain');
+    expect(chronicle({ weather: 'frost', locale: 'ru' })).toContain('Погода сегодня: мороз');
+    expect(chronicle({})).not.toContain('Weather today');
   });
 });

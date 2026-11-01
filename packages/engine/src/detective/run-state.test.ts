@@ -371,6 +371,7 @@ describe('viewRun', () => {
           description: 'Dusty.',
           connections: [],
           access: { kind: 'open' as const },
+          exposure: 'outdoor' as const,
           situations: [],
         },
       ],

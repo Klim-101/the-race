@@ -469,3 +469,20 @@ describe('the rumours of the tavern', () => {
     expect(skill).toMatch(/this run's own rumours, so tell them freshly, in different words each time/);
   });
 });
+
+describe('the road', () => {
+  const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));
+  const generator = read(join(AGENTS, 'subagents', 'case-generator.md'));
+
+  it('has the narrator tell the weather and the mishaps of the road, comic and never harmful', () => {
+    expect(outcomes).toContain('## The road');
+    for (const id of ['wrong-turn', 'missed-bus', 'deep-puddle', 'lost-in-the-fog', 'dog-follows']) {
+      expect(outcomes).toContain(`\`${id}\``);
+    }
+    expect(outcomes).toMatch(/Never turn a mishap into an injury, a fight or a threat/);
+  });
+
+  it('has the generator mark each place indoor or outdoor', () => {
+    expect(generator).toMatch(/`exposure` \(`"indoor"` for a room in a building, `"outdoor"` for a street/);
+  });
+});
