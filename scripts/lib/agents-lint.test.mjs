@@ -486,3 +486,13 @@ describe('the road', () => {
     expect(generator).toMatch(/`exposure` \(`"indoor"` for a room in a building, `"outdoor"` for a street/);
   });
 });
+
+describe('the map of a generated case', () => {
+  const generator = read(join(AGENTS, 'subagents', 'case-generator.md'));
+
+  it('is a town: 8 to 12 places, streets between the buildings and never two buildings side by side', () => {
+    expect(generator).toMatch(/\*\*locations\*\* \(8 to 12, \*\*a town and not a floor plan\*\*/);
+    expect(generator).toMatch(/two buildings never connect directly, only through an `outdoor` place/);
+    expect(generator).not.toMatch(/\*\*locations\*\* \(6 to 9\)/);
+  });
+});

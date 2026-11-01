@@ -4,6 +4,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { DetectiveHero } from '../src/detective/archetype.js';
+import { GENERATED_MAP } from '../src/detective/checks/map-shape.js';
 import { validateCase } from '../src/detective/case-validator.js';
 import { DETECTIVE_TRAITS } from '../src/detective/traits.js';
 import type { Locale } from '../src/locale.js';
@@ -152,8 +153,8 @@ describe('sample cases', () => {
       const clues = json.clues as { isRedHerring: boolean }[];
       const locations = json.locations as { access: { kind: string }; situations?: string[] }[];
       const suspects = json.suspects as unknown[];
-      expect(locations.length).toBeGreaterThanOrEqual(6);
-      expect(locations.length).toBeLessThanOrEqual(8);
+      expect(locations.length).toBeGreaterThanOrEqual(8);
+      expect(locations.length).toBeLessThanOrEqual(12);
       expect(clues.length).toBeGreaterThanOrEqual(8);
       expect(clues.length).toBeLessThanOrEqual(12);
       expect(clues.filter((clue) => clue.isRedHerring).length / clues.length).toBeLessThanOrEqual(0.3);
@@ -164,6 +165,21 @@ describe('sample cases', () => {
       );
       expect(locations.some((location) => (location.situations ?? []).length > 0)).toBe(true);
       expect((json.clock as { days: number }).days).toBe(3);
+    });
+
+    it('is a town: streets or squares between the buildings, as a generated case must have', () => {
+      const result = validateCase(json, {
+        hero: HEROES[0]!,
+        traits: [],
+        locale,
+        realNames: REAL_NAMES,
+        map: GENERATED_MAP,
+      });
+
+      expect(result).toMatchObject({ isValid: true });
+      const locations = json.locations as { exposure: string }[];
+      expect(locations.filter(({ exposure }) => exposure === 'outdoor').length).toBeGreaterThanOrEqual(3);
+      expect(locations.some(({ exposure }) => exposure === 'indoor')).toBe(true);
     });
 
     describe.each(HEROES)('for hero $name', (hero) => {

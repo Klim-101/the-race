@@ -11,30 +11,34 @@
       "id": "exchange-floor",
       "name": "Port Amberly Exchange floor",
       "description": "A marble hall full of brokers shouting numbers at one another with great confidence and very little proof. The chalkboard of prices is still smudged where Larkspur fell.",
-      "connections": ["press-room", "larkspur-hq", "teahouse"],
+      "connections": ["harbour-street"],
       "access": { "kind": "open" },
+      "exposure": "indoor",
       "situations": ["crowd"]
     },
     {
       "id": "press-room",
       "name": "Financial press room",
       "description": "A cramped newsroom where five journalists share two telephones and one opinion. The memo was slid under this door before dawn.",
-      "connections": ["exchange-floor", "print-shop"],
-      "access": { "kind": "open" }
+      "connections": ["harbour-street", "ink-alley"],
+      "access": { "kind": "open" },
+      "exposure": "indoor"
     },
     {
       "id": "print-shop",
       "name": "Inkwell print shop",
       "description": "A small printer behind the press room that smells of solvent and toast. The owner prints everything from wedding invitations to share certificates and remembers all of it.",
-      "connections": ["press-room"],
-      "access": { "kind": "open" }
+      "connections": ["ink-alley"],
+      "access": { "kind": "open" },
+      "exposure": "indoor"
     },
     {
       "id": "larkspur-hq",
       "name": "Larkspur headquarters",
       "description": "A tea company's offices in the colours of strong tea: brown carpets, beige walls and a receptionist who offers visitors a cup and a form to sign for it.",
-      "connections": ["exchange-floor", "records-vault", "server-room"],
-      "access": { "kind": "open" }
+      "connections": ["larkspur-plaza", "records-vault", "server-room"],
+      "access": { "kind": "open" },
+      "exposure": "indoor"
     },
     {
       "id": "records-vault",
@@ -42,6 +46,7 @@
       "description": "A windowless basement closet of ledgers, where the lights switch off if you stand still for too long. The door needs a pass, and there is barely room for two people and a ledger.",
       "connections": ["larkspur-hq"],
       "access": { "kind": "clue", "clueId": "vault-pass" },
+      "exposure": "indoor",
       "situations": ["confined-space"]
     },
     {
@@ -50,14 +55,40 @@
       "description": "A refrigerated cupboard of blinking boxes, protected by a password that the whole IT department knows and denies knowing.",
       "connections": ["larkspur-hq"],
       "access": { "kind": "skill", "check": { "skill": "tech", "difficulty": 12 } },
+      "exposure": "indoor",
       "situations": ["digital-evidence"]
     },
     {
       "id": "teahouse",
       "name": "The Brindle Leaf teahouse",
       "description": "A family teahouse by the exchange's back door, with chipped cups, honest prices and a tilting sign that has been about to fall for three decades.",
-      "connections": ["exchange-floor"],
-      "access": { "kind": "open" }
+      "connections": ["harbour-street"],
+      "access": { "kind": "open" },
+      "exposure": "indoor"
+    },
+    {
+      "id": "harbour-street",
+      "name": "Harbour Street",
+      "description": "The street that runs past the Exchange down to the water, loud with carts, gulls and men on the phone.",
+      "connections": ["exchange-floor", "press-room", "teahouse", "larkspur-plaza"],
+      "access": { "kind": "open" },
+      "exposure": "outdoor"
+    },
+    {
+      "id": "larkspur-plaza",
+      "name": "Larkspur Plaza",
+      "description": "A windswept plaza of glass and flagpoles in front of the company headquarters.",
+      "connections": ["harbour-street", "larkspur-hq"],
+      "access": { "kind": "open" },
+      "exposure": "outdoor"
+    },
+    {
+      "id": "ink-alley",
+      "name": "Ink Alley",
+      "description": "A narrow alley that smells of ink and wet newsprint, shared by the press room and the print shop.",
+      "connections": ["press-room", "print-shop"],
+      "access": { "kind": "open" },
+      "exposure": "outdoor"
     }
   ],
   "clues": [
