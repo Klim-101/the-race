@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { assembleHero } from '../assemble-hero.js';
-import { canonicalJson } from '../canonical-json.js';
+import { canonicalJson, sha256Hex } from '../canonical-json.js';
 import { createRng } from '../dice.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import {
@@ -163,5 +163,63 @@ describe('a sealed run', () => {
 
     expect(later).not.toEqual(run);
     expect(isCaseSealIntact(later)).toBe(true);
+  });
+});
+
+describe('a save made before places said where they are', () => {
+  /** A run as an older version saved it: its case had no `exposure`, and was sealed without it. */
+  function oldSave(): Record<string, unknown> {
+    const run = JSON.parse(JSON.stringify(newRun())) as {
+      case: { locations: Record<string, unknown>[] };
+      caseSeal: string;
+    };
+    for (const location of run.case.locations) delete location.exposure;
+    run.caseSeal = sha256Hex(canonicalJson(run.case));
+    return run;
+  }
+
+  it('still loads: the default a later version fills in does not make the case look edited', () => {
+    const parsed = DetectiveRunStateSchema.safeParse(oldSave());
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.case.locations.every(({ exposure }) => exposure === 'outdoor')).toBe(
+      true,
+    );
+  });
+
+  it('is judged intact at the verdict, and a case edited after the seal is still caught', () => {
+    const parsed = DetectiveRunStateSchema.parse(oldSave());
+    expect(isCaseSealIntact(parsed)).toBe(true);
+    expect(() => {
+      assertCaseSealIntact(parsed);
+    }).not.toThrow();
+
+    const edited = { ...parsed, case: { ...parsed.case, title: 'Another case' } };
+    expect(isCaseSealIntact(edited)).toBe(false);
+    const moved = {
+      ...parsed,
+      case: {
+        ...parsed.case,
+        locations: parsed.case.locations.map((location, index) =>
+          index === 0 ? { ...location, exposure: 'indoor' as const } : location,
+        ),
+      },
+    };
+    expect(isCaseSealIntact(moved)).toBe(false);
+  });
+
+  it('seals a new case with its places as they say, so one marked indoor is held to it', () => {
+    const run = newRun();
+    const indoor = {
+      ...run,
+      case: {
+        ...run.case,
+        locations: run.case.locations.map((location) => ({ ...location, exposure: 'indoor' as const })),
+      },
+    };
+
+    expect(isCaseSealIntact(run)).toBe(true);
+    expect(isCaseSealIntact(indoor)).toBe(false);
+    expect(isCaseSealIntact({ case: indoor.case, caseSeal: sealCase(indoor.case) })).toBe(true);
   });
 });
