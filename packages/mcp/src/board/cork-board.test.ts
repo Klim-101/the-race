@@ -86,9 +86,27 @@ function tab(page: string, id: string): string {
 // A play that found three clues, showed two of them to Anna and one to Boris, and tried three links.
 const PLAYED = {
   clues: [
-    { id: 'key', locationId: 'stall', description: 'A rusty key under the counter.', garbled: false },
-    { id: 'flour', locationId: 'market', description: 'Flour on the cellar steps.', garbled: false },
-    { id: 'glove', locationId: 'market', description: 'A blue glove by the till.', garbled: true },
+    {
+      id: 'key',
+      locationId: 'stall',
+      description: 'A rusty key under the counter.',
+      garbled: false,
+      number: 'MIRA-01',
+    },
+    {
+      id: 'flour',
+      locationId: 'market',
+      description: 'Flour on the cellar steps.',
+      garbled: false,
+      number: 'MIRA-02',
+    },
+    {
+      id: 'glove',
+      locationId: 'market',
+      description: 'A blue glove by the till.',
+      garbled: true,
+      number: 'MIRA-03',
+    },
   ],
   history: {
     finds: [
@@ -155,7 +173,15 @@ describe('what lights up when something is picked', () => {
       expect(rules).toContain(`main[data-sel="${entry}"] [data-rel~="${entry}"]{opacity:1`);
     }
     const hostile = viewOf({
-      clues: [{ id: 'x"] , body{display:none', locationId: 'stall', description: 'x', garbled: false }],
+      clues: [
+        {
+          id: 'x"] , body{display:none',
+          locationId: 'stall',
+          description: 'x',
+          garbled: false,
+          number: 'MIRA-04',
+        },
+      ],
     });
     expect(pickableTokens(hostile).join(' ')).not.toContain('display:none');
     expect(highlightRules(hostile)).not.toContain('display:none');
@@ -197,7 +223,7 @@ describe('the corkboard tab', () => {
     expect(html).toContain('data-pick="suspect:a"');
     expect(html).toContain('data-pick="place:market"');
     expect(html).toContain('tabindex="0" role="button" aria-label="Anna"');
-    expect(html).toContain('aria-label="A rusty key under the counter."');
+    expect(html).toContain('aria-label="MIRA-01: A rusty key under the counter."');
     expect(html).toContain('data-rel="clue:flour place:market suspect:a"');
   });
 
@@ -237,6 +263,7 @@ describe('the corkboard tab', () => {
       locationId: 'market',
       description: `Clue ${String(index)}`,
       garbled: false,
+      number: 'MIRA-99',
     }));
 
     expect(cork(viewOf({ clues: many })).match(/class="card-pin/g)).toHaveLength(6);
@@ -268,12 +295,65 @@ describe('the corkboard tab', () => {
     expect(html).not.toContain('…');
   });
 
+  it('shows the number and a few words on a card, and the whole clue on the card that opens', () => {
+    const long = 'A rusty key under the counter, wrapped in a note nobody has read, next to a cold cup.';
+    const html = cork(
+      viewOf({
+        ...PLAYED,
+        clues: [{ ...PLAYED.clues[0], description: long }, ...PLAYED.clues.slice(1)],
+      }),
+    );
+    const card = /<g class="card-pin[^>]*data-open="key"[\s\S]*?<\/g>/.exec(html)?.[0] ?? '';
+    const opened = /<div class="opened" id="open-key"[\s\S]*?<\/div>/.exec(html)?.[0] ?? '';
+
+    expect(card).toContain('>MIRA-01</text>');
+    expect(card).toContain('aria-controls="open-key"');
+    expect(card).toContain('…');
+    expect(opened).toContain('role="dialog" aria-label="MIRA-01"');
+    expect(opened).toContain(long);
+    expect(opened).toContain('found at Stall · turn 2');
+    expect(opened).toContain('Shown to: Boris (no effect)');
+    expect(opened).toContain('MIRA-01 + MIRA-02');
+    expect(opened).toContain('led nowhere');
+    expect(opened).not.toContain('…');
+  });
+
+  it('says what an opened card has not been through, and what was read badly', () => {
+    const html = cork(viewOf(PLAYED));
+    const glove = /<div class="opened" id="open-glove"[\s\S]*?<\/div>/.exec(html)?.[0] ?? '';
+
+    expect(glove).toContain('read badly');
+    expect(glove).toContain('Shown to: not shown to anyone yet');
+    expect(glove).not.toContain('MIRA-01 + MIRA-03');
+    expect(cork(viewOf({ ...PLAYED, history: { ...PLAYED.history, links: [] } }))).toContain(
+      'Links it took part in: none yet',
+    );
+  });
+
+  it('shows a card with one rule for each clue, and in Russian when the run is', () => {
+    const page = renderEvidenceBoard(viewOf(PLAYED));
+
+    expect(page).toContain('main[data-open="key"] #open-key{display:block}');
+    expect(page).toContain('main[data-open="glove"] #open-glove{display:block}');
+    expect(page).toContain('.opened{display:none;');
+    const ru = cork(viewOf({ ...PLAYED, locale: 'ru' }));
+    expect(ru).toContain('Связки с ней');
+    expect(ru).toContain('Нажмите ещё раз или Esc');
+  });
+
+  it('writes no rule for a clue whose id could break out of a selector', () => {
+    const odd = { id: 'a"]{x', locationId: 'market', description: 'Odd.', garbled: false, number: 'MIRA-01' };
+    const page = renderEvidenceBoard(viewOf({ clues: [odd] }));
+
+    expect(page).not.toContain('data-open="a"]');
+  });
+
   it('wraps the place a clue was found at instead of cutting it', () => {
     const place = 'The Night Watchman Closet Behind the Old Bar';
     const html = cork(
       viewOf({
         map: { current: 'x', places: [{ id: 'x', name: place, visited: true, blocked: null }], links: [] },
-        clues: [{ id: 'k', locationId: 'x', description: 'A key.', garbled: false }],
+        clues: [{ id: 'k', locationId: 'x', description: 'A key.', garbled: false, number: 'MIRA-05' }],
         history: { finds: [{ clueId: 'k', locationId: 'x', turn: 3 }], shown: [], links: [] },
       }),
     );
@@ -325,7 +405,9 @@ describe('the notebooks', () => {
     expect(tried.match(/<li /g)).toHaveLength(3);
     expect(tried.indexOf('led nowhere')).toBeLessThan(tried.indexOf('a conclusion'));
     expect(tried.indexOf('a conclusion')).toBeLessThan(tried.indexOf('already known'));
-    expect(tried).toContain('A rusty key under the counter. + Flour on the cellar steps.');
+    expect(tried).toContain('<span class="num">MIRA-01</span> + <span class="num">MIRA-02</span>');
+    expect(tried).toContain('<summary>Full text</summary>');
+    expect(tried).toContain('<span class="num">MIRA-01</span> A rusty key under the counter.');
     expect(tried).toContain('turn 9');
     expect(tried).not.toMatch(/close|almost|near/i);
   });
@@ -364,20 +446,32 @@ describe('the script that picks', () => {
       setAttribute: (name: string, value: string) => void attrs.set(name, value),
       removeAttribute: (name: string) => void attrs.delete(name),
     };
+    const focused: string[] = [];
+    const card = { focus: () => void focused.push('card') };
+    const opener = { focus: () => void focused.push('opener') };
     const listeners = new Map<string, (event: unknown) => void>();
     const document = {
       querySelector: () => main,
+      getElementById: (id: string) => (id === 'open-key' ? card : null),
       addEventListener: (type: string, handler: (event: unknown) => void) =>
         void listeners.set(type, handler),
     };
     runInNewContext(SCRIPT, { document });
-    const pickable = (value: string) => ({
-      closest: (selector: string) => (selector === '[data-pick]' ? { getAttribute: () => value } : null),
-    });
+    const pickable = (value: string, open?: string) => {
+      const element = {
+        ...opener,
+        getAttribute: (name: string) => (name === 'data-open' ? (open ?? null) : value),
+      };
+      return { closest: (selector: string) => (selector === '[data-pick]' ? element : null) };
+    };
+    const opened = { closest: (selector: string) => (selector === '.opened' ? {} : null) };
     const bare = { closest: () => null };
     const link = { closest: (selector: string) => (selector === 'a' ? {} : null) };
     return {
       picked: () => attrs.get('data-sel'),
+      open: () => attrs.get('data-open'),
+      focused,
+      opened,
       click: (target: unknown) => listeners.get('click')?.({ target }),
       key: (key: string, target: unknown = bare) => {
         let prevented = false;
@@ -406,6 +500,51 @@ describe('the script that picks', () => {
     page.click(page.pickable('place:market'));
     page.key('Escape');
     expect(page.picked()).toBeUndefined();
+  });
+
+  it('opens a clue card on a click, and a second click, the card, the board or Escape puts it back', () => {
+    const page = run();
+
+    page.click(page.pickable('clue:key', 'key'));
+    expect(page.open()).toBe('key');
+    expect(page.picked()).toBe('clue:key');
+    expect(page.focused).toEqual(['card']);
+    page.click(page.pickable('clue:key', 'key'));
+    expect(page.open()).toBeUndefined();
+    expect(page.picked()).toBeUndefined();
+    expect(page.focused).toEqual(['card', 'opener']);
+
+    page.click(page.pickable('clue:key', 'key'));
+    page.click(page.opened);
+    expect(page.open()).toBeUndefined();
+    expect(page.picked()).toBeUndefined();
+    page.click(page.pickable('clue:key', 'key'));
+    expect(page.open()).toBe('key');
+
+    page.click(page.bare);
+    expect(page.open()).toBeUndefined();
+    page.click(page.pickable('clue:key', 'key'));
+    page.key('Escape');
+    expect(page.open()).toBeUndefined();
+    expect(page.picked()).toBeUndefined();
+  });
+
+  it('closes a card when a person or a place is picked, and opens one from the keyboard', () => {
+    const page = run();
+
+    page.click(page.pickable('clue:key', 'key'));
+    page.click(page.pickable('suspect:a'));
+    expect(page.open()).toBeUndefined();
+    expect(page.picked()).toBe('suspect:a');
+    page.key('Escape');
+    expect(page.key('Enter', page.pickable('clue:key', 'key'))).toBe(true);
+    expect(page.open()).toBe('key');
+    // A card the page has no markup for still opens, and takes no focus.
+    page.key('Escape');
+    page.click(page.pickable('clue:lost', 'lost'));
+    expect(page.open()).toBe('lost');
+    page.click(page.link);
+    expect(page.open()).toBe('lost');
   });
 
   it('leaves a click on a link alone, and picks with Enter or Space from the keyboard', () => {

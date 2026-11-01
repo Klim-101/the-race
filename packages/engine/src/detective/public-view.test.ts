@@ -195,6 +195,24 @@ describe('the sources of a conclusion', () => {
   });
 });
 
+describe('the number of a clue', () => {
+  it('is the surname of the hero and the order of finding, not the order of the case', () => {
+    const run = findClue(findClue(newRun(), 'debt-ledger'), 'oven-receipt');
+
+    const numbers = Object.fromEntries(viewRun(run).clues.map(({ id, number }) => [id, number]));
+    expect(numbers).toEqual({ 'debt-ledger': 'KOS-01', 'oven-receipt': 'KOS-02' });
+  });
+
+  it('stays the same when more is found, and has none for a clue not found', () => {
+    const first = findClue(newRun(), 'debt-ledger');
+    const later = findClue(first, 'oven-receipt');
+
+    expect(viewRun(later).clues.find(({ id }) => id === 'debt-ledger')?.number).toBe('KOS-01');
+    expect(viewRun(first).clues.map(({ number }) => number)).toEqual(['KOS-01']);
+    expect(JSON.stringify(viewRun(first))).not.toContain('KOS-02');
+  });
+});
+
 // The view must hold nothing the narrator may not know. Every sample case is played to the end of what a
 // hero can do (every place, every clue, every conclusion, every suspect questioned on a dice of the seed),
 // with every hidden trait on, and the view is read after each step.
@@ -277,6 +295,15 @@ describe('what the view leaks', () => {
             }
             if (!known.has(location.id)) expect(mapText).not.toContain(location.name);
           }
+          // A number is the surname and the place in the order of finding: unique, and none for a hidden clue.
+          const numbers = view.clues.map(({ number }) => number);
+          expect(new Set(numbers).size).toBe(numbers.length);
+          for (const { id, number } of view.clues) {
+            expect(number).toBe(
+              `${run.hero.name.split(' ').at(-1)?.toUpperCase() ?? ''}-${String(run.foundClueIds.indexOf(id) + 1).padStart(2, '0')}`,
+            );
+          }
+          expect(text).not.toContain(`-${String(run.foundClueIds.length + 1).padStart(2, '0')}"`);
           for (const { clueIds } of view.insights) {
             for (const clueId of clueIds) expect(run.foundClueIds).toContain(clueId);
           }
