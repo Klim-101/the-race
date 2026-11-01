@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { extractRealNames, worldRealNames, type World } from '@the-race/engine';
+import { extractRealNames, toldSeeds, worldRealNames, type NewsSeed, type World } from '@the-race/engine';
 import {
   listUntrustedHeadlines,
   loadHeadlines,
@@ -68,6 +68,15 @@ export function realNamesOfDay(news: DayNews, world: World): string[] {
 export async function seedsOfRun(context: ServerContext) {
   const days = await loadSeeds(context.saveDir, context.saveFs);
   return seedsOnOrBefore(days, shiftDay(context.today(), context.newsLagDays));
+}
+
+/**
+ * The seeds the tavern tells in this run, and so the only ones its case may grow from: a few of the day's, drawn
+ * on the run's own seed (see `toldSeeds`). None when no day was ever extracted.
+ */
+export async function toldSeedsOfRun(context: ServerContext, runSeed: string): Promise<readonly NewsSeed[]> {
+  const day = await seedsOfRun(context);
+  return day === undefined ? [] : toldSeeds(day.seeds, { realNames: day.realNames }, runSeed);
 }
 
 /** The proper names the headlines of the day carry, in both scripts. */
