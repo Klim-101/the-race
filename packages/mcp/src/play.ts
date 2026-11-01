@@ -12,7 +12,7 @@ import {
   type Revealed,
   type SignalFelt,
 } from '@the-race/engine';
-import { loadRun, saveRun, type LoadFailureReason } from '@the-race/saves';
+import { loadCurrentRun, saveRun, type LoadFailureReason } from '@the-race/saves';
 import { z } from 'zod';
 import type { ServerContext } from './context.js';
 import { keepProfile } from './profile.js';
@@ -132,14 +132,17 @@ const SAVE_PROBLEMS: Record<Exclude<LoadFailureReason, 'missing'>, string> = {
   'log-mismatch': 'The saved run does not match its own history.',
 };
 
-/** The failure for a save that exists but cannot be used. Nothing about the file or its place is told. */
+/**
+ * The failure for a save that exists but cannot be used. Nothing about the file or its place is told. It blocks
+ * nothing: a new run starts in a folder of its own and the damaged one is left as it is.
+ */
 export function saveUnusable(reason: Exclude<LoadFailureReason, 'missing'>): ToolFailure {
   return new ToolFailure({
     code: 'save-unusable',
     message: SAVE_PROBLEMS[reason],
     remediation:
-      'Tell the player in one plain sentence that the save cannot be loaded, and do not start another run ' +
-      'over it. The player can move the save folder away to start fresh.',
+      'Tell the player in one plain sentence that an earlier save could not be loaded and was left as it is, ' +
+      'then offer a new run: it starts beside the damaged one, which blocks nothing.',
   });
 }
 
@@ -150,16 +153,15 @@ export interface SavedRun {
 
 /** The run on disk, or a `ToolFailure` that says why there is none. */
 export async function requireRun(context: ServerContext): Promise<SavedRun> {
-  const loaded = await loadRun(context.saveDir, context.saveFs);
-  if (loaded.ok) return { run: loaded.run, log: loaded.log };
-  if (loaded.reason === 'missing') {
-    throw new ToolFailure({
-      code: 'no-run',
-      message: 'There is no run to play.',
-      remediation: 'Call run_view to see where things stand; if there is no run, offer the player a new one.',
-    });
-  }
-  throw saveUnusable(loaded.reason);
+  const { run, damaged } = await loadCurrentRun(context.saveDir, context.saveFs);
+  if (run !== undefined) return { run: run.run, log: run.log };
+  const [newest] = damaged;
+  if (newest !== undefined) throw saveUnusable(newest.reason);
+  throw new ToolFailure({
+    code: 'no-run',
+    message: 'There is no run to play.',
+    remediation: 'Call run_view to see where things stand; if there is no run, offer the player a new one.',
+  });
 }
 
 /** Refuses a call made against an old view of the run. */

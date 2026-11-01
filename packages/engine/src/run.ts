@@ -53,12 +53,19 @@ export function statusOfEndReason(reason: EndReason): Exclude<RunStatus, 'active
   return reason === 'gave-up' ? 'gave-up' : 'lost';
 }
 
+/** The id of the folder a run is saved in; the old single save becomes the one with the legacy id. */
+export const LEGACY_RUN_ID = '00000000-legacy';
+/** `<date>-<time>-<seed>`, such as `20261101-124606-9f3a1c2e`: folders sort in the order the runs were played. */
+export const RUN_ID_PATTERN = /^(?:\d{8}-\d{6}-[a-z0-9]+(?:-[a-z0-9]+)*|00000000-legacy)$/;
+
 /** What every kind of run carries, whatever its archetype. */
 export const runBaseShape = {
   schemaVersion: z.literal(RUN_SCHEMA_VERSION),
   rulesetVersion: z.int().min(1),
   /** The seed the run started from; the dice continue from `rngState`. */
   seed: z.string().min(1),
+  /** Where the run is saved: made when the run starts, and absent from a run saved before runs had folders. */
+  runId: z.string().regex(RUN_ID_PATTERN).optional(),
   rngState: z.int().min(0).max(0xffffffff),
   locale: LocaleSchema,
   turn: z.int().min(0),

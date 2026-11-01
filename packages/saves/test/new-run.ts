@@ -15,6 +15,9 @@ import {
 } from '@the-race/engine';
 import { buildCheeseCase, buildHero } from '../../engine/test/fixtures/cheese-case.js';
 
+/** The folder id of the fixture run. */
+export const RUN_ID = '20261031-120000-saves';
+
 /** A fresh run of the engine's sample case. */
 export function newRun(): DetectiveRunState {
   const rng = createRng('saves');
@@ -25,6 +28,7 @@ export function newRun(): DetectiveRunState {
     traits: result.assembled.traits,
     case: DetectiveCaseSchema.parse(buildCheeseCase()),
     seed: 'saves',
+    runId: RUN_ID,
     rngState: rng.state(),
     locale: 'en',
   });

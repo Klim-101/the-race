@@ -367,6 +367,22 @@ describe('the size of a link', () => {
   });
 });
 
+describe('a save that cannot be read', () => {
+  const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+  const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));
+
+  it('has the narrator say in one line that an earlier save was left alone, and never block on it', () => {
+    expect(skill).toContain('`unreadableSaves`');
+    expect(skill).toMatch(/was left as it is, then go on; it blocks nothing/);
+    expect(skill).toMatch(/never ask them to move or delete anything/);
+  });
+
+  it('does not tell the narrator to stop over a damaged save', () => {
+    expect(outcomes).toMatch(/`save-unusable` \(an earlier save could not be read and was left as it is/);
+    expect(outcomes).not.toMatch(/save-unusable` \(say so plainly and stop\)/);
+  });
+});
+
 describe('the number of a clue', () => {
   const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
   const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));

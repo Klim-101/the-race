@@ -136,10 +136,11 @@ function candidates(text) {
 }
 
 // A file that is only ever in the save directory, named so that a relative path after a `cd` still shows.
-const SAVE_FILE = /(^|[/\s])(pending(\/state)?\.json|run\/(state|log)(\.prev)?\.json)(?=$|[\s"'`;&|)])/;
+const SAVE_FILE =
+  /(^|[/\s])(pending(\/state)?\.json|runs?\/([^/\s]+\/)?(state|log)(\.prev)?\.json)(?=$|[\s"'`;&|)])/;
 // The save directory spelled out for another home or another shell than the one resolved here.
 const SAVE_SHAPE =
-  /(^|[/\s])(state|local|application support)\/the-race(\/|$|[\s"'`;&|)])|(^|[/\s])the-race\/(saves(\/|$|[\s"'`;&|)])|run(\/|$|[\s"'`;&|)])|pending(\/|\.json))|(^|[/\s])\.race(\/|$|[\s"'`;&|)])/;
+  /(^|[/\s])(state|local|application support)\/the-race(\/|$|[\s"'`;&|)])|(^|[/\s])the-race\/(saves(\/|$|[\s"'`;&|)])|runs?(\/|$|[\s"'`;&|)])|pending(\/|\.json))|(^|[/\s])\.race(\/|$|[\s"'`;&|)])/;
 // A command that walks into every folder under a path it is given. A recursive tool counts when it is run: at
 // the start of a simple command, after a prefix such as sudo or xargs, or as the argument of `sh -c`. The same
 // word in prose, in a comment or in the text of a file being written is not a command, and treating it as one

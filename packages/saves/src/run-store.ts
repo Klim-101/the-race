@@ -16,6 +16,7 @@ import {
   type RunLog,
   type RunMigrationRegistry,
 } from '@the-race/engine';
+import { isRunId } from './run-id.js';
 import { nodeSaveFs, replaceFile, type SaveFs } from './save-fs.js';
 
 export interface RunFiles {
@@ -26,12 +27,15 @@ export interface RunFiles {
   readonly previousLog: string;
 }
 
+/** The folder that holds a folder for each run. */
+export const RUNS_DIR = 'runs';
+
 /**
- * One active run for now: `<dir>/run/state.json` and the generation before it, `state.prev.json`, with the
- * run's event log beside each: `log.json` and `log.prev.json`.
+ * The files of one run: `<dir>/runs/<run id>/state.json` and the generation before it, `state.prev.json`, with
+ * the run's event log beside each: `log.json` and `log.prev.json`.
  */
-export function runFiles(saveDir: string): RunFiles {
-  const directory = join(saveDir, 'run');
+export function runFiles(saveDir: string, runId: string): RunFiles {
+  const directory = join(saveDir, RUNS_DIR, runId);
   return {
     directory,
     current: join(directory, 'state.json'),
@@ -126,6 +130,7 @@ function replayed(run: DetectiveRunState, log: RunLog): DetectiveRunState | unde
       locale: run.locale,
       setting: run.setting,
       inspiration: run.inspiration,
+      runId: run.runId,
     }),
     // A save keeps the versions it was made with; replay must not fail over a version stamp.
     schemaVersion: run.schemaVersion,
@@ -145,9 +150,16 @@ const replaysTo = (run: DetectiveRunState, log: RunLog): boolean => replayed(run
  * Turns the texts of a state file and its log file into a run with its log. A log file that does not exist
  * is a save from before logs were stored: it loads with an empty log and nothing to check it against.
  */
-function parsePair(stateText: string, logText: string | undefined, migrations: RunMigrationRegistry): Slot {
-  const state = parseRunText(stateText, migrations);
-  if (!state.ok) return state;
+function parsePair(
+  stateText: string,
+  logText: string | undefined,
+  migrations: RunMigrationRegistry,
+  runId: string,
+): Slot {
+  const parsedState = parseRunText(stateText, migrations);
+  if (!parsedState.ok) return parsedState;
+  // The folder is the run's place: a run made before runs had ids takes the id of the folder it is in.
+  const state = { ok: true as const, run: { ...parsedState.run, runId } };
   if (logText === undefined) return { ok: true, run: state.run, log: EMPTY_RUN_LOG };
   let data: unknown;
   try {
@@ -174,6 +186,7 @@ async function readPair(
   statePath: string,
   logPath: string,
   migrations: RunMigrationRegistry,
+  runId: string,
 ): Promise<Slot> {
   let stateText: string | undefined;
   let logText: string | undefined;
@@ -184,26 +197,27 @@ async function readPair(
   } catch {
     return { ok: false, reason: 'unreadable', detail: 'The file could not be read.' };
   }
-  return parsePair(stateText, logText, migrations);
+  return parsePair(stateText, logText, migrations, runId);
 }
 
 /**
- * Loads the run with its log. It never throws: a problem comes back as `ok: false` with a reason. When the
+ * Loads the run of this id with its log. It never throws: a problem comes back as `ok: false` with a reason. When the
  * current pair of files is missing, corrupt or does not replay, the previous generation is used and the
  * result says so. A save of an unknown schema version is not retried from the previous file, which would
  * silently lose progress.
  */
 export async function loadRun(
   saveDir: string,
+  runId: string,
   fs: SaveFs = nodeSaveFs,
   migrations: RunMigrationRegistry = RUN_MIGRATIONS,
 ): Promise<LoadRunResult> {
-  const files = runFiles(saveDir);
-  const current = await readPair(fs, files.current, files.currentLog, migrations);
+  const files = runFiles(saveDir, runId);
+  const current = await readPair(fs, files.current, files.currentLog, migrations, runId);
   if (current.ok) return { ok: true, run: current.run, log: current.log, source: 'current' };
   if (current.reason === 'unsupported-version') return current;
 
-  const previous = await readPair(fs, files.previous, files.previousLog, migrations);
+  const previous = await readPair(fs, files.previous, files.previousLog, migrations, runId);
   if (previous.ok) {
     return {
       ok: true,
@@ -218,7 +232,7 @@ export async function loadRun(
 }
 
 /**
- * Saves the run, and its event log beside it. The current pair of files is first copied to the previous
+ * Saves the run, into the folder of its own id, and its event log beside it. The current pair of files is first copied to the previous
  * generation (only when it is itself a good pair, so a bad file never overwrites a good generation), then
  * the log and the state are replaced atomically, the log first. A crash between the two leaves a pair that
  * does not replay, and `loadRun` falls back to the previous generation: one turn is lost, never the save.
@@ -242,12 +256,13 @@ export async function saveRun(
     if (!replaysTo(run, checked)) throw new RangeError('The log does not replay to the run being saved.');
     logText = `${JSON.stringify(checked, null, 2)}\n`;
   }
-  const files = runFiles(saveDir);
+  if (run.runId === undefined) throw new RangeError('The run has no id, so it has no folder to be saved in.');
+  const files = runFiles(saveDir, run.runId);
   await fs.mkdir(files.directory);
 
   const existing = await fs.readFile(files.current).catch(() => undefined);
   const existingLog = await fs.readFile(files.currentLog).catch(() => undefined);
-  if (existing !== undefined && parsePair(existing, existingLog, RUN_MIGRATIONS).ok) {
+  if (existing !== undefined && parsePair(existing, existingLog, RUN_MIGRATIONS, run.runId).ok) {
     await replaceFile(fs, files.previous, existing);
     if (existingLog === undefined) await fs.remove(files.previousLog);
     else await replaceFile(fs, files.previousLog, existingLog);
@@ -255,4 +270,50 @@ export async function saveRun(
   if (logText === undefined) await fs.remove(files.currentLog);
   else await replaceFile(fs, files.currentLog, logText);
   await replaceFile(fs, files.current, text);
+}
+
+/** The ids of the runs on disk, the first played first: the date and time in an id make it the sort order. */
+export async function listRunIds(saveDir: string, fs: SaveFs = nodeSaveFs): Promise<string[]> {
+  const names = await fs.list(join(saveDir, RUNS_DIR));
+  return names.filter(isRunId).toSorted();
+}
+
+/** A run that could not be read, left exactly as it is on disk. */
+export interface DamagedRun {
+  readonly runId: string;
+  readonly reason: Exclude<LoadFailureReason, 'missing'>;
+}
+
+export type LoadedRun = Extract<LoadRunResult, { readonly ok: true }> & { readonly runId: string };
+
+/** The run the game goes on with, and the runs that could not be read on the way to it. */
+export interface CurrentRun {
+  /** The newest run not yet over; when every run is over, the newest of them, to be read and not played. */
+  readonly run: LoadedRun | undefined;
+  readonly damaged: readonly DamagedRun[];
+}
+
+/**
+ * Finds the current run: the newest one that is not over. A damaged run is never the current one and blocks
+ * nothing; it is named in `damaged` and left alone, for the player to repair or delete.
+ */
+export async function loadCurrentRun(
+  saveDir: string,
+  fs: SaveFs = nodeSaveFs,
+  migrations: RunMigrationRegistry = RUN_MIGRATIONS,
+): Promise<CurrentRun> {
+  const damaged: DamagedRun[] = [];
+  let finished: LoadedRun | undefined;
+  for (const runId of (await listRunIds(saveDir, fs)).toReversed()) {
+    const loaded = await loadRun(saveDir, runId, fs, migrations);
+    if (!loaded.ok) {
+      // A folder with no state in it (a crash before the first save) is no run, damaged or not.
+      if (loaded.reason !== 'missing') damaged.push({ runId, reason: loaded.reason });
+    } else if (loaded.run.status === 'active') {
+      return { run: { ...loaded, runId }, damaged };
+    } else {
+      finished ??= { ...loaded, runId };
+    }
+  }
+  return { run: finished, damaged };
 }

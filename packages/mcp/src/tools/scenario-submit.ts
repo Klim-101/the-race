@@ -13,7 +13,7 @@ import {
   type CaseIssue,
   type CaseIssueCode,
 } from '@the-race/engine';
-import { saveRun } from '@the-race/saves';
+import { makeRunId, saveRun } from '@the-race/saves';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
 import { seedsOfRun, toldSeedsOfRun } from '../news.js';
@@ -165,6 +165,8 @@ export const scenarioSubmit = defineTool({
           traits: pending.traits,
           case: result.detectiveCase,
           seed: pending.seed,
+          // The run's id and folder, made now: the date and time it starts and the seed.
+          runId: makeRunId(context.now(), pending.seed),
           rngState: pending.rngState,
           locale: pending.locale,
           // The same country the brief named for this seed; the run keeps it from here on.

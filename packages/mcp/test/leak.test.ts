@@ -1,11 +1,10 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { loadRun } from '@the-race/saves';
 import { afterEach, describe, expect, it } from 'vitest';
 import { serveStdio } from '../src/stdio.js';
 import { TOOLS } from '../src/tools/index.js';
-import { HERO_CHOICES, gameContext, installCase, sampleCase } from './game.js';
+import { HERO_CHOICES, gameContext, installCase, loadTheRun, sampleCase } from './game.js';
 import { Peer } from './peer.js';
 
 // The narrator must never learn the truth by any route before the run is over. This test plays a whole run
@@ -89,7 +88,7 @@ describe('the game tools over the server', () => {
 
     /** Checks one result against the state the run is in after it. */
     const assertClean = async (result: unknown, mayShowTruth = false): Promise<void> => {
-      const loaded = await loadRun(context.saveDir, context.saveFs);
+      const loaded = await loadTheRun(context.saveDir, context.saveFs);
       if (!loaded.ok) throw new Error('The run cannot be loaded.');
       const { run } = loaded;
       const strings: string[] = [];

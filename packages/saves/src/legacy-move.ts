@@ -4,7 +4,9 @@
 import { homedir } from 'node:os';
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
-import { legacySaveDir, resolveSaveDir, type SaveDirInputs } from './save-dir.js';
+import { LEGACY_RUN_ID } from '@the-race/engine';
+import { RUNS_DIR } from './run-store.js';
+import { defaultSaveDir, legacySaveDir, resolveSaveDir, type SaveDirInputs } from './save-dir.js';
 
 // The game folder is meant to hold everything the game writes. A player who started before it existed keeps their
 // saves, the mirror-world dictionary and the day's seeds in the old per-user state folder. This moves them, once:
@@ -83,48 +85,68 @@ async function sameContent(fs: MoveFs, a: string, b: string): Promise<boolean> {
 }
 
 /**
+ * Moves a folder to a place that does not exist yet, as a checked move: the folder is copied whole into a
+ * temporary one beside the target, every file is checked against its copy, the copy is renamed into place, and
+ * only then is the original removed. Whatever goes wrong, the original is the one thing never touched.
+ */
+async function moveFolder(fs: MoveFs, from: string, to: string): Promise<LegacyMove> {
+  try {
+    if (!(await fs.exists(from))) return { status: 'none' };
+    const files = await fs.listFiles(from);
+    if (files.length === 0) return { status: 'none' };
+
+    if (await fs.exists(to)) {
+      // An earlier move that stopped before it removed the old folder: remove it only if it is the same.
+      if (!(await sameContent(fs, from, to))) return { status: 'none' };
+      await fs.removeDirectory(from);
+      return { status: 'cleaned', from, to };
+    }
+
+    const staging = `${to}.moving`;
+    await fs.removeDirectory(staging);
+    try {
+      for (const file of files) await fs.writeFile(join(staging, file), await fs.readFile(join(from, file)));
+      if (!(await sameContent(fs, from, staging)))
+        throw new RangeError('The copy does not match the original.');
+      await fs.mkdir(dirname(to));
+      await fs.rename(staging, to);
+    } catch (error) {
+      await fs.removeDirectory(staging).catch(() => undefined);
+      throw error;
+    }
+    // The files are safe at their new place; a leftover that cannot be removed now is closed to the narrator as
+    // the old folder always was, and is not a reason to say the move failed.
+    await fs.removeDirectory(from).catch(() => undefined);
+    return { status: 'moved', from, to, files: files.length };
+  } catch (error) {
+    return { status: 'failed', from, reason: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
  * Moves the saves of the old state folder into `saves/` of the game folder, once. `RACE_HOME` (the player named
  * the save directory themselves) is left alone. Pure but for the disk it is given.
  */
 export async function moveLegacySaves(inputs: SaveDirInputs, fs: MoveFs = nodeMoveFs): Promise<LegacyMove> {
   if (inputs.env.RACE_HOME) return { status: 'none' };
-  const target = resolveSaveDir(inputs);
-  const legacy = legacySaveDir(inputs);
-  try {
-    if (!(await fs.exists(legacy))) return { status: 'none' };
-    const files = await fs.listFiles(legacy);
-    if (files.length === 0) return { status: 'none' };
+  return moveFolder(fs, legacySaveDir(inputs), resolveSaveDir(inputs));
+}
 
-    if (await fs.exists(target)) {
-      // An earlier move that stopped before it removed the old folder: remove it only if it is the same.
-      if (!(await sameContent(fs, legacy, target))) return { status: 'none' };
-      await fs.removeDirectory(legacy);
-      return { status: 'cleaned', from: legacy, to: target };
-    }
-
-    const staging = `${target}.moving`;
-    await fs.removeDirectory(staging);
-    try {
-      for (const file of files)
-        await fs.writeFile(join(staging, file), await fs.readFile(join(legacy, file)));
-      if (!(await sameContent(fs, legacy, staging)))
-        throw new RangeError('The copy does not match the original.');
-      await fs.mkdir(dirname(target));
-      await fs.rename(staging, target);
-    } catch (error) {
-      await fs.removeDirectory(staging).catch(() => undefined);
-      throw error;
-    }
-    // The saves are safe at their new place; a leftover that cannot be removed now is closed to the narrator as
-    // the old folder always was, and is not a reason to say the move failed.
-    await fs.removeDirectory(legacy).catch(() => undefined);
-    return { status: 'moved', from: legacy, to: target, files: files.length };
-  } catch (error) {
-    return { status: 'failed', from: legacy, reason: error instanceof Error ? error.message : String(error) };
-  }
+/**
+ * Moves the single run of the old layout, `saves/run/`, to `saves/runs/00000000-legacy/`, which sorts before
+ * every other run and is read like any other. Checked like the move of the saves: a failed move removes nothing,
+ * and the next start tries again.
+ */
+export function moveLegacyRun(saveDir: string, fs: MoveFs = nodeMoveFs): Promise<LegacyMove> {
+  return moveFolder(fs, join(saveDir, 'run'), join(saveDir, RUNS_DIR, LEGACY_RUN_ID));
 }
 
 /** The move for this process: its environment, its platform and the user's home directory. */
 export function moveDefaultLegacySaves(): Promise<LegacyMove> {
   return moveLegacySaves({ env: process.env, platform: process.platform, homedir: homedir() });
+}
+
+/** The move of the old single run for this process: in the save directory it uses. */
+export function moveDefaultLegacyRun(): Promise<LegacyMove> {
+  return moveLegacyRun(defaultSaveDir());
 }

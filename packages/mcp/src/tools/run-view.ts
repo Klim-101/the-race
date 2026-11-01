@@ -2,19 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { viewHero, viewRun } from '@the-race/engine';
-import { loadRun } from '@the-race/saves';
+import { loadCurrentRun } from '@the-race/saves';
 import { z } from 'zod';
 import type { ServerContext } from '../context.js';
 import { defineTool } from '../define-tool.js';
 import { loadPending } from '../pending-run.js';
-import { saveUnusable } from '../play.js';
 import { takeNotices } from '../startup-notice.js';
 
 /** Where things stand, as far as the player may know: the run's public view, a pending run's state, or none. */
 async function stateOf(context: ServerContext) {
-  const loaded = await loadRun(context.saveDir, context.saveFs);
+  const { run: loaded, damaged } = await loadCurrentRun(context.saveDir, context.saveFs);
   // An active run wins over a pending one: a pending file left behind by a crash must not hide it.
-  if (loaded.ok && loaded.run.status === 'active') return { ...viewRun(loaded.run), endReason: null };
+  if (loaded?.run.status === 'active') return { ...viewRun(loaded.run), endReason: null };
   const pending = await loadPending(context.saveDir, context.saveFs);
   if (pending !== undefined) {
     if (pending.hero === null) return { status: 'awaiting-hero', locale: pending.locale };
@@ -24,9 +23,8 @@ async function stateOf(context: ServerContext) {
       ...viewHero({ hero: pending.hero, traits: pending.traits }),
     };
   }
-  if (loaded.ok) return { ...viewRun(loaded.run), endReason: loaded.run.endReason };
-  if (loaded.reason !== 'missing') throw saveUnusable(loaded.reason);
-  return { status: 'no-run' };
+  if (loaded !== undefined) return { ...viewRun(loaded.run), endReason: loaded.run.endReason };
+  return damaged.length === 0 ? { status: 'no-run' } : { status: 'no-run', unreadableSaves: damaged.length };
 }
 
 export const runView = defineTool({
@@ -38,7 +36,8 @@ export const runView = defineTool({
     'number the state-changing tools expect), the place, the clues and insights found, the suspects (name ' +
     'and persona only), the clock and the hero. It never holds the truth, the culprit or an unrevealed ' +
     'trait. With no run, `status` is "awaiting-hero" (run_new was called: ask the player to make a hero), ' +
-    '"awaiting-case" (the hero exists: run the case generator) or "no-run" (offer a new run). Do not call ' +
+    '"awaiting-case" (the hero exists: run the case generator) or "no-run" (offer a new run; when it has ' +
+    '`unreadableSaves`, an earlier save could not be read and was left alone: say so in one plain line, it blocks nothing). Do not call ' +
     'it again right after a tool whose result you have not yet narrated. Once, after the saves were moved ' +
     'into the game folder, the result also has `savesMoved` (`from`, `to`): tell the player in one plain ' +
     'line, out of the fiction, that their saves now live in `to`.',

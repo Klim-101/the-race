@@ -15,7 +15,7 @@ import {
 } from '@the-race/engine';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { loadRun, nodeSaveFs, resolveSaveDir, runFiles, saveRun } from '../src/index.js';
-import { newRun } from './new-run.js';
+import { newRun, RUN_ID } from './new-run.js';
 
 let workingDirectory = '';
 
@@ -47,7 +47,10 @@ describe('save and resume over a real directory', () => {
     await saveRun(saveDir, newRun());
     await saveRun(saveDir, newRun());
 
-    expect((await readdir(runFiles(saveDir).directory)).sort()).toEqual(['state.json', 'state.prev.json']);
+    expect((await readdir(runFiles(saveDir, RUN_ID).directory)).sort()).toEqual([
+      'state.json',
+      'state.prev.json',
+    ]);
   });
 
   it('resumes the exact state and the next roll', async () => {
@@ -59,7 +62,7 @@ describe('save and resume over a real directory', () => {
 
     const inMemory = playTurn(first.run, rng);
 
-    const loaded = await loadRun(saveDir);
+    const loaded = await loadRun(saveDir, RUN_ID);
     if (!loaded.ok) throw new Error('The save did not load.');
     expect(loaded.run).toEqual(first.run);
     const resumed = playTurn(loaded.run, restoreRng(loaded.run.rngState));
@@ -70,7 +73,7 @@ describe('save and resume over a real directory', () => {
 
   it('falls back to the previous generation when the current file is truncated on disk', async () => {
     const saveDir = defaultSaveDir(workingDirectory);
-    const files = runFiles(saveDir);
+    const files = runFiles(saveDir, RUN_ID);
     const first = newRun();
     const second = playTurn(first, restoreRng(first.rngState)).run;
     await saveRun(saveDir, first);
@@ -78,7 +81,7 @@ describe('save and resume over a real directory', () => {
 
     await writeFile(files.current, '{"schemaVersion":1,"se');
 
-    expect(await loadRun(saveDir)).toMatchObject({
+    expect(await loadRun(saveDir, RUN_ID)).toMatchObject({
       ok: true,
       run: first,
       source: 'previous',
@@ -88,11 +91,11 @@ describe('save and resume over a real directory', () => {
 
   it('reports a missing save, and an unreadable one without throwing', async () => {
     const saveDir = defaultSaveDir(workingDirectory);
-    expect(await loadRun(saveDir)).toMatchObject({ ok: false, reason: 'missing' });
+    expect(await loadRun(saveDir, RUN_ID)).toMatchObject({ ok: false, reason: 'missing' });
 
     // A directory where the state file should be: reading it fails with something other than ENOENT.
-    await mkdir(runFiles(saveDir).current, { recursive: true });
-    expect(await loadRun(saveDir)).toMatchObject({ ok: false, reason: 'unreadable' });
+    await mkdir(runFiles(saveDir, RUN_ID).current, { recursive: true });
+    expect(await loadRun(saveDir, RUN_ID)).toMatchObject({ ok: false, reason: 'unreadable' });
   });
 
   it('removes a file that is not there without complaint', async () => {

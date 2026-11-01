@@ -3,7 +3,7 @@
 
 import { readFileSync } from 'node:fs';
 import { DetectiveCaseSchema, createDetectiveRun, type DetectiveCase } from '@the-race/engine';
-import { saveRun } from '@the-race/saves';
+import { listRunIds, loadCurrentRun, makeRunId, saveRun, type SaveFs } from '@the-race/saves';
 import type { Tool } from '../src/define-tool.js';
 import type { ServerContext } from '../src/context.js';
 import { clearPending, loadPending } from '../src/pending-run.js';
@@ -81,10 +81,24 @@ export async function installCase(
       traits: pending.traits,
       case: detectiveCase,
       seed: pending.seed,
+      runId: makeRunId(context.now(), pending.seed),
       rngState: pending.rngState,
       locale: pending.locale,
     }),
     context.saveFs,
   );
   await clearPending(context.saveDir, context.saveFs);
+}
+
+/** The run the game is on, as a result that reads like a plain load: the run, its log, or why there is none. */
+export async function loadTheRun(saveDir: string, fs: SaveFs) {
+  const { run } = await loadCurrentRun(saveDir, fs);
+  return run ?? ({ ok: false, reason: 'missing', detail: 'There is no run.' } as const);
+}
+
+/** The id of the newest run on disk, which is the folder the tools of the game save into. */
+export async function newestRunId(saveDir: string, fs: SaveFs): Promise<string> {
+  const id = (await listRunIds(saveDir, fs)).at(-1);
+  if (id === undefined) throw new Error('There is no run on disk.');
+  return id;
 }

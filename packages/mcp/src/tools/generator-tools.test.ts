@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { PassThrough } from 'node:stream';
 import {
   DETECTIVE_TRAITS,
@@ -11,9 +11,10 @@ import {
   type NewsSeed,
   type Trait,
 } from '@the-race/engine';
-import { loadRun, runFiles, saveSeedsForDay, type SaveFs } from '@the-race/saves';
+import { runFiles, saveSeedsForDay, type SaveFs } from '@the-race/saves';
 import { afterEach, describe, expect, it } from 'vitest';
 import { TEST_BOARD_DIR, TEST_PROFILE_DIR, offlineNews } from '../../test/fake-context.js';
+import { loadTheRun, newestRunId } from '../../test/game.js';
 import type { ServerContext } from '../context.js';
 import { PendingRunSchema, loadPending, pendingFile, savePending, type PendingRun } from '../pending-run.js';
 import { serveStdio } from '../stdio.js';
@@ -39,6 +40,14 @@ function memoryFs(files = new Map<string, string>()): SaveFs & { files: Map<stri
       files.delete(from);
       return Promise.resolve();
     },
+    list: (directory) =>
+      Promise.resolve([
+        ...new Set(
+          [...files.keys()]
+            .filter((path) => path.startsWith(`${directory}${sep}`))
+            .map((path) => path.slice(directory.length + 1).split(sep)[0] ?? ''),
+        ),
+      ]),
     remove: (path) => {
       files.delete(path);
       return Promise.resolve();
@@ -284,8 +293,14 @@ describe('scenario_submit', () => {
     // Nothing of the case, the truth or the traits comes back.
     expect(result.text).toBe('{"accepted":true}');
 
-    const loaded = await loadRun(SAVE_DIR, fs);
+    const loaded = await loadTheRun(SAVE_DIR, fs);
     expect(loaded.ok && loaded.run.seed).toBe('seed-1');
+    // The run starts in a folder of its own, named for the moment it started and its seed.
+    expect(loaded.ok && loaded.runId).toBe('20261031-120000-seed-1');
+    expect(loaded.ok && loaded.run.runId).toBe('20261031-120000-seed-1');
+    expect(
+      [...fs.files.keys()].filter((path) => path.includes('state.json') && path.includes('runs')),
+    ).toEqual([runFiles(SAVE_DIR, '20261031-120000-seed-1').current]);
     expect(loaded.ok && loaded.log).toEqual([]);
     expect(loaded.ok && loaded.run.traits).toEqual(TRAITS);
     expect(loaded.ok && loaded.run.case.title).toBe(sample.title);
@@ -300,7 +315,7 @@ describe('scenario_submit', () => {
 
     await submit(call, readCase('goose-of-elmwick.en.json'));
 
-    const loaded = await loadRun(SAVE_DIR, fs);
+    const loaded = await loadTheRun(SAVE_DIR, fs);
     const inspiration = { kind: SEED.kind, premise: SEED.premise };
     expect(brief.body.seed).toMatchObject(inspiration);
     expect(loaded.ok && loaded.run.inspiration).toEqual(inspiration);
@@ -313,7 +328,7 @@ describe('scenario_submit', () => {
 
     await submit(call, readCase('goose-of-elmwick.en.json'));
 
-    const loaded = await loadRun(SAVE_DIR, fs);
+    const loaded = await loadTheRun(SAVE_DIR, fs);
     expect(loaded.ok && loaded.run.inspiration).toBeNull();
     expect((await call('run_view', {})).body.inspiration).toBeNull();
   });
@@ -326,7 +341,7 @@ describe('scenario_submit', () => {
     const submitted = await submit(call, readCase('goose-of-elmwick.ru.json'));
     expect(submitted.text).toBe('{"accepted":true}');
 
-    const loaded = await loadRun(SAVE_DIR, fs);
+    const loaded = await loadTheRun(SAVE_DIR, fs);
     const setting = loaded.ok ? loaded.run.setting : null;
     expect(setting?.climate.zone).toBe('subarctic');
     // The brief named the very country the run keeps.
@@ -338,14 +353,15 @@ describe('scenario_submit', () => {
   it('refuses a second submission and a brief once a case is accepted, and keeps the first case', async () => {
     const { fs, call } = await start(pendingRun());
     await submit(call, readCase('goose-of-elmwick.en.json'));
-    const before = fs.files.get(runFiles(SAVE_DIR).current);
+    const file = runFiles(SAVE_DIR, await newestRunId(SAVE_DIR, fs)).current;
+    const before = fs.files.get(file);
     const again = await submit(call, readCase('goose-of-elmwick.en.json'));
     expect(errorCode(again)).toBe('case-already-accepted');
     expect(errorCode(await submit(call, readCase('leaked-memo-of-larkspur.en.json')))).toBe(
       'case-already-accepted',
     );
     expect(errorCode(await call('generator_brief', {}))).toBe('case-already-accepted');
-    expect(fs.files.get(runFiles(SAVE_DIR).current)).toBe(before);
+    expect(fs.files.get(file)).toBe(before);
   });
 
   it('treats a pending record left behind by a crash after the save as accepted, and removes it', async () => {
@@ -365,7 +381,7 @@ describe('scenario_submit', () => {
     expect((await submit(call, readCase('leaked-memo-of-larkspur.en.json'))).body).toEqual({
       accepted: true,
     });
-    const loaded = await loadRun(SAVE_DIR, fs);
+    const loaded = await loadTheRun(SAVE_DIR, fs);
     expect(loaded.ok && loaded.run.seed).toBe('seed-2');
   });
 
@@ -414,7 +430,7 @@ describe('scenario_submit', () => {
       expect(issues.length).toBeLessThanOrEqual(8);
       expect(issues.map((issue) => issue.code)).toContain(code);
       expect((await loadPending(SAVE_DIR, fs))?.attempts).toBe(1);
-      expect((await loadRun(SAVE_DIR, fs)).ok).toBe(false);
+      expect((await loadTheRun(SAVE_DIR, fs)).ok).toBe(false);
       // The messages name no hidden trait and carry no case text beyond what the generator wrote itself.
       for (const trait of DETECTIVE_TRAITS) expect(result.text).not.toContain(trait.id);
       expect(result.text).not.toContain(String(sample.title));
@@ -474,7 +490,7 @@ describe('scenario_submit', () => {
     // Even a good case is too late now.
     const fourth = await submit(call, readCase('goose-of-elmwick.en.json'));
     expect(fourth.body).toMatchObject({ accepted: false, final: true });
-    expect((await loadRun(SAVE_DIR, fs)).ok).toBe(false);
+    expect((await loadTheRun(SAVE_DIR, fs)).ok).toBe(false);
   });
 
   it('applies concurrent submissions one at a time', async () => {
@@ -483,7 +499,7 @@ describe('scenario_submit', () => {
     const results = await Promise.all([submit(call, sample), submit(call, sample), submit(call, sample)]);
     expect(results.filter((result) => result.body.accepted === true)).toHaveLength(1);
     expect(results.filter((result) => result.isError)).toHaveLength(2);
-    expect((await loadRun(SAVE_DIR, fs)).ok).toBe(true);
+    expect((await loadTheRun(SAVE_DIR, fs)).ok).toBe(true);
   });
 
   it('keeps serving after a storage failure', async () => {

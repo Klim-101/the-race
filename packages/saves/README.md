@@ -33,15 +33,25 @@ into its `saves/` and change the option.
 ## Layout of the save directory
 
 ```
-the-race/
-  run/
-    state.json        the current save of the active run (JSON of the engine's run state)
-    state.prev.json   the generation before it
-    log.json          the run event log that goes with state.json
-    log.prev.json     the log that goes with state.prev.json
+saves/
+  runs/
+    <run id>/         one folder for each run, such as 20261101-124606-9f3a1c2e
+      state.json        the current save of the run (JSON of the engine's run state)
+      state.prev.json   the generation before it
+      log.json          the run event log that goes with state.json
+      log.prev.json     the log that goes with state.prev.json
+    00000000-legacy/  the single run of the earlier layout (`saves/run/`), moved here by `moveLegacyRun`
+  pending/            a hero waiting for a case
+  world.json, seeds/  shared by all runs
 ```
 
-One active run is supported for now.
+The run id is `<date>-<time>-<seed>` in UTC (`makeRunId`, with the moment passed in), so folders sort in the order
+the runs were played. It is stored in the run's state (`runId`), so the run always saves back into its own folder; a
+run that has none (the legacy one) takes the id of the folder it is read from. `loadRun(dir, runId)` reads one run;
+`loadCurrentRun(dir)` finds the current one, the newest run not over (or, when all are over, the newest of them),
+and lists the runs that could not be read in `damaged`, passing them by without touching them. `listRunIds` lists
+the folders. `moveLegacyRun` moves `saves/run/` to `runs/00000000-legacy/` by the same checked move as
+`moveLegacySaves` (copy, compare, then remove; a failed move removes nothing).
 
 ## Guarantees
 
