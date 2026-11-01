@@ -26,6 +26,8 @@ export interface TabText {
     readonly shownTo: string;
     /** The heading, on a person's notebook page, of the clues they were shown. */
     readonly shownHere: string;
+    /** The heading, on a conclusion, of the clues it was drawn from. */
+    readonly drawnFrom: string;
     readonly nobody: string;
     readonly tried: string;
     readonly noneTried: string;
@@ -51,13 +53,12 @@ export interface TabText {
   };
   readonly links: {
     readonly title: string;
-    readonly conclusions: string;
-    readonly evidence: string;
-    readonly places: string;
     readonly none: string;
     /** The links still to be made by the number of clues each takes: the heading, one link ({n}) and the end. */
     readonly open: string;
     readonly size: string;
+    /** Links of one size, grouped: {count} links of {size}. */
+    readonly group: string;
     readonly allDrawn: string;
   };
   readonly chronicle: {
