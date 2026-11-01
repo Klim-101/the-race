@@ -13,6 +13,7 @@ import {
   openLinkSizes,
   recordLink,
   spendTime,
+  strainByAction,
   type DetectiveRunState,
 } from './run-state.js';
 import { assertCaseSealIntact } from './seal.js';
@@ -69,7 +70,7 @@ export type DeduceOutcome =
       readonly kind: 'deduce';
       readonly result: 'nothing';
       readonly minutes: number;
-      readonly consequences: readonly ('time-lost' | 'mishap')[];
+      readonly consequences: readonly ('time-lost' | 'mishap' | 'nerves-lost')[];
     };
 
 export type DeduceResolution =
@@ -133,14 +134,18 @@ export function deduce(run: DetectiveRunState, input: unknown, rng: Rng): Deduce
   if (!match) {
     const sizes = [...new Set(openLinkSizes(run))];
     if (!sizes.includes(link.size)) return refuse('wrong-link-size', wrongSizeMessage(sizes));
+    const linked = recordLink(run, [...link], 'nothing');
+    // A link that leads nowhere frays the nerves, up to the day's cap.
+    const frayed = strainByAction(linked);
+    const strained = frayed.condition.nerves < linked.condition.nerves;
     return {
       ok: true,
-      run: endTurn(spendTime(recordLink(run, [...link], 'nothing'), FAILED_DEDUCTION_MINUTES), rng),
+      run: endTurn(spendTime(frayed, FAILED_DEDUCTION_MINUTES), rng),
       outcome: {
         kind: 'deduce',
         result: 'nothing',
         minutes: FAILED_DEDUCTION_MINUTES,
-        consequences: ['time-lost'],
+        consequences: strained ? ['time-lost', 'nerves-lost'] : ['time-lost'],
       },
     };
   }

@@ -76,7 +76,7 @@ describe('deduce', () => {
         kind: 'deduce',
         result: 'nothing',
         minutes: FAILED_DEDUCTION_MINUTES,
-        consequences: ['time-lost'],
+        consequences: ['time-lost', 'nerves-lost'],
       });
       expect(result.run.insightIds).toEqual([]);
       expect(result.run.clock.minute).toBe(DAY_START_MINUTE + FAILED_DEDUCTION_MINUTES);

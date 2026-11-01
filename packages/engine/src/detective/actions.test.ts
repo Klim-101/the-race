@@ -278,7 +278,7 @@ describe('search', () => {
       kind: 'search',
       foundClueIds: [],
       minutes: SEARCH_MINUTES + FAILED_SEARCH_MINUTES,
-      consequences: ['time-lost'],
+      consequences: ['time-lost', 'nerves-lost'],
     });
     expect(failed.run.foundClueIds).toEqual(['cellar-key']);
     const again = ok(resolveIntent(failed.run, { kind: 'search' }, dice(15)));
@@ -459,7 +459,7 @@ describe('what the player and the narrator are told', () => {
       kind: 'search',
       foundClueIds: [],
       minutes: SEARCH_MINUTES + FAILED_SEARCH_MINUTES,
-      consequences: ['time-lost'],
+      consequences: ['time-lost', 'nerves-lost'],
     });
   });
 

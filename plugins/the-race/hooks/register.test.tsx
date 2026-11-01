@@ -85,6 +85,28 @@ test('the line above the prompt follows the game on every surface, in both langu
   }
 });
 
+test('the line says how the hero\u2019s nerves are in a word, in both languages, and never a number', async ($, on) => {
+  let reply: Reply = answered(VIEW);
+  on('tool.call', () => reply);
+
+  for (const [locale, warnings, words] of [
+    ['en', [], /nerves steady/],
+    ['en', ['frayed-nerves'], /nerves frayed/],
+    ['ru', ['frayed-nerves', 'ragged-nerves'], /нервы на пределе/],
+    ['ru', [], /нервы в порядке/],
+  ] as const) {
+    reply = answered({ ...VIEW, locale, warnings });
+    await $.tool.call({ tool: `${TOOLS}run_view` } as never);
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' });
+    expect((await ui.find({ type: 'Box' }))?.text).toMatch(words);
+    await ui.unmount();
+
+    const pane = await $.ui.mount({ ...PANE, surface: 'terminal' });
+    expect((await pane.find({ type: 'Text', text: words }))?.text).toMatch(words);
+    await pane.unmount();
+  }
+});
+
 test('a turn tool moves the line with its short view and its map, with no run_view between', async ($, on) => {
   let reply: Reply = answered(VIEW);
   on('tool.call', () => reply);

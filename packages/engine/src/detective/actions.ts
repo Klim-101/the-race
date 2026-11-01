@@ -42,6 +42,7 @@ import {
   moveTo,
   signalOfRun,
   spendTime,
+  strainByAction,
   strainNerves,
   type DetectiveRunState,
 } from './run-state.js';
@@ -114,7 +115,7 @@ export interface Refusal {
   readonly message: string;
 }
 
-export type Consequence = 'time-lost' | 'reputation-lost' | 'mishap';
+export type Consequence = 'time-lost' | 'reputation-lost' | 'mishap' | 'nerves-lost';
 
 /**
  * What happened, as far as the player and the narrator may know. It names no clue that was not found
@@ -280,12 +281,21 @@ function resolveSearch(run: DetectiveRunState, rng: Rng): Resolution {
     if (result.success) found.push(clue);
   }
 
-  const withClues = found.reduce((state, clue) => findClue(state, clue.id), markSearched(run, location.id));
-  // A search that turns up nothing although something was there costs more than the search itself.
+  const searched = found.reduce((state, clue) => findClue(state, clue.id), markSearched(run, location.id));
+  // A search that turns up nothing although something was there costs more than the search itself, and a point
+  // of nerves besides.
   const wasted = found.length === 0 && hidden.length > 0;
+  // A blunder on the roll costs its own point (see `settle`) and is not counted twice.
+  const blundered = results.some((result) => result.critical === 'failure');
+  const withClues = wasted && !blundered ? strainByAction(searched) : searched;
   const minutes = SEARCH_MINUTES + (wasted ? FAILED_SEARCH_MINUTES : 0);
   const settled = settle(withClues, rng, minutes, results);
-  const consequences: Consequence[] = [...(wasted ? (['time-lost'] as const) : []), ...settled.consequences];
+  const frayed = withClues.condition.nerves < searched.condition.nerves;
+  const consequences: Consequence[] = [
+    ...(wasted ? (['time-lost'] as const) : []),
+    ...(frayed ? (['nerves-lost'] as const) : []),
+    ...settled.consequences,
+  ];
   return {
     ok: true,
     run: settled.run,

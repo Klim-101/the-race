@@ -27,8 +27,17 @@ export const DETECTIVE_NERVES = defineMeter({
   start: 10,
   drain: { amount: 1, per: 'failure' },
   thresholds: [
-    { below: 6, effects: { modifiers: [{ skills: 'all', amount: -1 }] } },
-    { below: 3, effects: { modifiers: [{ skills: 'all', amount: -1 }], mishapChance: 15, garbleLevel: 2 } },
+    // The warnings are what the player is told as a feeling: frayed below 6, ragged below 3.
+    { below: 6, effects: { modifiers: [{ skills: 'all', amount: -1 }], warning: 'frayed-nerves' } },
+    {
+      below: 3,
+      effects: {
+        modifiers: [{ skills: 'all', amount: -1 }],
+        mishapChance: 15,
+        garbleLevel: 2,
+        warning: 'ragged-nerves',
+      },
+    },
     // Nerves gone with little reputation behind the hero is a breakdown. With reputation of 3 or more it is
     // a collapse instead, which forces the night (P1-18) and does not end the run, so it is not here.
     { below: 1, when: [{ meter: 'reputation', below: 3 }], effects: { endsRun: { reason: 'breakdown' } } },

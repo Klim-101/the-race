@@ -21,6 +21,11 @@ export const LATE_FROM_MINUTE = 22 * 60;
 /** One point of sleep debt for every full stretch of this many minutes worked late. */
 export const SLEEP_DEBT_MINUTES_PER_POINT = 60;
 
+/** From this ruleset on, failures of the work itself fray the nerves, not only the clock and a blunder. */
+export const ACTION_STRAIN_RULESET_VERSION = 9;
+/** The most points of nerves that failed talks, links and searches take in one day. */
+export const ACTION_STRAIN_CAP_PER_DAY = 3;
+
 export const CONDITION_IDS = [
   'drunk',
   'injured',
