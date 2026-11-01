@@ -19,7 +19,7 @@
       "id": "courtyard",
       "name": "Двор гала",
       "description": "Флажки, складные стулья и струнный квартет, который никак не настроится. Полгорода пришло посмотреть, кто похитил гуся, и у каждого есть своя версия.",
-      "connections": ["museum-hall", "tea-shop", "boiler-room"],
+      "connections": ["museum-hall", "boiler-room", "elm-street"],
       "access": { "kind": "open" },
       "exposure": "outdoor",
       "situations": ["crowd", "high-society"]
@@ -28,7 +28,7 @@
       "id": "tea-shop",
       "name": "Чайная «Медный чайник»",
       "description": "Чайная через двор, где официантки замечают всё и ничего не прощают. Булочки при этом превосходные.",
-      "connections": ["courtyard", "post-office"],
+      "connections": ["elm-street"],
       "access": { "kind": "open" },
       "exposure": "indoor"
     },
@@ -36,7 +36,7 @@
       "id": "post-office",
       "name": "Эльмвикская почта",
       "description": "Сонная стойка с латунным звонком, стена сортировочных ячеек и старый телеграфист: он двадцать лет как на пенсии, но приходит каждый день.",
-      "connections": ["tea-shop"],
+      "connections": ["bell-square"],
       "access": { "kind": "open" },
       "exposure": "indoor"
     },
@@ -64,6 +64,22 @@
       "access": { "kind": "open" },
       "exposure": "indoor",
       "situations": ["confined-space"]
+    },
+    {
+      "id": "elm-street",
+      "name": "Вязовая улица",
+      "description": "Единственная настоящая улица Элмвика: липы, булькающий водосток и хороший вид на чужие дела.",
+      "connections": ["courtyard", "tea-shop", "bell-square"],
+      "access": { "kind": "open" },
+      "exposure": "outdoor"
+    },
+    {
+      "id": "bell-square",
+      "name": "Колокольная площадь",
+      "description": "Небольшая мощёная площадь с пересохшим фонтаном и часами, которые с прошлой весны спешат на четыре минуты.",
+      "connections": ["elm-street", "post-office"],
+      "access": { "kind": "open" },
+      "exposure": "outdoor"
     }
   ],
   "clues": [

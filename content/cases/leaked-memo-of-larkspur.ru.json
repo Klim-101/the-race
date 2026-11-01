@@ -11,30 +11,34 @@
       "id": "exchange-floor",
       "name": "Торговый зал Амберлийской биржи",
       "description": "Мраморный зал, где брокеры с большой уверенностью и малым количеством доказательств выкрикивают друг другу цифры. Табло цен до сих пор размазано там, где упал «Ларкспур».",
-      "connections": ["press-room", "larkspur-hq", "teahouse"],
+      "connections": ["harbour-street"],
       "access": { "kind": "open" },
+      "exposure": "indoor",
       "situations": ["crowd"]
     },
     {
       "id": "press-room",
       "name": "Пресс-комната финансовых новостей",
       "description": "Тесная редакция, где пять журналистов делят два телефона и одно мнение. Записку просунули под эту дверь ещё до рассвета.",
-      "connections": ["exchange-floor", "print-shop"],
-      "access": { "kind": "open" }
+      "connections": ["harbour-street", "ink-alley"],
+      "access": { "kind": "open" },
+      "exposure": "indoor"
     },
     {
       "id": "print-shop",
       "name": "Типография «Чернильница»",
       "description": "Маленькая типография за пресс-комнатой, пахнущая растворителем и гренками. Хозяин печатает всё подряд, от свадебных приглашений до акционерных сертификатов, и помнит каждый заказ.",
-      "connections": ["press-room"],
-      "access": { "kind": "open" }
+      "connections": ["ink-alley"],
+      "access": { "kind": "open" },
+      "exposure": "indoor"
     },
     {
       "id": "larkspur-hq",
       "name": "Правление «Ларкспура»",
       "description": "Офис чайной компании выдержан в цветах крепкого чая: коричневые ковры, бежевые стены и секретарь, которая предлагает посетителям чашку и бланк, чтобы за неё расписаться.",
-      "connections": ["exchange-floor", "records-vault", "server-room"],
-      "access": { "kind": "open" }
+      "connections": ["larkspur-plaza", "records-vault", "server-room"],
+      "access": { "kind": "open" },
+      "exposure": "indoor"
     },
     {
       "id": "records-vault",
@@ -42,6 +46,7 @@
       "description": "Подвальная каморка без окон, набитая реестрами. Если стоять неподвижно, свет гаснет. Дверь открывается по пропуску, а места тут хватит на двоих и одну толстую книгу.",
       "connections": ["larkspur-hq"],
       "access": { "kind": "clue", "clueId": "vault-pass" },
+      "exposure": "indoor",
       "situations": ["confined-space"]
     },
     {
@@ -50,14 +55,40 @@
       "description": "Охлаждаемый чулан с мигающими коробками. Пароль к нему знает весь отдел информационных систем и весь отдел делает вид, что не знает.",
       "connections": ["larkspur-hq"],
       "access": { "kind": "skill", "check": { "skill": "tech", "difficulty": 12 } },
+      "exposure": "indoor",
       "situations": ["digital-evidence"]
     },
     {
       "id": "teahouse",
       "name": "Чайная «Брусничный лист»",
       "description": "Семейная чайная у чёрного хода биржи: щербатые чашки, честные цены и покосившаяся вывеска, которая вот-вот упадёт уже лет тридцать.",
-      "connections": ["exchange-floor"],
-      "access": { "kind": "open" }
+      "connections": ["harbour-street"],
+      "access": { "kind": "open" },
+      "exposure": "indoor"
+    },
+    {
+      "id": "harbour-street",
+      "name": "Портовая улица",
+      "description": "Улица мимо биржи к воде: телеги, чайки и люди с телефонами.",
+      "connections": ["exchange-floor", "press-room", "teahouse", "larkspur-plaza"],
+      "access": { "kind": "open" },
+      "exposure": "outdoor"
+    },
+    {
+      "id": "larkspur-plaza",
+      "name": "Площадь Ларкспур",
+      "description": "Продуваемая ветром площадь из стекла и флагштоков перед штаб-квартирой компании.",
+      "connections": ["harbour-street", "larkspur-hq"],
+      "access": { "kind": "open" },
+      "exposure": "outdoor"
+    },
+    {
+      "id": "ink-alley",
+      "name": "Чернильный переулок",
+      "description": "Узкий переулок, пахнущий типографской краской и мокрой газетой, общий для редакции и типографии.",
+      "connections": ["press-room", "print-shop"],
+      "access": { "kind": "open" },
+      "exposure": "outdoor"
     }
   ],
   "clues": [

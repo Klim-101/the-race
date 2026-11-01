@@ -4,6 +4,7 @@
 import {
   EMPTY_RUN_LOG,
   MIN_RANDOM_EVENTS,
+  GENERATED_MAP,
   chooseSeed,
   chooseSetting,
   createDetectiveRun,
@@ -36,6 +37,10 @@ const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
   'wrong-language': 4,
   'wrong-script': 5,
   'real-name': 6,
+  'map-too-small': 6.2,
+  'map-too-large': 6.2,
+  'too-few-outdoor-places': 6.4,
+  'single-building': 6.6,
   'unreachable-location': 7,
   'unobtainable-clue': 8,
   'unreachable-suspect': 9,
@@ -141,6 +146,7 @@ export const scenarioSubmit = defineTool({
         traits: pending.traits,
         locale: pending.locale,
         minRandomEvents: MIN_RANDOM_EVENTS,
+        map: GENERATED_MAP,
         // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
         realNames: [
           ...new Set([...worldRealNames(world), ...((await seedsOfRun(context))?.realNames ?? [])]),
