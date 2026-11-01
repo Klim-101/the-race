@@ -40,6 +40,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
       skills: { perception: 4 },
       background: 'police',
     },
+    weather: null,
     history: { finds: [], shown: [], links: [] },
     signal: null,
     signalEvents: [],

@@ -62,6 +62,9 @@ export interface TabText {
   };
   readonly chronicle: {
     readonly now: string;
+    /** The weather of today, and the plain name of each weather. */
+    readonly weatherToday: string;
+    readonly weathers: Readonly<Record<string, string>>;
     readonly day: string;
     readonly left: string;
     readonly hours: string;

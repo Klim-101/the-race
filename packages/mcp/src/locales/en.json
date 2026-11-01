@@ -162,6 +162,20 @@
       "approaches": {
         "social": "in a friendly way",
         "pressure": "with pressure"
+      },
+      "weatherToday": "Weather today",
+      "weathers": {
+        "mild": "mild",
+        "warm": "warm",
+        "hot": "hot",
+        "humid": "humid and close",
+        "windy": "windy",
+        "fog": "fog",
+        "dry-heat": "dry heat",
+        "cold-rain": "cold rain",
+        "snow": "snow",
+        "frost": "frost",
+        "storms": "storms"
       }
     },
     "hero": {

@@ -178,7 +178,8 @@ describe('move', () => {
       const rng = createRng(1);
       const before = rng.state();
 
-      const back = ok(resolveIntent(moveTo(inside, 'cheese-stall'), toOffice, rng));
+      // A run of the ruleset before the road: a walk out of doors would draw dice of its own (see `road.test.ts`).
+      const back = ok(resolveIntent({ ...moveTo(inside, 'cheese-stall'), rulesetVersion: 7 }, toOffice, rng));
 
       expect(back.run.locationId).toBe('mayor-office');
       expect(back.details).toEqual([]);
@@ -223,6 +224,7 @@ describe('move', () => {
           description: 'Dusty.',
           connections: [],
           access: { kind: 'open' },
+          exposure: 'outdoor' as const,
           situations: [],
         });
       },

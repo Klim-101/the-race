@@ -12,7 +12,8 @@
       "name": "Главный зал музея",
       "description": "Длинный зал: латунные весы, почтовые мешки, стеклянные витрины. В дальнем конце пустой постамент с вежливой табличкой: «Адмирал Квилл, просьба не трогать».",
       "connections": ["courtyard", "archive", "curator-office"],
-      "access": { "kind": "open" }
+      "access": { "kind": "open" },
+      "exposure": "indoor"
     },
     {
       "id": "courtyard",
@@ -20,6 +21,7 @@
       "description": "Флажки, складные стулья и струнный квартет, который никак не настроится. Полгорода пришло посмотреть, кто похитил гуся, и у каждого есть своя версия.",
       "connections": ["museum-hall", "tea-shop", "boiler-room"],
       "access": { "kind": "open" },
+      "exposure": "outdoor",
       "situations": ["crowd", "high-society"]
     },
     {
@@ -27,28 +29,32 @@
       "name": "Чайная «Медный чайник»",
       "description": "Чайная через двор, где официантки замечают всё и ничего не прощают. Булочки при этом превосходные.",
       "connections": ["courtyard", "post-office"],
-      "access": { "kind": "open" }
+      "access": { "kind": "open" },
+      "exposure": "indoor"
     },
     {
       "id": "post-office",
       "name": "Эльмвикская почта",
       "description": "Сонная стойка с латунным звонком, стена сортировочных ячеек и старый телеграфист: он двадцать лет как на пенсии, но приходит каждый день.",
       "connections": ["tea-shop"],
-      "access": { "kind": "open" }
+      "access": { "kind": "open" },
+      "exposure": "indoor"
     },
     {
       "id": "archive",
       "name": "Архив музея",
       "description": "Стеллажи с недоставленными письмами, перевязанными лентой и проштампованными «Вернуть никому». Дверь на крепком замке, а ключ, разумеется, потерялся.",
       "connections": ["museum-hall"],
-      "access": { "kind": "clue", "clueId": "archive-key" }
+      "access": { "kind": "clue", "clueId": "archive-key" },
+      "exposure": "indoor"
     },
     {
       "id": "curator-office",
       "name": "Кабинет куратора",
       "description": "Тесный кабинет с диваном и чайником. У двери сидит секретарша куратора и считает каждого посетителя личным оскорблением коллекции.",
       "connections": ["museum-hall"],
-      "access": { "kind": "skill", "check": { "skill": "social", "difficulty": 11 } }
+      "access": { "kind": "skill", "check": { "skill": "social", "difficulty": 11 } },
+      "exposure": "indoor"
     },
     {
       "id": "boiler-room",
@@ -56,6 +62,7 @@
       "description": "Низкий жаркий подвал под двором. Трубы стучат, как нетерпеливые посетители. Встать можно, а вот развернуться почти негде.",
       "connections": ["courtyard"],
       "access": { "kind": "open" },
+      "exposure": "indoor",
       "situations": ["confined-space"]
     }
   ],

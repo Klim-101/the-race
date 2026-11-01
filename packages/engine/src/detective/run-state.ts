@@ -20,7 +20,8 @@ import {
 import { warningsOfMeters } from '../meters.js';
 import { DrawnSignalEventSchema, findSignal, signalIgnores, type Signal } from '../signals.js';
 import { TraitSchema, type Trait } from '../traits.js';
-import type { ClimateProfile } from '../world/climate.js';
+import type { ClimateProfile, Weather } from '../world/climate.js';
+import { weatherOfDay } from './weather.js';
 import { SeedKindSchema } from '../news/seed.js';
 import { SettingSchema, type Setting } from '../world/setting.js';
 import { companionName } from './tavern.js';
@@ -37,7 +38,13 @@ import {
   type ConditionId,
   type ConditionView,
 } from './condition.js';
-import { DetectiveCaseSchema, EntityIdSchema, type DetectiveCase, type Location } from './case-schema.js';
+import {
+  DetectiveCaseSchema,
+  EntityIdSchema,
+  type DetectiveCase,
+  type Exposure,
+  type Location,
+} from './case-schema.js';
 import {
   PendingEffectSchema,
   SuppliesSchema,
@@ -509,6 +516,8 @@ export interface DetectiveRunView {
     readonly events: readonly { readonly day: number; readonly text: string }[];
   };
   readonly hero: DetectiveHero;
+  /** The weather of today, or `null` for a case set nowhere and for a run of an older ruleset. */
+  readonly weather: Weather | null;
   /** Where each clue was found, to whom it was shown and the links tried, in order; the board draws it. */
   readonly history: RunHistory;
   /** The hero's public character signal: ids only, so the narrator gets a voice and never a number. */
@@ -530,6 +539,8 @@ export interface DetectiveRunView {
     readonly id: string;
     readonly name: string;
     readonly description: string;
+    /** Whether the hero stands indoors or out of doors: the weather colours only the second. */
+    readonly exposure: Exposure;
     readonly exits: readonly {
       readonly id: string;
       readonly name: string;
@@ -700,6 +711,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         ),
       ),
     hero: run.hero,
+    weather: weatherOfDay(run, run.clock.day) ?? null,
     history: run.history,
     signal: signalViewOf(run),
     signalEvents: run.signalEvents
@@ -709,7 +721,13 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     revealedTraits: run.traits.filter(({ id }) => run.revealedTraitIds.includes(id)),
     setting: run.setting && { name: run.setting.name[run.locale], climate: run.setting.climate },
     inspiration: run.inspiration,
-    location: { id: location.id, name: location.name, description: location.description, exits },
+    location: {
+      id: location.id,
+      name: location.name,
+      description: location.description,
+      exposure: location.exposure,
+      exits,
+    },
     map: viewMap(run),
     suspects: detectiveCase.suspects.map((suspect) => {
       const placeId = suspectPlace(run, suspect);
