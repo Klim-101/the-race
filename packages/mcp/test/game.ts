@@ -25,6 +25,7 @@ export function gameContext(): GameContext {
     saveFs: fs,
     boardDir: TEST_BOARD_DIR,
     profileDir: TEST_PROFILE_DIR,
+    notices: {},
     fs,
     newSeed: () => `game-seed-${String(++counter)}`,
     ...offlineNews(),

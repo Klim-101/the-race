@@ -20,7 +20,10 @@ Then the save directory is:
 
 1. `RACE_HOME`, when set and non-empty (resolved to an absolute path), as the save directory itself.
 2. `<game folder>/saves`, unless it does not exist yet and the directory of the earlier versions does
-   (`chooseSaveDir`): then the earlier saves, and the mirror world they hold, are kept where they are. That
+   (`chooseSaveDir`): then the earlier saves, and the mirror world they hold, are used where they are until the
+   move below has been done (`moveLegacySaves`, run at the start of the server: it copies the old folder into a
+   temporary one beside the new one, checks every file, renames it into place and only then removes the old folder;
+   a failure removes nothing). That
    directory is `%LOCALAPPDATA%\the-race` on Windows, `<home>/Library/Application Support/the-race` on macOS,
    and `$XDG_STATE_HOME/the-race` (absolute) or `<home>/.local/state/the-race` elsewhere (`legacySaveDir`).
 

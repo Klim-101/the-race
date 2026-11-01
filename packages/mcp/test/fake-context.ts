@@ -38,6 +38,7 @@ export function fakeContext(): ServerContext {
     saveFs,
     boardDir: TEST_BOARD_DIR,
     profileDir: TEST_PROFILE_DIR,
+    notices: {},
     newSeed: () => `seed-${String(++counter)}`,
     ...offlineNews(),
   };

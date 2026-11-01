@@ -453,6 +453,15 @@ describe('the language of the hero', () => {
   });
 });
 
+describe('the move of the saves', () => {
+  it('is told once, plainly, from the view', () => {
+    const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+
+    expect(skill).toMatch(/`savesMoved`/);
+    expect(skill).toMatch(/say once, in one plain line out of the fiction/);
+  });
+});
+
 describe('the rumours of the tavern', () => {
   it('are told freshly in each run, as the tool says and the skill repeats', () => {
     const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
