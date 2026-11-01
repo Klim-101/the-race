@@ -107,13 +107,11 @@
       }
     },
     "links": {
-      "title": "How it hangs together",
-      "conclusions": "Conclusions",
-      "evidence": "Evidence",
-      "places": "Where it was found",
+      "title": "Links",
       "none": "Nothing to connect yet.",
       "open": "Links still to be made",
       "size": "a link of {n}",
+      "group": "{count} × {size}",
       "allDrawn": "Every conclusion has been drawn."
     },
     "chronicle": {
@@ -347,7 +345,8 @@
         "no-effect": "no effect"
       },
       "legend": "Red thread: a link tried. Blue thread: a clue shown to a person.",
-      "shownHere": "Clues shown to them"
+      "shownHere": "Clues shown to them",
+      "drawnFrom": "Drawn from"
     }
   }
 }

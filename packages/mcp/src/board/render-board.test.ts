@@ -357,22 +357,22 @@ describe('the suspects tab', () => {
 });
 
 describe('the clues and links tab', () => {
-  it('joins each conclusion to the clues it was drawn from and each clue to the place it was found', () => {
+  it('says on each conclusion which clues it was drawn from, with the whole text of each', () => {
     const clues = tab(renderEvidenceBoard(viewOf(FOUND)), 'clues');
 
-    expect(clues).toContain('<svg class="links"');
-    expect(clues.match(/class="conclusion-link"/g)).toHaveLength(2);
-    expect(clues.match(/class="place-link"/g)).toHaveLength(2);
+    expect(clues).toContain('Drawn from:');
+    expect(clues).toContain('<span class="source">A rusty key under the counter.</span>');
+    expect(clues).toContain('<span class="source">Flour on the cellar steps.</span>');
     expect(clues).toContain('read badly');
     expect(clues).toContain('The baker lied about the flour.');
     expect(clues).toMatchSnapshot();
   });
 
-  it('draws nothing that says what a clue points at: no suspect is in the picture', () => {
+  it('has no graph: the board and the notebooks already say how it hangs together', () => {
     const clues = tab(renderEvidenceBoard(viewOf(FOUND)), 'clues');
-    const picture = /<svg class="links"[\s\S]*?<\/svg>/.exec(clues)?.[0] ?? '';
 
-    for (const name of ['Anna', 'Boris', 'Cora']) expect(picture).not.toContain(name);
+    expect(clues).not.toContain('<svg');
+    expect(clues).not.toContain('conclusion-link');
   });
 
   it('says so when there is nothing to connect, and keeps the empty notes', () => {
@@ -381,32 +381,72 @@ describe('the clues and links tab', () => {
     expect(clues).toContain('Nothing to connect yet.');
     expect(clues).toContain('Nothing on the board yet');
     expect(clues).toContain('No conclusions yet');
-    expect(clues).not.toContain('<svg');
   });
 
-  it('names a place it has no name for by its id, and skips a conclusion drawn from a clue it cannot find', () => {
+  it('skips a clue it cannot find under a conclusion, and says nothing of sources when none is known', () => {
     const clues = tab(
       renderEvidenceBoard(
         viewOf({
           clues: [{ id: 'k', locationId: 'gone', description: 'Flour.', garbled: false }],
-          insights: [{ id: 'i', insight: 'Odd.', clueIds: ['k', 'missing'] }],
+          insights: [
+            { id: 'i', insight: 'Odd.', clueIds: ['k', 'missing'] },
+            { id: 'j', insight: 'Odder.', clueIds: ['missing'] },
+          ],
         }),
       ),
       'clues',
     );
 
     expect(clues).toContain('gone</span>');
-    expect(clues.match(/class="conclusion-link"/g)).toHaveLength(1);
+    expect(clues.match(/class="source"/g)).toHaveLength(1);
+    expect(clues.match(/Drawn from/g)).toHaveLength(1);
   });
 
-  it('shows conclusions even when no clue is listed', () => {
+  it('shows conclusions and no link note about clues when no clue is listed', () => {
     const clues = tab(
       renderEvidenceBoard(viewOf({ insights: [{ id: 'i', insight: 'Odd.', clueIds: ['x'] }] })),
       'clues',
     );
 
-    expect(clues).toContain('<svg class="links"');
-    expect(clues).not.toContain('conclusion-link');
+    expect(clues).toContain('Odd.');
+    expect(clues).not.toContain('Nothing to connect yet.');
+  });
+
+  it('never cuts a clue short with an ellipsis: not in a link tried, not on a person, not on a conclusion', () => {
+    const long = 'The badge ledger shows that the badge was issued at 22:10 to somebody who never signed.';
+    const page = renderEvidenceBoard(
+      viewOf({
+        clues: [
+          { id: 'ledger', locationId: 'stall', description: long, garbled: false },
+          { id: 'envelope', locationId: 'market', description: `${long} Second.`, garbled: false },
+        ],
+        insights: [{ id: 'i', insight: 'Odd.', clueIds: ['ledger', 'envelope'] }],
+        history: {
+          finds: [],
+          shown: [{ turn: 3, clueId: 'ledger', suspectId: 'a', effect: 'no-effect' }],
+          links: [{ turn: 4, clueIds: ['ledger', 'envelope'], result: 'insight' }],
+        },
+      }),
+    );
+
+    for (const id of ['clues', 'suspects']) {
+      expect(tab(page, id)).toContain(long);
+      expect(tab(page, id)).not.toContain('…');
+    }
+  });
+});
+
+describe('one look for the whole page', () => {
+  const page = renderEvidenceBoard(viewOf(FOUND));
+
+  it('paints the notebooks from the page variables, so the dark theme tints the paper too', () => {
+    expect(page).toContain('--paper:#2a2622');
+    expect(page).toContain('background-color:var(--paper)');
+    expect(page).not.toContain('#fffef6;background');
+  });
+
+  it('keeps a notebook to a readable column', () => {
+    expect(page).toContain('.notebook{max-width:640px');
   });
 });
 
@@ -783,14 +823,14 @@ describe('the links still to be made', () => {
     const page = links({ openLinks: [2, 3, 3] });
 
     expect(page).toContain('Links still to be made:');
-    expect(page).toContain('a link of 2, a link of 3, a link of 3');
+    expect(page).toContain('1 × a link of 2, 2 × a link of 3');
   });
 
   it('is told in Russian too, and also before any clue is found', () => {
     const page = links({ locale: 'ru', openLinks: [2], clues: [], insights: [] });
 
     expect(page).toContain('Связок ещё предстоит:');
-    expect(page).toContain('связка из 2');
+    expect(page).toContain('1 × связка из 2');
     expect(page).toContain('Связывать пока нечего');
   });
 

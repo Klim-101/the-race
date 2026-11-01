@@ -99,7 +99,7 @@ export function highlightRules(view: DetectiveRunView): string {
   return pickableTokens(view)
     .map((entry) => {
       const lit = `main[data-sel="${entry}"] [data-rel~="${entry}"]`;
-      return `${lit}{opacity:1;outline:2px solid var(--accent);outline-offset:2px}
+      return `${lit}{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
 ${lit} > rect{stroke:var(--accent);stroke-width:3}
 ${lit}:is(path,line){stroke-width:4;outline:0}`;
     })

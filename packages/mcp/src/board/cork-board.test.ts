@@ -256,6 +256,41 @@ describe('the corkboard tab', () => {
     expect(wrap('   ', 6, 2)).toEqual([]);
   });
 
+  it('puts a name under its frame on two lines and never cuts it', () => {
+    const name = 'Boris Windlaw-Lavrov';
+    const html = cork(
+      viewOf({ suspects: [{ id: 'b', name, persona: 'Rival', place: null, statements: [] }] }),
+    );
+
+    expect(html.match(/class="caption"/g)).toHaveLength(2);
+    expect(html).toContain('>Boris</text>');
+    expect(html).toContain('>Windlaw-Lavrov</text>');
+    expect(html).not.toContain('…');
+  });
+
+  it('wraps the place a clue was found at instead of cutting it', () => {
+    const place = 'The Night Watchman Closet Behind the Old Bar';
+    const html = cork(
+      viewOf({
+        map: { current: 'x', places: [{ id: 'x', name: place, visited: true, blocked: null }], links: [] },
+        clues: [{ id: 'k', locationId: 'x', description: 'A key.', garbled: false }],
+        history: { finds: [{ clueId: 'k', locationId: 'x', turn: 3 }], shown: [], links: [] },
+      }),
+    );
+
+    expect(html).toContain('found at The Night Watchman');
+    expect(html).toContain('Closet Behind the Old Bar');
+    expect(html).toContain('turn 3');
+    expect(html).not.toContain('…');
+  });
+
+  it('keeps a dimmed card opaque so the thread behind it does not show through its text', () => {
+    const page = renderEvidenceBoard(viewOf(PLAYED));
+
+    expect(page).toContain('main[data-sel] svg.board g[data-rel]{opacity:1;filter:');
+    expect(highlightRules(viewOf(PLAYED))).toContain('filter:none');
+  });
+
   it('is written in Russian when the run is', () => {
     const html = cork(viewOf({ ...PLAYED, locale: 'ru' }));
 
