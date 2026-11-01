@@ -123,6 +123,7 @@ async function start(pending: PendingRun | null, fs = memoryFs(), overrides: Par
     saveFs: fs,
     boardDir: TEST_BOARD_DIR,
     profileDir: TEST_PROFILE_DIR,
+    notices: {},
     newSeed: () => 'unused',
     ...offlineNews(),
     ...overrides,

@@ -22,6 +22,11 @@ export interface ServerContext {
    * the `export.json` and `import.json` the player moves by hand. Nothing in it ever leaves the machine.
    */
   readonly profileDir: string;
+  /**
+   * Things the player is told once, at the first call that can carry them: they are set when the server starts
+   * and taken (and so cleared) by the first tool that tells them.
+   */
+  readonly notices: StartupNotices;
   /** A fresh seed for a new run. Randomness enters the game here and only here. */
   readonly newSeed: () => string;
   /** Today as `YYYY-MM-DD`. The clock enters the game here and only here. */
@@ -32,4 +37,9 @@ export interface ServerContext {
   readonly feeds: () => Promise<FeedList>;
   /** How many days behind the news a run is set: 0 is today's, more is the cautious mode. */
   readonly newsLagDays: number;
+}
+
+export interface StartupNotices {
+  /** The saves were moved into the game folder at this start: from where, and to where. */
+  savesMoved?: { readonly from: string; readonly to: string } | undefined;
 }

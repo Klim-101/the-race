@@ -51,3 +51,10 @@ export {
   type ImportProfileResult,
   type LoadProfileResult,
 } from './profile-store.js';
+export {
+  moveDefaultLegacySaves,
+  moveLegacySaves,
+  nodeMoveFs,
+  type LegacyMove,
+  type MoveFs,
+} from './legacy-move.js';

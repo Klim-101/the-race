@@ -452,3 +452,12 @@ describe('the language of the hero', () => {
     expect(endings).toMatch(/«я оставляю папку на столе/);
   });
 });
+
+describe('the move of the saves', () => {
+  it('is told once, plainly, from the view', () => {
+    const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+
+    expect(skill).toMatch(/`savesMoved`/);
+    expect(skill).toMatch(/say once, in one plain line out of the fiction/);
+  });
+});
