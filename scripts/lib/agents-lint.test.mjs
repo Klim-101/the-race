@@ -352,6 +352,35 @@ describe('the signal at work', () => {
   });
 });
 
+describe('the fields of accuse', () => {
+  const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+  // The description is written as joined string literals; join them to read it as the model does.
+  const tool = read(
+    join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'packages', 'mcp', 'src', 'tools', 'accuse.ts'),
+  ).replace(/'\s*\+\s*\n\s*'/g, '');
+  const FIELDS = ['turn', 'culpritId', 'motiveInsightId', 'evidenceClueIds'];
+  const GUESSES = ['suspectId', 'insightId', 'clueIds'];
+
+  it('gives the narrator the exact fields, with their types, and the names not to use', () => {
+    for (const field of FIELDS) expect(skill).toContain(`\`${field}\``);
+    for (const guess of GUESSES) expect(skill).toContain(`not \`${guess}\``);
+    expect(skill).toMatch(/`turn` \(a number/);
+    expect(skill).toMatch(/an array of clue ids, even for one clue or none, never a string/);
+  });
+
+  it('says the same in the description of the tool, which is what the model reads at the call', () => {
+    for (const field of FIELDS) expect(tool).toContain(`\`${field}\``);
+    expect(tool).toMatch(/`culpritId` is not `suspectId`/);
+    expect(tool).toMatch(/`motiveInsightId` is not `insightId`/);
+    expect(tool).toMatch(/`evidenceClueIds` is not `clueIds`/);
+    expect(tool).toMatch(/`turn` is a number and `evidenceClueIds` an array of clue ids \(never a string\)/);
+  });
+
+  it('has the input schema carry the same four fields', () => {
+    for (const field of FIELDS) expect(tool).toMatch(new RegExp(`\\n    ${field}: `));
+  });
+});
+
 describe('the size of a link', () => {
   const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
   const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));
