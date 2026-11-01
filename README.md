@@ -12,14 +12,24 @@ _The world changed overnight. Run._
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.base.json)
 [![Engine coverage](https://img.shields.io/badge/engine%20coverage-100%25-brightgreen.svg)](vitest.config.ts)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](.github/workflows/ci.yml)
-[![Status: early prototype](https://img.shields.io/badge/status-early%20prototype-orange.svg)](docs/public/ROADMAP.md)
+[![Status: alpha](https://img.shields.io/badge/status-alpha-yellow.svg)](docs/public/ROADMAP.md)
 [![Conventional Commits](https://img.shields.io/badge/commits-conventional-fe5196.svg)](https://www.conventionalcommits.org)
 
 </div>
 
 A text roguelike that runs inside [Claude Code](https://claude.com/claude-code) on your own subscription. Every run is one hero in a **mirror world** rebuilt from today's world news: the conflicts are real, the names are fictional. The hero dies for good. Tomorrow the world is different.
 
-> **Status:** early prototype, playable. A detective run works from the tavern to the final accusation inside Claude Code, in Russian or English, on a case built from the day's news. The roguelike loop around it (the hall of fallen heroes, legacy between runs) and further archetypes are still ahead. See the [roadmap](docs/public/ROADMAP.md).
+> **Status: alpha.** The detective run is playable from the tavern to the final accusation inside Claude Code, in Russian or English, on a case built from the day's news. Rules and saves may still change between versions. The hall of fallen heroes, legacy between runs and further archetypes are still ahead. See the [roadmap](docs/public/ROADMAP.md).
+
+### What is ready
+
+- **The engine.** Seeded dice, skills and hidden traits that show themselves in play, a clock with world events, weather and small mishaps on the road, interrogation, deductions and a verdict. Deterministic, with 100% test coverage.
+- **A full detective run.** Free-text actions, suspects with secrets and lies, clues and false trails, and several ways to solve a case. A run ends in an accusation, the end of the days, a breakdown or giving up, and the story is told as the hero's own thoughts.
+- **The tavern.** Three heroes are offered per run, built from twenty backgrounds and six life states, with rumours of the day.
+- **News and the mirror world.** Headlines from RSS feeds are cleaned, turned into seeds and rebuilt with fictional names. Real names are rejected and recent tragedies are filtered out.
+- **Saves and a profile.** A run resumes in a new session; a local profile keeps the tally of finished runs.
+- **The evidence board.** A browser page with a map, a corkboard of clues and links, notebooks and a chronicle.
+- **The Claude Code plugin.** Local MCP server with typed tools, the narrator, an isolated case generator, a HUD, and Russian and English texts.
 
 ## Getting started
 
