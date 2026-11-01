@@ -346,7 +346,11 @@
       },
       "legend": "Red thread: a link tried. Blue thread: a clue shown to a person.",
       "shownHere": "Clues shown to them",
-      "drawnFrom": "Drawn from"
+      "drawnFrom": "Drawn from",
+      "linksOf": "Links it took part in",
+      "noLinks": "none yet",
+      "closeHint": "Click again, or press Esc, to put it back.",
+      "fullText": "Full text"
     }
   }
 }

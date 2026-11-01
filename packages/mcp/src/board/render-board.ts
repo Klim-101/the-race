@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import type { DetectiveRunView, TurnView } from '@the-race/engine';
 import { renderChronicle } from './board-chronicle.js';
 import { renderCork } from './board-cork.js';
+import { numberOf, openedRules } from './board-opened.js';
 import { renderHero } from './board-hero.js';
 import { renderLinks } from './board-links.js';
 import { renderMap } from './board-map.js';
@@ -34,10 +35,13 @@ const tabRules = TAB_IDS.map(
 // Picking is the only thing the script does: it says which token is picked, and the style sheet lights what
 // is related to it (see board-relations.ts). Without the script the page is the same page, with nothing lit.
 // Its hash is in the page's content security policy, so no other script can run.
-export const SCRIPT = `(function(){var m=document.querySelector('main');if(!m)return;
+export const SCRIPT = `(function(){var m=document.querySelector('main');if(!m)return;var back=null;
+function shut(restore){if(m.getAttribute('data-open')===null)return;m.removeAttribute('data-open');if(restore&&back&&back.focus)back.focus();back=null}
 function pick(t){if(m.getAttribute('data-sel')===t){m.removeAttribute('data-sel')}else{m.setAttribute('data-sel',t)}}
-document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('[data-pick]');if(el){pick(el.getAttribute('data-pick'))}else if(!(e.target.closest&&e.target.closest('a'))){m.removeAttribute('data-sel')}});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){m.removeAttribute('data-sel');return}if(e.key==='Enter'||e.key===' '){var el=e.target.closest&&e.target.closest('[data-pick]');if(el){e.preventDefault();pick(el.getAttribute('data-pick'))}}});
+function show(el){var id=el.getAttribute('data-open');if(!id){shut(false);return}if(m.getAttribute('data-open')===id){shut(true);return}m.setAttribute('data-open',id);back=el;var card=document.getElementById('open-'+id);if(card&&card.focus)card.focus()}
+function choose(el){pick(el.getAttribute('data-pick'));show(el)}
+document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}var el=t.closest&&t.closest('[data-pick]');if(el){choose(el)}else if(!(t.closest&&t.closest('a'))){m.removeAttribute('data-sel');shut(false)}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){m.removeAttribute('data-sel');shut(true);return}if(e.key==='Enter'||e.key===' '){var el=e.target.closest&&e.target.closest('[data-pick]');if(el){e.preventDefault();choose(el)}}});
 })();`;
 const SCRIPT_HASH = createHash('sha256').update(SCRIPT).digest('base64');
 
@@ -88,6 +92,7 @@ svg.board .paper{fill:#fffdf4;stroke:#d6c9a8;stroke-width:1;filter:drop-shadow(2
 svg.board .print{fill:#cfc6b2}
 svg.board .initial{font:700 44px Georgia,serif;fill:#6b6354}
 svg.board .line{fill:#2a2622}
+svg.board .num{font:700 13px system-ui,sans-serif;fill:#8a3b2a;letter-spacing:.04em}
 svg.board .caption{fill:#2a2622;paint-order:stroke;stroke:#f1e1c0;stroke-width:3px;stroke-linejoin:round}
 svg.board .where text{font-size:11px;fill:#6b4a2b}
 svg.board .garbled .paper{stroke-dasharray:5 3;stroke:#b26a00}
@@ -102,6 +107,18 @@ svg.board .thread.shown.plain{stroke-dasharray:2 5}
 main[data-sel] [data-rel]{opacity:.3;transition:opacity .15s}
 /* A dimmed card keeps its paper opaque, so the thread behind it never shows through its text. */
 main[data-sel] svg.board g[data-rel]{opacity:1;filter:grayscale(.7) brightness(.7)}
+.cork-wrap{position:relative}
+.opened{display:none;position:absolute;left:50%;top:16px;transform:translateX(-50%);width:min(460px,92%);z-index:3;padding:10px 18px 12px;background:var(--paper);color:var(--paper-ink);border-left:3px double var(--margin);border-radius:2px;box-shadow:0 10px 28px var(--shadow);cursor:pointer;font-family:'Segoe Print','Bradley Hand',Georgia,serif}
+.opened p{margin:4px 0}
+.opened .tag{color:var(--paper-tag)}
+.opened .whole{font-size:1.1em;line-height:1.5}
+.opened:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.opened ul.tried{margin:4px 0}
+.opened ul.tried li{padding:4px 10px;box-shadow:none;border-left-width:2px}
+.num{font:700 12px system-ui,sans-serif;letter-spacing:.04em;color:var(--margin)}
+details{margin:4px 0 0}
+details summary{cursor:pointer;font:12px system-ui,sans-serif;color:var(--paper-tag)}
+details p{margin:4px 0}
 .notebook{max-width:640px;margin-left:auto;margin-right:auto}
 .notebook .card{background-color:var(--paper);background-image:linear-gradient(to bottom,transparent 27px,var(--paper-rule) 28px);background-size:100% 28px;border:0;border-left:3px double var(--margin);border-radius:2px;font-family:'Segoe Print','Bradley Hand',Georgia,serif;line-height:28px;padding:0 14px 0 18px;color:var(--paper-ink);box-shadow:1px 2px 4px var(--shadow)}
 .notebook .card p{margin:0}
@@ -118,7 +135,7 @@ ul.tried li{margin:0 0 8px;padding:6px 14px 6px 18px;border-left:3px double var(
 ul.tried .result{font:12px system-ui,sans-serif;color:var(--red);text-transform:uppercase;letter-spacing:.05em}
 ul.tried .tag{color:var(--paper-tag)}
 @media (max-width:560px){body{padding:16px}h1{font-size:1.5rem}}
-@media print{body{background:#fff;color:#000}.tab{display:block!important}nav.tabs{display:none}.card,.graph,.cork{break-inside:avoid}}
+@media print{body{background:#fff;color:#000}.opened{display:none!important}.tab{display:block!important}nav.tabs{display:none}.card,.graph,.cork{break-inside:avoid}}
 `;
 
 /** The clues a person was shown, in the order they were shown, with what each did. */
@@ -127,9 +144,10 @@ function shownTo(view: DetectiveRunView, suspectId: string, text: TabText): stri
   const shown = view.history.shown.filter((entry) => entry.suspectId === suspectId);
   if (shown.length === 0) return '';
   const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
+  const number = numberOf(view);
   const lines = shown.map(
     ({ clueId, effect, turn }) =>
-      `<p class="shown-line"><span class="tag">${e(text.corkboard.step.replace('{n}', String(turn)))}</span> ${e(description.get(clueId) ?? clueId)} <span class="effect">${e(text.corkboard.effects[effect])}</span></p>`,
+      `<p class="shown-line"><span class="tag">${e(text.corkboard.step.replace('{n}', String(turn)))}</span> <span class="num">${e(number(clueId))}</span> ${e(description.get(clueId) ?? clueId)} <span class="effect">${e(text.corkboard.effects[effect])}</span></p>`,
   );
   return `<h3>${e(text.corkboard.shownHere)}</h3>\n${lines.join('\n')}\n`;
 }
@@ -170,9 +188,15 @@ function tried(view: DetectiveRunView, text: TabText): string {
   const e = escapeHtml;
   if (view.history.links.length === 0) return `<p class="empty">${e(text.corkboard.noneTried)}</p>`;
   const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
+  const number = numberOf(view);
   const items = view.history.links.map(({ clueIds, result, turn }) => {
-    const names = clueIds.map((id) => e(description.get(id) ?? id)).join(' + ');
-    return `<li data-rel="${e(rel(threadTokens(clueIds)))}">${names} <span class="result">${e(text.corkboard.results[result])}</span> <span class="tag">${e(text.corkboard.step.replace('{n}', String(turn)))}</span></li>`;
+    const names = clueIds.map((id) => `<span class="num">${e(number(id))}</span>`).join(' + ');
+    // The numbers are the name of each clue; its whole text is one click away.
+    const whole = clueIds
+      .map((id) => `<p><span class="num">${e(number(id))}</span> ${e(description.get(id) ?? id)}</p>`)
+      .join('');
+    return `<li data-rel="${e(rel(threadTokens(clueIds)))}">${names} <span class="result">${e(text.corkboard.results[result])}</span> <span class="tag">${e(text.corkboard.step.replace('{n}', String(turn)))}</span>
+<details><summary>${e(text.corkboard.fullText)}</summary>${whole}</details></li>`;
   });
   return `<ul class="tried">${items.join('\n')}</ul>`;
 }
@@ -182,6 +206,7 @@ function renderClues(view: DetectiveRunView, board: BoardText, text: TabText): s
   const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
   const suspectName = new Map(view.suspects.map(({ id, name }) => [id, name]));
   const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
+  const number = numberOf(view);
   const clues =
     view.clues.length === 0
       ? `<p class="empty">${e(board.noClues)}</p>`
@@ -199,7 +224,7 @@ function renderClues(view: DetectiveRunView, board: BoardText, text: TabText): s
               );
             const shownLine = shown.length === 0 ? text.corkboard.nobody : shown.join(', ');
             return `<div class="card" ${attrs}>
-<span class="tag">${e(where)}</span>
+<span class="tag"><span class="num">${e(clue.number)}</span> · ${e(where)}</span>
 <p>${e(clue.description)}</p>${clue.garbled ? `\n<p class="warn">${e(board.garbled)}</p>` : ''}
 <p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
 </div>`;
@@ -212,7 +237,9 @@ function renderClues(view: DetectiveRunView, board: BoardText, text: TabText): s
           .map(({ insight, clueIds }) => {
             const sources = clueIds.flatMap((id) => {
               const line = description.get(id);
-              return line === undefined ? [] : [`<span class="source">${e(line)}</span>`];
+              return line === undefined
+                ? []
+                : [`<span class="source"><span class="num">${e(number(id))}</span> ${e(line)}</span>`];
             });
             const from =
               sources.length === 0
@@ -258,7 +285,8 @@ export function renderEvidenceBoard(view: DetectiveRunView, turns: readonly Turn
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-${SCRIPT_HASH}'">
 <title>${e(board.pageTitle)}: ${e(view.title)}</title>
 <style>${STYLE}
-${highlightRules(view)}</style>
+${highlightRules(view)}
+${openedRules(view)}</style>
 </head>
 <body>
 <main>
@@ -269,7 +297,7 @@ ${highlightRules(view)}</style>
 <nav class="tabs" aria-label="${e(text.nav)}">${TAB_IDS.map((id) => `<a href="#${id}">${e(text.tabs[id])}</a>`).join('')}</nav>
 <section class="tab" id="board">
 <h2>${e(text.corkboard.title)}</h2>
-${renderCork(view, text)}
+${renderCork(view, board, text)}
 </section>
 <section class="tab notebook" id="suspects">
 <h2>${e(board.suspects)}</h2>

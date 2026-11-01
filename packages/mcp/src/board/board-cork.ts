@@ -4,6 +4,8 @@
 import type { DetectiveRunView } from '@the-race/engine';
 import { clueTokens, placeTokens, rel, shownPairs, suspectTokens, threadTokens } from './board-relations.js';
 import { escapeHtml, truncate } from './escape-html.js';
+import { openedId, renderOpened } from './board-opened.js';
+import type { BoardText } from './board-text.js';
 import type { TabText } from './tab-text.js';
 
 // The corkboard of a film detective: the people pinned up as photographs along the top, the clues below them
@@ -13,7 +15,7 @@ import type { TabText } from './tab-text.js';
 
 const COLUMNS = 4;
 const CARD_W = 210;
-const CARD_H = 154;
+const CARD_H = 134;
 const GAP = 34;
 const MARGIN = 24;
 const PHOTO_W = 104;
@@ -25,7 +27,7 @@ const CAPTION_H = CAPTION_LINES * CAPTION_STEP + 12;
 const WHERE_LENGTH = 30;
 const WHERE_LINES = 3;
 const LINE_LENGTH = 22;
-const LINES = 5;
+const LINES = 3;
 const WIDTH = MARGIN * 2 + COLUMNS * CARD_W + (COLUMNS - 1) * GAP;
 const ROW_STEP = CARD_H + GAP + 8;
 
@@ -63,7 +65,7 @@ interface Pin {
 }
 
 /** The corkboard as one SVG, with a line of how to use it and what the threads are. */
-export function renderCork(view: DetectiveRunView, text: TabText): string {
+export function renderCork(view: DetectiveRunView, board: BoardText, text: TabText): string {
   const e = escapeHtml;
   const words = text.corkboard;
   if (view.clues.length === 0 && view.suspects.length === 0) {
@@ -116,13 +118,13 @@ export function renderCork(view: DetectiveRunView, text: TabText): string {
     const lines = wrap(clue.description, LINE_LENGTH, LINES)
       .map(
         (line, row) =>
-          `<text class="line" x="${whole(x + 12)}" y="${whole(y + 34 + row * 17)}">${e(truncate(line, LINE_LENGTH))}</text>`,
+          `<text class="line" x="${whole(x + 12)}" y="${whole(y + 46 + row * 17)}">${e(truncate(line, LINE_LENGTH))}</text>`,
       )
       .join('');
-    const attrs = `data-pick="clue:${e(clue.id)}" data-rel="${e(rel(clueTokens(view, clue.id)))}" tabindex="0" role="button" aria-label="${e(truncate(clue.description, 90))}"`;
+    const attrs = `data-pick="clue:${e(clue.id)}" data-rel="${e(rel(clueTokens(view, clue.id)))}" tabindex="0" role="button" aria-controls="${e(openedId(clue.id))}" data-open="${e(clue.id)}" aria-label="${e(`${clue.number}: ${truncate(clue.description, 90)}`)}"`;
     const placeAttrs = `data-pick="place:${e(clue.locationId)}" data-rel="${e(rel(placeTokens(view, clue.locationId)))}"`;
     const turned = `rotate(${tilt(index).toFixed(1)} ${whole(x + CARD_W / 2)} ${whole(y + CARD_H / 2)})`;
-    return `<g class="card-pin${clue.garbled ? ' garbled' : ''}" transform="${turned}" ${attrs}><title>${e(clue.description)}</title><rect class="paper" x="${whole(x)}" y="${whole(y)}" width="${String(CARD_W)}" height="${String(CARD_H)}" rx="3"/>${lines}<g class="where" ${placeAttrs}>${whereLines}</g><circle class="pin" cx="${whole(x + CARD_W / 2)}" cy="${whole(y)}" r="6"/></g>`;
+    return `<g class="card-pin${clue.garbled ? ' garbled' : ''}" transform="${turned}" ${attrs}><title>${e(clue.description)}</title><rect class="paper" x="${whole(x)}" y="${whole(y)}" width="${String(CARD_W)}" height="${String(CARD_H)}" rx="3"/><text class="num" x="${whole(x + 12)}" y="${whole(y + 26)}">${e(clue.number)}</text>${lines}<g class="where" ${placeAttrs}>${whereLines}</g><circle class="pin" cx="${whole(x + CARD_W / 2)}" cy="${whole(y)}" r="6"/></g>`;
   });
 
   // The thread, drawn under the cards and the photographs so that it comes out from behind them.
@@ -153,6 +155,7 @@ export function renderCork(view: DetectiveRunView, text: TabText): string {
   const rows = Math.max(1, Math.ceil(view.clues.length / COLUMNS));
   const height = cardsTop + (view.clues.length === 0 ? 0 : rows * ROW_STEP) + MARGIN;
   return `<p class="note">${e(words.hint)}</p>
-<div class="cork"><svg class="board" viewBox="0 0 ${String(WIDTH)} ${String(height)}" role="group" aria-label="${e(words.title)}">${threads.join('')}${photos.join('')}${cards.join('')}</svg></div>
+<div class="cork-wrap"><div class="cork"><svg class="board" viewBox="0 0 ${String(WIDTH)} ${String(height)}" role="group" aria-label="${e(words.title)}">${threads.join('')}${photos.join('')}${cards.join('')}</svg></div>
+${renderOpened(view, board, text)}</div>
 <p class="note">${e(words.legend)}</p>`;
 }

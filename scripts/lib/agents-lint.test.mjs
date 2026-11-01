@@ -367,6 +367,30 @@ describe('the size of a link', () => {
   });
 });
 
+describe('the number of a clue', () => {
+  const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+  const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));
+
+  it('has the narrator name a clue by its number in a poll and in the prose, with a short title', () => {
+    expect(skill).toContain('`clues[].number`');
+    expect(skill).toMatch(/KESVIK-03 · /);
+    expect(skill).toMatch(/Name a clue by its number, in a poll and in the prose/);
+  });
+
+  it('maps a number typed through Other to the id, and never names a clue that is not found', () => {
+    expect(skill).toMatch(
+      /find the clue in `clues` with that `number` and pass its `id` to `question` or `deduce`/,
+    );
+    expect(skill).toMatch(/clue not found: say there is no such clue yet and never invent or hint at one/);
+  });
+
+  it('has the polls that show or link clues labelled by number, and the view reference say so', () => {
+    expect(skill).toMatch(/which of them to show \(`multiSelect`, each option labelled by the clue's number/);
+    expect(skill).toMatch(/each option labelled by the clue's number and a short title/);
+    expect(outcomes).toMatch(/a public `number` such as `KESVIK-03`/);
+  });
+});
+
 describe('a trait shows itself', () => {
   const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
   const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));

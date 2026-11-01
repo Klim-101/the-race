@@ -28,6 +28,12 @@ export interface TabText {
     readonly shownHere: string;
     /** The heading, on a conclusion, of the clues it was drawn from. */
     readonly drawnFrom: string;
+    /** On an opened clue card: the heading of the links it took part in, the line when none, how to close it. */
+    readonly linksOf: string;
+    readonly noLinks: string;
+    readonly closeHint: string;
+    /** The one click that opens the full text of the clues in a link tried. */
+    readonly fullText: string;
     readonly nobody: string;
     readonly tried: string;
     readonly noneTried: string;

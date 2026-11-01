@@ -57,6 +57,7 @@ import {
   type SupplyView,
 } from './consumables.js';
 import { GearIdSchema, KitItemSchema, initialKit, viewKit, withGearState, type KitView } from './gear.js';
+import { clueNumber } from './clue-number.js';
 import { buildNeighbors } from './obtainability.js';
 import { isLocationClosed, suspectPlace } from './random-events.js';
 import { CASE_SEAL_PATTERN, isCaseSealIntact, sealCase } from './seal.js';
@@ -585,6 +586,8 @@ export interface DetectiveRunView {
     readonly description: string;
     /** Read badly: the clue counts as found, but it has to be read again before it is used as proof. */
     readonly garbled: boolean;
+    /** The name the player can say for it: the hero's surname and the order of finding, such as `KESVIK-03`. */
+    readonly number: string;
   }[];
   /**
    * How many clues each conclusion still to be made takes, smallest first: a number for each, so the player
@@ -749,6 +752,8 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         locationId,
         description,
         garbled: run.garbledClueIds.includes(id),
+        // The order of finding, which `foundClueIds` keeps from the first turn, whatever the history holds.
+        number: clueNumber(run.hero.name, run.foundClueIds.indexOf(id)),
       })),
     openLinks: openLinkSizes(run),
     insights: detectiveCase.deductions

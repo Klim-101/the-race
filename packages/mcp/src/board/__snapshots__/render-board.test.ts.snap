@@ -27,21 +27,21 @@ exports[`the clues and links tab > says on each conclusion which clues it was dr
 <p class="empty">No link has been tried yet.</p>
 <h2>Evidence (2)</h2>
 <div class="card" data-pick="clue:key" data-rel="clue:key place:stall" tabindex="0" role="button">
-<span class="tag">found at Stall</span>
+<span class="tag"><span class="num">MIRA-01</span> · found at Stall</span>
 <p>A rusty key under the counter.</p>
 <p class="warn">read badly: read it again before it counts</p>
 <p class="tag">Shown to: not shown to anyone yet</p>
 </div>
 <div class="card" data-pick="clue:flour" data-rel="clue:flour place:market" tabindex="0" role="button">
-<span class="tag">found at Market</span>
+<span class="tag"><span class="num">MIRA-02</span> · found at Market</span>
 <p>Flour on the cellar steps.</p>
 <p class="tag">Shown to: not shown to anyone yet</p>
 </div>
 <h2>Conclusions (1)</h2>
 <div class="card"><p>The baker lied about the flour.</p>
 <p class="tag">Drawn from:</p>
-<span class="source">A rusty key under the counter.</span>
-<span class="source">Flour on the cellar steps.</span></div>
+<span class="source"><span class="num">MIRA-01</span> A rusty key under the counter.</span>
+<span class="source"><span class="num">MIRA-02</span> Flour on the cellar steps.</span></div>
 "
 `;
 

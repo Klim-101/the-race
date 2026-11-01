@@ -77,8 +77,20 @@ function tab(page: string, id: string): string {
 
 const FOUND = {
   clues: [
-    { id: 'key', locationId: 'stall', description: 'A rusty key under the counter.', garbled: true },
-    { id: 'flour', locationId: 'market', description: 'Flour on the cellar steps.', garbled: false },
+    {
+      id: 'key',
+      locationId: 'stall',
+      description: 'A rusty key under the counter.',
+      garbled: true,
+      number: 'MIRA-01',
+    },
+    {
+      id: 'flour',
+      locationId: 'market',
+      description: 'Flour on the cellar steps.',
+      garbled: false,
+      number: 'MIRA-02',
+    },
   ],
   insights: [{ id: 'liar', insight: 'The baker lied about the flour.', clueIds: ['key', 'flour'] }],
 };
@@ -155,7 +167,7 @@ describe('the page', () => {
         title: evil,
         premise: evil,
         news: ['<img src=x onerror=alert(1)>'],
-        clues: [{ id: 'k', locationId: 'stall', description: evil, garbled: false }],
+        clues: [{ id: 'k', locationId: 'stall', description: evil, garbled: false, number: 'MIRA-03' }],
         insights: [{ id: 'i', insight: evil, clueIds: ['k'] }],
         suspects: [
           {
@@ -361,8 +373,12 @@ describe('the clues and links tab', () => {
     const clues = tab(renderEvidenceBoard(viewOf(FOUND)), 'clues');
 
     expect(clues).toContain('Drawn from:');
-    expect(clues).toContain('<span class="source">A rusty key under the counter.</span>');
-    expect(clues).toContain('<span class="source">Flour on the cellar steps.</span>');
+    expect(clues).toContain(
+      '<span class="source"><span class="num">MIRA-01</span> A rusty key under the counter.</span>',
+    );
+    expect(clues).toContain(
+      '<span class="source"><span class="num">MIRA-02</span> Flour on the cellar steps.</span>',
+    );
     expect(clues).toContain('read badly');
     expect(clues).toContain('The baker lied about the flour.');
     expect(clues).toMatchSnapshot();
@@ -387,7 +403,7 @@ describe('the clues and links tab', () => {
     const clues = tab(
       renderEvidenceBoard(
         viewOf({
-          clues: [{ id: 'k', locationId: 'gone', description: 'Flour.', garbled: false }],
+          clues: [{ id: 'k', locationId: 'gone', description: 'Flour.', garbled: false, number: 'MIRA-03' }],
           insights: [
             { id: 'i', insight: 'Odd.', clueIds: ['k', 'missing'] },
             { id: 'j', insight: 'Odder.', clueIds: ['missing'] },
@@ -417,8 +433,14 @@ describe('the clues and links tab', () => {
     const page = renderEvidenceBoard(
       viewOf({
         clues: [
-          { id: 'ledger', locationId: 'stall', description: long, garbled: false },
-          { id: 'envelope', locationId: 'market', description: `${long} Second.`, garbled: false },
+          { id: 'ledger', locationId: 'stall', description: long, garbled: false, number: 'MIRA-04' },
+          {
+            id: 'envelope',
+            locationId: 'market',
+            description: `${long} Second.`,
+            garbled: false,
+            number: 'MIRA-05',
+          },
         ],
         insights: [{ id: 'i', insight: 'Odd.', clueIds: ['ledger', 'envelope'] }],
         history: {
@@ -521,8 +543,8 @@ describe('the chronicle tab', () => {
             links: [],
           },
           clues: [
-            { id: 'k', locationId: 'market', description: 'A rusty key.', garbled: true },
-            { id: 'f', locationId: 'market', description: 'Flour.', garbled: false },
+            { id: 'k', locationId: 'market', description: 'A rusty key.', garbled: true, number: 'MIRA-03' },
+            { id: 'f', locationId: 'market', description: 'Flour.', garbled: false, number: 'MIRA-06' },
           ],
         }),
       ),
