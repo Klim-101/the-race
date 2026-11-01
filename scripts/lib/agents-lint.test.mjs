@@ -396,6 +396,34 @@ describe('the size of a link', () => {
   });
 });
 
+describe('the pressure of the poll', () => {
+  const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
+
+  it('says that no option is a standing one, and that the poll leads with where the story is', () => {
+    expect(skill).toMatch(/No option is a standing one/);
+    expect(skill).toMatch(
+      /lead with where the story is: the place, the people here and what is still unvisited/,
+    );
+  });
+
+  it('offers a link only when something is new, and never as the first option of two polls in a row', () => {
+    expect(skill).toMatch(/and something is new since the last attempt\*\*/);
+    expect(skill).toMatch(/Never make it the first option of two polls in a row/);
+  });
+
+  it('offers the accusation only when asked or once when every conclusion is drawn, and never again after a refusal', () => {
+    expect(skill).toMatch(/\*\*Accuse\*\* is never a standing option/);
+    expect(skill).toMatch(/when the player asks for it \(through "Other", or by saying so\)/);
+    expect(skill).toMatch(/once, when every conclusion of the case has been drawn \(`openLinks` is empty\)/);
+    expect(skill).toMatch(/after the player declines, never offer it again unless they ask/);
+  });
+
+  it('offers a rest or the end of the day only when it is late or the hero is worn out', () => {
+    expect(skill).toMatch(/\*\*Rest or stop for the day\*\*, only when it is late or the hero is worn out/);
+    expect(skill).toMatch(/never as a default/);
+  });
+});
+
 describe('the nerves of the hero', () => {
   const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));
 
