@@ -19,6 +19,8 @@ export const ProfileRecordSchema = z.object({
   version: z.literal(PROFILE_RECORD_VERSION),
   /** The run's own seed: one record for a run, so recording it twice or importing it twice adds nothing. */
   runId: z.string().min(1),
+  /** The id of the run's folder in the saves, for opening that run's report later; absent from older records. */
+  folder: z.string().optional(),
   locale: z.enum(['ru', 'en']),
   title: z.string(),
   hero: z.object({
@@ -50,6 +52,7 @@ export function profileRecordOf(run: DetectiveRunState, log: RunLog): ProfileRec
   return {
     version: PROFILE_RECORD_VERSION,
     runId: run.seed,
+    ...(run.runId === undefined ? {} : { folder: run.runId }),
     locale: run.locale,
     title: run.case.title,
     hero: {

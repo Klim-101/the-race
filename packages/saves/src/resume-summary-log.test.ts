@@ -4,7 +4,7 @@
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { memoryFs } from '../test/memory-fs.js';
-import { WALK, newRun, playTurns } from '../test/new-run.js';
+import { WALK, newRun, playTurns, RUN_ID } from '../test/new-run.js';
 import { buildResumeSummary } from './resume-summary.js';
 import { loadRun, runFiles, saveRun } from './run-store.js';
 
@@ -16,7 +16,7 @@ describe('the resume summary and the log', () => {
     const { run, log } = playTurns({ ...newRun(), rulesetVersion: 7 }, WALK);
     const fs = memoryFs();
     await saveRun(DIR, run, fs, log);
-    const loaded = await loadRun(DIR, fs);
+    const loaded = await loadRun(DIR, RUN_ID, fs);
     if (!loaded.ok) throw new Error('The save did not load.');
 
     // Clues that the log rolled for but the hero did not find are exactly what the summary must not name.
@@ -37,10 +37,10 @@ describe('the resume summary and the log', () => {
     const withoutLog = memoryFs();
     await saveRun(DIR, run, withLog, log);
     await saveRun(DIR, run, withoutLog);
-    withLog.failRead(runFiles(DIR).currentLog);
+    withLog.failRead(runFiles(DIR, RUN_ID).currentLog);
 
     // The summary takes a run and nothing else, so a log that cannot even be read changes nothing for it.
-    const loaded = await loadRun(DIR, withoutLog);
+    const loaded = await loadRun(DIR, RUN_ID, withoutLog);
     if (!loaded.ok) throw new Error('The save did not load.');
     expect(buildResumeSummary(loaded.run)).toBe(buildResumeSummary(run));
   });

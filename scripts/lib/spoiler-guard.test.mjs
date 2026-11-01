@@ -252,6 +252,21 @@ describe('denied', () => {
       call('Read', { file_path: 'saves/run/state.json' }),
       { ...LINUX, env: { RACE_HOME: 'saves' } },
     ],
+    [
+      'Read of the state of a run in its own folder',
+      call('Read', { file_path: `${SAVE.linux}/runs/20261101-124606-9f3a1c2e/state.json` }),
+      LINUX,
+    ],
+    [
+      'Read of the log of the legacy run',
+      call('Read', { file_path: `${SAVE.linux}/runs/00000000-legacy/log.json` }),
+      LINUX,
+    ],
+    [
+      'a relative path to the state of a run',
+      call('Read', { file_path: 'runs/20261101-124606-9f3a1c2e/state.prev.json' }),
+      LINUX,
+    ],
     ['Read of a notebook', call('Read', { notebook_path: `${SAVE.linux}/run/state.json` }), LINUX],
     ['Grep with the folder as path', call('Grep', { pattern: 'culprit', path: SAVE.linux }), LINUX],
     [

@@ -229,6 +229,8 @@ export interface NewDetectiveRun {
   /** A case the validator has accepted for this hero. */
   readonly case: DetectiveCase;
   readonly seed: string;
+  /** The id of the run's folder; none for a run made where nothing is saved. */
+  readonly runId?: string | undefined;
   readonly rngState: number;
   readonly locale: Locale;
   /** The country the case is set in; none when the world has no country with a climate yet. */
@@ -242,6 +244,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     schemaVersion: RUN_SCHEMA_VERSION,
     rulesetVersion: RULESET_VERSION,
     seed: input.seed,
+    ...(input.runId === undefined ? {} : { runId: input.runId }),
     rngState: input.rngState,
     locale: input.locale,
     turn: 0,

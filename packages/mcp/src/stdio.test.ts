@@ -115,6 +115,7 @@ describe('createDefaultContext', () => {
     const context = createDefaultContext('some-dir', { RACE_NEWS_LAG_DAYS: '3' });
 
     expect(context.today()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(Math.abs(context.now().getTime() - Date.now())).toBeLessThan(60_000);
     expect(typeof context.httpGet).toBe('function');
     expect((await context.feeds()).length).toBeGreaterThan(5);
     expect(context.newsLagDays).toBe(3);

@@ -14,12 +14,19 @@ export { BOARD_FILE, defaultBoardDir, resolveBoardDir } from './board-dir.js';
 export {
   runFiles,
   loadRun,
+  loadCurrentRun,
+  listRunIds,
   saveRun,
+  RUNS_DIR,
   LOAD_FAILURE_REASONS,
   type RunFiles,
+  type CurrentRun,
+  type DamagedRun,
+  type LoadedRun,
   type LoadFailureReason,
   type LoadRunResult,
 } from './run-store.js';
+export { isRunId, makeRunId } from './run-id.js';
 export { buildResumeSummary, RESUME_LABELS, type ResumeLabels } from './resume-summary.js';
 export {
   loadSeeds,
@@ -52,7 +59,9 @@ export {
   type LoadProfileResult,
 } from './profile-store.js';
 export {
+  moveDefaultLegacyRun,
   moveDefaultLegacySaves,
+  moveLegacyRun,
   moveLegacySaves,
   nodeMoveFs,
   type LegacyMove,

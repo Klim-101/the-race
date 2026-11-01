@@ -30,6 +30,7 @@ export function createDefaultContext(
     notices,
     newSeed: () => randomBytes(8).toString('hex'),
     today: () => new Date().toISOString().slice(0, 10),
+    now: () => new Date(),
     httpGet: createHttpGet({ timeoutMs: DEFAULT_TIMEOUT_MS, maxBytes: DEFAULT_MAX_BYTES }),
     feeds: loadShippedFeeds,
     newsLagDays: newsLagDays(env.RACE_NEWS_LAG_DAYS),

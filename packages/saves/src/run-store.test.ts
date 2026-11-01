@@ -11,21 +11,21 @@ import {
   type DetectiveRunState,
 } from '@the-race/engine';
 import { describe, expect, it } from 'vitest';
-import { WALK, newRun, playTurns } from '../test/new-run.js';
+import { WALK, newRun, playTurns, RUN_ID } from '../test/new-run.js';
 import { loadRun, runFiles, saveRun } from './run-store.js';
 import { memoryFs } from '../test/memory-fs.js';
 
 const DIR = join('save-root');
-const FILES = runFiles(DIR);
+const FILES = runFiles(DIR, RUN_ID);
 
 function secondTurn(run: DetectiveRunState): DetectiveRunState {
   return endTurn(findClue(moveTo(run, 'cheese-stall'), 'flour-crumbs'), createRng('next'));
 }
 
 describe('runFiles', () => {
-  it('puts the save under run/ of the save directory', () => {
-    expect(FILES.current).toBe(join(DIR, 'run', 'state.json'));
-    expect(FILES.previous).toBe(join(DIR, 'run', 'state.prev.json'));
+  it('puts a run under runs/<id>/ of the save directory', () => {
+    expect(FILES.current).toBe(join(DIR, 'runs', RUN_ID, 'state.json'));
+    expect(FILES.previous).toBe(join(DIR, 'runs', RUN_ID, 'state.prev.json'));
   });
 });
 
@@ -35,7 +35,7 @@ describe('saveRun and loadRun', () => {
     const run = secondTurn(newRun());
 
     await saveRun(DIR, run, fs);
-    const loaded = await loadRun(DIR, fs);
+    const loaded = await loadRun(DIR, RUN_ID, fs);
 
     expect(loaded).toEqual({ ok: true, run, log: [], source: 'current' });
     expect(fs.directories).toEqual([FILES.directory]);
@@ -62,14 +62,14 @@ describe('saveRun and loadRun', () => {
   });
 
   it('reports a missing save', async () => {
-    expect(await loadRun(DIR, memoryFs())).toMatchObject({ ok: false, reason: 'missing' });
+    expect(await loadRun(DIR, RUN_ID, memoryFs())).toMatchObject({ ok: false, reason: 'missing' });
   });
 
   it('reports a file that is not JSON as corrupt', async () => {
     const fs = memoryFs();
     fs.files.set(FILES.current, 'not json {');
 
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
   });
 
   it('reports a file that fails the schema as corrupt', async () => {
@@ -77,14 +77,14 @@ describe('saveRun and loadRun', () => {
     fs.files.set(FILES.current, JSON.stringify({ schemaVersion: 1, turn: 'x' }));
     fs.files.set(FILES.previous, '[]');
 
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
   });
 
   it('reports a field of the wrong type as a schema problem, not a seal problem', async () => {
     const fs = memoryFs();
     fs.files.set(FILES.current, JSON.stringify({ ...newRun(), turn: 'x' }));
 
-    expect(await loadRun(DIR, fs)).toMatchObject({
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({
       ok: false,
       reason: 'corrupt',
       detail: 'The file does not match the run schema.',
@@ -96,7 +96,7 @@ describe('saveRun and loadRun', () => {
     const run = newRun();
     fs.files.set(FILES.current, JSON.stringify({ ...run, case: { ...run.case, title: 'Swapped' } }));
 
-    const loaded = await loadRun(DIR, fs);
+    const loaded = await loadRun(DIR, RUN_ID, fs);
 
     expect(loaded).toMatchObject({
       ok: false,
@@ -110,14 +110,14 @@ describe('saveRun and loadRun', () => {
     await saveRun(DIR, newRun(), fs);
     fs.files.set(FILES.current, JSON.stringify({ ...newRun(), schemaVersion: 99 }));
 
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'unsupported-version' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: false, reason: 'unsupported-version' });
   });
 
   it('names both versions when a save comes from a newer engine', async () => {
     const fs = memoryFs();
     fs.files.set(FILES.current, JSON.stringify({ ...newRun(), schemaVersion: 99 }));
 
-    const loaded = await loadRun(DIR, fs);
+    const loaded = await loadRun(DIR, RUN_ID, fs);
 
     expect(loaded).toMatchObject({ ok: false, reason: 'unsupported-version' });
     expect(loaded.ok ? '' : loaded.detail).toMatch(new RegExp(`99.*newer.*${String(RUN_SCHEMA_VERSION)}`));
@@ -127,21 +127,21 @@ describe('saveRun and loadRun', () => {
     const fs = memoryFs();
     fs.files.set(FILES.current, JSON.stringify({ ...newRun(), schemaVersion: 0 }));
 
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'unsupported-version' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: false, reason: 'unsupported-version' });
   });
 
   it('does not take a non-numeric schema version for a version', async () => {
     const fs = memoryFs();
     fs.files.set(FILES.current, JSON.stringify({ schemaVersion: 'one' }));
 
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
   });
 
   it('reports a file that cannot be read instead of throwing', async () => {
     const fs = memoryFs();
     fs.failRead(FILES.current);
 
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'unreadable' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: false, reason: 'unreadable' });
   });
 });
 
@@ -165,7 +165,7 @@ describe('loading an older save', () => {
     const run = secondTurn(newRun());
     fs.files.set(FILES.current, oldSave(run));
 
-    const loaded = await loadRun(DIR, fs, migrations);
+    const loaded = await loadRun(DIR, RUN_ID, fs, migrations);
 
     expect(loaded).toEqual({ ok: true, run, log: [], source: 'current' });
     expect(JSON.parse(fs.files.get(FILES.current) ?? '')).toHaveProperty('schemaVersion', 0);
@@ -183,14 +183,14 @@ describe('loading an older save', () => {
       },
     };
 
-    expect(await loadRun(DIR, fs, broken)).toMatchObject({ ok: false, reason: 'corrupt' });
+    expect(await loadRun(DIR, RUN_ID, fs, broken)).toMatchObject({ ok: false, reason: 'corrupt' });
   });
 
   it('reports a migrated save that still fails the schema as corrupt', async () => {
     const fs = memoryFs();
     fs.files.set(FILES.current, oldSave(newRun()));
 
-    expect(await loadRun(DIR, fs, { 0: () => ({}), 1: (raw) => raw })).toMatchObject({
+    expect(await loadRun(DIR, RUN_ID, fs, { 0: () => ({}), 1: (raw) => raw })).toMatchObject({
       ok: false,
       reason: 'corrupt',
     });
@@ -215,7 +215,7 @@ describe('falling back to the previous generation', () => {
     const { fs, first } = await twoGenerations();
     fs.files.set(FILES.current, (fs.files.get(FILES.current) ?? '').slice(0, 40));
 
-    expect(await loadRun(DIR, fs)).toEqual({
+    expect(await loadRun(DIR, RUN_ID, fs)).toEqual({
       ok: true,
       run: first,
       log: [],
@@ -228,14 +228,14 @@ describe('falling back to the previous generation', () => {
     const { fs, first } = await twoGenerations();
     fs.files.set(FILES.current, '\u0000\u0000\u0000');
 
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: first, source: 'previous' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: true, run: first, source: 'previous' });
   });
 
   it('uses it when the current file is missing', async () => {
     const { fs, first } = await twoGenerations();
     fs.files.delete(FILES.current);
 
-    expect(await loadRun(DIR, fs)).toEqual({
+    expect(await loadRun(DIR, RUN_ID, fs)).toEqual({
       ok: true,
       run: first,
       log: [],
@@ -248,7 +248,11 @@ describe('falling back to the previous generation', () => {
     const { fs, first } = await twoGenerations();
     fs.failRead(FILES.current);
 
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: first, currentProblem: 'unreadable' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({
+      ok: true,
+      run: first,
+      currentProblem: 'unreadable',
+    });
   });
 
   it('names the current problem when both files are bad', async () => {
@@ -256,14 +260,14 @@ describe('falling back to the previous generation', () => {
     fs.files.set(FILES.current, 'garbage');
     fs.files.set(FILES.previous, 'garbage');
 
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
   });
 
   it('names the previous problem when there is no current file', async () => {
     const fs = memoryFs();
     fs.files.set(FILES.previous, 'garbage');
 
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: false, reason: 'corrupt' });
   });
 });
 
@@ -278,11 +282,11 @@ describe('a crash in the middle of a save', () => {
     await expect(saveRun(DIR, second, fs)).rejects.toThrow('rename failed');
 
     expect(fs.files.has(`${FILES.current}.tmp`)).toBe(false);
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: first });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: true, run: first });
 
     fs.failRename(undefined);
     await saveRun(DIR, second, fs);
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: second, source: 'current' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: true, run: second, source: 'current' });
   });
 
   it('leaves the temp file behind when even its cleanup fails, and the save is still whole', async () => {
@@ -296,7 +300,7 @@ describe('a crash in the middle of a save', () => {
     await expect(saveRun(DIR, played.run, fs, played.log)).rejects.toThrow('rename failed');
 
     expect(fs.files.has(`${FILES.current}.tmp`)).toBe(true);
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: first, source: 'previous' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: true, run: first, source: 'previous' });
   });
 
   it('while the previous generation is rotated, still keeps the current file', async () => {
@@ -307,7 +311,7 @@ describe('a crash in the middle of a save', () => {
     fs.failRename(FILES.previous);
     await expect(saveRun(DIR, secondTurn(first), fs)).rejects.toThrow('rename failed');
 
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: first, source: 'current' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: true, run: first, source: 'current' });
   });
 
   it('does not let a corrupt current file overwrite a good previous generation', async () => {
@@ -322,7 +326,7 @@ describe('a crash in the middle of a save', () => {
     await saveRun(DIR, third, fs);
 
     expect(JSON.parse(fs.files.get(FILES.previous) ?? '')).toEqual(first);
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: true, run: third, source: 'current' });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: true, run: third, source: 'current' });
   });
 
   it('saves on when the current file cannot be read', async () => {
@@ -347,7 +351,7 @@ describe('the history of the clues in a save', () => {
     const old = JSON.parse(fs.files.get(FILES.current) ?? '') as Record<string, unknown>;
     delete old.history;
     fs.files.set(FILES.current, JSON.stringify(old));
-    const loaded = await loadRun(DIR, fs);
+    const loaded = await loadRun(DIR, RUN_ID, fs);
 
     expect(loaded).toMatchObject({ ok: true });
     expect(loaded.ok && loaded.run.history).toEqual(played.run.history);
@@ -364,6 +368,6 @@ describe('the history of the clues in a save', () => {
     tampered.history.finds.pop();
     fs.files.set(FILES.current, JSON.stringify(tampered));
 
-    expect(await loadRun(DIR, fs)).toMatchObject({ ok: false });
+    expect(await loadRun(DIR, RUN_ID, fs)).toMatchObject({ ok: false });
   });
 });

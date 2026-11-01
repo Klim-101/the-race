@@ -4,10 +4,19 @@
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { DETECTIVE_SKILL_PRESETS, DetectiveCaseSchema } from '@the-race/engine';
-import { loadRun, runFiles } from '@the-race/saves';
+import { runFiles } from '@the-race/saves';
 import { describe, expect, it } from 'vitest';
 import { TEST_BOARD_DIR } from '../../test/fake-context.js';
-import { HERO_CHOICES, call, gameContext, installCase, prepareHero, sampleCase } from '../../test/game.js';
+import {
+  HERO_CHOICES,
+  call,
+  gameContext,
+  installCase,
+  loadTheRun,
+  newestRunId,
+  prepareHero,
+  sampleCase,
+} from '../../test/game.js';
 import { escapeHtml } from '../board/render-board.js';
 import { pendingFile } from '../pending-run.js';
 import { accuse } from './accuse.js';
@@ -68,11 +77,57 @@ describe('run_new', () => {
     expect((await call(runNew, { locale: 'en' }, context)).isError).toBe(false);
   });
 
-  it('does not start over a save it cannot read', async () => {
+  it('starts beside a save it cannot read, leaves it as it is and says so', async () => {
     const context = gameContext();
-    context.fs.files.set(runFiles(context.saveDir).current, '{broken');
-    expect(errorCode(await call(runNew, { locale: 'en' }, context))).toBe('save-unusable');
-    expect(context.fs.files.has(pendingFile(context.saveDir))).toBe(false);
+    const damaged = runFiles(context.saveDir, '20261030-100000-damaged').current;
+    context.fs.files.set(damaged, '{broken');
+
+    const made = await call(runNew, { locale: 'en' }, context);
+
+    expect(made.isError).toBe(false);
+    expect(made.body).toMatchObject({ status: 'awaiting-hero', unreadableSaves: 1 });
+    expect(context.fs.files.has(pendingFile(context.saveDir))).toBe(true);
+    expect(context.fs.files.get(damaged)).toBe('{broken');
+  });
+
+  it('keeps the runs a player has played side by side, and goes on with the newest that is not over', async () => {
+    const context = await activeRun();
+    const first = await newestRunId(context.saveDir, context.saveFs);
+    await call(runGiveUp, { turn: 0 }, context);
+
+    await prepareHero(context);
+    await installCase(context);
+    const second = await newestRunId(context.saveDir, context.saveFs);
+
+    expect(second > first).toBe(true);
+    expect((await call(runView, {}, context)).body).toMatchObject({ status: 'active', turn: 0 });
+    // The first run is where it was, over, and the second plays on in its own folder.
+    await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+    const files = (id: string) => runFiles(context.saveDir, id).current;
+    expect(JSON.parse(context.fs.files.get(files(first)) ?? '{}')).toMatchObject({ status: 'gave-up' });
+    expect(JSON.parse(context.fs.files.get(files(second)) ?? '{}')).toMatchObject({ status: 'active' });
+    expect(
+      (JSON.parse(context.fs.files.get(files(second)) ?? '{}') as { turn: number }).turn,
+    ).toBeGreaterThan(0);
+  });
+
+  it('plays the good run when a newer one beside it is damaged, and leaves the damaged one alone', async () => {
+    const context = await activeRun();
+    const damaged = runFiles(context.saveDir, '29991231-235959-damaged').current;
+    context.fs.files.set(damaged, '{broken');
+
+    const view = await call(runView, {}, context);
+    const played = await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+
+    expect(view.body).toMatchObject({ status: 'active' });
+    expect(played.isError).toBe(false);
+    expect(context.fs.files.get(damaged)).toBe('{broken');
+  });
+
+  it('says nothing of saves when none is damaged', async () => {
+    const made = await call(runNew, { locale: 'en' }, gameContext());
+
+    expect(made.body).not.toHaveProperty('unreadableSaves');
   });
 });
 
@@ -122,16 +177,17 @@ describe('run_view with a run', () => {
     expect(view.body).toMatchObject({ status: 'active', turn: 0, endReason: null });
   });
 
-  it('shows a finished run, and says so when the save is unusable', async () => {
+  it('shows a finished run, and says so when the only save is unusable', async () => {
     const context = await activeRun();
     await call(runGiveUp, { turn: 0 }, context);
     expect((await call(runView, {}, context)).body).toMatchObject({
       status: 'gave-up',
       endReason: 'gave-up',
     });
-    context.fs.files.set(runFiles(context.saveDir).current, '{broken');
-    context.fs.files.delete(runFiles(context.saveDir).previous);
-    expect(errorCode(await call(runView, {}, context))).toBe('save-unusable');
+    const files = runFiles(context.saveDir, await newestRunId(context.saveDir, context.saveFs));
+    context.fs.files.set(files.current, '{broken');
+    context.fs.files.delete(files.previous);
+    expect((await call(runView, {}, context)).body).toEqual({ status: 'no-run', unreadableSaves: 1 });
   });
 });
 
@@ -144,7 +200,7 @@ describe('the turn tools', () => {
 
   it('refuse over a save that cannot be read', async () => {
     const context = gameContext();
-    context.fs.files.set(runFiles(context.saveDir).current, '{broken');
+    context.fs.files.set(runFiles(context.saveDir, '20261030-100000-damaged').current, '{broken');
     expect(errorCode(await call(act, { turn: 0, intent: { kind: 'look' } }, context))).toBe('save-unusable');
   });
 
@@ -308,7 +364,7 @@ describe('evidence_board', () => {
     };
     const board = (await call(evidenceBoard, {}, context)).body.path as string;
     const page = context.fs.files.get(board) ?? '';
-    const run = await loadRun(context.saveDir, context.saveFs);
+    const run = await loadTheRun(context.saveDir, context.saveFs);
     if (!run.ok) throw new Error('The run must load.');
     const sealed = run.run.case;
     const shown = new Set(view.clues.map(({ description }) => description));

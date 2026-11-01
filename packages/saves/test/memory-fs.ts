@@ -1,6 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { isAbsolute, relative, sep } from 'node:path';
 import type { SaveFs } from '../src/save-fs.js';
 
 export type MemoryFs = SaveFs & {
@@ -49,6 +50,15 @@ export function memoryFs(): MemoryFs {
       files.delete(from);
       files.set(to, data);
       return Promise.resolve();
+    },
+    list(directory) {
+      const names = new Set<string>();
+      for (const path of files.keys()) {
+        const inside = relative(directory, path);
+        if (inside !== '' && !inside.startsWith('..') && !isAbsolute(inside))
+          names.add(inside.split(sep)[0] ?? inside);
+      }
+      return Promise.resolve([...names]);
     },
     remove(path) {
       if (removeFails) return Promise.reject(new Error('remove failed'));

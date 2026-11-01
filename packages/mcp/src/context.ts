@@ -31,6 +31,8 @@ export interface ServerContext {
   readonly newSeed: () => string;
   /** Today as `YYYY-MM-DD`. The clock enters the game here and only here. */
   readonly today: () => string;
+  /** The moment, for the id of a run that starts. Never read from the engine. */
+  readonly now: () => Date;
   /** The one way to the network: an https GET with a timeout and a size cap. Only the news uses it. */
   readonly httpGet: HttpGet;
   /** The feeds the news is read from. */

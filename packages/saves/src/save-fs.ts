@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { mkdir, open, readFile, rename, rm } from 'node:fs/promises';
+import { mkdir, open, readFile, readdir, rename, rm } from 'node:fs/promises';
 
 /**
  * The file operations a save needs, behind an interface so that tests can make any one of them fail
@@ -15,6 +15,8 @@ export interface SaveFs {
   writeFileSynced(path: string, data: string): Promise<void>;
   /** Replaces `to` if it exists. */
   rename(from: string, to: string): Promise<void>;
+  /** The names of what the directory holds, or none when it does not exist. */
+  list(directory: string): Promise<string[]>;
   /** Removes the file; a file that is already gone is not an error. */
   remove(path: string): Promise<void>;
 }
@@ -46,6 +48,14 @@ export const nodeSaveFs: SaveFs = {
   },
   async rename(from, to) {
     await rename(from, to);
+  },
+  async list(directory) {
+    try {
+      return await readdir(directory);
+    } catch (error) {
+      if (isMissing(error)) return [];
+      throw error;
+    }
   },
   async remove(path) {
     await rm(path, { force: true });

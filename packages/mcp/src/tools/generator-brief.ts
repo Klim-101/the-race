@@ -11,7 +11,7 @@ import {
   viewWorld,
   type Hero,
 } from '@the-race/engine';
-import { loadRun } from '@the-race/saves';
+import { loadCurrentRun } from '@the-race/saves';
 import { z } from 'zod';
 import type { ServerContext } from '../context.js';
 import { defineTool } from '../define-tool.js';
@@ -43,7 +43,7 @@ export interface OpenPendingRun {
 export async function openPendingRun(context: ServerContext): Promise<OpenPendingRun> {
   const [pending, saved] = await Promise.all([
     loadPending(context.saveDir, context.saveFs),
-    loadRun(context.saveDir, context.saveFs),
+    loadCurrentRun(context.saveDir, context.saveFs),
   ]);
   const accepted = new ToolFailure({
     code: GENERATOR_ERROR_CODES.caseAlreadyAccepted,
@@ -51,7 +51,7 @@ export async function openPendingRun(context: ServerContext): Promise<OpenPendin
     remediation: 'Stop. Answer with the single word "accepted" and nothing else.',
   });
   if (pending === undefined) {
-    throw saved.ok
+    throw saved.run !== undefined
       ? accepted
       : new ToolFailure({
           code: GENERATOR_ERROR_CODES.noPendingRun,
@@ -59,7 +59,8 @@ export async function openPendingRun(context: ServerContext): Promise<OpenPendin
           remediation: 'Stop. Answer "failed: no run is waiting for a case".',
         });
   }
-  if (saved.ok && saved.run.seed === pending.seed) {
+  // Only a run in play can be the one this pending record became: a finished run of the same seed is another run.
+  if (saved.run?.run.status === 'active' && saved.run.run.seed === pending.seed) {
     await clearPending(context.saveDir, context.saveFs);
     throw accepted;
   }
