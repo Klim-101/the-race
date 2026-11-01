@@ -15,7 +15,7 @@ import {
 import { saveRun } from '@the-race/saves';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
-import { seedsOfRun } from '../news.js';
+import { seedsOfRun, toldSeedsOfRun } from '../news.js';
 import { clearPending, savePending } from '../pending-run.js';
 import { requireWorld } from '../world.js';
 import { MAX_CASE_ATTEMPTS, openPendingRun } from './generator-brief.js';
@@ -149,7 +149,7 @@ export const scenarioSubmit = defineTool({
 
       if (result.isValid) {
         // The seed the brief gave the generator: the same choice from the same news, hero and seed.
-        const chosen = chooseSeed((await seedsOfRun(context))?.seeds ?? [], {
+        const chosen = chooseSeed(await toldSeedsOfRun(context, pending.seed), {
           background: hero.background,
           runSeed: pending.seed,
         });
