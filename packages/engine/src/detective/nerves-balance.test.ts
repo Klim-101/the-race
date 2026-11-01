@@ -3,7 +3,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
-import { createRng, type Rng } from '../dice.js';
+import { intentOf } from '../../test/fixtures/ordinary-play.js';
+import { createRng } from '../dice.js';
 import { resolveIntent } from './actions.js';
 import { DetectiveCaseSchema } from './case-schema.js';
 import { ACTION_STRAIN_RULESET_VERSION } from './condition.js';
@@ -27,41 +28,6 @@ interface Play {
   readonly day: number;
   readonly endReason: string | null;
   readonly reputation: number;
-}
-
-function pick<T>(rng: Rng, items: readonly T[]): T | undefined {
-  return items.length === 0 ? undefined : items[rng.roll(items.length) - 1];
-}
-
-/** One intent an ordinary player might try next, from what is true now. */
-function intentOf(run: DetectiveRunState, rng: Rng, prudent: boolean): unknown {
-  // A prudent player who is told the hero is at the end of their nerves lies down for the night.
-  if (prudent && run.condition.nerves <= 2) return { kind: 'rest' };
-  const here = run.case.locations.find(({ id }) => id === run.locationId);
-  const found = run.foundClueIds;
-  const choice = rng.roll(10);
-  if (choice <= 3) return { kind: 'search' };
-  if (choice === 4) return { kind: 'look' };
-  if (choice <= 6) {
-    const exit = pick(rng, here?.connections ?? []);
-    return exit === undefined ? { kind: 'look' } : { kind: 'move', locationId: exit };
-  }
-  if (choice <= 9) {
-    const suspect = pick(rng, run.case.suspects);
-    const shown = found.slice(0, 1 + rng.roll(2) - 1);
-    return {
-      kind: 'interrogate',
-      suspectId: suspect?.id,
-      approach: rng.roll(3) === 1 ? 'pressure' : 'social',
-      clueIds: shown,
-    };
-  }
-  const one = pick(rng, found);
-  const other = pick(
-    rng,
-    found.filter((id) => id !== one),
-  );
-  return { kind: 'deduce', clueIds: [one, other] };
 }
 
 /** Plays two days of ordinary turns; a refused intent is simply not taken. */

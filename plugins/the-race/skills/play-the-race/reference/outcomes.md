@@ -36,7 +36,7 @@ Load this when unsure. Every outcome is what the engine decided; you add words, 
 
 ## Events of the turn
 
-`events` lists the random events that happened during this turn: `description` is what the world did, in the words of the case, and `effect` is its kind. At midday and in the evening the day may bring one, a night brings its own, and most turns bring none (an empty list). The engine has already applied the effect (an hour lost, frayed nerves, a closed door, a suspect moved), so tell it as something that happened to the hero on the way: a short scene of two to four sentences in the hero's voice, built on `description`, with the effect shown (the hour gone, the shaken hero) and never as a number. `flavor` is colour with no cost. Add no fact beyond the description, and do not say whether it helps the case.
+`events` lists the random events that happened during this turn: `description` is what the world did, in the words of the case, and `effect` is its kind. Every day brings at least one, at midday or in the evening (or as the hero turns in early, a rest or a collapse), a night may bring its own, and most turns bring none (an empty list). The engine has already applied the effect (an hour lost, frayed nerves, a closed door, a suspect moved), so tell it as something that happened to the hero on the way: a short scene of two to four sentences in the hero's voice, built on `description`, with the effect shown (the hour gone, the shaken hero) and never as a number. `flavor` is colour with no cost. Add no fact beyond the description, and do not say whether it helps the case.
 
 ## Refusals (nothing changed, no time passed)
 

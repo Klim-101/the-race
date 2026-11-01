@@ -332,7 +332,23 @@ describe('the events of a turn', () => {
   });
 
   it('has the generator bring a pool of events, which the engine requires', () => {
-    expect(generator).toMatch(/\*\*randomEvents\*\* \(3 to 8, \*\*required\*\*/);
+    expect(generator).toMatch(
+      /\*\*randomEvents\*\* \(\*\*required\*\*: at least three and \*\*at least as many as the case has days\*\*/,
+    );
+  });
+
+  it('has the generator cover every day with some event, which the engine requires', () => {
+    expect(generator).toMatch(
+      /every day of the case must be covered by some event's `fromDay` to `untilDay`/,
+    );
+    expect(generator).toMatch(/`untilDay` null means every day from `fromDay` on/);
+  });
+
+  it('has the narrator know that every day brings an event, and tell each one as a scene of its own', () => {
+    const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));
+
+    expect(outcomes).toMatch(/Every day brings at least one, at midday or in the evening/);
+    expect(outcomes).toMatch(/a short scene of two to four sentences in the hero's voice/);
   });
 });
 

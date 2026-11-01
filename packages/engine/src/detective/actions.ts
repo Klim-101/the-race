@@ -33,7 +33,7 @@ import {
   type Revealed,
 } from './trait-reveal.js';
 import { buildNeighbors } from './obtainability.js';
-import { closedSourcesOf, drawDayEvents, isLocationClosed } from './random-events.js';
+import { closedSourcesOf, drawDayEvents, drawOwedDayEvent, isLocationClosed } from './random-events.js';
 import {
   changeReputation,
   endTurn,
@@ -423,7 +423,9 @@ function sleepIfDue(resolution: Carried, day: number, rng: Rng): Carried {
   else if (run.clock.day > day) cause = 'active-hours';
   else if (isCollapse(run)) cause = 'collapse';
   if (cause === null) return resolution;
-  const night = passNight(run, rng, cause, day);
+  // A day cut short by the hero's own choice or by a collapse is owed its event before the night begins.
+  const owed = cause === 'active-hours' ? run : drawOwedDayEvent(run, rng).run;
+  const night = passNight(owed, rng, cause, day);
   return { ...resolution, run: night.run, night: night.report };
 }
 
