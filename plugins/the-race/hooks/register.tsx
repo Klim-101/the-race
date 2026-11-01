@@ -63,6 +63,17 @@ export const register: Register = (on) => {
     );
   });
 
+  // What a game tool answers is JSON for the narrator, not something for the player to read: the story, the
+  // poll and the board are what the player is given. Its row in the transcript keeps its name but draws no
+  // result, except when the call failed (the error is worth reading) and in the full view (ctrl+o, --verbose),
+  // so nothing is lost to anyone who wants it.
+  on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
+    const { tool, isErrored, isExpanded } = e.props;
+    if (!tool.startsWith(TOOLS) || isErrored || isExpanded === true) return next(e);
+    const { Box } = $.ui.resolve(e);
+    return <Box />;
+  });
+
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const state = await read($, hud);
     const { Box, Text } = $.ui.resolve(e);

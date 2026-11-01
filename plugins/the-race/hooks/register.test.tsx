@@ -144,7 +144,7 @@ test('the pane draws the known map from the game, marks the hero, and speaks the
     expect((await ui.find({ type: 'Text', text: /Archive/ }))?.text).toContain('○ Archive  (не посещено)');
     expect((await ui.find({ type: 'Text', text: /Office/ }))?.text).toContain('✖ Office  (заперто)');
     expect((await ui.find({ type: 'Text', text: /Chapel/ }))?.text).toContain('✖ Chapel  (закрыто)');
-    expect((await ui.find({ type: 'Text', text: /скрытых черт/ }))?.text).toMatch(/скрытых черт d+/);
+    expect((await ui.find({ type: 'Text', text: /скрытых черт/ }))?.text).toMatch(/скрытых черт \d+/);
     await ui.unmount();
   }
 });
@@ -240,4 +240,54 @@ test('the command opens the pane and answers in the language of the last run', a
 
   const result = await $.command.run({ command: 'race-hud', args: '' } as never);
   expect(JSON.stringify(result)).toContain('RACE');
+});
+
+// The result of a game tool is JSON for the narrator. The transcript's row for it draws nothing, except for an
+// error and in the full view, and a tool that is not the game's is left to the engine.
+const RESULT = (tool: string, extra: Record<string, unknown> = {}) =>
+  ({
+    plugin: PLUGIN,
+    component: 'ToolResult',
+    props: {
+      tool_use_id: 'toolu_1',
+      tool,
+      output: { text: '{"outcome":{"kind":"search"}}' },
+      isErrored: false,
+      ...extra,
+    },
+  }) as const;
+
+test('the result of a game tool is not drawn, on every surface', async ($) => {
+  for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
+    const ui = await $.ui.mount({ ...RESULT(`${TOOLS}act`), surface } as never);
+
+    expect(await ui.find({ type: 'Text' })).toBeUndefined();
+    await ui.unmount();
+  }
+});
+
+test('the result of a game tool is left to the engine when it is an error or the view is the full one', async ($, on) => {
+  on('ui.render', { component: 'ToolResult' }, ($, e) => {
+    const { Text } = $.ui.resolve(e);
+    return <Text>engine</Text>;
+  });
+
+  for (const extra of [{ isErrored: true }, { isExpanded: true }]) {
+    const ui = await $.ui.mount({ ...RESULT(`${TOOLS}act`, extra), surface: 'terminal' } as never);
+
+    expect((await ui.find({ type: 'Text' }))?.text).toBe('engine');
+    await ui.unmount();
+  }
+});
+
+test('the result of any other tool is left to the engine', async ($, on) => {
+  on('ui.render', { component: 'ToolResult' }, ($, e) => {
+    const { Text } = $.ui.resolve(e);
+    return <Text>engine</Text>;
+  });
+
+  const ui = await $.ui.mount({ ...RESULT('Bash'), surface: 'terminal' } as never);
+
+  expect((await ui.find({ type: 'Text' }))?.text).toBe('engine');
+  await ui.unmount();
 });
