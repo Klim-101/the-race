@@ -175,7 +175,7 @@ describe('a save made before places said where they are', () => {
     };
     for (const location of run.case.locations) delete location.exposure;
     run.caseSeal = sha256Hex(canonicalJson(run.case));
-    return run as unknown as Record<string, unknown>;
+    return run;
   }
 
   it('still loads: the default a later version fills in does not make the case look edited', () => {
@@ -190,7 +190,9 @@ describe('a save made before places said where they are', () => {
   it('is judged intact at the verdict, and a case edited after the seal is still caught', () => {
     const parsed = DetectiveRunStateSchema.parse(oldSave());
     expect(isCaseSealIntact(parsed)).toBe(true);
-    expect(() => assertCaseSealIntact(parsed)).not.toThrow();
+    expect(() => {
+      assertCaseSealIntact(parsed);
+    }).not.toThrow();
 
     const edited = { ...parsed, case: { ...parsed.case, title: 'Another case' } };
     expect(isCaseSealIntact(edited)).toBe(false);
