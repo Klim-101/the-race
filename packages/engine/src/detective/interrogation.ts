@@ -1,7 +1,8 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { recordShown } from './run-state.js';
+import { SEARCH_BY_PART_RULESET_VERSION } from './search-parts.js';
+import { findClue, recordShown } from './run-state.js';
 import { actingReveals, sceneSituations } from './trait-reveal.js';
 import { z } from 'zod';
 import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
@@ -9,8 +10,8 @@ import { collectModifier } from '../modifiers.js';
 import { feltModifier, feltShield } from '../signals.js';
 import type { CheckDetail, Consequence, Resolution } from './actions.js';
 import { modifierSources } from './condition.js';
-import { EntityIdSchema, type Lie, type Suspect } from './case-schema.js';
-import { suspectPlace } from './random-events.js';
+import { EntityIdSchema, type DetectiveCase, type Lie, type Suspect } from './case-schema.js';
+import { closedSourcesOf, suspectPlace } from './random-events.js';
 import {
   changeReputation,
   endTurn,
@@ -85,6 +86,11 @@ export interface InterrogationOutcome {
   readonly conceded: readonly { readonly lieId: string; readonly statement: string }[];
   /** Only on a natural 20, and only when a lie fell with it. */
   readonly secret: string | null;
+  /**
+   * Clues the suspect told because the case names asking them as the way round an obstacle. Only on a success,
+   * from the ruleset of parts on, and absent when there are none.
+   */
+  readonly told?: readonly string[];
   readonly reputationChange: number;
   readonly consequences: readonly Consequence[];
 }
@@ -101,6 +107,27 @@ function brokenLies(run: DetectiveRunState, suspect: Suspect, shown: readonly st
   return suspect.lies.filter(
     (lie) => !run.concededLieIds.includes(lie.id) && lie.brokenBy.some((clueId) => shown.includes(clueId)),
   );
+}
+
+/**
+ * Clues that a person tells, because the way round the obstacle that guards them is to ask that person. Only a
+ * run of the ruleset of parts is told anything, and a clue already found is not told again.
+ */
+function cluesToldBy(run: DetectiveRunState, detectiveCase: DetectiveCase, suspectId: string): string[] {
+  if (run.rulesetVersion < SEARCH_BY_PART_RULESET_VERSION) return [];
+  const closed = closedSourcesOf(run);
+  return detectiveCase.locations
+    .flatMap(({ parts }) => parts ?? [])
+    .flatMap((part) => {
+      const clue = detectiveCase.clues.find(({ id }) => id === part.holds);
+      return clue !== undefined &&
+        part.fallback?.kind === 'ask' &&
+        part.fallback.suspectId === suspectId &&
+        !run.foundClueIds.includes(clue.id) &&
+        (clue.source === null || !closed.has(clue.source))
+        ? [clue.id]
+        : [];
+    });
 }
 
 export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIntent, rng: Rng): Resolution {
@@ -169,9 +196,10 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
     ...fallen.map(({ statement }) => said('conceded', statement)),
     ...(secret === null ? [] : [said('secret', secret)]),
   ];
+  const told = result.success ? cluesToldBy(run, run.case, suspect.id) : [];
   const withLies: DetectiveRunState = recordShown(
     {
-      ...run,
+      ...told.reduce(findClue, run),
       concededLieIds: [...run.concededLieIds, ...fallen.map(({ id }) => id)],
       statements: [...run.statements, ...statements],
     },
@@ -219,6 +247,7 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
       })),
       conceded: fallen.map(({ id, statement }) => ({ lieId: id, statement })),
       secret,
+      ...(told.length === 0 ? {} : { told }),
       reputationChange,
       consequences,
     },

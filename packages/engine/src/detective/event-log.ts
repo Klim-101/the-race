@@ -57,7 +57,13 @@ const fatigue = {
 };
 
 const OutcomeSchema = z.union([
-  z.object({ kind: z.literal('look'), foundClueIds: idList, minutes, ...fatigue }),
+  z.object({
+    kind: z.literal('look'),
+    foundClueIds: idList,
+    minutes,
+    noticedPartIds: idList.optional(),
+    ...fatigue,
+  }),
   z.object({
     kind: z.literal('move'),
     from: EntityIdSchema,
@@ -72,6 +78,7 @@ const OutcomeSchema = z.union([
     foundClueIds: idList,
     minutes,
     consequences: z.array(ConsequenceSchema),
+    partId: EntityIdSchema.optional(),
     ...fatigue,
   }),
   z.object({ kind: z.literal('rest') }),
@@ -86,6 +93,7 @@ const OutcomeSchema = z.union([
     presented: z.array(z.object({ clueId: EntityIdSchema, effect: z.enum(['breaks-lie', 'no-effect']) })),
     conceded: z.array(z.object({ lieId: EntityIdSchema, statement: z.string() })),
     secret: z.string().nullable(),
+    told: idList.optional(),
     reputationChange: z.int(),
     consequences: z.array(ConsequenceSchema),
     ...fatigue,

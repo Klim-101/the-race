@@ -12,6 +12,7 @@ import { hasAutoDiscover, type TraitTrigger } from '../traits.js';
 import {
   EntityIdSchema,
   type Clue,
+  type PlacePart,
   type DetectiveCase,
   type Location,
   type SkillCheck,
@@ -32,6 +33,7 @@ import {
   sceneSituations,
   type Revealed,
 } from './trait-reveal.js';
+import { canClear, partsOfPlace } from './search-parts.js';
 import { buildNeighbors } from './obtainability.js';
 import { closedSourcesOf, drawDayEvents, drawOwedDayEvent, isLocationClosed } from './random-events.js';
 import {
@@ -40,6 +42,8 @@ import {
   findClue,
   markSearched,
   moveTo,
+  noticeParts,
+  recordPartSearch,
   signalOfRun,
   spendTime,
   strainByAction,
@@ -62,8 +66,11 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('look') }),
   /** Go to a neighbouring place; a locked door may need a key or a skill check. */
   z.object({ kind: z.literal('move'), locationId: EntityIdSchema }),
-  /** A thorough search of the place: every hidden clue gets a check. */
-  z.object({ kind: z.literal('search') }),
+  /**
+   * A thorough search. Of the whole place: every hidden clue gets a check. Of a place made of parts (from the
+   * ruleset of parts on) it is a search of one part, named by `partId`.
+   */
+  z.object({ kind: z.literal('search'), partId: EntityIdSchema.optional() }),
   /** Question a suspect of the place, showing clues that may break their lies. */
   InterrogateIntentSchema,
   /** Link found clues into an insight. */
@@ -83,6 +90,9 @@ export type Intent = z.infer<typeof IntentSchema>;
 export const LOOK_MINUTES = 5;
 export const MOVE_MINUTES = 15;
 export const SEARCH_MINUTES = 30;
+/** In a place made of parts: a quick look takes a little longer than a glance, a search of one part is shorter. */
+export const PART_LOOK_MINUTES = 10;
+export const PART_SEARCH_MINUTES = 20;
 /** Extra time lost when an attempt fails, so that a failure is never "nothing happens". */
 export const FAILED_SEARCH_MINUTES = 15;
 export const FAILED_ENTRY_MINUTES = 10;
@@ -100,6 +110,10 @@ export type RefusalCode =
   | 'unknown-suspect'
   | 'suspect-elsewhere'
   | 'clue-not-found'
+  | 'unknown-part'
+  | 'part-not-noticed'
+  | 'part-searched'
+  | 'needs-tool'
   | 'not-found'
   | 'no-insight'
   | 'garbled-clue'
@@ -122,7 +136,13 @@ export type Consequence = 'time-lost' | 'reputation-lost' | 'mishap' | 'nerves-l
  * and does not say how many are still hidden.
  */
 export type Outcome = (
-  | { readonly kind: 'look'; readonly foundClueIds: readonly string[]; readonly minutes: number }
+  | {
+      readonly kind: 'look';
+      readonly foundClueIds: readonly string[];
+      readonly minutes: number;
+      /** In a place made of parts: every part a glance round the room shows, found or not. */
+      readonly noticedPartIds?: readonly string[];
+    }
   | {
       readonly kind: 'move';
       readonly from: string;
@@ -140,6 +160,8 @@ export type Outcome = (
       readonly foundClueIds: readonly string[];
       readonly minutes: number;
       readonly consequences: readonly Consequence[];
+      /** The part that was searched, in a place made of parts. */
+      readonly partId?: string;
     }
   | { readonly kind: 'rest' }
   | InterrogationOutcome
@@ -235,7 +257,31 @@ function hiddenClues(run: DetectiveRunState, locationId: string): Clue[] {
   );
 }
 
+/** A glance round a room made of parts: it names the parts in the open and takes what lies in plain sight on them. */
+function resolveLookAtParts(run: DetectiveRunState, rng: Rng, parts: readonly PlacePart[]): Resolution {
+  const shown = parts.filter(({ inQuickLook }) => inQuickLook);
+  const hidden = hiddenClues(run, run.locationId);
+  const found = shown.flatMap((part) =>
+    part.obstacle === null ? hidden.filter((clue) => clue.id === part.holds && clue.discovery === null) : [],
+  );
+  const noticed = noticeParts(
+    run,
+    shown.map(({ id }) => id),
+  );
+  const next = found.reduce((state, clue) => findClue(state, clue.id), noticed);
+  const settled = settle(next, rng, PART_LOOK_MINUTES, []);
+  const outcome: Outcome = {
+    kind: 'look',
+    foundClueIds: found.map(({ id }) => id),
+    minutes: PART_LOOK_MINUTES,
+    noticedPartIds: shown.map(({ id }) => id),
+  };
+  return { ok: true, run: settled.run, outcome, details: [], revealed: lockOutReveals(run, run.locationId) };
+}
+
 function resolveLook(run: DetectiveRunState, rng: Rng): Resolution {
+  const parts = partsOfPlace(run, run.locationId);
+  if (parts.length > 0) return resolveLookAtParts(run, rng, parts);
   const found = hiddenClues(run, run.locationId).filter((clue) => clue.discovery === null);
   const next = found.reduce((state, clue) => findClue(state, clue.id), run);
   const settled = settle(next, rng, LOOK_MINUTES, []);
@@ -243,8 +289,91 @@ function resolveLook(run: DetectiveRunState, rng: Rng): Resolution {
   return { ok: true, run: settled.run, outcome, details: [], revealed: lockOutReveals(run, run.locationId) };
 }
 
-function resolveSearch(run: DetectiveRunState, rng: Rng): Resolution {
+/**
+ * A thorough search of one part. The part must have been noticed and not searched before, and an obstacle that
+ * the phone cannot clear stops it before any time passes: the case names the way round. What the part holds is
+ * found by a roll, unless it lies in plain sight; a part with nothing in it costs only its time.
+ */
+function resolveSearchPart(
+  run: DetectiveRunState,
+  rng: Rng,
+  location: Location,
+  parts: readonly PlacePart[],
+  partId: string | undefined,
+): Resolution {
+  const part = parts.find(({ id }) => id === partId);
+  if (part === undefined) return refuse('unknown-part', 'Name one of the parts of this place to search.');
+  if (!run.noticedPartIds.includes(part.id)) {
+    return refuse('part-not-noticed', 'The hero has not noticed that part yet.');
+  }
+  if (run.searchedParts.some((searched) => searched.partId === part.id)) {
+    return refuse('part-searched', 'That part has been searched already.');
+  }
+  if (!canClear(part.obstacle)) {
+    return refuse('needs-tool', 'The hero has nothing to get past that with.');
+  }
+
+  const clue = hiddenClues(run, location.id).find(({ id }) => id === part.holds);
+  const details: CheckDetail[] = [];
+  const results: SkillCheckResult[] = [];
+  const felt: SignalFelt[] = [];
+  const revealed: Revealed[] = lockOutReveals(run, location.id);
+  let found: Clue | undefined;
+  if (clue !== undefined) {
+    const subject = { kind: 'clue', id: clue.id } as const;
+    if (clue.discovery === null) {
+      found = clue;
+      details.push({ subject, result: 'auto' });
+    } else {
+      const situations: TraitTrigger[] = [...location.situations, ...clue.situations];
+      const { result, felt: moved, revealed: acted } = roll(run, rng, clue.discovery, situations);
+      felt.push(...moved);
+      revealed.push(...acted);
+      results.push(result);
+      details.push({ subject, result });
+      if (result.success) found = clue;
+    }
+  }
+
+  // A roll that finds nothing although something was there costs more than the search itself, and a point of
+  // nerves besides, and the part is left to be searched again; an empty part is just time spent, and then done.
+  const wasted = found === undefined && clue !== undefined;
+  const marked = markSearched(run, location.id);
+  const withFind = found === undefined ? marked : findClue(marked, found.id);
+  const searched = wasted
+    ? marked
+    : recordPartSearch(withFind, part.id, location.id, found === undefined ? [] : [found.id]);
+  const blundered = results.some((result) => result.critical === 'failure');
+  const withClues = wasted && !blundered ? strainByAction(searched) : searched;
+  const minutes = PART_SEARCH_MINUTES + (wasted ? FAILED_SEARCH_MINUTES : 0);
+  const settled = settle(withClues, rng, minutes, results);
+  const frayed = withClues.condition.nerves < searched.condition.nerves;
+  const consequences: Consequence[] = [
+    ...(wasted ? (['time-lost'] as const) : []),
+    ...(frayed ? (['nerves-lost'] as const) : []),
+    ...settled.consequences,
+  ];
+  return {
+    ok: true,
+    run: settled.run,
+    outcome: {
+      kind: 'search',
+      foundClueIds: found === undefined ? [] : [found.id],
+      minutes,
+      consequences,
+      partId: part.id,
+    },
+    details,
+    felt: distinctFelt([...felt, ...settled.felt]),
+    revealed,
+  };
+}
+
+function resolveSearch(run: DetectiveRunState, rng: Rng, partId: string | undefined): Resolution {
   const location = locationById(run.case, run.locationId);
+  const parts = partsOfPlace(run, location.id);
+  if (parts.length > 0) return resolveSearchPart(run, rng, location, parts, partId);
+  if (partId !== undefined) return refuse('unknown-part', 'This place has no parts to search.');
   const reinspection = run.searchedLocationIds.includes(location.id);
   const hidden = hiddenClues(run, location.id);
   const details: CheckDetail[] = [];
@@ -446,7 +575,7 @@ function dispatchIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resol
     case 'look':
       return resolveLook(run, rng);
     case 'search':
-      return resolveSearch(run, rng);
+      return resolveSearch(run, rng, intent.partId);
     case 'move':
       return resolveMove(run, rng, intent.locationId);
     case 'rest':

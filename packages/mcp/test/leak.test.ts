@@ -4,7 +4,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { serveStdio } from '../src/stdio.js';
 import { TOOLS } from '../src/tools/index.js';
-import { HERO_CHOICES, gameContext, installCase, loadTheRun, sampleCase } from './game.js';
+import { HERO_CHOICES, gameContext, installCase, loadTheRun, partedSampleCase } from './game.js';
 import { Peer } from './peer.js';
 
 // The narrator must never learn the truth by any route before the run is over. This test plays a whole run
@@ -61,6 +61,16 @@ async function connect() {
   return { context, peer, call, results };
 }
 
+/** A thorough search of a part the hero has noticed and not searched; a glance when there is none to search. */
+function searchIntent(view: Record<string, unknown>): Record<string, unknown> {
+  const parts = (view.location as { parts: { id: string; obstacle: string | null; searched: boolean }[] })
+    .parts;
+  const part = parts.find(
+    ({ obstacle, searched }) => !searched && (obstacle === null || obstacle === 'dark'),
+  );
+  return part === undefined ? { kind: 'look' } : { kind: 'search', partId: part.id };
+}
+
 describe('the game tools over the server', () => {
   it('lists the eight narrator-facing tools', async () => {
     const { peer } = await connect();
@@ -83,8 +93,8 @@ describe('the game tools over the server', () => {
 
   it('never returns the truth, a hidden clue, a hidden trait or a suspect card before the end', async () => {
     const { context, call } = await connect();
-    const truth = sampleCase().truth;
-    const caseClueIds = sampleCase().clues.map(({ id }) => id);
+    const truth = partedSampleCase().truth;
+    const caseClueIds = partedSampleCase().clues.map(({ id }) => id);
 
     /** Checks one result against the state the run is in after it. */
     const assertClean = async (result: unknown, mayShowTruth = false): Promise<void> => {
@@ -112,7 +122,7 @@ describe('the game tools over the server', () => {
 
     await call('run_new', { locale: 'en', seed: 'leak' });
     await call('hero_create', HERO_CHOICES);
-    await installCase(context);
+    await installCase(context, partedSampleCase());
 
     let turn = 0;
     let view = await call('run_view', {});
@@ -128,7 +138,7 @@ describe('the game tools over the server', () => {
           result = await call('act', { turn, intent: { kind: 'look' } });
           break;
         case 1:
-          result = await call('act', { turn, intent: { kind: 'search' } });
+          result = await call('act', { turn, intent: searchIntent(view) });
           break;
         case 2:
           result = await call('question', {
@@ -148,7 +158,7 @@ describe('the game tools over the server', () => {
           });
           break;
         default:
-          result = await call('act', { turn, intent: { kind: 'search' } });
+          result = await call('act', { turn, intent: searchIntent(view) });
       }
       await assertClean(result);
       view = await call('run_view', {});

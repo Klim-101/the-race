@@ -10,7 +10,7 @@ import { TurnResultSchema, TurnSchema, playIntent } from '../play.js';
 const ActIntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('look') }),
   z.object({ kind: z.literal('move'), locationId: EntityIdSchema }),
-  z.object({ kind: z.literal('search') }),
+  z.object({ kind: z.literal('search'), partId: EntityIdSchema.optional() }),
   z.object({ kind: z.literal('rest') }),
   UseIntentSchema,
   RereadIntentSchema,
@@ -19,8 +19,8 @@ const ActIntentSchema = z.discriminatedUnion('kind', [
 export const act = defineTool({
   name: 'act',
   description:
-    'Carries out one action of the hero in the world: look (a glance: what lies in plain sight), move ' +
-    '(`locationId` of a neighbouring place from run_view exits), search (a thorough search of the place), ' +
+    'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move ' +
+    '(`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`), ' +
     'rest (sleep through the night), use (`itemId` of a supply in the kit) or reread (`clueId` of a found ' +
     'clue that run_view marks garbled). Call it once per player action, only while the run is active, with ' +
     'ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" ' +

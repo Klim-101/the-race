@@ -13,6 +13,7 @@ import {
   installCase,
   loadTheRun,
   newestRunId,
+  partedSampleCase,
   prepareHero,
   sampleCase,
 } from '../../test/game.js';
@@ -630,5 +631,44 @@ describe('the count of hidden traits in the short view of a turn', () => {
 
     expect((result.body.view as { hiddenTraitCount: number }).hiddenTraitCount).toBe(full.hiddenTraitCount);
     expect(Object.keys(result.body.view as object)).not.toContain('traits');
+  });
+});
+
+describe('the search by part', () => {
+  it('shows the parts after a look, searches one by its id and refuses what the hero has no tool for', async () => {
+    const context = gameContext();
+    await prepareHero(context);
+    await installCase(context, partedSampleCase());
+
+    const looked = await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+    expect(looked.body).toMatchObject({
+      outcome: {
+        kind: 'look',
+        foundClueIds: ['ransom-note'],
+        noticedPartIds: ['pedestal-floor', 'pedestal-base', 'service-door-lock', 'pedestal-front'],
+      },
+    });
+    const view = (await call(runView, {}, context)).body as {
+      location: { parts: { id: string; obstacle: string | null; searched: boolean }[] };
+    };
+    expect(view.location.parts.map(({ id }) => id)).toContain('pedestal-floor');
+    expect(JSON.stringify(view.location)).not.toContain('feather-trail');
+
+    const refused = await call(
+      act,
+      { turn: 1, intent: { kind: 'search', partId: 'pedestal-base' } },
+      context,
+    );
+    expect(refused.isError).toBe(true);
+    expect(errorCode(refused)).toBe('needs-tool');
+
+    const searched = await call(
+      act,
+      { turn: 1, intent: { kind: 'search', partId: 'pedestal-front' } },
+      context,
+    );
+    expect(searched.body).toMatchObject({ outcome: { kind: 'search', partId: 'pedestal-front' } });
+    const after = (await call(runView, {}, context)).body as typeof view;
+    expect(after.location.parts.find(({ id }) => id === 'pedestal-front')).toMatchObject({ searched: true });
   });
 });

@@ -46,7 +46,9 @@ import {
   type DetectiveCase,
   type Exposure,
   type Location,
+  type ObstacleKind,
 } from './case-schema.js';
+import { partsOfPlace } from './search-parts.js';
 import {
   PendingEffectSchema,
   SuppliesSchema,
@@ -126,6 +128,14 @@ export const RunHistorySchema = z.object({
 });
 export type RunHistory = z.infer<typeof RunHistorySchema>;
 
+export const SearchedPartSchema = z.object({
+  partId: EntityIdSchema,
+  locationId: EntityIdSchema,
+  turn: z.int().min(1),
+  foundClueIds: z.array(EntityIdSchema),
+});
+export type SearchedPart = z.infer<typeof SearchedPartSchema>;
+
 const emptyHistory = (): RunHistory => ({ finds: [], shown: [], links: [] });
 
 export const DetectiveRunStateSchema = z
@@ -162,6 +172,10 @@ export const DetectiveRunStateSchema = z
     drawnEvents: z.array(DrawnEventSchema).default([]),
     /** Signal events the night has drawn; the tone is in the log, and the narrator is told only the kind. */
     signalEvents: z.array(DrawnSignalEventSchema).default([]),
+    /** Parts of places the hero has noticed, by a quick look; a part is searched only once it is noticed. */
+    noticedPartIds: z.array(EntityIdSchema).default([]),
+    /** Parts the hero has searched, with what each gave and the turn: a part searched stays searched. */
+    searchedParts: z.array(SearchedPartSchema).default([]),
     /** Found clues whose reading was garbled by fatigue; each must be read again before it is used as proof. */
     garbledClueIds: z.array(EntityIdSchema).default([]),
     /** Consumables the hero carries, by count; they come from their background. Old saves have none. */
@@ -213,6 +227,13 @@ export const DetectiveRunStateSchema = z
     );
     known('garbledClueIds', run.garbledClueIds, new Set(run.case.clues.map(({ id }) => id)));
     known('closedLocationIds', run.closedLocationIds, locationIds);
+    const partIds = new Set(run.case.locations.flatMap(({ parts }) => (parts ?? []).map(({ id }) => id)));
+    known('noticedPartIds', run.noticedPartIds, partIds);
+    known(
+      'searchedParts',
+      run.searchedParts.map(({ partId }) => partId),
+      partIds,
+    );
     known(
       'statements',
       run.statements.map(({ suspectId }) => suspectId),
@@ -281,6 +302,8 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     closedLocationIds: [],
     drawnEvents: [],
     signalEvents: [],
+    noticedPartIds: [],
+    searchedParts: [],
     garbledClueIds: [],
     supplies: initialSupplies(input.hero.background, input.hero.lifeState),
     pendingEffects: [],
@@ -328,6 +351,35 @@ export function markSearched(run: DetectiveRunState, locationId: string): Detect
     run.case.locations.map(({ id }) => id),
   );
   return { ...run, searchedLocationIds: addOnce(run.searchedLocationIds, locationId) };
+}
+
+/** Writes down the parts a quick look has shown; a part noticed once stays noticed. */
+export function noticeParts(run: DetectiveRunState, partIds: readonly string[]): DetectiveRunState {
+  assertActive(run);
+  return { ...run, noticedPartIds: partIds.reduce(addOnce, [...run.noticedPartIds]) };
+}
+
+/** Writes down that a part was searched in the turn being played, and what it gave. */
+export function recordPartSearch(
+  run: DetectiveRunState,
+  partId: string,
+  locationId: string,
+  foundClueIds: readonly string[],
+): DetectiveRunState {
+  assertActive(run);
+  const parts = run.case.locations.flatMap((location) => location.parts ?? []);
+  requireId(
+    'part',
+    partId,
+    parts.map(({ id }) => id),
+  );
+  return {
+    ...run,
+    searchedParts: [
+      ...run.searchedParts,
+      { partId, locationId, turn: run.turn + 1, foundClueIds: [...foundClueIds] },
+    ],
+  };
 }
 
 export function findClue(run: DetectiveRunState, clueId: string): DetectiveRunState {
@@ -575,6 +627,16 @@ export interface DetectiveRunView {
     readonly description: string;
     /** Whether the hero stands indoors or out of doors: the weather colours only the second. */
     readonly exposure: Exposure;
+    /**
+     * The parts of the place the hero has noticed, in a place made of parts; what a part holds is never here, and
+     * `obstacle` is what stands in the way, which a quick look shows. Empty for a place left whole.
+     */
+    readonly parts: readonly {
+      readonly id: string;
+      readonly name: string;
+      readonly obstacle: ObstacleKind | null;
+      readonly searched: boolean;
+    }[];
     readonly exits: readonly {
       readonly id: string;
       readonly name: string;
@@ -762,6 +824,14 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
       name: location.name,
       description: location.description,
       exposure: location.exposure,
+      parts: partsOfPlace(run, location.id)
+        .filter(({ id }) => run.noticedPartIds.includes(id))
+        .map(({ id, name, obstacle }) => ({
+          id,
+          name,
+          obstacle,
+          searched: run.searchedParts.some(({ partId }) => partId === id),
+        })),
       exits,
     },
     map: viewMap(run),
