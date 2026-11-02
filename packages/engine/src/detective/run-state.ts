@@ -48,7 +48,9 @@ import {
   type LeadTrigger,
   type Location,
   type ObstacleKind,
+  type Venue,
 } from './case-schema.js';
+import { VENUE_RULESET_VERSION, sitsLeft } from './venue.js';
 import { isLeadEarned, isLeadOpen, isPlaceKnown, leadsEarnedBy } from './leads.js';
 import { SUSPECT_MOODS, isClosed, moodOf, moodWord } from './suspect-mood.js';
 import { partsOfPlace } from './search-parts.js';
@@ -200,6 +202,8 @@ export const DetectiveRunStateSchema = z
     noticedPartIds: z.array(EntityIdSchema).default([]),
     /** Parts the hero has searched, with what each gave and the turn: a part searched stays searched. */
     searchedParts: z.array(SearchedPartSchema).default([]),
+    /** The sittings at a venue the hero has had on `day`, so that no day gives more than a few. */
+    sitting: z.object({ day: z.int().min(1), count: z.int().min(0) }).default(() => ({ day: 1, count: 0 })),
     /** How the talks have left the suspects, for those the hero has talked to; a suspect not here is calm. */
     suspectMoods: z.array(SuspectMoodSchema).default([]),
     /** Leads the hero has earned, with the turn of each; what a lead opens is told by the case. */
@@ -342,6 +346,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     signalEvents: [],
     noticedPartIds: [],
     searchedParts: [],
+    sitting: { day: 1, count: 0 },
     suspectMoods: [],
     earnedLeads: [],
     garbledClueIds: [],
@@ -473,6 +478,17 @@ export function grantLeads(run: DetectiveRunState, deeds: readonly LeadTrigger[]
     };
     return given.reduce(findClue, noticeParts(withLead, shown));
   }, run);
+}
+
+/** Writes down a sitting at a venue, and gives back the nerves it is worth. */
+export function recordSitting(run: DetectiveRunState, nerves: number): DetectiveRunState {
+  assertActive(run);
+  const count = run.sitting.day === run.clock.day ? run.sitting.count : 0;
+  return {
+    ...run,
+    condition: withMeterDelta(run.condition, { meter: 'nerves', delta: nerves }),
+    sitting: { day: run.clock.day, count: count + 1 },
+  };
 }
 
 /** Sets how a talk left a suspect: how far they have been pushed, and until when they will not talk. */
@@ -714,6 +730,8 @@ export interface DetectiveRunView {
     readonly description: string;
     /** Whether the hero stands indoors or out of doors: the weather colours only the second. */
     readonly exposure: Exposure;
+    /** Set for a place where the hero can sit down; with the sittings still left today. */
+    readonly venue: { readonly kind: Venue; readonly sitsLeft: number } | null;
     /**
      * The parts of the place the hero has noticed, in a place made of parts; what a part holds is never here, and
      * `obstacle` is what stands in the way, which a quick look shows. Empty for a place left whole.
@@ -979,6 +997,10 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
       name: location.name,
       description: location.description,
       exposure: location.exposure,
+      venue:
+        location.venue === undefined || run.rulesetVersion < VENUE_RULESET_VERSION
+          ? null
+          : { kind: location.venue, sitsLeft: sitsLeft(run) },
       parts: partsOfPlace(run, location.id)
         .filter(({ id }) => run.noticedPartIds.includes(id))
         .map(({ id, name, obstacle }) => ({

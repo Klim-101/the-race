@@ -34,6 +34,8 @@ function turnText(turn: TurnView, text: TabText): string {
       return fill(t.search, { n: String(turn.found) });
     case 'rest':
       return t.rest;
+    case 'sit':
+      return fill(t.sit, { n: String(turn.restored) });
     case 'interrogate':
       return fill(t.interrogate, {
         name: turn.suspect,

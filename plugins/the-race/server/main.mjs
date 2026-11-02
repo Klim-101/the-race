@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 16;
+var RULESET_VERSION = 17;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -34097,6 +34097,8 @@ var LocationAccessSchema = external_exports.discriminatedUnion("kind", [
 ]);
 var LODGING_SAFETIES = ["safe", "ordinary", "risky"];
 var LodgingSafetySchema = external_exports.enum(LODGING_SAFETIES);
+var VENUES = ["teahouse", "cafe"];
+var VenueSchema = external_exports.enum(VENUES);
 var EXPOSURES = ["indoor", "outdoor"];
 var ExposureSchema = external_exports.enum(EXPOSURES);
 var OBSTACLE_KINDS = ["locked", "dark", "soft", "trace", "sealed", "digital"];
@@ -34146,6 +34148,8 @@ var LocationSchema = external_exports.object({
   situations: external_exports.array(TraitTriggerSchema).default([]),
   /** How safe the hero's night is if they sleep here; optional, and a place without it is an ordinary one. */
   lodging: LodgingSafetySchema.optional(),
+  /** Set for a place where the hero can sit down and win back a little of their nerves. */
+  venue: VenueSchema.optional(),
   /**
    * The lead that must be earned before the hero knows the place exists: until then it is not on the map or among
    * the exits, and cannot be walked to. A place without it is known as soon as it is next to one the hero has seen.
@@ -35294,97 +35298,6 @@ function chooseSetting(world, runSeed) {
   return countries[createRng(`${runSeed}:setting`).roll(Math.max(countries.length, 1)) - 1];
 }
 
-// packages/engine/src/detective/leads.ts
-var LEADS_RULESET_VERSION = 13;
-var leadsApply = (run) => run.rulesetVersion >= LEADS_RULESET_VERSION;
-function isLeadEarned(run, leadId) {
-  return run.earnedLeads.some((earned) => earned.leadId === leadId);
-}
-function isPlaceKnown(run, location) {
-  if (!leadsApply(run) || location.requiresLead === void 0) return true;
-  return run.visitedLocationIds.includes(location.id) || isLeadEarned(run, location.requiresLead);
-}
-function inWindow(window, minute) {
-  return window.fromMinute < window.untilMinute ? minute >= window.fromMinute && minute < window.untilMinute : minute >= window.fromMinute || minute < window.untilMinute;
-}
-function isLeadOpen(run, leadId) {
-  const window = run.case.leads?.find(({ id }) => id === leadId)?.window;
-  return window === void 0 || inWindow(window, run.clock.minute);
-}
-function leadsEarnedBy(run, deed) {
-  if (!leadsApply(run)) return [];
-  return (run.case.leads ?? []).filter(
-    (lead) => !isLeadEarned(run, lead.id) && deedKey(lead.earnedBy) === deedKey(deed)
-  );
-}
-function deedKey(deed) {
-  switch (deed.kind) {
-    case "clue":
-      return `clue:${deed.clueId}`;
-    case "talk":
-      return `talk:${deed.suspectId}`;
-    case "lie":
-      return `lie:${deed.lieId}`;
-    case "deduction":
-      return `deduction:${deed.deductionId}`;
-    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
-    default:
-      return assertNever2(deed);
-  }
-}
-
-// packages/engine/src/detective/suspect-mood.ts
-var TALKS_RULESET_VERSION = 15;
-var SUSPECT_MOODS = ["calm", "shaken", "cornered", "broken"];
-var MAX_MOOD_STEP = SUSPECT_MOODS.length - 1;
-var SHAKEN_EASE = 2;
-var HOSTILE_MINUTES = 120;
-var CALM = { suspectId: "", step: 0, closedUntil: null };
-function moodOf(run, suspectId) {
-  return run.suspectMoods.find((mood) => mood.suspectId === suspectId) ?? { ...CALM, suspectId };
-}
-function isClosed(run, suspectId) {
-  const { closedUntil } = moodOf(run, suspectId);
-  return closedUntil !== null && absoluteMinute(run.clock) < closedUntil;
-}
-function moodWord(step) {
-  return SUSPECT_MOODS.slice(step, step + 1).join("");
-}
-
-// packages/engine/src/detective/search-parts.ts
-var SEARCH_BY_PART_RULESET_VERSION = 12;
-function partsOfPlace(run, locationId) {
-  if (run.rulesetVersion < SEARCH_BY_PART_RULESET_VERSION) return [];
-  return run.case.locations.find(({ id }) => id === locationId)?.parts ?? [];
-}
-var TOOLS_RULESET_VERSION = 14;
-var WEAR_ORDER = ["lasting", "may-break", "used-up"];
-function chooseTool(run, obstacle, toolId) {
-  if (obstacle === null) return { kind: "none" };
-  if (run.rulesetVersion < TOOLS_RULESET_VERSION) {
-    return obstacle === "dark" ? { kind: "none" } : { kind: "refused", code: "needs-tool" };
-  }
-  const usable = run.kit.flatMap((item) => {
-    const rules = DETECTIVE_GEAR[item.id].tool;
-    return item.state === "owned" && rules?.removes.includes(obstacle) === true ? [{ item, rules }] : [];
-  });
-  if (toolId !== void 0) {
-    const named2 = usable.find(({ item }) => item.id === toolId);
-    return named2 === void 0 ? { kind: "refused", code: "wrong-tool" } : { kind: "tool", ...named2 };
-  }
-  const best = [...usable].sort(
-    (a, b) => WEAR_ORDER.indexOf(a.rules.wear) - WEAR_ORDER.indexOf(b.rules.wear)
-  )[0];
-  return best === void 0 ? { kind: "refused", code: "needs-tool" } : { kind: "tool", ...best };
-}
-
-// packages/engine/src/detective/clue-number.ts
-function clueNumber(heroName, index) {
-  const words = heroName.split(/\s+/).filter((word) => word !== "");
-  const surname = (words[words.length - 1] ?? heroName).toUpperCase();
-  return `${surname}-${String(index + 1).padStart(2, "0")}`;
-}
-
 // packages/engine/src/detective/obtainability.ts
 var D20_MAX = 20;
 function canEverPass(hero, traits) {
@@ -35707,6 +35620,114 @@ function drawSlots(run, rng, slots, baseChance, phase, promiseLast = false) {
   return { run: current, events };
 }
 
+// packages/engine/src/detective/venue.ts
+var VENUE_RULESET_VERSION = 17;
+var SIT_MINUTES = 40;
+var SIT_NERVES = 1;
+var MAX_SITS_PER_DAY = 2;
+function sitsLeft(run) {
+  const spent = run.sitting.day === run.clock.day ? run.sitting.count : 0;
+  return Math.max(0, MAX_SITS_PER_DAY - spent);
+}
+function sitRefusal(run, location, nervesMax) {
+  if (run.rulesetVersion < VENUE_RULESET_VERSION || location.venue === void 0) return "no-venue";
+  if (isLocationClosed(run, location.id)) return "venue-closed";
+  if (location.lodging === "risky") return "venue-unsafe";
+  if (run.condition.nerves >= nervesMax) return "not-frayed";
+  return sitsLeft(run) === 0 ? "sat-enough" : null;
+}
+
+// packages/engine/src/detective/leads.ts
+var LEADS_RULESET_VERSION = 13;
+var leadsApply = (run) => run.rulesetVersion >= LEADS_RULESET_VERSION;
+function isLeadEarned(run, leadId) {
+  return run.earnedLeads.some((earned) => earned.leadId === leadId);
+}
+function isPlaceKnown(run, location) {
+  if (!leadsApply(run) || location.requiresLead === void 0) return true;
+  return run.visitedLocationIds.includes(location.id) || isLeadEarned(run, location.requiresLead);
+}
+function inWindow(window, minute) {
+  return window.fromMinute < window.untilMinute ? minute >= window.fromMinute && minute < window.untilMinute : minute >= window.fromMinute || minute < window.untilMinute;
+}
+function isLeadOpen(run, leadId) {
+  const window = run.case.leads?.find(({ id }) => id === leadId)?.window;
+  return window === void 0 || inWindow(window, run.clock.minute);
+}
+function leadsEarnedBy(run, deed) {
+  if (!leadsApply(run)) return [];
+  return (run.case.leads ?? []).filter(
+    (lead) => !isLeadEarned(run, lead.id) && deedKey(lead.earnedBy) === deedKey(deed)
+  );
+}
+function deedKey(deed) {
+  switch (deed.kind) {
+    case "clue":
+      return `clue:${deed.clueId}`;
+    case "talk":
+      return `talk:${deed.suspectId}`;
+    case "lie":
+      return `lie:${deed.lieId}`;
+    case "deduction":
+      return `deduction:${deed.deductionId}`;
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever2(deed);
+  }
+}
+
+// packages/engine/src/detective/suspect-mood.ts
+var TALKS_RULESET_VERSION = 15;
+var SUSPECT_MOODS = ["calm", "shaken", "cornered", "broken"];
+var MAX_MOOD_STEP = SUSPECT_MOODS.length - 1;
+var SHAKEN_EASE = 2;
+var HOSTILE_MINUTES = 120;
+var CALM = { suspectId: "", step: 0, closedUntil: null };
+function moodOf(run, suspectId) {
+  return run.suspectMoods.find((mood) => mood.suspectId === suspectId) ?? { ...CALM, suspectId };
+}
+function isClosed(run, suspectId) {
+  const { closedUntil } = moodOf(run, suspectId);
+  return closedUntil !== null && absoluteMinute(run.clock) < closedUntil;
+}
+function moodWord(step) {
+  return SUSPECT_MOODS.slice(step, step + 1).join("");
+}
+
+// packages/engine/src/detective/search-parts.ts
+var SEARCH_BY_PART_RULESET_VERSION = 12;
+function partsOfPlace(run, locationId) {
+  if (run.rulesetVersion < SEARCH_BY_PART_RULESET_VERSION) return [];
+  return run.case.locations.find(({ id }) => id === locationId)?.parts ?? [];
+}
+var TOOLS_RULESET_VERSION = 14;
+var WEAR_ORDER = ["lasting", "may-break", "used-up"];
+function chooseTool(run, obstacle, toolId) {
+  if (obstacle === null) return { kind: "none" };
+  if (run.rulesetVersion < TOOLS_RULESET_VERSION) {
+    return obstacle === "dark" ? { kind: "none" } : { kind: "refused", code: "needs-tool" };
+  }
+  const usable = run.kit.flatMap((item) => {
+    const rules = DETECTIVE_GEAR[item.id].tool;
+    return item.state === "owned" && rules?.removes.includes(obstacle) === true ? [{ item, rules }] : [];
+  });
+  if (toolId !== void 0) {
+    const named2 = usable.find(({ item }) => item.id === toolId);
+    return named2 === void 0 ? { kind: "refused", code: "wrong-tool" } : { kind: "tool", ...named2 };
+  }
+  const best = [...usable].sort(
+    (a, b) => WEAR_ORDER.indexOf(a.rules.wear) - WEAR_ORDER.indexOf(b.rules.wear)
+  )[0];
+  return best === void 0 ? { kind: "refused", code: "needs-tool" } : { kind: "tool", ...best };
+}
+
+// packages/engine/src/detective/clue-number.ts
+function clueNumber(heroName, index) {
+  const words = heroName.split(/\s+/).filter((word) => word !== "");
+  const surname = (words[words.length - 1] ?? heroName).toUpperCase();
+  return `${surname}-${String(index + 1).padStart(2, "0")}`;
+}
+
 // packages/engine/src/detective/seal.ts
 var CASE_SEAL_PATTERN = /^[0-9a-f]{64}$/;
 function sealCase(detectiveCase) {
@@ -35814,6 +35835,8 @@ var DetectiveRunStateSchema = external_exports.object({
   noticedPartIds: external_exports.array(EntityIdSchema).default([]),
   /** Parts the hero has searched, with what each gave and the turn: a part searched stays searched. */
   searchedParts: external_exports.array(SearchedPartSchema).default([]),
+  /** The sittings at a venue the hero has had on `day`, so that no day gives more than a few. */
+  sitting: external_exports.object({ day: external_exports.int().min(1), count: external_exports.int().min(0) }).default(() => ({ day: 1, count: 0 })),
   /** How the talks have left the suspects, for those the hero has talked to; a suspect not here is calm. */
   suspectMoods: external_exports.array(SuspectMoodSchema).default([]),
   /** Leads the hero has earned, with the turn of each; what a lead opens is told by the case. */
@@ -35936,6 +35959,7 @@ function createDetectiveRun(input2) {
     signalEvents: [],
     noticedPartIds: [],
     searchedParts: [],
+    sitting: { day: 1, count: 0 },
     suspectMoods: [],
     earnedLeads: [],
     garbledClueIds: [],
@@ -36039,6 +36063,15 @@ function grantLeads(run, deeds) {
     };
     return given.reduce(findClue, noticeParts(withLead, shown));
   }, run);
+}
+function recordSitting(run, nerves) {
+  assertActive(run);
+  const count = run.sitting.day === run.clock.day ? run.sitting.count : 0;
+  return {
+    ...run,
+    condition: withMeterDelta(run.condition, { meter: "nerves", delta: nerves }),
+    sitting: { day: run.clock.day, count: count + 1 }
+  };
 }
 function setSuspectMood(run, mood) {
   assertActive(run);
@@ -36271,6 +36304,7 @@ function viewRun(run) {
       name: location.name,
       description: location.description,
       exposure: location.exposure,
+      venue: location.venue === void 0 || run.rulesetVersion < VENUE_RULESET_VERSION ? null : { kind: location.venue, sitsLeft: sitsLeft(run) },
       parts: partsOfPlace(run, location.id).filter(({ id }) => run.noticedPartIds.includes(id)).map(({ id, name, obstacle }) => ({
         id,
         name,
@@ -36421,7 +36455,9 @@ function resolveReread(run, intent, rng) {
 }
 function applyFatigue(before, resolution, rng) {
   const { outcome } = resolution;
-  if (outcome.kind === "accuse" || outcome.kind === "rest" || outcome.kind === "use") return resolution;
+  if (outcome.kind === "accuse" || outcome.kind === "rest" || outcome.kind === "sit" || outcome.kind === "use") {
+    return resolution;
+  }
   let { run } = resolution;
   let extra = {};
   let minutes2 = 0;
@@ -37107,6 +37143,8 @@ var IntentSchema = external_exports.discriminatedUnion("kind", [
   DeduceIntentSchema,
   /** Stop for the day and sleep where the hero stands: the night passes at once. */
   external_exports.object({ kind: external_exports.literal("rest") }),
+  /** Sit down at a teahouse or a cafe for a while: a little of the nerves comes back. */
+  external_exports.object({ kind: external_exports.literal("sit") }),
   /** The final accusation, which ends the run. */
   AccuseIntentSchema,
   /** Read a garbled clue again, carefully. */
@@ -37483,6 +37521,23 @@ function sleepIfDue(resolution, day, rng) {
 function resolveRest(run, rng) {
   return { ok: true, run: endTurn(run, rng), outcome: { kind: "rest" }, details: [] };
 }
+function resolveSit(run, rng) {
+  const refusal = sitRefusal(run, locationById(run.case, run.locationId), DETECTIVE_NERVES.max);
+  if (refusal !== null) return refuse3(refusal, `The hero cannot sit down here: ${refusal}.`);
+  const rested = recordSitting(run, SIT_NERVES);
+  const settled = endTurn(spendTime(rested, SIT_MINUTES), rng);
+  return {
+    ok: true,
+    run: settled,
+    outcome: {
+      kind: "sit",
+      minutes: SIT_MINUTES,
+      nervesRestored: rested.condition.nerves - run.condition.nerves,
+      sitsLeft: sitsLeft(rested)
+    },
+    details: []
+  };
+}
 function dispatchIntent(run, input2, rng) {
   const parsed = IntentSchema.safeParse(input2);
   if (!parsed.success) {
@@ -37501,6 +37556,8 @@ function dispatchIntent(run, input2, rng) {
       return resolveMove(run, rng, intent.locationId);
     case "rest":
       return resolveRest(run, rng);
+    case "sit":
+      return resolveSit(run, rng);
     case "interrogate":
       return resolveInterrogate(run, intent, rng);
     case "deduce": {
@@ -37643,6 +37700,7 @@ var OutcomeSchema = external_exports.union([
     ...fatigue
   }),
   external_exports.object({ kind: external_exports.literal("rest") }),
+  external_exports.object({ kind: external_exports.literal("sit"), minutes, nervesRestored: external_exports.int().min(0), sitsLeft: external_exports.int().min(0) }),
   external_exports.object({
     kind: external_exports.literal("interrogate"),
     suspectId: EntityIdSchema,
@@ -37913,6 +37971,8 @@ function detailOf(run, entry) {
       return { kind: "search", found: outcome.foundClueIds.length };
     case "rest":
       return { kind: "rest" };
+    case "sit":
+      return { kind: "sit", restored: outcome.nervesRestored };
     case "interrogate":
       return {
         kind: "interrogate",
@@ -50223,12 +50283,13 @@ var ActIntentSchema = external_exports.discriminatedUnion("kind", [
     toolId: GearIdSchema.optional()
   }),
   external_exports.object({ kind: external_exports.literal("rest") }),
+  external_exports.object({ kind: external_exports.literal("sit") }),
   UseIntentSchema,
   RereadIntentSchema
 ]);
 var act = defineTool({
   name: "act",
-  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), use (`itemId` of a supply in the kit) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
+  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
   inputSchema: external_exports.object({ turn: TurnSchema, intent: ActIntentSchema }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, intent }, context2) => playIntent(context2, turn, intent)
@@ -50417,6 +50478,7 @@ var en_default3 = {
         moveFailed: "Tried to get into {name} and could not",
         search: "Searched the place: found {n}",
         rest: "Rested for the night",
+        sit: "Sat down for a while: nerves back by {n}",
         interrogate: "Questioned {name}, {approach}, showing {n} clues",
         insight: "Concluded: {text}",
         alreadyKnown: "Reached a conclusion that was already drawn",
@@ -50799,6 +50861,7 @@ var ru_default2 = {
         moveFailed: "\u041F\u044B\u0442\u0430\u043B\u0438\u0441\u044C \u043F\u043E\u043F\u0430\u0441\u0442\u044C \u0432 {name}, \u043D\u043E \u043D\u0435 \u0432\u044B\u0448\u043B\u043E",
         search: "\u041E\u0431\u044B\u0441\u043A\u0430\u043B\u0438 \u043C\u0435\u0441\u0442\u043E: \u043D\u0430\u0439\u0434\u0435\u043D\u043E {n}",
         rest: "\u0417\u0430\u0441\u043D\u0443\u043B\u0438 \u0434\u043E \u0443\u0442\u0440\u0430",
+        sit: "\u041F\u043E\u0441\u0438\u0434\u0435\u043B\u0438, \u043D\u0435\u0440\u0432\u044B \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u043D\u0430 {n}",
         interrogate: "\u041E\u043F\u0440\u043E\u0441\u0438\u043B\u0438: {name}, {approach}, \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u043E \u0443\u043B\u0438\u043A: {n}",
         insight: "\u0421\u0434\u0435\u043B\u0430\u043B\u0438 \u0432\u044B\u0432\u043E\u0434: {text}",
         alreadyKnown: "\u041F\u0440\u0438\u0448\u043B\u0438 \u043A \u0432\u044B\u0432\u043E\u0434\u0443, \u043A\u043E\u0442\u043E\u0440\u044B\u0439 \u0443\u0436\u0435 \u0431\u044B\u043B",
@@ -51055,6 +51118,8 @@ function turnText(turn, text) {
       return fill(t.search, { n: String(turn.found) });
     case "rest":
       return t.rest;
+    case "sit":
+      return fill(t.sit, { n: String(turn.restored) });
     case "interrogate":
       return fill(t.interrogate, {
         name: turn.suspect,

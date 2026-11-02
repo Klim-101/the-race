@@ -35,6 +35,8 @@ import {
 } from './trait-reveal.js';
 import { isLeadEarned, isLeadOpen, isPlaceKnown } from './leads.js';
 import { risks, unlawfulRisk, type Risk } from './risk.js';
+import { DETECTIVE_NERVES } from './archetype.js';
+import { SIT_MINUTES, SIT_NERVES, sitRefusal, sitsLeft } from './venue.js';
 import { chooseTool, partsOfPlace } from './search-parts.js';
 import { GearIdSchema, worn, type GearId } from './gear.js';
 import { buildNeighbors } from './obtainability.js';
@@ -47,6 +49,7 @@ import {
   moveTo,
   noticeParts,
   recordPartSearch,
+  recordSitting,
   wearTool,
   signalOfRun,
   spendTime,
@@ -82,6 +85,8 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   DeduceIntentSchema,
   /** Stop for the day and sleep where the hero stands: the night passes at once. */
   z.object({ kind: z.literal('rest') }),
+  /** Sit down at a teahouse or a cafe for a while: a little of the nerves comes back. */
+  z.object({ kind: z.literal('sit') }),
   /** The final accusation, which ends the run. */
   AccuseIntentSchema,
   /** Read a garbled clue again, carefully. */
@@ -117,6 +122,11 @@ export type RefusalCode =
   | 'clue-not-found'
   | 'insight-not-found'
   | 'suspect-closed'
+  | 'no-venue'
+  | 'venue-closed'
+  | 'venue-unsafe'
+  | 'not-frayed'
+  | 'sat-enough'
   | 'unknown-part'
   | 'part-not-noticed'
   | 'part-searched'
@@ -185,6 +195,14 @@ export type Outcome = (
       readonly detainedMinutes?: number;
     }
   | { readonly kind: 'rest' }
+  | {
+      readonly kind: 'sit';
+      readonly minutes: number;
+      /** The points of nerves it gave back. */
+      readonly nervesRestored: number;
+      /** The sittings the hero has left today. */
+      readonly sitsLeft: number;
+    }
   | InterrogationOutcome
   | DeduceOutcome
   | AccusationOutcome
@@ -708,6 +726,28 @@ function resolveRest(run: DetectiveRunState, rng: Rng): Resolution {
   return { ok: true, run: endTurn(run, rng), outcome: { kind: 'rest' }, details: [] };
 }
 
+/**
+ * Sitting down at a venue: time passes, a point of nerves comes back. Refused, with nothing spent, where there is no
+ * venue, where it is shut or unsafe, for a hero who is not frayed, and once the day's sittings are used.
+ */
+function resolveSit(run: DetectiveRunState, rng: Rng): Resolution {
+  const refusal = sitRefusal(run, locationById(run.case, run.locationId), DETECTIVE_NERVES.max);
+  if (refusal !== null) return refuse(refusal, `The hero cannot sit down here: ${refusal}.`);
+  const rested = recordSitting(run, SIT_NERVES);
+  const settled = endTurn(spendTime(rested, SIT_MINUTES), rng);
+  return {
+    ok: true,
+    run: settled,
+    outcome: {
+      kind: 'sit',
+      minutes: SIT_MINUTES,
+      nervesRestored: rested.condition.nerves - run.condition.nerves,
+      sitsLeft: sitsLeft(rested),
+    },
+    details: [],
+  };
+}
+
 function dispatchIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resolution {
   const parsed = IntentSchema.safeParse(input);
   if (!parsed.success) {
@@ -726,6 +766,8 @@ function dispatchIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resol
       return resolveMove(run, rng, intent.locationId);
     case 'rest':
       return resolveRest(run, rng);
+    case 'sit':
+      return resolveSit(run, rng);
     case 'interrogate':
       return resolveInterrogate(run, intent, rng);
     case 'deduce': {

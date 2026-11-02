@@ -21,8 +21,9 @@ export const RUN_SCHEMA_VERSION = 2;
  * 15: a shown clue can confirm a fallen lie or implicate a suspect, a conclusion can be put to a suspect, and a
  * suspect has a state that a fallen lie moves and that changes the next talk (see `suspect-mood.ts`).
  * 16: using a tool that is not lawful risks being seen, and the police may detain the hero (see `risk.ts`).
+ * 17: the hero can sit down at a teahouse or a cafe to win back a point of nerves, twice a day (see `venue.ts`).
  */
-export const RULESET_VERSION = 16;
+export const RULESET_VERSION = 17;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;

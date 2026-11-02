@@ -107,6 +107,7 @@ export interface TabText {
       readonly moveFailed: string;
       readonly search: string;
       readonly rest: string;
+      readonly sit: string;
       readonly interrogate: string;
       readonly insight: string;
       readonly alreadyKnown: string;

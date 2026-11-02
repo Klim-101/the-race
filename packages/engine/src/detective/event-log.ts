@@ -99,6 +99,7 @@ const OutcomeSchema = z.union([
     ...fatigue,
   }),
   z.object({ kind: z.literal('rest') }),
+  z.object({ kind: z.literal('sit'), minutes, nervesRestored: z.int().min(0), sitsLeft: z.int().min(0) }),
   z.object({
     kind: z.literal('interrogate'),
     suspectId: EntityIdSchema,

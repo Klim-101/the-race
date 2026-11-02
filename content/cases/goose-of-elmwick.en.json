@@ -98,6 +98,7 @@
     },
     {
       "id": "tea-shop",
+      "venue": "teahouse",
       "name": "The Copper Kettle tea shop",
       "description": "A tea shop across the courtyard where the waitresses see everything and forgive nothing. The scones are excellent.",
       "connections": ["elm-street"],
