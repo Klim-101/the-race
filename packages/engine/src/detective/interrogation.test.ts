@@ -14,6 +14,7 @@ import {
   INTERROGATE_MINUTES,
   MIN_INTERROGATION_DIFFICULTY,
 } from './interrogation.js';
+import { TALKS_RULESET_VERSION } from './suspect-mood.js';
 import { DETECTIVE_TRAITS } from './traits.js';
 import {
   createDetectiveRun,
@@ -37,15 +38,19 @@ function dice(die: number): Rng {
   }
 }
 
+/** A run of the ruleset before the talks changed (see `talks.test.ts` for what they do now). */
 function newRun(traits: Trait[] = []): DetectiveRunState {
-  return createDetectiveRun({
-    hero: buildHero(),
-    traits: traits.map((entry) => TraitSchema.parse(entry)),
-    case: DetectiveCaseSchema.parse(buildCheeseCase()),
-    seed: 'interrogation',
-    rngState: 1,
-    locale: 'en',
-  });
+  return {
+    ...createDetectiveRun({
+      hero: buildHero(),
+      traits: traits.map((entry) => TraitSchema.parse(entry)),
+      case: DetectiveCaseSchema.parse(buildCheeseCase()),
+      seed: 'interrogation',
+      rngState: 1,
+      locale: 'en',
+    }),
+    rulesetVersion: TALKS_RULESET_VERSION - 1,
+  };
 }
 
 /** In the cheese stall, where the baker is, with the cart tracks found. */
@@ -223,14 +228,17 @@ describe('a clue that breaks a lie', () => {
     const detectiveCase = DetectiveCaseSchema.parse(buildCheeseCase());
     const baker = detectiveCase.suspects.find(({ id }) => id === 'baker');
     baker?.lies.push({ id: 'baker-alone', statement: 'I was alone.', brokenBy: ['flour-crumbs'] });
-    const base = createDetectiveRun({
-      hero: buildHero(),
-      traits: [],
-      case: detectiveCase,
-      seed: 'two-lies',
-      rngState: 1,
-      locale: 'en',
-    });
+    const base = {
+      ...createDetectiveRun({
+        hero: buildHero(),
+        traits: [],
+        case: detectiveCase,
+        seed: 'two-lies',
+        rngState: 1,
+        locale: 'en',
+      }),
+      rulesetVersion: TALKS_RULESET_VERSION - 1,
+    };
     const run = moveTo(findClue(findClue(base, 'cart-tracks'), 'flour-crumbs'), 'cheese-stall');
     const clues = ['cart-tracks', 'flour-crumbs'];
 

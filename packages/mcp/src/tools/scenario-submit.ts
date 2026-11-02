@@ -51,6 +51,7 @@ const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
   'unreachable-location': 7,
   'unobtainable-clue': 8,
   'unreachable-suspect': 9,
+  'clue-not-tied': 9.05,
   'unearnable-lead': 9.1,
   'unused-lead': 9.1,
   'false-lead-holds-clue': 9.1,
@@ -161,6 +162,7 @@ export const scenarioSubmit = defineTool({
         minRandomEvents: MIN_RANDOM_EVENTS,
         map: GENERATED_MAP,
         requireParts: true,
+        requireTies: true,
         // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
         realNames: [
           ...new Set([...worldRealNames(world), ...((await seedsOfRun(context))?.realNames ?? [])]),

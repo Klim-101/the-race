@@ -82,7 +82,7 @@ export function toneForSeed(seed: string): string {
 
 const SCHEMA_RULES =
   'Write one complete case that fits the case schema. Rules the engine checks: every location is reachable; ' +
-  'every clue is obtainable and lies in a part of its place, and a clue behind an obstacle has a way round it that needs no tool; every lead opens something and can be earned; every suspect can be found; at least two independent evidence chains that ' +
+  'every clue is obtainable and lies in a part of its place, and a clue behind an obstacle has a way round it that needs no tool; every lead opens something and can be earned; every clue that breaks a lie is about the one who told it; every suspect can be found; at least two independent evidence chains that ' +
   'point at the culprit and hold no red herring; every lie can be broken by an existing clue; the motive ' +
   'deduction exists; the timeline is consistent; events fall within the clock; no real names; the text is ' +
   'in the brief locale only. The full rules are in your instructions.';

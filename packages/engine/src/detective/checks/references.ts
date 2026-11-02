@@ -98,6 +98,9 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
   });
   detectiveCase.clues.forEach((clue, index) => {
     expect(locationIds, 'location', clue.locationId, `clues[${String(index)}].locationId`);
+    (clue.about ?? []).forEach((id, aboutIndex) => {
+      expect(suspectIds, 'suspect', id, `clues[${String(index)}].about[${String(aboutIndex)}]`);
+    });
     clue.pointsTo.forEach((id, pointIndex) => {
       expect(suspectIds, 'suspect', id, `clues[${String(index)}].pointsTo[${String(pointIndex)}]`);
     });
@@ -110,6 +113,10 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
       lie.brokenBy.forEach((id, clueIndex) => {
         const path = `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}].brokenBy[${String(clueIndex)}]`;
         expect(clueIds, 'clue', id, path);
+      });
+      (lie.brokenByInsights ?? []).forEach((id, insightIndex) => {
+        const path = `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}].brokenByInsights[${String(insightIndex)}]`;
+        expect(deductionIds, 'deduction', id, path);
       });
     });
   });

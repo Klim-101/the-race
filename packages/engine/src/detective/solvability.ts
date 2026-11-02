@@ -4,7 +4,13 @@
 import type { InformationSource, Trait } from '../traits.js';
 import type { DetectiveHero } from './archetype.js';
 import type { DetectiveCase, RandomEventEffect } from './case-schema.js';
-import { canEverPass, canPassWithTrainedSkill, closedSources, computeObtainable } from './obtainability.js';
+import {
+  canBreakLie,
+  canEverPass,
+  canPassWithTrainedSkill,
+  closedSources,
+  computeObtainable,
+} from './obtainability.js';
 
 /** What stands in the hero's way at some moment: places shut, sources closed, suspects moved. */
 export interface Standing {
@@ -64,7 +70,7 @@ export function isSolvable(
       return place === undefined || possible.locationIds.has(place);
     }) &&
     detectiveCase.suspects.every(({ lies }) =>
-      lies.every((lie) => lie.brokenBy.some((id) => possible.clueIds.has(id))),
+      lies.every((lie) => canBreakLie(detectiveCase, lie, possible.clueIds)),
     )
   );
 }

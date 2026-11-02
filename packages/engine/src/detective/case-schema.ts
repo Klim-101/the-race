@@ -161,6 +161,12 @@ export const ClueSchema = z.object({
   /** Where the information comes from, if it comes from a source that can be closed to the hero. */
   source: InformationSourceSchema.nullable().default(null),
   pointsTo: z.array(EntityIdSchema),
+  /**
+   * The people the clue bears on directly, whether or not it points at them: a motive, an alibi, a thing that was
+   * theirs. A suspect shown a clue about them reacts to it, even when it breaks none of their lies. Optional for
+   * the cases of before it, which keep their seal; a clue that points at a suspect is about them as well.
+   */
+  about: z.array(EntityIdSchema).optional(),
   isRedHerring: z.boolean(),
 });
 export type Clue = z.infer<typeof ClueSchema>;
@@ -169,6 +175,8 @@ export const LieSchema = z.object({
   id: EntityIdSchema,
   statement: NarrativeTextSchema,
   brokenBy: z.array(EntityIdSchema).min(1),
+  /** Conclusions that break it too, put to the suspect as a question; a lie may be broken by these alone. */
+  brokenByInsights: z.array(EntityIdSchema).optional(),
 });
 export type Lie = z.infer<typeof LieSchema>;
 

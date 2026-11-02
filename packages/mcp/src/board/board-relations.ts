@@ -3,6 +3,8 @@
 
 import type { DetectiveRunView } from '@the-race/engine';
 
+type ShownEffect = DetectiveRunView['history']['shown'][number]['effect'];
+
 // What lights up when the player picks something on the board. Every element that can be picked or lit carries
 // `data-rel`, the tokens of everything that should light it (`clue:ID`, `suspect:ID`, `place:ID`), and the page
 // holds one CSS rule for each token. The page's script only sets which token is picked, so what is related to
@@ -20,8 +22,8 @@ const safe = (id: string): boolean => SAFE.test(id);
 /** Whom each clue was shown to, and what the showing did; a clue shown twice to one person counts once. */
 export function shownPairs(
   view: DetectiveRunView,
-): { clueId: string; suspectId: string; effect: 'breaks-lie' | 'no-effect' }[] {
-  const pairs = new Map<string, { clueId: string; suspectId: string; effect: 'breaks-lie' | 'no-effect' }>();
+): { clueId: string; suspectId: string; effect: ShownEffect }[] {
+  const pairs = new Map<string, { clueId: string; suspectId: string; effect: ShownEffect }>();
   for (const { clueId, suspectId, effect } of view.history.shown) {
     const key = `${clueId}\n${suspectId}`;
     const before = pairs.get(key);

@@ -33,6 +33,7 @@ export type CaseIssueCode =
   | 'too-few-outdoor-places'
   | 'single-building'
   | 'solution-after-culprit-flees'
+  | 'clue-not-tied'
   | 'hidden-start'
   | 'unused-lead'
   | 'unearnable-lead'

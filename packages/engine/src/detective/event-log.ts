@@ -22,7 +22,8 @@ import { MishapKindSchema } from './fatigue.js';
 import { INTERROGATION_APPROACHES } from './interrogation.js';
 import { ConsumableIdSchema, PendingEffectSchema, SuppliesSchema } from './consumables.js';
 import { NightReportSchema } from './night.js';
-import { DrawnEventSchema, type DetectiveRunState } from './run-state.js';
+import { DrawnEventSchema, SHOWN_EFFECTS, type DetectiveRunState } from './run-state.js';
+import { SUSPECT_MOODS } from './suspect-mood.js';
 import { VERDICTS, type Verdict } from './verdict.js';
 
 // The run log is ENGINE-SIDE ONLY. Its entries hold the full details of every check, which name the clues
@@ -98,7 +99,12 @@ const OutcomeSchema = z.union([
     succeeded: z.boolean(),
     stance: z.enum(['holds', 'gives-ground']),
     alibi: z.string(),
-    presented: z.array(z.object({ clueId: EntityIdSchema, effect: z.enum(['breaks-lie', 'no-effect']) })),
+    presented: z.array(z.object({ clueId: EntityIdSchema, effect: z.enum(SHOWN_EFFECTS) })),
+    presentedInsights: z
+      .array(z.object({ insightId: EntityIdSchema, effect: z.enum(SHOWN_EFFECTS) }))
+      .optional(),
+    mood: z.enum(SUSPECT_MOODS).optional(),
+    closed: z.literal(true).optional(),
     conceded: z.array(z.object({ lieId: EntityIdSchema, statement: z.string() })),
     secret: z.string().nullable(),
     told: idList.optional(),

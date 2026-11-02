@@ -175,6 +175,7 @@ describe('sample cases', () => {
         realNames: REAL_NAMES,
         map: GENERATED_MAP,
         requireParts: true,
+        requireTies: true,
       });
 
       expect(result).toMatchObject({ isValid: true });

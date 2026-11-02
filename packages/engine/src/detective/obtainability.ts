@@ -5,7 +5,7 @@ import { assertNever } from '../assert-never.js';
 import type { InformationSource, Trait, TraitTrigger } from '../traits.js';
 import { collectModifier } from '../modifiers.js';
 import type { DetectiveHero } from './archetype.js';
-import type { DetectiveCase, LeadTrigger, Location, LocationAccess, SkillCheck } from './case-schema.js';
+import type { DetectiveCase, LeadTrigger, Lie, Location, LocationAccess, SkillCheck } from './case-schema.js';
 
 export const D20_MAX = 20;
 
@@ -150,6 +150,18 @@ function canEnter(
     default:
       return assertNever(access);
   }
+}
+
+/** Whether some clue, or some conclusion drawn from clues, within reach breaks the lie. */
+export function canBreakLie(detectiveCase: DetectiveCase, lie: Lie, clueIds: ReadonlySet<string>): boolean {
+  return (
+    lie.brokenBy.some((clueId) => clueIds.has(clueId)) ||
+    (lie.brokenByInsights ?? []).some((deductionId) =>
+      detectiveCase.deductions.some(
+        ({ id, clueIds: needed }) => id === deductionId && needed.every((clueId) => clueIds.has(clueId)),
+      ),
+    )
+  );
 }
 
 /** Which locations border each other; connections are two-way. */

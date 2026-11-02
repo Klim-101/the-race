@@ -98,6 +98,8 @@
       "legend": "Only what the detective has seen is on the map."
     },
     "statements": {
+      "moods": { "calm": "calm", "shaken": "shaken", "cornered": "cornered", "broken": "broken" },
+      "closed": "will not talk for now",
       "title": "What they said",
       "none": "Nothing said yet.",
       "day": "day",
@@ -361,6 +363,8 @@
       },
       "effects": {
         "breaks-lie": "broke a lie",
+        "confirms": "confirmed a fallen lie",
+        "implicates": "bore on them",
         "no-effect": "no effect"
       },
       "legend": "Red thread: a link tried. Blue thread: a clue shown to a person.",

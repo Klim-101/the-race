@@ -342,7 +342,8 @@
         {
           "id": "ir-never-saw",
           "statement": "I never saw that memo before it appeared in the papers. Larkspur would never write anything so careless.",
-          "brokenBy": ["memo-metadata", "paper-stock", "deleted-draft"]
+          "brokenBy": ["memo-metadata", "paper-stock", "deleted-draft"],
+          "brokenByInsights": ["memo-origin"]
         }
       ]
     },

@@ -114,6 +114,8 @@ export type RefusalCode =
   | 'unknown-suspect'
   | 'suspect-elsewhere'
   | 'clue-not-found'
+  | 'insight-not-found'
+  | 'suspect-closed'
   | 'unknown-part'
   | 'part-not-noticed'
   | 'part-searched'

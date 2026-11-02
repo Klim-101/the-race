@@ -342,7 +342,8 @@
         {
           "id": "ir-never-saw",
           "statement": "Я впервые увидела эту записку в газетах. «Ларкспур» никогда не напишет ничего столь небрежного.",
-          "brokenBy": ["memo-metadata", "paper-stock", "deleted-draft"]
+          "brokenBy": ["memo-metadata", "paper-stock", "deleted-draft"],
+          "brokenByInsights": ["memo-origin"]
         }
       ]
     },

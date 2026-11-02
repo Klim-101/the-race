@@ -179,6 +179,7 @@ function renderSuspects(view: DetectiveRunView, board: BoardText, text: TabText)
       return `<div class="card" ${attrs}>
 <strong>${e(suspect.name)}</strong>
 <p>${e(suspect.persona)}</p>
+<p class="tag">${e(text.statements.moods[suspect.mood])}${suspect.closed ? ` · ${e(text.statements.closed)}` : ''}</p>
 <p class="tag">${e(board.whereabouts)}: ${e(where)}</p>
 <h3>${e(text.statements.title)}</h3>
 ${said}

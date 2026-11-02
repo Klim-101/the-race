@@ -251,6 +251,7 @@
       "discovery": { "skill": "tech", "difficulty": 10 },
       "situations": ["digital-evidence"],
       "pointsTo": ["postmaster"],
+      "about": ["apprentice"],
       "isRedHerring": false
     },
     {
@@ -299,6 +300,7 @@
       "description": "Между двумя стучащими трубами зажат музейный подмастерье, и вывести его из равновесия легко. Если нажать как следует, он признаётся: милая старушка пообещала ему фунт ирисок, чтобы он подержал тележку, пока она выносит из зала «что-то очень важное».",
       "discovery": { "skill": "pressure", "difficulty": 11 },
       "pointsTo": ["postmaster"],
+      "about": ["apprentice"],
       "isRedHerring": false
     },
     {
@@ -376,7 +378,8 @@
         {
           "id": "apprentice-bed",
           "statement": "Я лёг в девять и не вставал до утра.",
-          "brokenBy": ["apprentice-confession", "door-log"]
+          "brokenBy": ["apprentice-confession", "door-log"],
+          "brokenByInsights": ["night-visit"]
         }
       ]
     }

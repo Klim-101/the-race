@@ -64,9 +64,25 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
       ],
     },
     suspects: [
-      { id: 'a', name: 'Anna', persona: 'Baker', place: { id: 'market', name: 'Market' }, statements: [] },
-      { id: 'b', name: 'Boris', persona: 'Rival', place: { id: 'stall', name: 'Stall' }, statements: [] },
-      { id: 'c', name: 'Cora', persona: 'Mayor', place: null, statements: [] },
+      {
+        id: 'a',
+        name: 'Anna',
+        persona: 'Baker',
+        mood: 'calm',
+        closed: false,
+        place: { id: 'market', name: 'Market' },
+        statements: [],
+      },
+      {
+        id: 'b',
+        name: 'Boris',
+        persona: 'Rival',
+        mood: 'calm',
+        closed: false,
+        place: { id: 'stall', name: 'Stall' },
+        statements: [],
+      },
+      { id: 'c', name: 'Cora', persona: 'Mayor', mood: 'calm', closed: false, place: null, statements: [] },
     ],
     clues: [],
     openLinks: [],
@@ -289,7 +305,11 @@ describe('the corkboard tab', () => {
   it('puts a name under its frame on two lines and never cuts it', () => {
     const name = 'Boris Windlaw-Lavrov';
     const html = cork(
-      viewOf({ suspects: [{ id: 'b', name, persona: 'Rival', place: null, statements: [] }] }),
+      viewOf({
+        suspects: [
+          { id: 'b', name, persona: 'Rival', mood: 'calm', closed: false, place: null, statements: [] },
+        ],
+      }),
     );
 
     expect(html.match(/class="caption"/g)).toHaveLength(2);
