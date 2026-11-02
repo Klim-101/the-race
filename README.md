@@ -33,7 +33,7 @@ A text roguelike that runs inside [Claude Code](https://claude.com/claude-code) 
 
 ## Getting started
 
-You need [Claude Code](https://claude.com/claude-code) on your own subscription and [Node.js](https://nodejs.org) 24 (the current LTS) or newer, except 25. There is nothing else to sign up for: no account, no API key.
+You need [Claude Code](https://claude.com/claude-code) on your own subscription and [Node.js](https://nodejs.org) 24 (the current LTS) or newer, except 25, with npm 11 (it comes with Node 24). There is nothing else to sign up for: no account, no API key.
 
 1. **Get the code and build it**
 
@@ -132,7 +132,7 @@ Details and live progress: [ROADMAP.md](docs/public/ROADMAP.md) and the [project
 
 ## Development
 
-You need Node.js 24 (see [.node-version](.node-version)); 25 is not supported, because the test runner skips odd releases. The local gate is the same one CI runs on Linux, macOS and Windows:
+You need Node.js 24 (see [.node-version](.node-version)); 25 is not supported, because the test runner skips odd releases, and npm must be 11 or newer, which Node 24 brings. The local gate is the same one CI runs on Linux, macOS and Windows:
 
 ```sh
 npm ci
