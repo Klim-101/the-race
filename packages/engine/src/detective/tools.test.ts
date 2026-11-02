@@ -21,6 +21,7 @@ import {
   type GearId,
   type KitItem,
 } from './gear.js';
+import { RISK_RULESET_VERSION } from './risk.js';
 import { TOOLS_RULESET_VERSION, chooseTool } from './search-parts.js';
 import {
   createDetectiveRun,
@@ -44,11 +45,14 @@ const owned = (id: GearId, charges?: number): KitItem => ({
   ...(charges === undefined ? {} : { charges }),
 });
 
-/** The cheese case where the key under the fountain's edge is behind `obstacle`; the hero has looked round the square. */
+/**
+ * The cheese case where the key under the fountain's edge is behind `obstacle`; the hero has looked round the
+ * square. It is the ruleset before the risk of an unlawful tool, unless one is given (see `risk.test.ts`).
+ */
 function runWith(
   obstacle: ObstacleKind | null,
   kit: readonly KitItem[],
-  ruleset?: number,
+  ruleset = RISK_RULESET_VERSION - 1,
 ): DetectiveRunState {
   const detectiveCase = buildCheeseCase();
   const square = detectiveCase.locations.find((place) => place.id === 'market-square');
@@ -76,7 +80,7 @@ function runWith(
   const equipped: DetectiveRunState = {
     ...run,
     kit: [...kit],
-    ...(ruleset === undefined ? {} : { rulesetVersion: ruleset }),
+    rulesetVersion: ruleset,
   };
   const looked = resolveIntent(equipped, { kind: 'look' }, createRng(3));
   if (!looked.ok) throw new Error('The look was refused.');
@@ -329,7 +333,7 @@ describe('the tools as data', () => {
     expect(chargesLeft(owned('powder', 1))).toBe(1);
     expect(chargesLeft(owned('picks'))).toBeNull();
     expect(viewKit([owned('cash')])).toEqual([
-      { id: 'cash', nameKey: 'gear.cash', state: 'owned', removes: [], charges: 2 },
+      { id: 'cash', nameKey: 'gear.cash', state: 'owned', removes: [], charges: 2, lawful: true },
     ]);
   });
 

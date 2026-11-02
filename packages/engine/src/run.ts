@@ -20,8 +20,9 @@ export const RUN_SCHEMA_VERSION = 2;
  * 14: an obstacle is got past with a tool of the kit, with a roll, and a tool wears (see `gear.ts`).
  * 15: a shown clue can confirm a fallen lie or implicate a suspect, a conclusion can be put to a suspect, and a
  * suspect has a state that a fallen lie moves and that changes the next talk (see `suspect-mood.ts`).
+ * 16: using a tool that is not lawful risks being seen, and the police may detain the hero (see `risk.ts`).
  */
-export const RULESET_VERSION = 15;
+export const RULESET_VERSION = 16;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;

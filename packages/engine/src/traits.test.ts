@@ -33,7 +33,7 @@ describe('DETECTIVE_TRAITS', () => {
 
   it('is big enough to vary and has traits of every polarity', () => {
     expect(DETECTIVE_TRAITS.length).toBeGreaterThanOrEqual(12);
-    expect(DETECTIVE_TRAITS.length).toBeLessThanOrEqual(15);
+    expect(DETECTIVE_TRAITS.length).toBeLessThanOrEqual(20);
     for (const polarity of ['positive', 'negative', 'mixed'] as const) {
       expect(polarityCount(polarity)).toBeGreaterThanOrEqual(3);
     }

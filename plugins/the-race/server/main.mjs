@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 15;
+var RULESET_VERSION = 16;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -33318,7 +33318,8 @@ function viewKit(kit) {
     nameKey: DETECTIVE_GEAR[item.id].nameKey,
     state: item.state,
     removes: DETECTIVE_GEAR[item.id].tool?.removes ?? [],
-    charges: chargesLeft(item)
+    charges: chargesLeft(item),
+    lawful: DETECTIVE_GEAR[item.id].tool?.lawful ?? true
   }));
 }
 function chargesLeft(item) {
@@ -33385,7 +33386,8 @@ var TRAIT_TRIGGERS = [
   "crowd",
   "night",
   "interrogation",
-  "high-society"
+  "high-society",
+  "unlawful-act"
 ];
 var TraitTriggerSchema = external_exports.enum(TRAIT_TRIGGERS);
 var INFORMATION_SOURCES = ["police-data"];
@@ -33791,6 +33793,12 @@ var DETECTIVE_TRAITS = [
     trigger: "interrogation",
     effects: [{ kind: "modifier", skills: ["social", "pressure"], amount: 2 }],
     excludes: ["hothead"]
+  },
+  {
+    id: "cool-head",
+    polarity: "positive",
+    trigger: "unlawful-act",
+    effects: [{ kind: "modifier", skills: ["social"], amount: 4 }]
   },
   {
     id: "debtor",
@@ -36929,6 +36937,43 @@ function applyMishap(run, mishap) {
   return mishap.condition === void 0 ? strained : startCondition(strained, mishap.condition);
 }
 
+// packages/engine/src/detective/risk.ts
+var RISK_RULESET_VERSION = 16;
+var DISCRETION = "social";
+var UNSEEN_AT = 7;
+var DETAINED_BELOW = 4;
+var SEEN_REPUTATION = 1;
+var DETENTION_MINUTES = 240;
+var MIN_DETENTION_MINUTES = 60;
+var DETENTION_SHORTENED_BY_REPUTATION = 12;
+var DETENTION_SHORTENED_BY_CONTACTS = 10;
+function detentionMinutes(reputation, contacts) {
+  return Math.max(
+    MIN_DETENTION_MINUTES,
+    DETENTION_MINUTES - DETENTION_SHORTENED_BY_REPUTATION * reputation - DETENTION_SHORTENED_BY_CONTACTS * contacts
+  );
+}
+var risks = (run) => run.rulesetVersion >= RISK_RULESET_VERSION;
+function unlawfulRisk(run, rng, location) {
+  const scene = sceneSituations(run, ["unlawful-act", ...location.situations]);
+  const total = rng.roll(D20_SIDES) + run.hero.skills[DISCRETION] + collectModifier(modifierSources(run), DISCRETION, scene);
+  const revealed = actingReveals(run, scene, DISCRETION);
+  if (total >= UNSEEN_AT) return { run, detentionMinutes: 0, consequences: [], revealed };
+  const detained = total < DETAINED_BELOW;
+  const seen = strainNerves(changeReputation(run, -SEEN_REPUTATION));
+  return {
+    run: seen,
+    detentionMinutes: detained ? detentionMinutes(run.reputation, run.hero.skills.contacts) : 0,
+    consequences: [
+      "spotted",
+      ...seen.reputation < run.reputation ? ["reputation-lost"] : [],
+      ...seen.condition.nerves < run.condition.nerves ? ["nerves-lost"] : [],
+      ...detained ? ["detained"] : []
+    ],
+    revealed
+  };
+}
+
 // packages/engine/src/detective/verdict.ts
 var DeduceIntentSchema = external_exports.object({
   kind: external_exports.literal("deduce"),
@@ -37168,7 +37213,7 @@ function resolveSearchPart(run, rng, location, parts, partId, toolId) {
       choice.code === "wrong-tool" ? "That tool is not in the kit, or does not get past that." : "The hero has nothing to get past that with."
     );
   }
-  if (choice.kind === "none") return searchPartForClue(run, rng, location, part, [], [], []);
+  if (choice.kind === "none") return searchPartForClue(run, rng, location, part, NOTHING_CARRIED);
   const { rules, item } = choice;
   const details = [];
   const results = [];
@@ -37188,11 +37233,17 @@ function resolveSearchPart(run, rng, location, parts, partId, toolId) {
   const used = worn(item, blundered);
   const tool = { id: item.id, cleared, wear: used.wear };
   const worndown = wearTool(run, item.id, blundered);
-  if (cleared) return searchPartForClue(worndown, rng, location, part, details, felt, revealed, tool);
-  const strained = blundered ? worndown : strainByAction(worndown);
-  const minutes2 = PART_SEARCH_MINUTES + rules.failureMinutes;
+  const risk = risks(run) && !rules.lawful ? unlawfulRisk(worndown, rng, location) : void 0;
+  const watched = risk?.run ?? worndown;
+  revealed.push(...risk?.revealed ?? []);
+  if (cleared) {
+    return searchPartForClue(watched, rng, location, part, { details, felt, revealed, tool, risk });
+  }
+  const strained = blundered ? watched : strainByAction(watched);
+  const detained = risk?.detentionMinutes ?? 0;
+  const minutes2 = PART_SEARCH_MINUTES + rules.failureMinutes + detained;
   const settled = settle2(strained, rng, minutes2, results);
-  const frayed = strained.condition.nerves < worndown.condition.nerves;
+  const frayed = strained.condition.nerves < watched.condition.nerves;
   return {
     ok: true,
     run: settled.run,
@@ -37200,21 +37251,32 @@ function resolveSearchPart(run, rng, location, parts, partId, toolId) {
       kind: "search",
       foundClueIds: [],
       minutes: minutes2,
-      consequences: ["time-lost", ...frayed ? ["nerves-lost"] : [], ...settled.consequences],
+      consequences: uniqueConsequences([
+        "time-lost",
+        ...frayed ? ["nerves-lost"] : [],
+        ...risk?.consequences ?? [],
+        ...settled.consequences
+      ]),
       partId: part.id,
-      tool
+      tool,
+      ...detained === 0 ? {} : { detainedMinutes: detained }
     },
     details,
     felt: distinctFelt([...felt, ...settled.felt]),
     revealed
   };
 }
-function searchPartForClue(run, rng, location, part, carriedDetails, carriedFelt, carriedRevealed, tool) {
+function uniqueConsequences(consequences) {
+  return [...new Set(consequences)];
+}
+var NOTHING_CARRIED = { details: [], felt: [], revealed: [] };
+function searchPartForClue(run, rng, location, part, carried) {
+  const { tool, risk } = carried;
   const clue = hiddenClues(run, location.id).find(({ id }) => id === part.holds);
-  const details = [...carriedDetails];
+  const details = [...carried.details];
   const results = [];
-  const felt = [...carriedFelt];
-  const revealed = [...lockOutReveals(run, location.id), ...carriedRevealed];
+  const felt = [...carried.felt];
+  const revealed = [...lockOutReveals(run, location.id), ...carried.revealed];
   let found;
   if (clue !== void 0) {
     const subject = { kind: "clue", id: clue.id };
@@ -37237,14 +37299,16 @@ function searchPartForClue(run, rng, location, part, carriedDetails, carriedFelt
   const searched = wasted ? marked : recordPartSearch(withFind, part.id, location.id, found === void 0 ? [] : [found.id]);
   const blundered = results.some((result) => result.critical === "failure");
   const withClues = wasted && !blundered ? strainByAction(searched) : searched;
-  const minutes2 = PART_SEARCH_MINUTES + (wasted ? FAILED_SEARCH_MINUTES : 0);
+  const detained = risk?.detentionMinutes ?? 0;
+  const minutes2 = PART_SEARCH_MINUTES + (wasted ? FAILED_SEARCH_MINUTES : 0) + detained;
   const settled = settle2(withClues, rng, minutes2, results);
   const frayed = withClues.condition.nerves < searched.condition.nerves;
-  const consequences = [
+  const consequences = uniqueConsequences([
     ...wasted ? ["time-lost"] : [],
     ...frayed ? ["nerves-lost"] : [],
+    ...risk?.consequences ?? [],
     ...settled.consequences
-  ];
+  ]);
   return {
     ok: true,
     run: settled.run,
@@ -37254,7 +37318,8 @@ function searchPartForClue(run, rng, location, part, carriedDetails, carriedFelt
       minutes: minutes2,
       consequences,
       partId: part.id,
-      ...tool === void 0 ? {} : { tool }
+      ...tool === void 0 ? {} : { tool },
+      ...detained === 0 ? {} : { detainedMinutes: detained }
     },
     details,
     felt: distinctFelt([...felt, ...settled.felt]),
@@ -37532,7 +37597,14 @@ var CheckDetailSchema = external_exports.object({
   subject: external_exports.object({ kind: external_exports.enum(["clue", "location", "suspect", "part"]), id: external_exports.string().min(1) }),
   result: external_exports.union([SkillCheckResultSchema, external_exports.literal("auto")])
 });
-var ConsequenceSchema = external_exports.enum(["time-lost", "reputation-lost", "mishap", "nerves-lost"]);
+var ConsequenceSchema = external_exports.enum([
+  "time-lost",
+  "reputation-lost",
+  "mishap",
+  "nerves-lost",
+  "spotted",
+  "detained"
+]);
 var minutes = external_exports.int().min(0);
 var idList = external_exports.array(EntityIdSchema);
 var fatigue = {
@@ -37567,6 +37639,7 @@ var OutcomeSchema = external_exports.union([
       cleared: external_exports.boolean(),
       wear: external_exports.enum(["spent", "broken"]).nullable()
     }).optional(),
+    detainedMinutes: external_exports.int().min(1).optional(),
     ...fatigue
   }),
   external_exports.object({ kind: external_exports.literal("rest") }),
@@ -50514,6 +50587,7 @@ var en_default3 = {
         "ex-hacker": "an ex-hacker",
         "well-connected": "well connected",
         "night-owl": "a night owl",
+        "cool-head": "a cool head",
         "people-reader": "reads people",
         debtor: "in debt",
         claustrophobe: "claustrophobic",
@@ -50895,6 +50969,7 @@ var ru_default2 = {
         "ex-hacker": "\u0431\u044B\u0432\u0448\u0438\u0439 \u0445\u0430\u043A\u0435\u0440",
         "well-connected": "\u0441 \u0445\u043E\u0440\u043E\u0448\u0438\u043C\u0438 \u0441\u0432\u044F\u0437\u044F\u043C\u0438",
         "night-owl": "\u0441\u043E\u0432\u0430",
+        "cool-head": "\u0445\u043B\u0430\u0434\u043D\u043E\u043A\u0440\u043E\u0432\u0438\u0435",
         "people-reader": "\u0447\u0438\u0442\u0430\u0435\u0442 \u043B\u044E\u0434\u0435\u0439",
         debtor: "\u0432 \u0434\u043E\u043B\u0433\u0430\u0445",
         claustrophobe: "\u0431\u043E\u0438\u0442\u0441\u044F \u0437\u0430\u043C\u043A\u043D\u0443\u0442\u044B\u0445 \u043F\u0440\u043E\u0441\u0442\u0440\u0430\u043D\u0441\u0442\u0432",

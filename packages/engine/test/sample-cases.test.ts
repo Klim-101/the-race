@@ -195,8 +195,8 @@ describe('sample cases', () => {
 });
 
 describe('traits and the sample cases', () => {
-  // The engine itself brings these scenes to any case: a talk, a second search, the evening, the next day.
-  const OF_THE_ENGINE = ['interrogation', 'reinspection', 'night', 'second-day'];
+  // The engine itself brings these scenes to any case: a talk, a second search, the evening, the next day, a tool that is not lawful.
+  const OF_THE_ENGINE = ['interrogation', 'reinspection', 'night', 'second-day', 'unlawful-act'];
   const tagged = new Set(
     files.flatMap(({ json }) =>
       [

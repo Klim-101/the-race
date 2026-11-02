@@ -46,6 +46,12 @@ export const DETECTIVE_TRAITS: readonly Trait[] = [
     excludes: ['hothead'],
   },
   {
+    id: 'cool-head',
+    polarity: 'positive',
+    trigger: 'unlawful-act',
+    effects: [{ kind: 'modifier', skills: ['social'], amount: 4 }],
+  },
+  {
     id: 'debtor',
     polarity: 'negative',
     trigger: 'second-day',

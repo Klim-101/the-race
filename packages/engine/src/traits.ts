@@ -16,6 +16,7 @@ export const TRAIT_TRIGGERS = [
   'night',
   'interrogation',
   'high-society',
+  'unlawful-act',
 ] as const;
 
 export const TraitTriggerSchema = z.enum(TRAIT_TRIGGERS);
