@@ -18,6 +18,8 @@
     "lint:fix": "eslint . --fix && prettier --write .",
     "generate": "node scripts/generate-plugin.mjs",
     "lint:generated": "node scripts/generate-plugin.mjs --check",
+    "bundle": "node scripts/bundle-server.mjs",
+    "bundle:check": "node scripts/bundle-server.mjs --check",
     "licenses:check": "node scripts/check-licenses.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
@@ -26,6 +28,7 @@
     "@eslint/js": "10.0.1",
     "@types/node": "26.6.5",
     "@vitest/coverage-v8": "5.0.5",
+    "esbuild": "0.28.2",
     "eslint": "10.13.0",
     "eslint-config-prettier": "10.1.8",
     "globals": "17.13.0",

@@ -44,6 +44,9 @@ jobs:
       - name: Check generated plugin
         run: npm run lint:generated
 
+      - name: Check the server bundle
+        run: npm run bundle:check
+
       - name: Typecheck
         run: npm run typecheck
 

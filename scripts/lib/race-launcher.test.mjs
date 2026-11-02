@@ -35,7 +35,23 @@ describe('the plugin launcher of the MCP server', () => {
     expect(result.stdout).toContain('server started');
   });
 
-  it('says what to do when the server is not built, on stderr and not on the protocol stream', () => {
+  it('starts the bundle inside the plugin when there is no built checkout, as in an installed copy', () => {
+    mkdirSync(join(root, PLUGIN_DIR, 'server'), { recursive: true });
+    writeFileSync(join(root, PLUGIN_DIR, 'server', 'main.mjs'), "console.log('bundle started');\n");
+    const result = run();
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('bundle started');
+  });
+
+  it('prefers the built checkout to the bundle, so a developer runs the code they just built', () => {
+    mkdirSync(join(root, PLUGIN_DIR, 'server'), { recursive: true });
+    writeFileSync(join(root, PLUGIN_DIR, 'server', 'main.mjs'), "console.log('bundle started');\n");
+    mkdirSync(join(root, 'packages', 'mcp', 'dist'), { recursive: true });
+    writeFileSync(join(root, 'packages', 'mcp', 'dist', 'main.js'), "console.log('built started');\n");
+    expect(run().stdout).toContain('built started');
+  });
+
+  it('says what to do when the server is missing, on stderr and not on the protocol stream', () => {
     const result = run();
     expect(result.status).toBe(1);
     expect(result.stdout).toBe('');
