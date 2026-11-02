@@ -10,7 +10,7 @@ import { clearPending, loadPending } from '../src/pending-run.js';
 import { heroCreate } from '../src/tools/hero-create.js';
 import { runNew } from '../src/tools/run-new.js';
 import { memoryFs, type MemoryFs } from '../../saves/test/memory-fs.js';
-import { TEST_BOARD_DIR, TEST_PROFILE_DIR, offlineNews } from './fake-context.js';
+import { TEST_PROFILE_DIR, offlineNews } from './fake-context.js';
 
 export interface GameContext extends ServerContext {
   readonly fs: MemoryFs;
@@ -23,7 +23,6 @@ export function gameContext(): GameContext {
   return {
     saveDir: 'game-save',
     saveFs: fs,
-    boardDir: TEST_BOARD_DIR,
     profileDir: TEST_PROFILE_DIR,
     notices: {},
     fs,

@@ -5,9 +5,10 @@ Save and resume runs. The engine is pure and does no I/O; this package owns the 
 ## Where saves live
 
 A save holds the sealed truth as plain JSON, so it lives in the game folder the player chose, never in the working
-directory. The game folder holds `saves/` (closed to the narrator) and `board/` (the evidence board, which the
-player opens in a browser). `resolveGameFolder({ env, platform, homedir })` decides the folder, `resolveSaveDir`
-and `resolveBoardDir` the two subfolders, and `defaultSaveDir()` calls them with the process values.
+directory. The game folder holds `saves/` (closed to the narrator) and `profile/`. Each run has a folder of its own in
+`saves/runs/<run id>/`: its state and log, and its evidence board in `board/evidence.html`, which the player opens
+in a browser (`runBoardFile`). `resolveGameFolder({ env, platform, homedir })` decides the folder, `resolveSaveDir`
+the saves, and `defaultSaveDir()` calls it with the process values.
 
 The game folder is:
 
@@ -27,7 +28,7 @@ Then the save directory is:
    directory is `%LOCALAPPDATA%\the-race` on Windows, `<home>/Library/Application Support/the-race` on macOS,
    and `$XDG_STATE_HOME/the-race` (absolute) or `<home>/.local/state/the-race` elsewhere (`legacySaveDir`).
 
-The board folder is `RACE_BOARD_DIR`, else `<game folder>/board`. To move to a new game folder, copy the old saves
+To move to a new game folder, copy the old saves
 into its `saves/` and change the option.
 
 ## Layout of the save directory

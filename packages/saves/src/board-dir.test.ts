@@ -1,66 +1,21 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { resolve } from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BOARD_FILE, defaultBoardDir, resolveBoardDir } from './board-dir.js';
-import { resolveSaveDir } from './save-dir.js';
+import { dirname, join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { BOARD_DIR, BOARD_FILE, runBoardFile } from './board-dir.js';
+import { runFiles } from './run-store.js';
 
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
+describe('runBoardFile', () => {
+  it('is board/evidence.html in the folder of the run, beside its state', () => {
+    const board = runBoardFile('saves', '2026-11-02T10-00-00Z');
 
-describe('resolveBoardDir', () => {
-  const win = { platform: 'win32', homedir: 'C:\\Users\\ann' } as const;
-  const mac = { platform: 'darwin', homedir: '/Users/ann' } as const;
-  const linux = { platform: 'linux', homedir: '/home/ann' } as const;
-
-  it('is board/ in the game folder, on each platform', () => {
-    expect(resolveBoardDir({ ...win, env: {} })).toBe('C:\\the-race\\board');
-    expect(resolveBoardDir({ ...mac, env: {} })).toBe('/Users/ann/the-race/board');
-    expect(resolveBoardDir({ ...linux, env: {} })).toBe('/home/ann/the-race/board');
+    expect(board).toBe(join(runFiles('saves', '2026-11-02T10-00-00Z').directory, BOARD_DIR, BOARD_FILE));
+    expect(dirname(dirname(board))).toBe(runFiles('saves', '2026-11-02T10-00-00Z').directory);
   });
 
-  it('follows the game folder the player chose', () => {
-    const chosen = '/srv/chosen';
-    expect(resolveBoardDir({ ...linux, env: { RACE_GAME_FOLDER: chosen } })).toBe(`${resolve(chosen)}/board`);
-  });
-
-  it('uses RACE_BOARD_DIR, resolved, on any platform', () => {
-    const elsewhere = resolve('elsewhere', 'boards');
-    for (const base of [win, mac, linux]) {
-      expect(resolveBoardDir({ ...base, env: { RACE_BOARD_DIR: elsewhere } })).toBe(elsewhere);
-    }
-    expect(resolveBoardDir({ ...linux, env: { RACE_BOARD_DIR: 'rel' } })).toBe(resolve('rel'));
-  });
-
-  it('ignores an empty RACE_BOARD_DIR', () => {
-    expect(resolveBoardDir({ ...linux, env: { RACE_BOARD_DIR: '' } })).toBe('/home/ann/the-race/board');
-  });
-
-  it('is never inside the save directory, which is closed to the narrator, nor the other way round', () => {
-    for (const base of [win, mac, linux]) {
-      const board = resolveBoardDir({ ...base, env: {} });
-      const saves = resolveSaveDir({ ...base, env: {} });
-
-      expect(board.startsWith(saves)).toBe(false);
-      expect(saves.startsWith(board)).toBe(false);
-    }
-  });
-});
-
-describe('defaultBoardDir', () => {
-  it('follows RACE_BOARD_DIR of the process', () => {
-    const folder = resolve('temp-race-boards');
-    vi.stubEnv('RACE_BOARD_DIR', folder);
-
-    expect(defaultBoardDir()).toBe(folder);
-  });
-
-  it('is in the game folder without it', () => {
-    vi.stubEnv('RACE_BOARD_DIR', '');
-
-    expect(defaultBoardDir()).toMatch(/the-race[\\/]board$/);
+  it('gives each run a board of its own', () => {
+    expect(runBoardFile('saves', 'a')).not.toBe(runBoardFile('saves', 'b'));
   });
 });
 

@@ -18,7 +18,7 @@
     "game_folder": {
       "type": "directory",
       "title": "Game folder",
-      "description": "Where the RACE keeps its files: the saves (closed to the narrator) and the evidence board you open in a browser. Choose a plain folder you can open, without a profile name or a cloud drive in the path. The default is a Windows path; on macOS and Linux keep it to use the-race in your home directory, or enter your own.",
+      "description": "Where the RACE keeps its files: the saves (closed to the narrator), each run in a folder of its own with the evidence board you open in a browser. Choose a plain folder you can open, without a profile name or a cloud drive in the path. The default is a Windows path; on macOS and Linux keep it to use the-race in your home directory, or enter your own.",
       "default": "C:\\the-race"
     }
   }
