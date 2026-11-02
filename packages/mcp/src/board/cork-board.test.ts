@@ -170,7 +170,9 @@ describe('what lights up when something is picked', () => {
     const rules = highlightRules(view);
 
     for (const entry of ['clue:key', 'suspect:a', 'place:market', 'place:cellar']) {
-      expect(rules).toContain(`main[data-sel="${entry}"] [data-rel~="${entry}"]{opacity:1`);
+      expect(rules).toContain(
+        `main[data-sel="${entry}"][data-sel] [data-rel~="${entry}"][data-rel]{opacity:1`,
+      );
     }
     const hostile = viewOf({
       clues: [
@@ -335,7 +337,7 @@ describe('the corkboard tab', () => {
 
     expect(page).toContain('main[data-open="key"] #open-key{display:block}');
     expect(page).toContain('main[data-open="glove"] #open-glove{display:block}');
-    expect(page).toContain('.opened{display:none;');
+    expect(page).toContain('display:none;position:absolute;left:50%;top:16px;');
     const ru = cork(viewOf({ ...PLAYED, locale: 'ru' }));
     expect(ru).toContain('Связки с ней');
     expect(ru).toContain('Нажмите ещё раз или Esc');
