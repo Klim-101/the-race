@@ -92,6 +92,7 @@
       "you": "you are here",
       "unvisited": "not yet visited",
       "locked": "locked",
+      "lead": "on a lead",
       "closed": "closed",
       "cluesHere": "clues found here",
       "legend": "Only what the detective has seen is on the map."
@@ -134,6 +135,9 @@
       },
       "events": "What has happened in the world",
       "noEvents": "Nothing yet. The world is holding its breath.",
+      "leads": "Leads",
+      "noLeads": "No leads yet.",
+      "window": "only from {from} to {until}",
       "open": "Still open",
       "nothingOpen": "Every door tried, everyone asked. Suspicious.",
       "unvisited": "Not yet visited",

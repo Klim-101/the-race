@@ -52,6 +52,8 @@ export const RunSummarySchema = z.object({
         name: z.string(),
         visited: z.boolean(),
         blocked: z.enum(['locked', 'closed']).nullable(),
+        /** The reason of the lead that named the place, until the hero has been there. */
+        lead: z.string().nullable(),
       }),
     ),
     links: z.array(z.object({ from: z.string(), to: z.string() })),
@@ -122,6 +124,8 @@ export const TurnResultSchema = z.object({
   felt: z.array(FeltSignalSchema).default([]),
   /** The hidden traits this turn showed, each told once; empty on most turns. */
   revealed: z.array(RevealedTraitSchema).default([]),
+  /** The leads this turn earned, in the hero's own words; the view lists them all. Often none. */
+  leads: z.array(z.object({ id: z.string(), reason: z.string() })).default([]),
   view: RunSummarySchema,
 });
 
@@ -225,6 +229,7 @@ export async function playIntent(
   assertFreshTurn(run, turn);
   const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
   if (!resolution.ok) throw new ToolFailure(refusalToToolError(resolution.refusal));
+  const caseLeads = resolution.run.case.leads ?? [];
   const recorded = recordResolution(log, run, intent, resolution);
   await saveRun(context.saveDir, resolution.run, context.saveFs, recorded);
   await keepProfile(context, resolution.run, recorded);
@@ -233,6 +238,9 @@ export async function playIntent(
     events: eventsOfTurn(run, resolution.run),
     felt: feltOfTurn(run, resolution.felt ?? []),
     revealed: revealedOfTurn(resolution.revealed),
+    leads: resolution.newLeadIds.flatMap((leadId) =>
+      caseLeads.filter(({ id }) => id === leadId).map(({ id, reason }) => ({ id, reason })),
+    ),
     view: summarizeRun(resolution.run),
   };
 }

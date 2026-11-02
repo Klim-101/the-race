@@ -47,6 +47,8 @@ export interface TabText {
     readonly you: string;
     readonly unvisited: string;
     readonly locked: string;
+    /** A place the hero knows of from a lead and has not seen yet. */
+    readonly lead: string;
     readonly closed: string;
     readonly cluesHere: string;
     readonly legend: string;
@@ -82,6 +84,10 @@ export interface TabText {
     readonly seedKinds: Readonly<Record<string, string>>;
     readonly events: string;
     readonly noEvents: string;
+    /** The heading of the leads, the line when there are none, and the hours of a lead with a window ({from}, {until}). */
+    readonly leads: string;
+    readonly noLeads: string;
+    readonly window: string;
     readonly open: string;
     readonly nothingOpen: string;
     readonly unvisited: string;

@@ -1,6 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { assertNever } from '../../assert-never.js';
 import type { CaseIssue } from '../case-issue.js';
 import type { DetectiveCase } from '../case-schema.js';
 
@@ -26,6 +27,10 @@ function checkUniqueIds(detectiveCase: DetectiveCase): CaseIssue[] {
         path: `locations[${String(locationIndex)}].parts[${String(partIndex)}].id`,
       })),
     ),
+    ...(detectiveCase.leads ?? []).map((lead, index) => ({
+      id: lead.id,
+      path: `leads[${String(index)}].id`,
+    })),
     ...detectiveCase.clues.map((clue, index) => ({ id: clue.id, path: `clues[${String(index)}].id` })),
     ...detectiveCase.suspects.flatMap((suspect, suspectIndex) => [
       { id: suspect.id, path: `suspects[${String(suspectIndex)}].id` },
@@ -55,6 +60,8 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
   const clueIds = new Set(detectiveCase.clues.map((clue) => clue.id));
   const suspectIds = new Set(detectiveCase.suspects.map((suspect) => suspect.id));
   const deductionIds = new Set(detectiveCase.deductions.map((deduction) => deduction.id));
+  const leadIds = new Set((detectiveCase.leads ?? []).map((lead) => lead.id));
+  const lieIds = new Set(detectiveCase.suspects.flatMap(({ lies }) => lies.map(({ id }) => id)));
   const issues: CaseIssue[] = [];
   const expect = (knownIds: ReadonlySet<string>, kind: string, id: string, path: string): void => {
     if (!knownIds.has(id))
@@ -74,11 +81,18 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
     if (location.access.kind === 'clue') {
       expect(clueIds, 'clue', location.access.clueId, `locations[${String(index)}].access.clueId`);
     }
+    if (location.requiresLead !== undefined) {
+      expect(leadIds, 'lead', location.requiresLead, `locations[${String(index)}].requiresLead`);
+    }
     (location.parts ?? []).forEach((part, partIndex) => {
       const path = `locations[${String(index)}].parts[${String(partIndex)}]`;
       if (part.holds !== null) expect(clueIds, 'clue', part.holds, `${path}.holds`);
+      if (part.requiresLead !== null) expect(leadIds, 'lead', part.requiresLead, `${path}.requiresLead`);
       if (part.fallback?.kind === 'ask') {
         expect(suspectIds, 'suspect', part.fallback.suspectId, `${path}.fallback.suspectId`);
+      }
+      if (part.fallback?.kind === 'lead') {
+        expect(leadIds, 'lead', part.fallback.leadId, `${path}.fallback.leadId`);
       }
     });
   });
@@ -103,6 +117,28 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
     deduction.clueIds.forEach((id, clueIndex) => {
       expect(clueIds, 'clue', id, `deductions[${String(index)}].clueIds[${String(clueIndex)}]`);
     });
+  });
+
+  (detectiveCase.leads ?? []).forEach((lead, index) => {
+    const path = `leads[${String(index)}].earnedBy`;
+    const { earnedBy } = lead;
+    switch (earnedBy.kind) {
+      case 'clue':
+        expect(clueIds, 'clue', earnedBy.clueId, `${path}.clueId`);
+        break;
+      case 'talk':
+        expect(suspectIds, 'suspect', earnedBy.suspectId, `${path}.suspectId`);
+        break;
+      case 'lie':
+        expect(lieIds, 'lie', earnedBy.lieId, `${path}.lieId`);
+        break;
+      case 'deduction':
+        expect(deductionIds, 'deduction', earnedBy.deductionId, `${path}.deductionId`);
+        break;
+      /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+      default:
+        assertNever(earnedBy);
+    }
   });
 
   detectiveCase.clock.worldEvents.forEach((event, index) => {

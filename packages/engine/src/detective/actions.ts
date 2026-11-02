@@ -33,6 +33,7 @@ import {
   sceneSituations,
   type Revealed,
 } from './trait-reveal.js';
+import { isLeadEarned, isLeadOpen, isPlaceKnown } from './leads.js';
 import { canClear, partsOfPlace } from './search-parts.js';
 import { buildNeighbors } from './obtainability.js';
 import { closedSourcesOf, drawDayEvents, drawOwedDayEvent, isLocationClosed } from './random-events.js';
@@ -114,6 +115,7 @@ export type RefusalCode =
   | 'part-not-noticed'
   | 'part-searched'
   | 'needs-tool'
+  | 'lead-window'
   | 'not-found'
   | 'no-insight'
   | 'garbled-clue'
@@ -259,7 +261,10 @@ function hiddenClues(run: DetectiveRunState, locationId: string): Clue[] {
 
 /** A glance round a room made of parts: it names the parts in the open and takes what lies in plain sight on them. */
 function resolveLookAtParts(run: DetectiveRunState, rng: Rng, parts: readonly PlacePart[]): Resolution {
-  const shown = parts.filter(({ inQuickLook }) => inQuickLook);
+  const shown = parts.filter(
+    ({ inQuickLook, requiresLead }) =>
+      inQuickLook && (requiresLead === null || isLeadEarned(run, requiresLead)),
+  );
   const hidden = hiddenClues(run, run.locationId);
   const found = shown.flatMap((part) =>
     part.obstacle === null ? hidden.filter((clue) => clue.id === part.holds && clue.discovery === null) : [],
@@ -308,6 +313,13 @@ function resolveSearchPart(
   }
   if (run.searchedParts.some((searched) => searched.partId === part.id)) {
     return refuse('part-searched', 'That part has been searched already.');
+  }
+  if (
+    part.requiresLead !== null &&
+    isLeadEarned(run, part.requiresLead) &&
+    !isLeadOpen(run, part.requiresLead)
+  ) {
+    return refuse('lead-window', 'That is not the hour for it: the lead is followed at another time of day.');
   }
   if (!canClear(part.obstacle)) {
     return refuse('needs-tool', 'The hero has nothing to get past that with.');
@@ -437,7 +449,9 @@ function resolveSearch(run: DetectiveRunState, rng: Rng, partId: string | undefi
 
 function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Resolution {
   const detectiveCase = run.case;
-  if (!detectiveCase.locations.some(({ id }) => id === locationId)) {
+  // A place the hero does not know yet is refused like one that does not exist, so that asking cannot find it.
+  const target = detectiveCase.locations.find(({ id }) => id === locationId);
+  if (target === undefined || !isPlaceKnown(run, target)) {
     return refuse('unknown-location', `There is no location "${locationId}".`);
   }
   if (locationId === run.locationId) {
@@ -454,6 +468,14 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
   const { access } = destination;
   // A place the hero has been in is open to them for good.
   const visited = run.visitedLocationIds.includes(locationId);
+  if (
+    !visited &&
+    destination.requiresLead !== undefined &&
+    isLeadEarned(run, destination.requiresLead) &&
+    !isLeadOpen(run, destination.requiresLead)
+  ) {
+    return refuse('lead-window', 'That is not the hour for it: the lead is followed at another time of day.');
+  }
   const details: CheckDetail[] = [];
   const results: SkillCheckResult[] = [];
   const felt: SignalFelt[] = [];
@@ -528,13 +550,18 @@ export function resolveIntent(run: DetectiveRunState, input: unknown, rng: Rng):
   const indebted = collectDebt(slept.run, run.clock.day);
   const shown = applyReveals(indebted.run, [...(slept.revealed ?? []), ...indebted.revealed]);
   const settled = settleClock(drawDayEvents(shown.run, run.clock, rng).run, run.clock.day);
-  return { ...slept, run: settled, revealed: shown.revealed };
+  const newLeadIds = settled.earnedLeads.slice(run.earnedLeads.length).map(({ leadId }) => leadId);
+  return { ...slept, run: settled, revealed: shown.revealed, newLeadIds };
 }
 
 /** What `resolveIntent` returns: every carried-out turn says which hidden traits it showed, often none. */
 export type Resolved =
   | Extract<Resolution, { ok: false }>
-  | (Extract<Resolution, { ok: true }> & { readonly revealed: readonly Revealed[] });
+  | (Extract<Resolution, { ok: true }> & {
+      readonly revealed: readonly Revealed[];
+      /** The leads this turn earned, by id: the view says what each is. */
+      readonly newLeadIds: readonly string[];
+    });
 
 type Carried = Resolution & { ok: true };
 

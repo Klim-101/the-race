@@ -9,6 +9,7 @@ import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { checkFleeDeadline } from './checks/flee-deadline.js';
 import { checkLies } from './checks/lies.js';
 import { checkMapShape, type MapRules } from './checks/map-shape.js';
+import { checkLeads } from './checks/leads.js';
 import { checkParts } from './checks/parts.js';
 import { checkRandomEvents } from './checks/random-events.js';
 import { checkReachability } from './checks/reachability.js';
@@ -81,6 +82,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
   const issues = [
     ...checkReachability(detectiveCase, obtainable),
     ...checkSuspectReachability(detectiveCase, obtainable),
+    ...checkLeads(detectiveCase, obtainable),
     ...checkParts(detectiveCase, obtainable, context.requireParts ?? false),
     ...checkSolution(detectiveCase, context.hero, context.traits, obtainable),
     ...checkSolveChance(detectiveCase, context.hero, context.traits, obtainable),

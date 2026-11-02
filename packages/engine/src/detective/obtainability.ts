@@ -5,7 +5,7 @@ import { assertNever } from '../assert-never.js';
 import type { InformationSource, Trait, TraitTrigger } from '../traits.js';
 import { collectModifier } from '../modifiers.js';
 import type { DetectiveHero } from './archetype.js';
-import type { DetectiveCase, Location, LocationAccess, SkillCheck } from './case-schema.js';
+import type { DetectiveCase, LeadTrigger, Location, LocationAccess, SkillCheck } from './case-schema.js';
 
 export const D20_MAX = 20;
 
@@ -44,6 +44,8 @@ export function canPassWithTrainedSkill(hero: DetectiveHero, traits: readonly Tr
 export interface Obtainable {
   readonly locationIds: ReadonlySet<string>;
   readonly clueIds: ReadonlySet<string>;
+  /** The leads the hero can earn, given the clues and places they can reach. */
+  readonly leadIds: ReadonlySet<string>;
 }
 
 /** Everything the hero can reach from the start, given which checks the policy lets through. */
@@ -55,6 +57,7 @@ export function computeObtainable(
   const neighborsById = buildNeighbors(detectiveCase.locations);
   const locationIds = new Set<string>([detectiveCase.startLocationId]);
   const clueIds = new Set<string>();
+  const leadIds = new Set<string>();
 
   // Clues open locations and locations hold clues, so expand both until nothing new appears.
   let hasChanged = true;
@@ -63,7 +66,12 @@ export function computeObtainable(
     for (const location of detectiveCase.locations) {
       if (locationIds.has(location.id)) continue;
       const isAdjacent = [...(neighborsById.get(location.id) ?? [])].some((id) => locationIds.has(id));
-      if (isAdjacent && canEnter(location.access, (check) => canPass(check, location.situations), clueIds)) {
+      const isKnown = location.requiresLead === undefined || leadIds.has(location.requiresLead);
+      if (
+        isAdjacent &&
+        isKnown &&
+        canEnter(location.access, (check) => canPass(check, location.situations), clueIds)
+      ) {
         locationIds.add(location.id);
         hasChanged = true;
       }
@@ -80,8 +88,50 @@ export function computeObtainable(
         }
       }
     }
+    for (const lead of detectiveCase.leads ?? []) {
+      if (!leadIds.has(lead.id) && canEarn(detectiveCase, lead.earnedBy, locationIds, clueIds)) {
+        leadIds.add(lead.id);
+        hasChanged = true;
+      }
+    }
   }
-  return { locationIds, clueIds };
+  return { locationIds, clueIds, leadIds };
+}
+
+/**
+ * Whether the hero can do what earns a lead. A talk or a lie needs the person within reach, and a lie also a
+ * clue that breaks it; luck is ignored here as everywhere in the validator.
+ */
+function canEarn(
+  detectiveCase: DetectiveCase,
+  earnedBy: LeadTrigger,
+  locationIds: ReadonlySet<string>,
+  clueIds: ReadonlySet<string>,
+): boolean {
+  const reachable = (suspectId: string): boolean => {
+    const place = detectiveCase.suspects.find(({ id }) => id === suspectId)?.locationId;
+    return place === undefined || locationIds.has(place);
+  };
+  switch (earnedBy.kind) {
+    case 'clue':
+      return clueIds.has(earnedBy.clueId);
+    case 'talk':
+      return reachable(earnedBy.suspectId);
+    case 'lie':
+      return detectiveCase.suspects.some(
+        ({ id, lies }) =>
+          reachable(id) &&
+          lies.some((lie) => lie.id === earnedBy.lieId && lie.brokenBy.some((clueId) => clueIds.has(clueId))),
+      );
+    case 'deduction':
+      return detectiveCase.deductions.some(
+        ({ id, clueIds: needed }) =>
+          id === earnedBy.deductionId && needed.every((clueId) => clueIds.has(clueId)),
+      );
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever(earnedBy);
+  }
 }
 
 function canEnter(

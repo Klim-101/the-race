@@ -44,10 +44,10 @@ function viewOf(overrides: Partial<View> = {}): View {
     map: {
       current: 'market',
       places: [
-        { id: 'market', name: 'Market', visited: true, blocked: null },
-        { id: 'stall', name: 'Stall', visited: true, blocked: null },
-        { id: 'cellar', name: 'Cellar', visited: false, blocked: 'locked' },
-        { id: 'chapel', name: 'Chapel', visited: false, blocked: 'closed' },
+        { id: 'market', name: 'Market', visited: true, blocked: null, lead: null },
+        { id: 'stall', name: 'Stall', visited: true, blocked: null, lead: null },
+        { id: 'cellar', name: 'Cellar', visited: false, blocked: 'locked', lead: null },
+        { id: 'chapel', name: 'Chapel', visited: false, blocked: 'closed', lead: null },
       ],
       links: [
         { from: 'market', to: 'stall' },
@@ -63,6 +63,7 @@ function viewOf(overrides: Partial<View> = {}): View {
     clues: [],
     openLinks: [],
     insights: [],
+    leads: [],
     chronicle: { activeMinutesLeft: 600, events: [] },
     ...overrides,
   } as unknown as View;
@@ -180,7 +181,7 @@ describe('the page', () => {
         ],
         map: {
           current: 'x',
-          places: [{ id: 'x', name: evil, visited: true, blocked: null }],
+          places: [{ id: 'x', name: evil, visited: true, blocked: null, lead: null }],
           links: [],
         },
         hero: {
@@ -231,8 +232,8 @@ describe('the map tab', () => {
           map: {
             current: 'market',
             places: [
-              { id: 'market', name: 'Market', visited: true, blocked: null },
-              { id: 'lane', name: 'Lane', visited: false, blocked: null },
+              { id: 'market', name: 'Market', visited: true, blocked: null, lead: null },
+              { id: 'lane', name: 'Lane', visited: false, blocked: null, lead: null },
             ],
             links: [{ from: 'market', to: 'lane' }],
           },
@@ -245,12 +246,38 @@ describe('the map tab', () => {
     expect(map).not.toContain('locked');
   });
 
+  it('marks a place a lead named, with the reason on its tooltip', () => {
+    const map = tab(
+      renderEvidenceBoard(
+        viewOf({
+          map: {
+            current: 'market',
+            places: [
+              { id: 'market', name: 'Market', visited: true, blocked: null, lead: null },
+              { id: 'lane', name: 'Lane', visited: false, blocked: null, lead: 'A cat points the way.' },
+            ],
+            links: [{ from: 'market', to: 'lane' }],
+          },
+        }),
+      ),
+      'map',
+    );
+
+    expect(map).toContain('on a lead');
+    expect(map).toContain('Lane (on a lead): A cat points the way.');
+    expect(map).not.toContain('not yet visited');
+  });
+
   it('cuts a long name on the picture and keeps it whole in the tooltip', () => {
     const name = 'The Extremely Long-Named Municipal Archive';
     const map = tab(
       renderEvidenceBoard(
         viewOf({
-          map: { current: 'a', places: [{ id: 'a', name, visited: true, blocked: null }], links: [] },
+          map: {
+            current: 'a',
+            places: [{ id: 'a', name, visited: true, blocked: null, lead: null }],
+            links: [],
+          },
         }),
       ),
       'map',
@@ -278,7 +305,7 @@ describe('the map tab', () => {
         viewOf({
           map: {
             current: 'market',
-            places: [{ id: 'market', name: 'Market', visited: true, blocked: null }],
+            places: [{ id: 'market', name: 'Market', visited: true, blocked: null, lead: null }],
             links: [{ from: 'market', to: 'nowhere' }],
           },
         }),
@@ -313,9 +340,9 @@ describe('layoutMap', () => {
     const { nodes } = layoutMap({
       current: 'a',
       places: [
-        { id: 'a', name: 'A', visited: true, blocked: null },
-        { id: 'b', name: 'B', visited: true, blocked: null },
-        { id: 'island', name: 'Island', visited: false, blocked: null },
+        { id: 'a', name: 'A', visited: true, blocked: null, lead: null },
+        { id: 'b', name: 'B', visited: true, blocked: null, lead: null },
+        { id: 'island', name: 'Island', visited: false, blocked: null, lead: null },
       ],
       links: [{ from: 'a', to: 'b' }],
     });
@@ -535,10 +562,10 @@ describe('the chronicle tab', () => {
           map: {
             current: 'market',
             places: [
-              { id: 'market', name: 'Market', visited: true, blocked: null },
-              { id: 'lane', name: 'Lane', visited: false, blocked: null },
-              { id: 'cellar', name: 'Cellar', visited: false, blocked: 'locked' },
-              { id: 'chapel', name: 'Chapel', visited: false, blocked: 'closed' },
+              { id: 'market', name: 'Market', visited: true, blocked: null, lead: null },
+              { id: 'lane', name: 'Lane', visited: false, blocked: null, lead: null },
+              { id: 'cellar', name: 'Cellar', visited: false, blocked: 'locked', lead: null },
+              { id: 'chapel', name: 'Chapel', visited: false, blocked: 'closed', lead: null },
             ],
             links: [],
           },
@@ -577,7 +604,7 @@ describe('the chronicle tab', () => {
         viewOf({
           map: {
             current: 'market',
-            places: [{ id: 'market', name: 'Market', visited: true, blocked: null }],
+            places: [{ id: 'market', name: 'Market', visited: true, blocked: null, lead: null }],
             links: [],
           },
           suspects: [asked('Anna')],
@@ -900,5 +927,31 @@ describe('the weather in the chronicle', () => {
     expect(chronicle({ weather: 'cold-rain' })).toContain('Weather today: cold rain');
     expect(chronicle({ weather: 'frost', locale: 'ru' })).toContain('Погода сегодня: мороз');
     expect(chronicle({})).not.toContain('Weather today');
+  });
+});
+
+describe('the leads on the chronicle tab', () => {
+  const leads = [
+    { id: 'a', reason: 'A cat points the way.', window: null, openNow: true, opens: [] },
+    {
+      id: 'b',
+      reason: 'The archive is watched by day.',
+      window: { fromMinute: 22 * 60, untilMinute: 5 * 60 + 30 },
+      openNow: false,
+      opens: [],
+    },
+  ];
+
+  it('lists each lead in the words of the hero, with the hours of one that has a window', () => {
+    const chronicle = tab(renderEvidenceBoard(viewOf({ leads })), 'chronicle');
+
+    expect(chronicle).toContain('A cat points the way.');
+    expect(chronicle).toContain('The archive is watched by day.');
+    expect(chronicle).toContain('only from 22:00 to 05:30');
+    expect(chronicle.match(/only from/g)).toHaveLength(1);
+  });
+
+  it('says so when there are none', () => {
+    expect(tab(renderEvidenceBoard(viewOf({ leads: [] })), 'chronicle')).toContain('No leads yet.');
   });
 });

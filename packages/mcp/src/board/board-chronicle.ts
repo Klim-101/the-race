@@ -58,6 +58,16 @@ function turnText(turn: TurnView, text: TabText): string {
   }
 }
 
+/** The hours of a window as clock times, from the words of the language. */
+function windowText(
+  window: { readonly fromMinute: number; readonly untilMinute: number },
+  text: TabText['chronicle'],
+): string {
+  return text.window
+    .replaceAll('{from}', clock(window.fromMinute))
+    .replaceAll('{until}', clock(window.untilMinute));
+}
+
 /** What is still open, from the public view alone: places not seen, ways shut, people not asked, clues to reread. */
 function openQuestions(view: DetectiveRunView, text: TabText['chronicle']): string[] {
   const places = view.map.places.filter(({ visited }) => !visited);
@@ -112,6 +122,17 @@ ${
     : list(
         view.chronicle.events.map(
           ({ day, text: event }) => `<span class="tag">${e(t.day)} ${String(day)}</span> ${e(event)}`,
+        ),
+      )
+}
+<h3>${e(t.leads)}</h3>
+${
+  view.leads.length === 0
+    ? `<p class="empty">${e(t.noLeads)}</p>`
+    : list(
+        view.leads.map(
+          ({ reason, window }) =>
+            `${e(reason)}${window === null ? '' : ` <span class="tag">${e(windowText(window, t))}</span>`}`,
         ),
       )
 }

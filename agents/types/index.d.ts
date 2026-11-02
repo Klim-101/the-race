@@ -9,6 +9,8 @@ export type HudPlace = {
   name: string;
   visited: boolean;
   blocked: 'locked' | 'closed' | null;
+  /** The reason of the lead that named the place, until the hero has been there. */
+  lead: string | null;
 };
 
 export type Hud = {

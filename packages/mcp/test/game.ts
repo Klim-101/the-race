@@ -38,20 +38,23 @@ export function partedSampleCase(): DetectiveCase {
 }
 
 /**
- * The sample case with its places left whole, as the cases of before the parts were: a look takes what lies in
+ * The sample case with its places left whole and no leads, as the cases of before the parts were: a look takes what lies in
  * plain sight and a search takes the whole place. Most of the tools are indifferent to how a place is searched,
  * and play on this one; the search by part has its own tests.
  */
 export function sampleCase(): DetectiveCase {
   const detectiveCase = partedSampleCase();
-  return {
+  const whole = {
     ...detectiveCase,
     locations: detectiveCase.locations.map((location) => {
-      const whole = { ...location };
-      delete whole.parts;
-      return whole;
+      const place = { ...location };
+      delete place.parts;
+      delete place.requiresLead;
+      return place;
     }),
   };
+  delete whole.leads;
+  return whole;
 }
 
 /** The structured content of a call, and whether it failed. */

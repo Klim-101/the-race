@@ -45,9 +45,11 @@ import {
   EntityIdSchema,
   type DetectiveCase,
   type Exposure,
+  type LeadTrigger,
   type Location,
   type ObstacleKind,
 } from './case-schema.js';
+import { isLeadEarned, isLeadOpen, isPlaceKnown, leadsEarnedBy } from './leads.js';
 import { partsOfPlace } from './search-parts.js';
 import {
   PendingEffectSchema,
@@ -128,6 +130,9 @@ export const RunHistorySchema = z.object({
 });
 export type RunHistory = z.infer<typeof RunHistorySchema>;
 
+export const EarnedLeadSchema = z.object({ leadId: EntityIdSchema, turn: z.int().min(1) });
+export type EarnedLead = z.infer<typeof EarnedLeadSchema>;
+
 export const SearchedPartSchema = z.object({
   partId: EntityIdSchema,
   locationId: EntityIdSchema,
@@ -176,6 +181,8 @@ export const DetectiveRunStateSchema = z
     noticedPartIds: z.array(EntityIdSchema).default([]),
     /** Parts the hero has searched, with what each gave and the turn: a part searched stays searched. */
     searchedParts: z.array(SearchedPartSchema).default([]),
+    /** Leads the hero has earned, with the turn of each; what a lead opens is told by the case. */
+    earnedLeads: z.array(EarnedLeadSchema).default([]),
     /** Found clues whose reading was garbled by fatigue; each must be read again before it is used as proof. */
     garbledClueIds: z.array(EntityIdSchema).default([]),
     /** Consumables the hero carries, by count; they come from their background. Old saves have none. */
@@ -227,6 +234,11 @@ export const DetectiveRunStateSchema = z
     );
     known('garbledClueIds', run.garbledClueIds, new Set(run.case.clues.map(({ id }) => id)));
     known('closedLocationIds', run.closedLocationIds, locationIds);
+    known(
+      'earnedLeads',
+      run.earnedLeads.map(({ leadId }) => leadId),
+      new Set((run.case.leads ?? []).map(({ id }) => id)),
+    );
     const partIds = new Set(run.case.locations.flatMap(({ parts }) => (parts ?? []).map(({ id }) => id)));
     known('noticedPartIds', run.noticedPartIds, partIds);
     known(
@@ -304,6 +316,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     signalEvents: [],
     noticedPartIds: [],
     searchedParts: [],
+    earnedLeads: [],
     garbledClueIds: [],
     supplies: initialSupplies(input.hero.background, input.hero.lifeState),
     pendingEffects: [],
@@ -394,11 +407,36 @@ export function findClue(run: DetectiveRunState, clueId: string): DetectiveRunSt
   const found = run.case.clues.flatMap(({ id, locationId }) =>
     id === clueId ? [{ clueId, locationId, turn: run.turn + 1 }] : [],
   );
-  return {
-    ...run,
-    foundClueIds: [...run.foundClueIds, clueId],
-    history: { ...run.history, finds: [...run.history.finds, ...found] },
-  };
+  return grantLeads(
+    {
+      ...run,
+      foundClueIds: [...run.foundClueIds, clueId],
+      history: { ...run.history, finds: [...run.history.finds, ...found] },
+    },
+    [{ kind: 'clue', clueId }],
+  );
+}
+
+/**
+ * Earns the leads that these deeds earn, for good. A hard lead shows the part it opens, and a lead that is the
+ * way round an obstacle hands over the clue behind it, which can earn leads in its turn.
+ */
+export function grantLeads(run: DetectiveRunState, deeds: readonly LeadTrigger[]): DetectiveRunState {
+  const earned = deeds.flatMap((deed) => leadsEarnedBy(run, deed));
+  return [...new Set(earned)].reduce((state, lead) => {
+    const parts = state.case.locations.flatMap((location) => location.parts ?? []);
+    const shown = parts.filter(({ requiresLead }) => requiresLead === lead.id).map(({ id }) => id);
+    const given = parts.flatMap((part) =>
+      part.fallback?.kind === 'lead' && part.fallback.leadId === lead.id && part.holds !== null
+        ? [part.holds]
+        : [],
+    );
+    const withLead: DetectiveRunState = {
+      ...state,
+      earnedLeads: [...state.earnedLeads, { leadId: lead.id, turn: state.turn + 1 }],
+    };
+    return given.reduce(findClue, noticeParts(withLead, shown));
+  }, run);
 }
 
 /** Writes down that clues were shown to a suspect in the turn being played, with what the showing did. */
@@ -441,7 +479,8 @@ export function addInsight(run: DetectiveRunState, deductionId: string): Detecti
     deductionId,
     run.case.deductions.map(({ id }) => id),
   );
-  return { ...run, insightIds: addOnce(run.insightIds, deductionId) };
+  const withInsight = { ...run, insightIds: addOnce(run.insightIds, deductionId) };
+  return grantLeads(withInsight, [{ kind: 'deduction', deductionId }]);
 }
 
 /** The engine shows a trait to the player; from then on it is part of the public view. */
@@ -643,6 +682,8 @@ export interface DetectiveRunView {
       readonly visited: boolean;
       /** Why the way is shut right now, if it is: a door that wants a clue first, or a place an event closed. */
       readonly blocked: 'locked' | 'closed' | null;
+      /** Why the hero knows of the place, when a lead named it and the hero has not been there yet. */
+      readonly lead: string | null;
     }[];
   };
   /**
@@ -658,6 +699,8 @@ export interface DetectiveRunView {
       readonly visited: boolean;
       /** Why the way in is shut right now, as for an exit. */
       readonly blocked: 'locked' | 'closed' | null;
+      /** The reason of the lead that named the place, in one line, as for an exit. */
+      readonly lead: string | null;
     }[];
     /** Each way between two known places once, with `from` before `to` in the order of `places`. */
     readonly links: readonly { readonly from: string; readonly to: string }[];
@@ -673,6 +716,23 @@ export interface DetectiveRunView {
       readonly day: number;
       readonly kind: (typeof STATEMENT_KINDS)[number];
       readonly text: string;
+    }[];
+  }[];
+  /**
+   * The leads the hero has earned, in the order they came: what made the hero look, in the hero's own words, and
+   * what each opens. Never whether a lead is false, and never what is true.
+   */
+  readonly leads: readonly {
+    readonly id: string;
+    readonly reason: string;
+    /** The hours of the day the lead can be followed in, if it has a window. */
+    readonly window: { readonly fromMinute: number; readonly untilMinute: number } | null;
+    /** Whether the hour of the day lets the hero follow it now. */
+    readonly openNow: boolean;
+    readonly opens: readonly {
+      readonly kind: 'place' | 'part';
+      readonly id: string;
+      readonly name: string;
     }[];
   }[];
   readonly clues: readonly {
@@ -752,16 +812,55 @@ function blockedWay(
 }
 
 /** The known map: visited places and their neighbours, with the ways between them. See `DetectiveRunView.map`. */
+/** Why the hero knows of a place a lead named, until the hero has been there. */
+function leadMarker(run: DetectiveRunState, location: Location): string | null {
+  if (location.requiresLead === undefined || run.visitedLocationIds.includes(location.id)) return null;
+  const lead = run.case.leads?.find(({ id }) => id === location.requiresLead);
+  return lead !== undefined && isLeadEarned(run, lead.id) ? lead.reason : null;
+}
+
+function viewLeads(run: DetectiveRunState): DetectiveRunView['leads'] {
+  const { locations } = run.case;
+  const leads = run.case.leads ?? [];
+  return run.earnedLeads.flatMap(({ leadId }) =>
+    leads
+      .filter(({ id }) => id === leadId)
+      .map(({ id, reason, window }) => ({
+        id,
+        reason,
+        window: window ?? null,
+        openNow: isLeadOpen(run, id),
+        opens: [
+          ...locations
+            .filter(({ requiresLead }) => requiresLead === id)
+            .map((place) => ({ kind: 'place' as const, id: place.id, name: place.name })),
+          ...locations.flatMap(({ parts }) =>
+            (parts ?? [])
+              .filter(({ requiresLead }) => requiresLead === id)
+              .map((part) => ({ kind: 'part' as const, id: part.id, name: part.name })),
+          ),
+        ],
+      })),
+  );
+}
+
 function viewMap(run: DetectiveRunState): DetectiveRunView['map'] {
   const { locations } = run.case;
   const neighbors = buildNeighbors(locations);
   const known = new Set(run.visitedLocationIds);
   for (const id of run.visitedLocationIds) for (const next of neighbors.get(id) ?? []) known.add(next);
   const places = locations
-    .filter(({ id }) => known.has(id))
-    .map(({ id, name, access }) => {
+    .filter((location) => known.has(location.id) && isPlaceKnown(run, location))
+    .map((location) => {
+      const { id, name, access } = location;
       const visited = run.visitedLocationIds.includes(id);
-      return { id, name, visited, blocked: blockedWay(run, id, access, visited) };
+      return {
+        id,
+        name,
+        visited,
+        blocked: blockedWay(run, id, access, visited),
+        lead: leadMarker(run, location),
+      };
     });
   const linked = (a: string, b: string): boolean =>
     locations.some(
@@ -780,10 +879,14 @@ function viewMap(run: DetectiveRunState): DetectiveRunView['map'] {
 export function viewRun(run: DetectiveRunState): DetectiveRunView {
   const { case: detectiveCase } = run;
   const location = requireLocation(detectiveCase, run.locationId);
-  const exits = [...(buildNeighbors(detectiveCase.locations).get(location.id) ?? [])].map((id) => {
-    const { name, access } = requireLocation(detectiveCase, id);
+  const exits = [...(buildNeighbors(detectiveCase.locations).get(location.id) ?? [])].flatMap((id) => {
+    const next = requireLocation(detectiveCase, id);
+    if (!isPlaceKnown(run, next)) return [];
     const visited = run.visitedLocationIds.includes(id);
-    return { id, name, visited, blocked: blockedWay(run, id, access, visited) };
+    const { name, access } = next;
+    return [
+      { id, name, visited, blocked: blockedWay(run, id, access, visited), lead: leadMarker(run, next) },
+    ];
   });
   const pool = detectiveCase.randomEvents ?? [];
   return {
@@ -835,6 +938,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
       exits,
     },
     map: viewMap(run),
+    leads: viewLeads(run),
     suspects: detectiveCase.suspects.map((suspect) => {
       const placeId = suspectPlace(run, suspect);
       const place = placeId === undefined ? undefined : requireLocation(detectiveCase, placeId);
