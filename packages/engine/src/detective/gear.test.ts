@@ -14,6 +14,7 @@ import {
   GEAR_IDS,
   gearModifiers,
   initialKit,
+  startingKit,
   viewKit,
   withGearState,
 } from './gear.js';
@@ -45,8 +46,10 @@ const modifier = (run: DetectiveRunState, skill: string): number =>
 describe('the kit by background', () => {
   it('is the same for the same background and every piece is owned at the start', () => {
     for (const background of BACKGROUNDS) {
-      expect(newRun(background).kit).toEqual(initialKit(background));
-      expect(newRun(background).kit.map(({ id }) => id)).toEqual(BACKGROUND_KITS[background]);
+      expect(newRun(background).kit).toEqual(startingKit(background, undefined, 'gear'));
+      expect(newRun(background).kit.map(({ id }) => id)).toEqual(
+        expect.arrayContaining([...BACKGROUND_KITS[background], 'phone']),
+      );
       expect(newRun(background).kit.every(({ state }) => state === 'owned')).toBe(true);
     }
   });
@@ -59,7 +62,9 @@ describe('the kit by background', () => {
     expect(
       new Set(BACKGROUNDS.map((background) => BACKGROUND_KITS[background].join())).size,
     ).toBeGreaterThanOrEqual(8);
-    for (const id of GEAR_IDS) expect(DETECTIVE_GEAR[id].effects.length).toBeGreaterThan(0);
+    for (const id of GEAR_IDS) {
+      expect(DETECTIVE_GEAR[id].effects.length > 0 || DETECTIVE_GEAR[id].tool !== null).toBe(true);
+    }
   });
 
   it('is a policeman for a hero who names no background', () => {
@@ -140,9 +145,9 @@ describe('the kit in the state and the view', () => {
   it('is shown to the player with the name key and the state of each piece', () => {
     const view = viewRun(loseGear(newRun('police'), 'phone')).kit;
 
-    expect(view).toEqual([
-      { id: 'phone', nameKey: 'gear.phone', state: 'lost' },
-      { id: 'notebook', nameKey: 'gear.notebook', state: 'owned' },
+    expect(view.slice(0, 2)).toEqual([
+      { id: 'phone', nameKey: 'gear.phone', state: 'lost', removes: ['dark'], charges: null },
+      { id: 'notebook', nameKey: 'gear.notebook', state: 'owned', removes: [], charges: null },
     ]);
     expect(viewKit([])).toEqual([]);
   });

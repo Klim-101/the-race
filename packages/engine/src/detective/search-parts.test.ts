@@ -83,7 +83,9 @@ function newRun(
     rngState: 1,
     locale: 'en',
   });
-  return options.ruleset === undefined ? run : { ...run, rulesetVersion: options.ruleset };
+  // The phone alone, whatever the seed would have handed the hero: these tests are about the parts.
+  const bare = { ...run, kit: [{ id: 'phone' as const, state: 'owned' as const }] };
+  return options.ruleset === undefined ? bare : { ...bare, rulesetVersion: options.ruleset };
 }
 
 function ok(resolution: Resolution): Extract<Resolution, { ok: true }> {

@@ -192,7 +192,7 @@ describe('the page', () => {
           background: evil,
         },
         revealedTraits: [{ id: evil }],
-        kit: [{ id: evil, nameKey: 'x', state: 'owned' }],
+        kit: [{ id: evil, nameKey: 'x', state: 'owned', removes: [], charges: null }],
       } as unknown as Partial<View>),
     );
 
@@ -722,8 +722,11 @@ describe('the hero tab', () => {
           },
           warnings: ['low-reputation'],
           kit: [
-            { id: 'phone', nameKey: 'gear.phone', state: 'owned' },
-            { id: 'picks', nameKey: 'gear.picks', state: 'lost' },
+            { id: 'phone', nameKey: 'gear.phone', state: 'owned', removes: ['dark'], charges: null },
+            { id: 'picks', nameKey: 'gear.picks', state: 'lost', removes: ['locked'], charges: null },
+            { id: 'powder', nameKey: 'gear.powder', state: 'owned', removes: ['trace'], charges: 2 },
+            { id: 'test-kit', nameKey: 'gear.test-kit', state: 'spent', removes: ['trace'], charges: 0 },
+            { id: 'knife', nameKey: 'gear.knife', state: 'broken', removes: ['soft'], charges: null },
           ],
           supplies: [{ id: 'coffee', nameKey: 'consumable.coffee', count: 2 }],
           pending: [
@@ -746,6 +749,9 @@ describe('the hero tab', () => {
     expect(hero).toContain('reputation is low');
     expect(hero).toContain('phone</li>');
     expect(hero).toContain('lock picks <span class="warn">(lost)</span>');
+    expect(hero).toContain('fingerprint powder <span class="tag">left: 2</span>');
+    expect(hero).toContain('test kit <span class="warn">(used up)</span>');
+    expect(hero).toContain('pocket knife <span class="warn">(broken)</span>');
     expect(hero).toContain('coffee ×2');
     expect(hero).toContain('coffee: -1 sleep debt <span class="tag">in 30 min</span>');
     expect(hero).toContain('a drink: +2 nerves <span class="tag">at night</span>');

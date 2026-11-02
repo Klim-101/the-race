@@ -67,7 +67,7 @@ exports[`the hero tab > shows the detective, how they hold up and what they carr
 <ul><li><span class="warn">reputation is low: people will not open up</span></li></ul>
 </div>
 <h3>Kit</h3>
-<ul><li>phone</li><li>lock picks <span class="warn">(lost)</span></li></ul>
+<ul><li>phone</li><li>lock picks <span class="warn">(lost)</span></li><li>fingerprint powder <span class="tag">left: 2</span></li><li>test kit <span class="warn">(used up)</span></li><li>pocket knife <span class="warn">(broken)</span></li></ul>
 <h3>Supplies</h3>
 <ul><li>coffee ×2</li></ul>
 <h3>On its way</h3><ul><li>coffee: -1 sleep debt <span class="tag">in 30 min</span></li><li>a drink: +2 nerves <span class="tag">at night</span></li></ul>
