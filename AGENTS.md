@@ -49,6 +49,7 @@ npm run lint            # LLM SDK denylist, ESLint, Prettier
 npm run typecheck
 npm run test:coverage   # the engine must stay at 100% coverage
 npm run build
+npm run bundle:check    # the server bundled into the plugin is current (npm run bundle rewrites it)
 npm run licenses:check  # runtime dependency licenses against the allowlist
 npm run bundle:check    # the committed server bundle matches the sources (`npm run bundle` rewrites it)
 ```
