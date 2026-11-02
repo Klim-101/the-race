@@ -33298,7 +33298,9 @@ var KitItemSchema = external_exports.object({
   id: GearIdSchema,
   state: GearStateSchema,
   /** Uses left of a piece that is used up; absent for the rest, and for a kit from before the tools. */
-  charges: external_exports.int().min(0).optional()
+  charges: external_exports.int().min(0).optional(),
+  /** Set for a tool in the suitcase, which takes a slot; the phone and what the hero's trade gave take none. */
+  suitcase: external_exports.boolean().optional()
 });
 function initialKit(background, lifeState) {
   const own2 = BACKGROUND_KITS[background];
@@ -33319,7 +33321,8 @@ function viewKit(kit) {
     state: item.state,
     removes: DETECTIVE_GEAR[item.id].tool?.removes ?? [],
     charges: chargesLeft(item),
-    lawful: DETECTIVE_GEAR[item.id].tool?.lawful ?? true
+    lawful: DETECTIVE_GEAR[item.id].tool?.lawful ?? true,
+    suitcase: item.suitcase === true
   }));
 }
 function chargesLeft(item) {
@@ -33361,14 +33364,20 @@ var BACKGROUND_TOOL_LEAN = {
   "street-private-eye": ["powder", "binoculars"]
 };
 var LEAN_WEIGHT = 3;
-function startingKit(background, lifeState, seed) {
+function startingKit(background, lifeState, seed, slots = 1) {
   const own2 = initialKit(background, lifeState);
   const withPhone = own2.some(({ id }) => id === "phone") ? own2 : [{ id: "phone", state: "owned" }, ...own2];
-  const pool = EXTRA_TOOLS.filter((id) => !withPhone.some((item) => item.id === id)).flatMap(
+  const rng = createRng(`${seed}:kit`);
+  const drawn = [];
+  let pool = EXTRA_TOOLS.filter((id) => !withPhone.some((item) => item.id === id)).flatMap(
     (id) => Array.from({ length: BACKGROUND_TOOL_LEAN[background].includes(id) ? LEAN_WEIGHT : 1 }, () => id)
   );
-  const at3 = createRng(`${seed}:kit`).roll(pool.length) - 1;
-  const drawn = pool.slice(at3, at3 + 1).map((id) => ({ id, state: "owned" }));
+  for (let slot = 0; slot < slots; slot += 1) {
+    const at3 = rng.roll(pool.length) - 1;
+    const picked = pool.slice(at3, at3 + 1);
+    drawn.push(...picked.map((id) => ({ id, state: "owned", suitcase: true })));
+    pool = pool.filter((other) => !picked.includes(other));
+  }
   return [...withPhone, ...drawn].map((item) => {
     const rules = DETECTIVE_GEAR[item.id].tool;
     return rules?.wear === "used-up" ? { ...item, charges: rules.charges } : item;
@@ -34441,6 +34450,9 @@ function viewCondition(condition) {
   };
 }
 
+// packages/engine/src/detective/suitcase.ts
+var suitcaseOf = (run) => run.kit.filter(({ suitcase }) => suitcase === true);
+
 // packages/engine/src/detective/skill-presets.ts
 var DETECTIVE_SKILL_PRESETS = [
   {
@@ -34630,6 +34642,40 @@ function candidateHeroInput(candidate2, name) {
   };
 }
 
+// packages/engine/src/progress.ts
+var START_TOOL_SLOTS = 1;
+var MAX_TOOL_SLOTS = 5;
+var LOSSES_TO_LOSE_A_SLOT = 2;
+var START_TRAIT_SLOTS = 2;
+var MAX_TRAIT_SLOTS = 5;
+var POCKET_LIMITS = { coffee: 2, sedative: 7 };
+function toolSlotsOf(records) {
+  let slots = START_TOOL_SLOTS;
+  let losses = 0;
+  for (const record2 of records) {
+    if (record2.won) {
+      slots = Math.min(MAX_TOOL_SLOTS, slots + 1);
+      losses = 0;
+    } else {
+      losses += 1;
+      if (losses === LOSSES_TO_LOSE_A_SLOT) {
+        slots = Math.max(START_TOOL_SLOTS, slots - 1);
+        losses = 0;
+      }
+    }
+  }
+  return slots;
+}
+function traitSlotsOf(wins) {
+  return Math.min(MAX_TRAIT_SLOTS, START_TRAIT_SLOTS + wins);
+}
+function traitRuleFor(slots, seed) {
+  const half = Math.floor(slots / 2);
+  const extraToGood = slots % 2 === 1 && createRng(`${seed}:trait-slots`).roll(2) === 1;
+  return { positive: half + (extraToGood ? 1 : 0), negative: slots - half - (extraToGood ? 1 : 0), any: 0 };
+}
+var winsOf = (records) => records.filter(({ won }) => won).length;
+
 // packages/engine/src/detective/consumables.ts
 var CONSUMABLE_IDS = ["coffee", "alcohol", "sedative"];
 var ConsumableIdSchema = external_exports.enum(CONSUMABLE_IDS);
@@ -34695,10 +34741,21 @@ var BACKGROUND_SUPPLIES = {
   "street-private-eye": { coffee: 1, alcohol: 1 }
 };
 var SuppliesSchema = external_exports.partialRecord(ConsumableIdSchema, external_exports.int().min(1));
+function pocketLimit(id) {
+  return id === "coffee" || id === "sedative" ? POCKET_LIMITS[id] : null;
+}
+function inPockets(supplies) {
+  return Object.fromEntries(
+    Object.entries(supplies).map(([id, count]) => [
+      id,
+      Math.min(count, pocketLimit(id) ?? count)
+    ])
+  );
+}
 function initialSupplies(background, lifeState) {
   const supplies = { ...BACKGROUND_SUPPLIES[background] };
   const added = lifeState === void 0 ? void 0 : LIFE_STATE_SHIFTS[lifeState].supply;
-  return added === void 0 ? supplies : { ...supplies, [added]: (supplies[added] ?? 0) + 1 };
+  return inPockets(added === void 0 ? supplies : { ...supplies, [added]: (supplies[added] ?? 0) + 1 });
 }
 function withSupplyUsed(supplies, id) {
   const left = (supplies[id] ?? 0) - 1;
@@ -34731,7 +34788,7 @@ function splitPending(pending, minute, night) {
 function viewSupplies(supplies) {
   return CONSUMABLE_IDS.flatMap((id) => {
     const count = supplies[id] ?? 0;
-    return count > 0 ? [{ id, nameKey: CONSUMABLES[id].nameKey, count }] : [];
+    return count > 0 ? [{ id, nameKey: CONSUMABLES[id].nameKey, count, limit: pocketLimit(id) }] : [];
   });
 }
 function viewPending(pending, nowMinute) {
@@ -35825,6 +35882,8 @@ var DetectiveRunStateSchema = external_exports.object({
   actionStrain: external_exports.object({ day: external_exports.int().min(1), spent: external_exports.int().min(0) }).default(() => ({ day: 1, spent: 0 })),
   /** The hero's gear and whether each piece is in hand; it comes from their background. Old saves have none. */
   kit: external_exports.array(KitItemSchema).default([]),
+  /** How many tools the suitcase holds, besides the phone and what the hero's trade gave; earned across runs. */
+  toolSlots: external_exports.int().min(1).max(MAX_TOOL_SLOTS).default(START_TOOL_SLOTS),
   /** Places that a scheduled event has closed; the hero cannot enter them any more. */
   closedLocationIds: external_exports.array(EntityIdSchema).default([]),
   /** Random events the night has drawn, with the day of each; the pool of the case holds what they are. */
@@ -35953,7 +36012,13 @@ function createDetectiveRun(input2) {
     concededLieIds: [],
     condition: initialCondition(),
     actionStrain: { day: 1, spent: 0 },
-    kit: startingKit(input2.hero.background, input2.hero.lifeState, input2.seed),
+    toolSlots: input2.toolSlots ?? START_TOOL_SLOTS,
+    kit: startingKit(
+      input2.hero.background,
+      input2.hero.lifeState,
+      input2.seed,
+      input2.toolSlots ?? START_TOOL_SLOTS
+    ),
     closedLocationIds: [],
     drawnEvents: [],
     signalEvents: [],
@@ -36281,6 +36346,7 @@ function viewRun(run) {
     reputation: run.reputation,
     condition: viewCondition(run.condition),
     kit: viewKit(run.kit),
+    toolSlots: { total: run.toolSlots, used: suitcaseOf(run).length },
     supplies: viewSupplies(run.supplies),
     pending: viewPending(run.pendingEffects, absoluteMinute(run.clock)),
     warnings: warningsOfMeters(meterReadings(run)),
@@ -39732,7 +39798,8 @@ function replayed(run, log) {
       locale: run.locale,
       setting: run.setting,
       inspiration: run.inspiration,
-      runId: run.runId
+      runId: run.runId,
+      toolSlots: run.toolSlots
     }),
     // A save keeps the versions it was made with; replay must not fail over a version stamp.
     schemaVersion: run.schemaVersion,
@@ -50094,6 +50161,10 @@ async function keepProfile(context2, run, log) {
   } catch {
   }
 }
+async function recordsOrNone(context2) {
+  const loaded = await loadProfile(context2.profileDir, context2.saveFs);
+  return loaded.ok ? loaded.records : [];
+}
 async function requireProfile(context2) {
   const loaded = await loadProfile(context2.profileDir, context2.saveFs);
   if (!loaded.ok) {
@@ -52108,7 +52179,8 @@ async function requirePending(context2) {
   return pending;
 }
 async function storeHero(context2, pending, input2, rng) {
-  const assembled = assembleHero(input2, rng);
+  const rule = traitRuleFor(traitSlotsOf(winsOf(await recordsOrNone(context2))), pending.seed);
+  const assembled = assembleHero(input2, rng, rule);
   if (!assembled.isValid) {
     const reasons = assembled.issues.map(({ path, message }) => `${path}: ${message}`);
     throw new ToolFailure({
@@ -52286,11 +52358,13 @@ var newsBrief = defineTool({
 var RECENT_RUNS = 5;
 var profileView = defineTool({
   name: "profile_view",
-  description: "The player's profile: how many runs they have played, how they ended (won, lost for each reason, given up), days and clues over all of them, the longest run, the streak of wins, and the last few runs with the hero, the case title and how it ended. Only runs that are over are in it, so it never touches the case in play. Call it once at the end of a run, after the closing scene, for one line of the hero's tally in the narrator's voice, or when the player asks how they are doing. Changes nothing. The profile is a local file and nothing in it leaves the machine.",
+  description: "The player's profile: how many runs they have played, how they ended (won, lost for each reason, given up), days and clues over all of them, the longest run, the streak of wins, `earned` (the tool slots and the hidden trait slots the next hero has, which win after win open up), and the last few runs with the hero, the case title and how it ended. Only runs that are over are in it, so it never touches the case in play. Call it once at the end of a run, after the closing scene, for one line of the hero's tally in the narrator's voice, or when the player asks how they are doing. Changes nothing. The profile is a local file and nothing in it leaves the machine.",
   inputSchema: external_exports.object({}),
   outputSchema: external_exports.object({
     stats: external_exports.looseObject({ runs: external_exports.int(), won: external_exports.int(), winRate: external_exports.int() }),
     reasons: external_exports.array(external_exports.string()),
+    /** What the runs have earned the next hero: tool slots in the suitcase and hidden trait slots. */
+    earned: external_exports.object({ toolSlots: external_exports.int(), traitSlots: external_exports.int() }),
     recent: external_exports.array(
       external_exports.object({
         title: external_exports.string(),
@@ -52307,6 +52381,7 @@ var profileView = defineTool({
     return {
       stats: { ...computeProfileStats(records) },
       reasons: [...END_REASONS],
+      earned: { toolSlots: toolSlotsOf(records), traitSlots: traitSlotsOf(winsOf(records)) },
       recent: records.slice(-RECENT_RUNS).reverse().map(({ title, hero, endReason, won, days }) => ({
         title,
         hero: hero.name,
@@ -52617,7 +52692,9 @@ var scenarioSubmit = defineTool({
         // The same country the brief named for this seed; the run keeps it from here on.
         setting: chooseSetting(world, pending.seed),
         // Shown to the player later, as what the case grew from.
-        inspiration: chosen && { kind: chosen.seed.kind, premise: chosen.seed.premise }
+        inspiration: chosen && { kind: chosen.seed.kind, premise: chosen.seed.premise },
+        // The tool slots the player's runs have earned this hero.
+        toolSlots: toolSlotsOf(await recordsOrNone(context2))
       });
       await saveRun(context2.saveDir, run, context2.saveFs, EMPTY_RUN_LOG);
       await clearPending(context2.saveDir, context2.saveFs);

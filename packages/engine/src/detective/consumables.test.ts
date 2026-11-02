@@ -217,8 +217,8 @@ describe('supplies and pending prices in the state and view', () => {
     expect(parsed.supplies).toEqual({});
     expect(parsed.pendingEffects).toEqual([]);
     expect(viewRun(newRun({ coffee: 2, sedative: 1 })).supplies).toEqual([
-      { id: 'coffee', nameKey: 'consumable.coffee', count: 2 },
-      { id: 'sedative', nameKey: 'consumable.sedative', count: 1 },
+      { id: 'coffee', nameKey: 'consumable.coffee', count: 2, limit: 2 },
+      { id: 'sedative', nameKey: 'consumable.sedative', count: 1, limit: 7 },
     ]);
     expect(viewSupplies({})).toEqual([]);
   });

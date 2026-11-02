@@ -131,6 +131,7 @@ function replayed(run: DetectiveRunState, log: RunLog): DetectiveRunState | unde
       setting: run.setting,
       inspiration: run.inspiration,
       runId: run.runId,
+      toolSlots: run.toolSlots,
     }),
     // A save keeps the versions it was made with; replay must not fail over a version stamp.
     schemaVersion: run.schemaVersion,

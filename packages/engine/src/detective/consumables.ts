@@ -1,6 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { POCKET_LIMITS } from '../progress.js';
 import { z } from 'zod';
 import { DETECTIVE_NERVES, DETECTIVE_SLEEP_DEBT } from './archetype.js';
 import { ConditionIdSchema, type HeroCondition } from './condition.js';
@@ -104,11 +105,40 @@ export const BACKGROUND_SUPPLIES: Readonly<
 export const SuppliesSchema = z.partialRecord(ConsumableIdSchema, z.int().min(1));
 export type Supplies = z.infer<typeof SuppliesSchema>;
 
-/** The supplies of a background, with one more of what a life state adds. */
+/** The pocket limit of a consumable, or `null` for one the pockets do not limit. */
+export function pocketLimit(id: ConsumableId): number | null {
+  return id === 'coffee' || id === 'sedative' ? POCKET_LIMITS[id] : null;
+}
+
+/** The supplies held to what the pockets carry: two coffee and seven pills. */
+export function inPockets(supplies: Supplies): Supplies {
+  return Object.fromEntries(
+    Object.entries(supplies).map(([id, count]) => [
+      id,
+      Math.min(count, pocketLimit(id as ConsumableId) ?? count),
+    ]),
+  );
+}
+
+/**
+ * One more of `id` for the hero, as far as the pockets allow: how many were taken, and the supplies after. A hero
+ * who already carries all the pockets hold takes none.
+ */
+export function withSupplyAdded(
+  supplies: Supplies,
+  id: ConsumableId,
+  count: number,
+): { readonly supplies: Supplies; readonly taken: number } {
+  const have = supplies[id] ?? 0;
+  const taken = Math.max(0, Math.min(count, (pocketLimit(id) ?? Number.MAX_SAFE_INTEGER) - have));
+  return { supplies: taken === 0 ? supplies : { ...supplies, [id]: have + taken }, taken };
+}
+
+/** The supplies of a background, with one more of what a life state adds, held to what the pockets carry. */
 export function initialSupplies(background: Background, lifeState?: LifeState): Supplies {
   const supplies: Supplies = { ...BACKGROUND_SUPPLIES[background] };
   const added = lifeState === undefined ? undefined : LIFE_STATE_SHIFTS[lifeState].supply;
-  return added === undefined ? supplies : { ...supplies, [added]: (supplies[added] ?? 0) + 1 };
+  return inPockets(added === undefined ? supplies : { ...supplies, [added]: (supplies[added] ?? 0) + 1 });
 }
 
 /** The supplies with one of `id` used; the caller has checked that there is one. */
@@ -156,6 +186,8 @@ export interface SupplyView {
   readonly id: ConsumableId;
   readonly nameKey: string;
   readonly count: number;
+  /** How many the pockets carry at most; `null` for one they do not limit. */
+  readonly limit: number | null;
 }
 
 export interface PendingView {
@@ -169,7 +201,7 @@ export interface PendingView {
 export function viewSupplies(supplies: Supplies): SupplyView[] {
   return CONSUMABLE_IDS.flatMap((id) => {
     const count = supplies[id] ?? 0;
-    return count > 0 ? [{ id, nameKey: CONSUMABLES[id].nameKey, count }] : [];
+    return count > 0 ? [{ id, nameKey: CONSUMABLES[id].nameKey, count, limit: pocketLimit(id) }] : [];
   });
 }
 

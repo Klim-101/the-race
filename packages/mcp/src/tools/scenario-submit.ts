@@ -8,6 +8,7 @@ import {
   chooseSeed,
   chooseSetting,
   createDetectiveRun,
+  toolSlotsOf,
   validateCase,
   worldRealNames,
   type CaseIssue,
@@ -18,6 +19,7 @@ import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
 import { seedsOfRun, toldSeedsOfRun } from '../news.js';
 import { clearPending, savePending } from '../pending-run.js';
+import { recordsOrNone } from '../profile.js';
 import { requireWorld } from '../world.js';
 import { MAX_CASE_ATTEMPTS, openPendingRun } from './generator-brief.js';
 
@@ -189,6 +191,8 @@ export const scenarioSubmit = defineTool({
           setting: chooseSetting(world, pending.seed),
           // Shown to the player later, as what the case grew from.
           inspiration: chosen && { kind: chosen.seed.kind, premise: chosen.seed.premise },
+          // The tool slots the player's runs have earned this hero.
+          toolSlots: toolSlotsOf(await recordsOrNone(context)),
         });
         await saveRun(context.saveDir, run, context.saveFs, EMPTY_RUN_LOG);
         await clearPending(context.saveDir, context.saveFs);

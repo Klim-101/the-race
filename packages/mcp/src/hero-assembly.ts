@@ -1,7 +1,8 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { assembleHero, viewHero, type Rng } from '@the-race/engine';
+import { assembleHero, traitRuleFor, traitSlotsOf, viewHero, winsOf, type Rng } from '@the-race/engine';
+import { recordsOrNone } from './profile.js';
 import { loadPending, savePending, type PendingRun } from './pending-run.js';
 import type { ServerContext } from './context.js';
 import { ToolFailure } from './tool-error.js';
@@ -24,7 +25,9 @@ export async function requirePending(context: ServerContext): Promise<PendingRun
  * and returns what the narrator may see: the hero and how many traits are still hidden.
  */
 export async function storeHero(context: ServerContext, pending: PendingRun, input: unknown, rng: Rng) {
-  const assembled = assembleHero(input, rng);
+  // The hidden traits a hero is dealt grow with the wins on the profile: two at first, one more for each win.
+  const rule = traitRuleFor(traitSlotsOf(winsOf(await recordsOrNone(context))), pending.seed);
+  const assembled = assembleHero(input, rng, rule);
   if (!assembled.isValid) {
     const reasons = assembled.issues.map(({ path, message }) => `${path}: ${message}`);
     throw new ToolFailure({

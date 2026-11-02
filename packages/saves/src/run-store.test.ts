@@ -3,6 +3,7 @@
 
 import { join } from 'node:path';
 import {
+  createDetectiveRun,
   endTurn,
   createRng,
   findClue,
@@ -40,6 +41,29 @@ describe('saveRun and loadRun', () => {
     expect(loaded).toEqual({ ok: true, run, log: [], source: 'current' });
     expect(fs.directories).toEqual([FILES.directory]);
     expect([...fs.files.keys()]).toEqual([FILES.current]);
+  });
+
+  it('loads a run of a hero with more tool slots, which the replay of its log has to know', async () => {
+    const fs = memoryFs();
+    const started = { ...newRun(), toolSlots: 3 };
+    const run = createDetectiveRun({
+      hero: started.hero,
+      traits: started.traits,
+      case: started.case,
+      seed: started.seed,
+      runId: RUN_ID,
+      rngState: started.rngState,
+      locale: 'en',
+      toolSlots: 3,
+    });
+    const { run: played, log } = playTurns(run, WALK);
+
+    await saveRun(DIR, played, fs, log);
+    const loaded = await loadRun(DIR, RUN_ID, fs);
+
+    expect(loaded).toMatchObject({ ok: true });
+    expect(loaded.ok && loaded.run.toolSlots).toBe(3);
+    expect(loaded.ok && loaded.run.kit.filter(({ suitcase }) => suitcase === true)).toHaveLength(3);
   });
 
   it('keeps the generation before the current one', async () => {

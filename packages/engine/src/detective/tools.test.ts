@@ -333,7 +333,15 @@ describe('the tools as data', () => {
     expect(chargesLeft(owned('powder', 1))).toBe(1);
     expect(chargesLeft(owned('picks'))).toBeNull();
     expect(viewKit([owned('cash')])).toEqual([
-      { id: 'cash', nameKey: 'gear.cash', state: 'owned', removes: [], charges: 2, lawful: true },
+      {
+        id: 'cash',
+        nameKey: 'gear.cash',
+        state: 'owned',
+        removes: [],
+        charges: 2,
+        lawful: true,
+        suitcase: false,
+      },
     ]);
   });
 

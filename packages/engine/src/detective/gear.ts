@@ -251,6 +251,8 @@ export const KitItemSchema = z.object({
   state: GearStateSchema,
   /** Uses left of a piece that is used up; absent for the rest, and for a kit from before the tools. */
   charges: z.int().min(0).optional(),
+  /** Set for a tool in the suitcase, which takes a slot; the phone and what the hero's trade gave take none. */
+  suitcase: z.boolean().optional(),
 });
 export type KitItem = z.infer<typeof KitItemSchema>;
 
@@ -289,6 +291,8 @@ export interface KitView {
   readonly charges: number | null;
   /** Whether using it is within the law; a piece that is not risks being seen (see `risk.ts`). */
   readonly lawful: boolean;
+  /** Whether the piece is in the suitcase and takes a slot. */
+  readonly suitcase: boolean;
 }
 
 export function viewKit(kit: readonly KitItem[]): KitView[] {
@@ -299,6 +303,7 @@ export function viewKit(kit: readonly KitItem[]): KitView[] {
     removes: DETECTIVE_GEAR[item.id].tool?.removes ?? [],
     charges: chargesLeft(item),
     lawful: DETECTIVE_GEAR[item.id].tool?.lawful ?? true,
+    suitcase: item.suitcase === true,
   }));
 }
 
@@ -353,23 +358,31 @@ export const BACKGROUND_TOOL_LEAN: Readonly<Record<Background, readonly GearId[]
 const LEAN_WEIGHT = 3;
 
 /**
- * The kit a hero starts a run with: what their background gives, the phone in any case, and one tool more drawn
- * from the seed with a lean towards the background. The case generator never sees it.
+ * The kit a hero starts a run with: what their background gives, the phone in any case, and a tool in each free
+ * slot of the suitcase, drawn from the seed with a lean towards the background and never the same tool twice. The
+ * case generator never sees it.
  */
 export function startingKit(
   background: Background,
   lifeState: LifeState | undefined,
   seed: string,
+  slots = 1,
 ): KitItem[] {
   const own = initialKit(background, lifeState);
   const withPhone: KitItem[] = own.some(({ id }) => id === 'phone')
     ? own
     : [{ id: 'phone', state: 'owned' }, ...own];
-  const pool = EXTRA_TOOLS.filter((id) => !withPhone.some((item) => item.id === id)).flatMap((id) =>
+  const rng = createRng(`${seed}:kit`);
+  const drawn: KitItem[] = [];
+  let pool = EXTRA_TOOLS.filter((id) => !withPhone.some((item) => item.id === id)).flatMap((id) =>
     Array.from({ length: BACKGROUND_TOOL_LEAN[background].includes(id) ? LEAN_WEIGHT : 1 }, () => id),
   );
-  const at = createRng(`${seed}:kit`).roll(pool.length) - 1;
-  const drawn: KitItem[] = pool.slice(at, at + 1).map((id) => ({ id, state: 'owned' }));
+  for (let slot = 0; slot < slots; slot += 1) {
+    const at = rng.roll(pool.length) - 1;
+    const picked = pool.slice(at, at + 1);
+    drawn.push(...picked.map((id): KitItem => ({ id, state: 'owned', suitcase: true })));
+    pool = pool.filter((other) => !picked.includes(other));
+  }
   return [...withPhone, ...drawn].map((item) => {
     const rules = DETECTIVE_GEAR[item.id].tool;
     return rules?.wear === 'used-up' ? { ...item, charges: rules.charges } : item;
