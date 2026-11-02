@@ -147,6 +147,7 @@ export function saveUnusable(reason: Exclude<LoadFailureReason, 'missing'>): Too
 }
 
 export interface SavedRun {
+  readonly runId: string;
   readonly run: DetectiveRunState;
   readonly log: RunLog;
 }
@@ -154,7 +155,7 @@ export interface SavedRun {
 /** The run on disk, or a `ToolFailure` that says why there is none. */
 export async function requireRun(context: ServerContext): Promise<SavedRun> {
   const { run, damaged } = await loadCurrentRun(context.saveDir, context.saveFs);
-  if (run !== undefined) return { run: run.run, log: run.log };
+  if (run !== undefined) return { runId: run.runId, run: run.run, log: run.log };
   const [newest] = damaged;
   if (newest !== undefined) throw saveUnusable(newest.reason);
   throw new ToolFailure({

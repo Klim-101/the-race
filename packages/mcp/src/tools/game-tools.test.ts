@@ -4,9 +4,8 @@
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { DETECTIVE_SKILL_PRESETS, DetectiveCaseSchema } from '@the-race/engine';
-import { runFiles } from '@the-race/saves';
+import { runBoardFile, runFiles } from '@the-race/saves';
 import { describe, expect, it } from 'vitest';
-import { TEST_BOARD_DIR } from '../../test/fake-context.js';
 import {
   HERO_CHOICES,
   call,
@@ -300,7 +299,7 @@ describe('evidence_board', () => {
 
     expect(result.isError).toBe(false);
     const path = result.body.path as string;
-    expect(path).toBe(join(TEST_BOARD_DIR, 'evidence.html'));
+    expect(path).toBe(runBoardFile(context.saveDir, await newestRunId(context.saveDir, context.fs)));
     expect(result.body).toMatchObject({ clueCount: expect.any(Number) as unknown, insightCount: 0 });
     const page = context.fs.files.get(path) ?? '';
     expect(page).toContain('<!doctype html>');
@@ -309,19 +308,15 @@ describe('evidence_board', () => {
     expect(page).toContain('Looked around');
   });
 
-  it('is written outside the save directory, with a file:// link to the same page', async () => {
+  it('is written in the folder of the run, with a file:// link to the same page', async () => {
     const context = await activeRun();
 
     const result = await call(evidenceBoard, {}, context);
 
     const path = result.body.path as string;
-    expect(path.startsWith(context.saveDir)).toBe(false);
-    expect(path.startsWith(context.boardDir)).toBe(true);
+    expect(path.startsWith(join(context.saveDir, 'runs'))).toBe(true);
     expect(result.body.link).toBe(pathToFileURL(path).href);
     expect(result.body.link).toMatch(/^file:\/\/\/.*evidence\.html$/);
-    expect([...context.fs.files.keys()].filter((file) => file.startsWith(context.saveDir))).not.toContain(
-      path,
-    );
   });
 
   it('says in a way the player can act on that the board folder cannot be written', async () => {
@@ -351,8 +346,22 @@ describe('evidence_board', () => {
 
     expect(second.body.path).toBe(first.body.path);
     expect(second.body.link).toBe(first.body.link);
-    const boards = [...context.fs.files.keys()].filter((file) => file.startsWith(context.boardDir));
+    const boards = [...context.fs.files.keys()].filter((file) => file.endsWith('evidence.html'));
     expect(boards).toEqual([first.body.path]);
+  });
+
+  it('gives a new run a board of its own and leaves the board of the one before', async () => {
+    const context = await activeRun();
+    const first = (await call(evidenceBoard, {}, context)).body.path as string;
+    await call(runGiveUp, { turn: 0 }, context);
+    await prepareHero(context);
+    await installCase(context);
+
+    const second = (await call(evidenceBoard, {}, context)).body.path as string;
+
+    expect(second).not.toBe(first);
+    expect(context.fs.files.has(first)).toBe(true);
+    expect(context.fs.files.has(second)).toBe(true);
   });
 
   it('holds nothing beyond what run_view shows: no truth, no hidden trait, no clue not yet found', async () => {

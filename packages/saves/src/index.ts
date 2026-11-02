@@ -10,7 +10,7 @@ export {
 } from './save-dir.js';
 export { defaultGameFolder, resolveGameFolder } from './game-folder.js';
 export { nodeSaveFs, replaceFile, type SaveFs } from './save-fs.js';
-export { BOARD_FILE, defaultBoardDir, resolveBoardDir } from './board-dir.js';
+export { BOARD_DIR, BOARD_FILE, runBoardFile } from './board-dir.js';
 export {
   runFiles,
   loadRun,
