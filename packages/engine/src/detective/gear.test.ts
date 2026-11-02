@@ -146,8 +146,24 @@ describe('the kit in the state and the view', () => {
     const view = viewRun(loseGear(newRun('police'), 'phone')).kit;
 
     expect(view.slice(0, 2)).toEqual([
-      { id: 'phone', nameKey: 'gear.phone', state: 'lost', removes: ['dark'], charges: null, lawful: true },
-      { id: 'notebook', nameKey: 'gear.notebook', state: 'owned', removes: [], charges: null, lawful: true },
+      {
+        id: 'phone',
+        nameKey: 'gear.phone',
+        state: 'lost',
+        removes: ['dark'],
+        charges: null,
+        lawful: true,
+        suitcase: false,
+      },
+      {
+        id: 'notebook',
+        nameKey: 'gear.notebook',
+        state: 'owned',
+        removes: [],
+        charges: null,
+        lawful: true,
+        suitcase: false,
+      },
     ]);
     expect(viewKit([])).toEqual([]);
   });

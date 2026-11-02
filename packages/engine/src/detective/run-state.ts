@@ -50,7 +50,9 @@ import {
   type ObstacleKind,
   type Venue,
 } from './case-schema.js';
+import { suitcaseOf } from './suitcase.js';
 import { VENUE_RULESET_VERSION, sitsLeft } from './venue.js';
+import { MAX_TOOL_SLOTS, START_TOOL_SLOTS } from '../progress.js';
 import { isLeadEarned, isLeadOpen, isPlaceKnown, leadsEarnedBy } from './leads.js';
 import { SUSPECT_MOODS, isClosed, moodOf, moodWord } from './suspect-mood.js';
 import { partsOfPlace } from './search-parts.js';
@@ -192,6 +194,8 @@ export const DetectiveRunStateSchema = z
       .default(() => ({ day: 1, spent: 0 })),
     /** The hero's gear and whether each piece is in hand; it comes from their background. Old saves have none. */
     kit: z.array(KitItemSchema).default([]),
+    /** How many tools the suitcase holds, besides the phone and what the hero's trade gave; earned across runs. */
+    toolSlots: z.int().min(1).max(MAX_TOOL_SLOTS).default(START_TOOL_SLOTS),
     /** Places that a scheduled event has closed; the hero cannot enter them any more. */
     closedLocationIds: z.array(EntityIdSchema).default([]),
     /** Random events the night has drawn, with the day of each; the pool of the case holds what they are. */
@@ -311,6 +315,8 @@ export interface NewDetectiveRun {
   readonly setting?: Setting | null | undefined;
   /** The seed of the day the case was built on; none when the news gave no seed. */
   readonly inspiration?: Inspiration | null | undefined;
+  /** The tool slots the player's runs have earned this hero (see `progress.ts`); one for a hero with no runs behind them. */
+  readonly toolSlots?: number | undefined;
 }
 
 export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
@@ -340,7 +346,13 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     concededLieIds: [],
     condition: initialCondition(),
     actionStrain: { day: 1, spent: 0 },
-    kit: startingKit(input.hero.background, input.hero.lifeState, input.seed),
+    toolSlots: input.toolSlots ?? START_TOOL_SLOTS,
+    kit: startingKit(
+      input.hero.background,
+      input.hero.lifeState,
+      input.seed,
+      input.toolSlots ?? START_TOOL_SLOTS,
+    ),
     closedLocationIds: [],
     drawnEvents: [],
     signalEvents: [],
@@ -688,7 +700,9 @@ export interface DetectiveRunView {
   readonly condition: ConditionView;
   /** The hero's gear and whether each piece is in hand or lost. */
   readonly kit: readonly KitView[];
-  /** Consumables in hand, by count. */
+  /** The slots of the suitcase, and how many hold a tool; the phone, the pockets and the hero's trade take none. */
+  readonly toolSlots: { readonly total: number; readonly used: number };
+  /** Consumables in hand, by count, with what the pockets carry at most. */
   readonly supplies: readonly SupplyView[];
   /** Prices that are on their way and have not landed yet. */
   readonly pending: readonly PendingView[];
@@ -969,6 +983,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     reputation: run.reputation,
     condition: viewCondition(run.condition),
     kit: viewKit(run.kit),
+    toolSlots: { total: run.toolSlots, used: suitcaseOf(run).length },
     supplies: viewSupplies(run.supplies),
     pending: viewPending(run.pendingEffects, absoluteMinute(run.clock)),
     warnings: warningsOfMeters(meterReadings(run)),

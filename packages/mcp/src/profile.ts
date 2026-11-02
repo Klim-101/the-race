@@ -25,6 +25,15 @@ export async function keepProfile(
   }
 }
 
+/**
+ * The records of the profile, or none when it cannot be read: what the player's runs have earned a new hero is a
+ * keepsake too, so a profile that is damaged only means a hero with nothing earned yet, and never stops a run.
+ */
+export async function recordsOrNone(context: ServerContext) {
+  const loaded = await loadProfile(context.profileDir, context.saveFs);
+  return loaded.ok ? loaded.records : [];
+}
+
 /** The records of the profile, or the failure that says it cannot be read. */
 export async function requireProfile(context: ServerContext) {
   const loaded = await loadProfile(context.profileDir, context.saveFs);

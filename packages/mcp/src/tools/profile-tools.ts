@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { END_REASONS, computeProfileStats } from '@the-race/engine';
+import { END_REASONS, computeProfileStats, toolSlotsOf, traitSlotsOf, winsOf } from '@the-race/engine';
 import { exportProfile, importProfile } from '@the-race/saves';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
@@ -14,7 +14,7 @@ export const profileView = defineTool({
   name: 'profile_view',
   description:
     "The player's profile: how many runs they have played, how they ended (won, lost for each reason, given " +
-    'up), days and clues over all of them, the longest run, the streak of wins, and the last few runs with ' +
+    'up), days and clues over all of them, the longest run, the streak of wins, `earned` (the tool slots and the hidden trait slots the next hero has, which win after win open up), and the last few runs with ' +
     'the hero, the case title and how it ended. Only runs that are over are in it, so it never touches the ' +
     "case in play. Call it once at the end of a run, after the closing scene, for one line of the hero's " +
     "tally in the narrator's voice, or when the player asks how they are doing. Changes nothing. The profile " +
@@ -23,6 +23,8 @@ export const profileView = defineTool({
   outputSchema: z.object({
     stats: z.looseObject({ runs: z.int(), won: z.int(), winRate: z.int() }),
     reasons: z.array(z.string()),
+    /** What the runs have earned the next hero: tool slots in the suitcase and hidden trait slots. */
+    earned: z.object({ toolSlots: z.int(), traitSlots: z.int() }),
     recent: z.array(
       z.object({
         title: z.string(),
@@ -39,6 +41,7 @@ export const profileView = defineTool({
     return {
       stats: { ...computeProfileStats(records) },
       reasons: [...END_REASONS],
+      earned: { toolSlots: toolSlotsOf(records), traitSlots: traitSlotsOf(winsOf(records)) },
       recent: records
         .slice(-RECENT_RUNS)
         .reverse()
