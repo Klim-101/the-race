@@ -8,7 +8,7 @@ _The world changed overnight. Run._
 
 [![CI](https://github.com/Klim-101/the-race/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Klim-101/the-race/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node-%E2%89%A522.12-339933?logo=nodedotjs&logoColor=white)](.node-version)
+[![Node.js](https://img.shields.io/badge/node-24-339933?logo=nodedotjs&logoColor=white)](.node-version)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.base.json)
 [![Engine coverage](https://img.shields.io/badge/engine%20coverage-100%25-brightgreen.svg)](vitest.config.ts)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](.github/workflows/ci.yml)
@@ -33,7 +33,7 @@ A text roguelike that runs inside [Claude Code](https://claude.com/claude-code) 
 
 ## Getting started
 
-You need [Claude Code](https://claude.com/claude-code) on your own subscription and [Node.js](https://nodejs.org) 22.12 or newer. There is nothing else to sign up for: no account, no API key.
+You need [Claude Code](https://claude.com/claude-code) on your own subscription and [Node.js](https://nodejs.org) 24 (the current LTS) or newer, except 25, with npm 11 (it comes with Node 24). There is nothing else to sign up for: no account, no API key.
 
 1. **Get the code and build it**
 
@@ -132,7 +132,7 @@ Details and live progress: [ROADMAP.md](docs/public/ROADMAP.md) and the [project
 
 ## Development
 
-You need Node.js 22.12 or newer. The local gate is the same one CI runs on Linux, macOS and Windows:
+You need Node.js 24 (see [.node-version](.node-version)); 25 is not supported, because the test runner skips odd releases, and npm must be 11 or newer, which Node 24 brings. The local gate is the same one CI runs on Linux, macOS and Windows:
 
 ```sh
 npm ci
