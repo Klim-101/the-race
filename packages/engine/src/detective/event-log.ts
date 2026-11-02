@@ -49,7 +49,14 @@ const CheckDetailSchema = z.object({
   result: z.union([SkillCheckResultSchema, z.literal('auto')]),
 });
 
-const ConsequenceSchema = z.enum(['time-lost', 'reputation-lost', 'mishap', 'nerves-lost']);
+const ConsequenceSchema = z.enum([
+  'time-lost',
+  'reputation-lost',
+  'mishap',
+  'nerves-lost',
+  'spotted',
+  'detained',
+]);
 const minutes = z.int().min(0);
 const idList = z.array(EntityIdSchema);
 /** What fatigue adds to a turn, recorded so that a replay reproduces it; absent when there is none. */
@@ -88,6 +95,7 @@ const OutcomeSchema = z.union([
         wear: z.enum(['spent', 'broken']).nullable(),
       })
       .optional(),
+    detainedMinutes: z.int().min(1).optional(),
     ...fatigue,
   }),
   z.object({ kind: z.literal('rest') }),

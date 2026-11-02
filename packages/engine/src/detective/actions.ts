@@ -34,6 +34,7 @@ import {
   type Revealed,
 } from './trait-reveal.js';
 import { isLeadEarned, isLeadOpen, isPlaceKnown } from './leads.js';
+import { risks, unlawfulRisk, type Risk } from './risk.js';
 import { chooseTool, partsOfPlace } from './search-parts.js';
 import { GearIdSchema, worn, type GearId } from './gear.js';
 import { buildNeighbors } from './obtainability.js';
@@ -137,7 +138,11 @@ export interface Refusal {
   readonly message: string;
 }
 
-export type Consequence = 'time-lost' | 'reputation-lost' | 'mishap' | 'nerves-lost';
+/**
+ * What a turn cost beyond its time: `spotted` is a hero seen using a tool that is not lawful, and `detained` one the
+ * police held for hours because of it (see `risk.ts`).
+ */
+export type Consequence = 'time-lost' | 'reputation-lost' | 'mishap' | 'nerves-lost' | 'spotted' | 'detained';
 
 /**
  * What happened, as far as the player and the narrator may know. It names no clue that was not found
@@ -176,6 +181,8 @@ export type Outcome = (
         readonly cleared: boolean;
         readonly wear: 'spent' | 'broken' | null;
       };
+      /** The minutes of a detention, already in `minutes`; only when the police held the hero. */
+      readonly detainedMinutes?: number;
     }
   | { readonly kind: 'rest' }
   | InterrogationOutcome
@@ -343,7 +350,7 @@ function resolveSearchPart(
         : 'The hero has nothing to get past that with.',
     );
   }
-  if (choice.kind === 'none') return searchPartForClue(run, rng, location, part, [], [], []);
+  if (choice.kind === 'none') return searchPartForClue(run, rng, location, part, NOTHING_CARRIED);
 
   // The tool against the obstacle: a roll for most, none for a torch. It wears whether it gets through or not.
   const { rules, item } = choice;
@@ -365,13 +372,20 @@ function resolveSearchPart(
   const used = worn(item, blundered);
   const tool = { id: item.id, cleared, wear: used.wear };
   const worndown = wearTool(run, item.id, blundered);
-  if (cleared) return searchPartForClue(worndown, rng, location, part, details, felt, revealed, tool);
+  // A tool that is not lawful risks being seen, whether it gets through or not.
+  const risk = risks(run) && !rules.lawful ? unlawfulRisk(worndown, rng, location) : undefined;
+  const watched = risk?.run ?? worndown;
+  revealed.push(...(risk?.revealed ?? []));
+  if (cleared) {
+    return searchPartForClue(watched, rng, location, part, { details, felt, revealed, tool, risk });
+  }
 
   // It did not get through: the time of the attempt, and a point of nerves unless a blunder already took one.
-  const strained = blundered ? worndown : strainByAction(worndown);
-  const minutes = PART_SEARCH_MINUTES + rules.failureMinutes;
+  const strained = blundered ? watched : strainByAction(watched);
+  const detained = risk?.detentionMinutes ?? 0;
+  const minutes = PART_SEARCH_MINUTES + rules.failureMinutes + detained;
   const settled = settle(strained, rng, minutes, results);
-  const frayed = strained.condition.nerves < worndown.condition.nerves;
+  const frayed = strained.condition.nerves < watched.condition.nerves;
   return {
     ok: true,
     run: settled.run,
@@ -379,9 +393,15 @@ function resolveSearchPart(
       kind: 'search',
       foundClueIds: [],
       minutes,
-      consequences: ['time-lost', ...(frayed ? (['nerves-lost'] as const) : []), ...settled.consequences],
+      consequences: uniqueConsequences([
+        'time-lost',
+        ...(frayed ? (['nerves-lost'] as const) : []),
+        ...(risk?.consequences ?? []),
+        ...settled.consequences,
+      ]),
       partId: part.id,
       tool,
+      ...(detained === 0 ? {} : { detainedMinutes: detained }),
     },
     details,
     felt: distinctFelt([...felt, ...settled.felt]),
@@ -389,22 +409,37 @@ function resolveSearchPart(
   };
 }
 
+/** Each consequence once: a point of nerves lost to a failed attempt and to being seen is one thing to tell. */
+function uniqueConsequences(consequences: readonly Consequence[]): Consequence[] {
+  return [...new Set(consequences)];
+}
+
+/** What the tool against the obstacle has already settled when the part itself is searched. */
+interface ToolCarry {
+  readonly details: readonly CheckDetail[];
+  readonly felt: readonly SignalFelt[];
+  readonly revealed: readonly Revealed[];
+  readonly tool?: NonNullable<Extract<Outcome, { kind: 'search' }>['tool']>;
+  /** The risk of an unlawful tool, which has already cost the run what it costs; its minutes are added here. */
+  readonly risk?: Risk | undefined;
+}
+
+const NOTHING_CARRIED: ToolCarry = { details: [], felt: [], revealed: [] };
+
 /** What the part holds, once its obstacle is out of the way: found by a roll, unless it lies in plain sight. */
 function searchPartForClue(
   run: DetectiveRunState,
   rng: Rng,
   location: Location,
   part: PlacePart,
-  carriedDetails: readonly CheckDetail[],
-  carriedFelt: readonly SignalFelt[],
-  carriedRevealed: readonly Revealed[],
-  tool?: NonNullable<Extract<Outcome, { kind: 'search' }>['tool']>,
+  carried: ToolCarry,
 ): Resolution {
+  const { tool, risk } = carried;
   const clue = hiddenClues(run, location.id).find(({ id }) => id === part.holds);
-  const details: CheckDetail[] = [...carriedDetails];
+  const details: CheckDetail[] = [...carried.details];
   const results: SkillCheckResult[] = [];
-  const felt: SignalFelt[] = [...carriedFelt];
-  const revealed: Revealed[] = [...lockOutReveals(run, location.id), ...carriedRevealed];
+  const felt: SignalFelt[] = [...carried.felt];
+  const revealed: Revealed[] = [...lockOutReveals(run, location.id), ...carried.revealed];
   let found: Clue | undefined;
   if (clue !== undefined) {
     const subject = { kind: 'clue', id: clue.id } as const;
@@ -432,14 +467,16 @@ function searchPartForClue(
     : recordPartSearch(withFind, part.id, location.id, found === undefined ? [] : [found.id]);
   const blundered = results.some((result) => result.critical === 'failure');
   const withClues = wasted && !blundered ? strainByAction(searched) : searched;
-  const minutes = PART_SEARCH_MINUTES + (wasted ? FAILED_SEARCH_MINUTES : 0);
+  const detained = risk?.detentionMinutes ?? 0;
+  const minutes = PART_SEARCH_MINUTES + (wasted ? FAILED_SEARCH_MINUTES : 0) + detained;
   const settled = settle(withClues, rng, minutes, results);
   const frayed = withClues.condition.nerves < searched.condition.nerves;
-  const consequences: Consequence[] = [
+  const consequences = uniqueConsequences([
     ...(wasted ? (['time-lost'] as const) : []),
     ...(frayed ? (['nerves-lost'] as const) : []),
+    ...(risk?.consequences ?? []),
     ...settled.consequences,
-  ];
+  ]);
   return {
     ok: true,
     run: settled.run,
@@ -450,6 +487,7 @@ function searchPartForClue(
       consequences,
       partId: part.id,
       ...(tool === undefined ? {} : { tool }),
+      ...(detained === 0 ? {} : { detainedMinutes: detained }),
     },
     details,
     felt: distinctFelt([...felt, ...settled.felt]),

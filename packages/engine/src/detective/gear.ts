@@ -287,6 +287,8 @@ export interface KitView {
   readonly removes: readonly ObstacleKind[];
   /** Uses left of a piece that is used up; `null` for the rest. */
   readonly charges: number | null;
+  /** Whether using it is within the law; a piece that is not risks being seen (see `risk.ts`). */
+  readonly lawful: boolean;
 }
 
 export function viewKit(kit: readonly KitItem[]): KitView[] {
@@ -296,6 +298,7 @@ export function viewKit(kit: readonly KitItem[]): KitView[] {
     state: item.state,
     removes: DETECTIVE_GEAR[item.id].tool?.removes ?? [],
     charges: chargesLeft(item),
+    lawful: DETECTIVE_GEAR[item.id].tool?.lawful ?? true,
   }));
 }
 
