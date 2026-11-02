@@ -5,9 +5,9 @@
 // plain JSON. It ships inside the plugin, so it imports nothing from this repository: the directory is
 // resolved here with the same rules as `resolveSaveDir` in packages/saves, and a test keeps the two in step.
 //
-// The evidence board is not in this directory: it is written to `board/` in the game folder (or to
-// RACE_BOARD_DIR), a folder the player chose, where any browser account can open it. It holds only what the run_view tool shows, so
-// the guard leaves it alone, and the narrator is told by the skill never to open it, to spare the turns.
+// The evidence board of a run sits in that run's folder, `board/` beside its state, so the guard closes it with
+// the rest. It holds only what the run_view tool shows and the player opens it in a browser; the narrator has no
+// need to read it, and the skill tells it never to.
 //
 // It is a guard against an accidental spoiler from the narrator, not a defence against the player (see
 // docs/adr/0006). It errs towards denying a doubtful shell command, fails open on input it cannot parse, and
@@ -27,7 +27,7 @@ const PATH_FIELDS = new Set(['file_path', 'notebook_path', 'path']);
 const APP_DIR = 'the-race';
 const WINDOWS_DRIVE_PATH = /^[A-Za-z]:[\\/]/;
 
-/** The folder that holds the saves and the board; the same rules as `resolveGameFolder` in packages/saves. */
+/** The folder that holds the saves and the profile; the same rules as `resolveGameFolder` in packages/saves. */
 export function resolveGameFolder({ env, platform, home }) {
   const chosen = env.RACE_GAME_FOLDER || env.CLAUDE_PLUGIN_OPTION_GAME_FOLDER;
   if (chosen && (platform === 'win32' || !WINDOWS_DRIVE_PATH.test(chosen))) return chosen;

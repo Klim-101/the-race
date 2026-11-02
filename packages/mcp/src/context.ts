@@ -13,11 +13,6 @@ export interface ServerContext {
   readonly saveDir: string;
   readonly saveFs: SaveFs;
   /**
-   * The folder the evidence board is written to (see `resolveBoardDir`): one the player can open, unlike the
-   * save directory. It is passed in so that a test writes the board to a disk of its own.
-   */
-  readonly boardDir: string;
-  /**
    * The folder of the player's profile (see `resolveProfileDir`): the records of the runs that are over, and
    * the `export.json` and `import.json` the player moves by hand. Nothing in it ever leaves the machine.
    */

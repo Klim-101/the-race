@@ -9,8 +9,6 @@ const unused = (): never => {
   throw new Error('This test does not touch the disk.');
 };
 
-/** Where a test's evidence board goes: an absolute path, so that its file:// link can be built. */
-export const TEST_BOARD_DIR = resolve('fake-board-dir');
 export const TEST_PROFILE_DIR = resolve('fake-profile-dir');
 
 /** What a context needs of the news; a test that does not read the news is given a network that fails. */
@@ -40,7 +38,6 @@ export function fakeContext(): ServerContext {
   return {
     saveDir: 'fake-save-dir',
     saveFs,
-    boardDir: TEST_BOARD_DIR,
     profileDir: TEST_PROFILE_DIR,
     notices: {},
     newSeed: () => `seed-${String(++counter)}`,

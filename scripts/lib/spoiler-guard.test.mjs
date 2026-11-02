@@ -5,7 +5,6 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { resolveBoardDir } from '../../packages/saves/src/board-dir.js';
 import {
   chooseSaveDir,
   legacySaveDir,
@@ -92,12 +91,9 @@ describe('resolveSaveDirs agrees with packages/saves', () => {
     ],
   ])('%s', (_name, input) => agrees(input));
 
-  it('closes both the saves of the game folder and the legacy directory, but never the board', () => {
+  it('closes both the saves of the game folder and the legacy directory', () => {
     const input = { platform: 'linux', home: '/h', env: {} };
     expect(resolveSaveDirs(input)).toEqual(['/h/the-race/saves', '/h/.local/state/the-race']);
-    expect(resolveSaveDirs(input)).not.toContain(
-      resolveBoardDir({ env: {}, platform: 'linux', homedir: '/h' }),
-    );
   });
 });
 
@@ -117,8 +113,7 @@ describe('allowed', () => {
       }),
       LINUX,
     ],
-    // The evidence board is written to the player's Documents, outside the closed directory (see
-    // resolveBoardDir in packages/saves); the page holds only what run_view shows.
+    // A page outside the closed directory is a page like any other.
     [
       'Read of the evidence board (win)',
       call('Read', { file_path: 'C:\\Users\\ann\\Documents\\the-race\\evidence.html' }),
@@ -133,11 +128,6 @@ describe('allowed', () => {
       'Read of the evidence board (linux)',
       call('Read', { file_path: '/home/ann/Documents/the-race/evidence.html' }),
       LINUX,
-    ],
-    [
-      'Read of the evidence board in a folder RACE_BOARD_DIR names',
-      call('Read', { file_path: '/data/boards/evidence.html' }),
-      { ...LINUX, env: { RACE_BOARD_DIR: '/data/boards' } },
     ],
     ['Grep for unrelated text', call('Grep', { pattern: 'the-race', path: 'src' }), LINUX],
     ['Glob inside the project', call('Glob', { pattern: '**/*.ts' }), LINUX],
@@ -223,8 +213,8 @@ describe('denied', () => {
     ],
     ['Read of the folder itself', call('Read', { file_path: SAVE.linux }), LINUX],
     [
-      'Read of the board in its old place inside the saves',
-      call('Read', { file_path: `${SAVE.linux}/board/evidence.html` }),
+      'Read of the board of a run, which sits in the folder of the run',
+      call('Read', { file_path: `${SAVE.linux}/runs/20261102-100000/board/evidence.html` }),
       LINUX,
     ],
     [
@@ -439,16 +429,18 @@ describe('the game folder', () => {
     expect(denied(input, WIN_DEFAULT)).toBe(true);
   });
 
-  it('denies the saves of a folder the player chose, and not the board beside them', () => {
+  it('denies the saves of a folder the player chose, and not a folder beside them', () => {
     expect(denied(call('Read', { file_path: 'D:\\play\\saves\\run\\state.json' }), CHOSEN)).toBe(true);
-    expect(denied(call('Read', { file_path: 'D:\\play\\board\\evidence.html' }), CHOSEN)).toBe(false);
+    expect(denied(call('Read', { file_path: 'D:\\play\\profile\\notes.txt' }), CHOSEN)).toBe(false);
   });
 
-  it('lets the board of the default game folder be opened', () => {
-    expect(denied(call('Read', { file_path: 'C:\\the-race\\board\\evidence.html' }), WIN_DEFAULT)).toBe(
-      false,
-    );
-    expect(denied(call('Bash', { command: 'dir C:\\the-race\\board' }), WIN_DEFAULT)).toBe(false);
+  it('closes the board of a run in the default game folder, since it sits with the run', () => {
+    expect(
+      denied(
+        call('Read', { file_path: 'C:\\the-race\\saves\\runs\\20261102-100000\\board\\evidence.html' }),
+        WIN_DEFAULT,
+      ),
+    ).toBe(true);
   });
 });
 
