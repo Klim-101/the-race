@@ -35340,7 +35340,7 @@ function isClosed(run, suspectId) {
   return closedUntil !== null && absoluteMinute(run.clock) < closedUntil;
 }
 function moodWord(step) {
-  return SUSPECT_MOODS[step];
+  return SUSPECT_MOODS.slice(step, step + 1).join("");
 }
 
 // packages/engine/src/detective/search-parts.ts

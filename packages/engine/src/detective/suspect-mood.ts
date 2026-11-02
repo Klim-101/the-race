@@ -35,5 +35,5 @@ export function isClosed(run: DetectiveRunState, suspectId: string): boolean {
 
 /** The word for a step; a step is 0 to 3 by the schema of the state, so there is always one. */
 export function moodWord(step: number): SuspectMoodWord {
-  return SUSPECT_MOODS[step]!;
+  return SUSPECT_MOODS.slice(step, step + 1).join('') as SuspectMoodWord;
 }
