@@ -31,9 +31,27 @@ export function gameContext(): GameContext {
   };
 }
 
-export function sampleCase(): DetectiveCase {
+/** The sample case as it is authored: its places are made of parts. */
+export function partedSampleCase(): DetectiveCase {
   const url = new URL('../../../content/cases/goose-of-elmwick.en.json', import.meta.url);
   return DetectiveCaseSchema.parse(JSON.parse(readFileSync(url, 'utf8')));
+}
+
+/**
+ * The sample case with its places left whole, as the cases of before the parts were: a look takes what lies in
+ * plain sight and a search takes the whole place. Most of the tools are indifferent to how a place is searched,
+ * and play on this one; the search by part has its own tests.
+ */
+export function sampleCase(): DetectiveCase {
+  const detectiveCase = partedSampleCase();
+  return {
+    ...detectiveCase,
+    locations: detectiveCase.locations.map((location) => {
+      const whole = { ...location };
+      delete whole.parts;
+      return whole;
+    }),
+  };
 }
 
 /** The structured content of a call, and whether it failed. */

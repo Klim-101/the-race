@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 11;
+var RULESET_VERSION = 12;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -35064,6 +35064,17 @@ function chooseSetting(world, runSeed) {
   return countries[createRng(`${runSeed}:setting`).roll(Math.max(countries.length, 1)) - 1];
 }
 
+// packages/engine/src/detective/search-parts.ts
+var SEARCH_BY_PART_RULESET_VERSION = 12;
+function partsOfPlace(run, locationId) {
+  if (run.rulesetVersion < SEARCH_BY_PART_RULESET_VERSION) return [];
+  return run.case.locations.find(({ id }) => id === locationId)?.parts ?? [];
+}
+var OBSTACLES_THE_PHONE_CLEARS = /* @__PURE__ */ new Set(["dark"]);
+function canClear(obstacle) {
+  return obstacle === null || OBSTACLES_THE_PHONE_CLEARS.has(obstacle);
+}
+
 // packages/engine/src/detective/clue-number.ts
 function clueNumber(heroName, index) {
   const words = heroName.split(/\s+/).filter((word) => word !== "");
@@ -35412,6 +35423,12 @@ var RunHistorySchema = external_exports.object({
     external_exports.object({ clueIds: external_exports.array(EntityIdSchema).min(2), result: external_exports.enum(LINK_RESULTS), turn: external_exports.int().min(1) })
   )
 });
+var SearchedPartSchema = external_exports.object({
+  partId: EntityIdSchema,
+  locationId: EntityIdSchema,
+  turn: external_exports.int().min(1),
+  foundClueIds: external_exports.array(EntityIdSchema)
+});
 var emptyHistory = () => ({ finds: [], shown: [], links: [] });
 var DetectiveRunStateSchema = external_exports.object({
   ...runBaseShape,
@@ -35444,6 +35461,10 @@ var DetectiveRunStateSchema = external_exports.object({
   drawnEvents: external_exports.array(DrawnEventSchema).default([]),
   /** Signal events the night has drawn; the tone is in the log, and the narrator is told only the kind. */
   signalEvents: external_exports.array(DrawnSignalEventSchema).default([]),
+  /** Parts of places the hero has noticed, by a quick look; a part is searched only once it is noticed. */
+  noticedPartIds: external_exports.array(EntityIdSchema).default([]),
+  /** Parts the hero has searched, with what each gave and the turn: a part searched stays searched. */
+  searchedParts: external_exports.array(SearchedPartSchema).default([]),
   /** Found clues whose reading was garbled by fatigue; each must be read again before it is used as proof. */
   garbledClueIds: external_exports.array(EntityIdSchema).default([]),
   /** Consumables the hero carries, by count; they come from their background. Old saves have none. */
@@ -35493,6 +35514,13 @@ var DetectiveRunStateSchema = external_exports.object({
   );
   known("garbledClueIds", run.garbledClueIds, new Set(run.case.clues.map(({ id }) => id)));
   known("closedLocationIds", run.closedLocationIds, locationIds);
+  const partIds = new Set(run.case.locations.flatMap(({ parts }) => (parts ?? []).map(({ id }) => id)));
+  known("noticedPartIds", run.noticedPartIds, partIds);
+  known(
+    "searchedParts",
+    run.searchedParts.map(({ partId }) => partId),
+    partIds
+  );
   known(
     "statements",
     run.statements.map(({ suspectId }) => suspectId),
@@ -35543,6 +35571,8 @@ function createDetectiveRun(input2) {
     closedLocationIds: [],
     drawnEvents: [],
     signalEvents: [],
+    noticedPartIds: [],
+    searchedParts: [],
     garbledClueIds: [],
     supplies: initialSupplies(input2.hero.background, input2.hero.lifeState),
     pendingEffects: [],
@@ -35582,6 +35612,26 @@ function markSearched(run, locationId) {
     run.case.locations.map(({ id }) => id)
   );
   return { ...run, searchedLocationIds: addOnce(run.searchedLocationIds, locationId) };
+}
+function noticeParts(run, partIds) {
+  assertActive(run);
+  return { ...run, noticedPartIds: partIds.reduce(addOnce, [...run.noticedPartIds]) };
+}
+function recordPartSearch(run, partId, locationId, foundClueIds) {
+  assertActive(run);
+  const parts = run.case.locations.flatMap((location) => location.parts ?? []);
+  requireId(
+    "part",
+    partId,
+    parts.map(({ id }) => id)
+  );
+  return {
+    ...run,
+    searchedParts: [
+      ...run.searchedParts,
+      { partId, locationId, turn: run.turn + 1, foundClueIds: [...foundClueIds] }
+    ]
+  };
 }
 function findClue(run, clueId) {
   assertActive(run);
@@ -35786,6 +35836,12 @@ function viewRun(run) {
       name: location.name,
       description: location.description,
       exposure: location.exposure,
+      parts: partsOfPlace(run, location.id).filter(({ id }) => run.noticedPartIds.includes(id)).map(({ id, name, obstacle }) => ({
+        id,
+        name,
+        obstacle,
+        searched: run.searchedParts.some(({ partId }) => partId === id)
+      })),
       exits
     },
     map: viewMap(run),
@@ -36240,6 +36296,14 @@ function brokenLies(run, suspect, shown) {
     (lie) => !run.concededLieIds.includes(lie.id) && lie.brokenBy.some((clueId) => shown.includes(clueId))
   );
 }
+function cluesToldBy(run, detectiveCase, suspectId) {
+  if (run.rulesetVersion < SEARCH_BY_PART_RULESET_VERSION) return [];
+  const closed = closedSourcesOf(run);
+  return detectiveCase.locations.flatMap(({ parts }) => parts ?? []).flatMap((part) => {
+    const clue = detectiveCase.clues.find(({ id }) => id === part.holds);
+    return clue !== void 0 && part.fallback?.kind === "ask" && part.fallback.suspectId === suspectId && !run.foundClueIds.includes(clue.id) && (clue.source === null || !closed.has(clue.source)) ? [clue.id] : [];
+  });
+}
 function resolveInterrogate(run, intent, rng) {
   const suspect = run.case.suspects.find(({ id }) => id === intent.suspectId);
   if (!suspect) {
@@ -36295,9 +36359,10 @@ function resolveInterrogate(run, intent, rng) {
     ...fallen.map(({ statement }) => said("conceded", statement)),
     ...secret === null ? [] : [said("secret", secret)]
   ];
+  const told = result.success ? cluesToldBy(run, run.case, suspect.id) : [];
   const withLies = recordShown(
     {
-      ...run,
+      ...told.reduce(findClue, run),
       concededLieIds: [...run.concededLieIds, ...fallen.map(({ id }) => id)],
       statements: [...run.statements, ...statements]
     },
@@ -36337,6 +36402,7 @@ function resolveInterrogate(run, intent, rng) {
       })),
       conceded: fallen.map(({ id, statement }) => ({ lieId: id, statement })),
       secret,
+      ...told.length === 0 ? {} : { told },
       reputationChange,
       consequences
     },
@@ -36501,8 +36567,11 @@ var IntentSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("look") }),
   /** Go to a neighbouring place; a locked door may need a key or a skill check. */
   external_exports.object({ kind: external_exports.literal("move"), locationId: EntityIdSchema }),
-  /** A thorough search of the place: every hidden clue gets a check. */
-  external_exports.object({ kind: external_exports.literal("search") }),
+  /**
+   * A thorough search. Of the whole place: every hidden clue gets a check. Of a place made of parts (from the
+   * ruleset of parts on) it is a search of one part, named by `partId`.
+   */
+  external_exports.object({ kind: external_exports.literal("search"), partId: EntityIdSchema.optional() }),
   /** Question a suspect of the place, showing clues that may break their lies. */
   InterrogateIntentSchema,
   /** Link found clues into an insight. */
@@ -36519,6 +36588,8 @@ var IntentSchema = external_exports.discriminatedUnion("kind", [
 var LOOK_MINUTES = 5;
 var MOVE_MINUTES = 15;
 var SEARCH_MINUTES = 30;
+var PART_LOOK_MINUTES = 10;
+var PART_SEARCH_MINUTES = 20;
 var FAILED_SEARCH_MINUTES = 15;
 var FAILED_ENTRY_MINUTES = 10;
 var CRITICAL_FAILURE_REPUTATION = 1;
@@ -36563,15 +36634,102 @@ function hiddenClues(run, locationId) {
     (clue) => clue.locationId === locationId && !run.foundClueIds.includes(clue.id) && (clue.source === null || !closed.has(clue.source))
   );
 }
+function resolveLookAtParts(run, rng, parts) {
+  const shown = parts.filter(({ inQuickLook }) => inQuickLook);
+  const hidden = hiddenClues(run, run.locationId);
+  const found = shown.flatMap(
+    (part) => part.obstacle === null ? hidden.filter((clue) => clue.id === part.holds && clue.discovery === null) : []
+  );
+  const noticed = noticeParts(
+    run,
+    shown.map(({ id }) => id)
+  );
+  const next = found.reduce((state, clue) => findClue(state, clue.id), noticed);
+  const settled = settle2(next, rng, PART_LOOK_MINUTES, []);
+  const outcome = {
+    kind: "look",
+    foundClueIds: found.map(({ id }) => id),
+    minutes: PART_LOOK_MINUTES,
+    noticedPartIds: shown.map(({ id }) => id)
+  };
+  return { ok: true, run: settled.run, outcome, details: [], revealed: lockOutReveals(run, run.locationId) };
+}
 function resolveLook(run, rng) {
+  const parts = partsOfPlace(run, run.locationId);
+  if (parts.length > 0) return resolveLookAtParts(run, rng, parts);
   const found = hiddenClues(run, run.locationId).filter((clue) => clue.discovery === null);
   const next = found.reduce((state, clue) => findClue(state, clue.id), run);
   const settled = settle2(next, rng, LOOK_MINUTES, []);
   const outcome = { kind: "look", foundClueIds: found.map(({ id }) => id), minutes: LOOK_MINUTES };
   return { ok: true, run: settled.run, outcome, details: [], revealed: lockOutReveals(run, run.locationId) };
 }
-function resolveSearch(run, rng) {
+function resolveSearchPart(run, rng, location, parts, partId) {
+  const part = parts.find(({ id }) => id === partId);
+  if (part === void 0) return refuse3("unknown-part", "Name one of the parts of this place to search.");
+  if (!run.noticedPartIds.includes(part.id)) {
+    return refuse3("part-not-noticed", "The hero has not noticed that part yet.");
+  }
+  if (run.searchedParts.some((searched2) => searched2.partId === part.id)) {
+    return refuse3("part-searched", "That part has been searched already.");
+  }
+  if (!canClear(part.obstacle)) {
+    return refuse3("needs-tool", "The hero has nothing to get past that with.");
+  }
+  const clue = hiddenClues(run, location.id).find(({ id }) => id === part.holds);
+  const details = [];
+  const results = [];
+  const felt = [];
+  const revealed = lockOutReveals(run, location.id);
+  let found;
+  if (clue !== void 0) {
+    const subject = { kind: "clue", id: clue.id };
+    if (clue.discovery === null) {
+      found = clue;
+      details.push({ subject, result: "auto" });
+    } else {
+      const situations = [...location.situations, ...clue.situations];
+      const { result, felt: moved3, revealed: acted } = roll(run, rng, clue.discovery, situations);
+      felt.push(...moved3);
+      revealed.push(...acted);
+      results.push(result);
+      details.push({ subject, result });
+      if (result.success) found = clue;
+    }
+  }
+  const wasted = found === void 0 && clue !== void 0;
+  const marked = markSearched(run, location.id);
+  const withFind = found === void 0 ? marked : findClue(marked, found.id);
+  const searched = wasted ? marked : recordPartSearch(withFind, part.id, location.id, found === void 0 ? [] : [found.id]);
+  const blundered = results.some((result) => result.critical === "failure");
+  const withClues = wasted && !blundered ? strainByAction(searched) : searched;
+  const minutes2 = PART_SEARCH_MINUTES + (wasted ? FAILED_SEARCH_MINUTES : 0);
+  const settled = settle2(withClues, rng, minutes2, results);
+  const frayed = withClues.condition.nerves < searched.condition.nerves;
+  const consequences = [
+    ...wasted ? ["time-lost"] : [],
+    ...frayed ? ["nerves-lost"] : [],
+    ...settled.consequences
+  ];
+  return {
+    ok: true,
+    run: settled.run,
+    outcome: {
+      kind: "search",
+      foundClueIds: found === void 0 ? [] : [found.id],
+      minutes: minutes2,
+      consequences,
+      partId: part.id
+    },
+    details,
+    felt: distinctFelt([...felt, ...settled.felt]),
+    revealed
+  };
+}
+function resolveSearch(run, rng, partId) {
   const location = locationById(run.case, run.locationId);
+  const parts = partsOfPlace(run, location.id);
+  if (parts.length > 0) return resolveSearchPart(run, rng, location, parts, partId);
+  if (partId !== void 0) return refuse3("unknown-part", "This place has no parts to search.");
   const reinspection = run.searchedLocationIds.includes(location.id);
   const hidden = hiddenClues(run, location.id);
   const details = [];
@@ -36732,7 +36890,7 @@ function dispatchIntent(run, input2, rng) {
     case "look":
       return resolveLook(run, rng);
     case "search":
-      return resolveSearch(run, rng);
+      return resolveSearch(run, rng, intent.partId);
     case "move":
       return resolveMove(run, rng, intent.locationId);
     case "rest":
@@ -36841,7 +36999,13 @@ var fatigue = {
   garbleLevel: external_exports.int().min(1).max(MAX_GARBLE_LEVEL).optional()
 };
 var OutcomeSchema = external_exports.union([
-  external_exports.object({ kind: external_exports.literal("look"), foundClueIds: idList, minutes, ...fatigue }),
+  external_exports.object({
+    kind: external_exports.literal("look"),
+    foundClueIds: idList,
+    minutes,
+    noticedPartIds: idList.optional(),
+    ...fatigue
+  }),
   external_exports.object({
     kind: external_exports.literal("move"),
     from: EntityIdSchema,
@@ -36856,6 +37020,7 @@ var OutcomeSchema = external_exports.union([
     foundClueIds: idList,
     minutes,
     consequences: external_exports.array(ConsequenceSchema),
+    partId: EntityIdSchema.optional(),
     ...fatigue
   }),
   external_exports.object({ kind: external_exports.literal("rest") }),
@@ -36870,6 +37035,7 @@ var OutcomeSchema = external_exports.union([
     presented: external_exports.array(external_exports.object({ clueId: EntityIdSchema, effect: external_exports.enum(["breaks-lie", "no-effect"]) })),
     conceded: external_exports.array(external_exports.object({ lieId: EntityIdSchema, statement: external_exports.string() })),
     secret: external_exports.string().nullable(),
+    told: idList.optional(),
     reputationChange: external_exports.int(),
     consequences: external_exports.array(ConsequenceSchema),
     ...fatigue
@@ -49281,14 +49447,14 @@ var accuse2 = defineTool({
 var ActIntentSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("look") }),
   external_exports.object({ kind: external_exports.literal("move"), locationId: EntityIdSchema }),
-  external_exports.object({ kind: external_exports.literal("search") }),
+  external_exports.object({ kind: external_exports.literal("search"), partId: EntityIdSchema.optional() }),
   external_exports.object({ kind: external_exports.literal("rest") }),
   UseIntentSchema,
   RereadIntentSchema
 ]);
 var act = defineTool({
   name: "act",
-  description: 'Carries out one action of the hero in the world: look (a glance: what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search of the place), rest (sleep through the night), use (`itemId` of a supply in the kit) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
+  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`), rest (sleep through the night), use (`itemId` of a supply in the kit) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
   inputSchema: external_exports.object({ turn: TurnSchema, intent: ActIntentSchema }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, intent }, context2) => playIntent(context2, turn, intent)

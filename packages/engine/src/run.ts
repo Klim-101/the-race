@@ -14,8 +14,9 @@ export const RUN_SCHEMA_VERSION = 2;
  * an evening with none drawn brings one (see `random-events.ts`).
  * 11: a place is made of parts with obstacles (see `case-schema.ts`); the search by part is yet to come, and
  * until it does a run plays as before.
+ * 12: a place made of parts is searched by part, and a quick look shows the parts (see `search-parts.ts`).
  */
-export const RULESET_VERSION = 11;
+export const RULESET_VERSION = 12;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;
