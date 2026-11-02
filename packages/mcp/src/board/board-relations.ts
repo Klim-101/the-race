@@ -92,13 +92,15 @@ export function pickableTokens(view: DetectiveRunView): string[] {
 /**
  * The CSS that lights what is related to the picked token, one rule for each token that can be picked: the
  * related elements come back to full strength, an outline or a heavier stroke marks them, and the page's own
- * style sheet dims everything else while something is picked (`main[data-sel] [data-rel]`). These rules must
- * come after that one, since they have the same weight.
+ * style sheet dims everything else while something is picked (`main[data-sel] [data-rel]`). These rules are
+ * heavier than every dimming rule, so their order does not matter.
  */
 export function highlightRules(view: DetectiveRunView): string {
   return pickableTokens(view)
     .map((entry) => {
-      const lit = `main[data-sel="${entry}"] [data-rel~="${entry}"]`;
+      // The doubled attributes outweigh the page's dimming of cards on the board (`main[data-sel] svg.board
+      // g[data-rel]`), which would otherwise keep a related card grey.
+      const lit = `main[data-sel="${entry}"][data-sel] [data-rel~="${entry}"][data-rel]`;
       return `${lit}{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
 ${lit} > rect{stroke:var(--accent);stroke-width:3}
 ${lit}:is(path,line){stroke-width:4;outline:0}`;

@@ -108,13 +108,17 @@ main[data-sel] [data-rel]{opacity:.3;transition:opacity .15s}
 /* A dimmed card keeps its paper opaque, so the thread behind it never shows through its text. */
 main[data-sel] svg.board g[data-rel]{opacity:1;filter:grayscale(.7) brightness(.7)}
 .cork-wrap{position:relative}
-.opened{display:none;position:absolute;left:50%;top:16px;transform:translateX(-50%);width:min(460px,92%);z-index:3;padding:10px 18px 12px;background:var(--paper);color:var(--paper-ink);border-left:3px double var(--margin);border-radius:2px;box-shadow:0 10px 28px var(--shadow);cursor:pointer;font-family:'Segoe Print','Bradley Hand',Georgia,serif}
-.opened p{margin:4px 0}
-.opened .tag{color:var(--paper-tag)}
-.opened .whole{font-size:1.1em;line-height:1.5}
+.opened{--note:#fff3a8;--note-ink:#2a2622;--note-tag:#7a6a3a;--note-rule:rgba(70,110,180,.3);display:none;position:absolute;left:50%;top:16px;transform:translateX(-50%) rotate(-1deg);width:min(460px,92%);z-index:3;padding:34px 20px 16px 24px;background-color:var(--note);background-image:linear-gradient(to bottom,transparent 25px,var(--note-rule) 26px);background-size:100% 26px;color:var(--note-ink);border-left:3px double var(--margin);border-radius:2px 2px 6px 2px;box-shadow:2px 3px 3px rgba(0,0,0,.25),0 12px 28px var(--shadow);cursor:pointer;font-family:'Segoe Print','Bradley Hand',Georgia,serif;font-size:14px;line-height:26px}
+.opened::before{content:'';position:absolute;top:-4px;left:50%;width:84px;height:20px;transform:translateX(-50%) rotate(2deg);background:rgba(255,255,255,.45);box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.opened p{margin:0}
+.opened .tag{color:var(--note-tag);font-size:12px;line-height:26px}
+.opened .whole{font-size:1.1em}
+.opened .note{color:var(--note-tag);line-height:26px;margin:0}
+.opened ul.tried .result{color:#b3261e}
+.opened .num{color:#8a3b2a}
 .opened:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-.opened ul.tried{margin:4px 0}
-.opened ul.tried li{padding:4px 10px;box-shadow:none;border-left-width:2px}
+.opened ul.tried{margin:0}
+.opened ul.tried li{margin:0;padding:0 0 0 8px;background:none;color:var(--note-ink);box-shadow:none;border-left:2px solid var(--margin)}
 .num{font:700 12px system-ui,sans-serif;letter-spacing:.04em;color:var(--margin)}
 details{margin:4px 0 0}
 details summary{cursor:pointer;font:12px system-ui,sans-serif;color:var(--paper-tag)}
