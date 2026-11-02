@@ -8,6 +8,13 @@ import { validateCase, type CaseValidationContext } from '../case-validator.js';
 
 type Part = Record<string, unknown>;
 
+const lead = (id: string) => ({
+  id,
+  reason: 'Something about the key makes the hero look again.',
+  earnedBy: { kind: 'clue', clueId: 'cellar-key' },
+  isFalse: false,
+});
+
 const part = (id: string, holds: string | null, overrides: Part = {}): Part => ({
   id,
   name: `The ${id.replaceAll('-', ' ')}`,
@@ -117,6 +124,7 @@ describe('the parts of a place', () => {
 
     it('accepts a clue behind an obstacle when a lead gives it another way', () => {
       const detectiveCase = buildPartedCase();
+      detectiveCase.leads = [lead('baker-gossip')];
       partsOf(detectiveCase, 'mayor-office')[0] = lockedDesk({ kind: 'lead', leadId: 'baker-gossip' });
 
       expect(issueCodes(detectiveCase)).toEqual([]);
@@ -187,6 +195,7 @@ describe('the parts of a place', () => {
 
     it('accepts a part that only a lead shows', () => {
       const detectiveCase = buildPartedCase();
+      detectiveCase.leads = [lead('worn-spot')];
       partsOf(detectiveCase, 'mayor-office')[0] = part('desk', 'oven-receipt', {
         inQuickLook: false,
         requiresLead: 'worn-spot',

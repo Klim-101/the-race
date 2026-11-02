@@ -15,8 +15,10 @@ export const RUN_SCHEMA_VERSION = 2;
  * 11: a place is made of parts with obstacles (see `case-schema.ts`); the search by part is yet to come, and
  * until it does a run plays as before.
  * 12: a place made of parts is searched by part, and a quick look shows the parts (see `search-parts.ts`).
+ * 13: a place can wait for a lead and a part can be shown by one (see `leads.ts`); a deed that earns a lead
+ * earns it for good.
  */
-export const RULESET_VERSION = 12;
+export const RULESET_VERSION = 13;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;

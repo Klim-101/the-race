@@ -5,6 +5,20 @@
   "tone": "wry",
   "title": "Утечка в «Ларкспуре»",
   "premise": "В девять утра в понедельник акции Чайной компании «Ларкспур», гордости Порт-Амберли в мире Черновик, падают на треть. Причина: утёкшая внутренняя записка об отзыве «небезопасного» чая, которую компания клянётся никогда не писать. К обеду цена уже ползёт обратно, а кто-то успел скупить огромный пакет на самом дне. Совет биржи хочет знать, кто сегодня богаче, чем положено.",
+  "leads": [
+    {
+      "id": "draft-trail",
+      "reason": "В свойствах файла указана машина с собственного сервера компании.",
+      "earnedBy": { "kind": "clue", "clueId": "memo-metadata" },
+      "isFalse": false
+    },
+    {
+      "id": "cfo-bin-rumour",
+      "reason": "Секретарь финансового директора обмолвилась, что директор сам выносит свою корзину.",
+      "earnedBy": { "kind": "talk", "suspectId": "cfo" },
+      "isFalse": true
+    }
+  ],
   "startLocationId": "exchange-floor",
   "locations": [
     {
@@ -114,8 +128,8 @@
           "name": "Корзина финансового директора",
           "obstacle": "soft",
           "holds": "pigeon-receipt",
-          "inQuickLook": true,
-          "requiresLead": null,
+          "inQuickLook": false,
+          "requiresLead": "cfo-bin-rumour",
           "fallback": { "kind": "ask", "suspectId": "cfo" }
         }
       ]
@@ -142,6 +156,7 @@
     },
     {
       "id": "server-room",
+      "requiresLead": "draft-trail",
       "name": "Серверная компании",
       "description": "Охлаждаемый чулан с мигающими коробками. Пароль к нему знает весь отдел информационных систем и весь отдел делает вид, что не знает.",
       "connections": ["larkspur-hq"],

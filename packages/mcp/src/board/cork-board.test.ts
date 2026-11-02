@@ -53,10 +53,10 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
     map: {
       current: 'market',
       places: [
-        { id: 'market', name: 'Market', visited: true, blocked: null },
-        { id: 'stall', name: 'Stall', visited: true, blocked: null },
-        { id: 'cellar', name: 'Cellar', visited: false, blocked: 'locked' },
-        { id: 'chapel', name: 'Chapel', visited: false, blocked: 'closed' },
+        { id: 'market', name: 'Market', visited: true, blocked: null, lead: null },
+        { id: 'stall', name: 'Stall', visited: true, blocked: null, lead: null },
+        { id: 'cellar', name: 'Cellar', visited: false, blocked: 'locked', lead: null },
+        { id: 'chapel', name: 'Chapel', visited: false, blocked: 'closed', lead: null },
       ],
       links: [
         { from: 'market', to: 'stall' },
@@ -71,6 +71,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
     clues: [],
     openLinks: [],
     insights: [],
+    leads: [],
     chronicle: { activeMinutesLeft: 600, events: [] },
     ...overrides,
   } as unknown as View;
@@ -354,7 +355,11 @@ describe('the corkboard tab', () => {
     const place = 'The Night Watchman Closet Behind the Old Bar';
     const html = cork(
       viewOf({
-        map: { current: 'x', places: [{ id: 'x', name: place, visited: true, blocked: null }], links: [] },
+        map: {
+          current: 'x',
+          places: [{ id: 'x', name: place, visited: true, blocked: null, lead: null }],
+          links: [],
+        },
         clues: [{ id: 'k', locationId: 'x', description: 'A key.', garbled: false, number: 'MIRA-05' }],
         history: { finds: [{ clueId: 'k', locationId: 'x', turn: 3 }], shown: [], links: [] },
       }),

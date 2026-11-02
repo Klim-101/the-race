@@ -5,6 +5,20 @@
   "tone": "wry",
   "title": "The Leaked Memo of Larkspur",
   "premise": "At nine o'clock on a Monday the shares of the Larkspur Tea Company, the pride of Port Amberly in The Draft, fall by a third. The reason is a leaked internal memo announcing a recall of 'unsafe' tea, which the company swears it never wrote. By lunchtime the price has crept back, and someone has bought a very large block at the bottom. The exchange board wants to know who is richer today than they should be.",
+  "leads": [
+    {
+      "id": "draft-trail",
+      "reason": "The properties of the file name a machine on the company's own server.",
+      "earnedBy": { "kind": "clue", "clueId": "memo-metadata" },
+      "isFalse": false
+    },
+    {
+      "id": "cfo-bin-rumour",
+      "reason": "The CFO's secretary lets slip that the CFO empties his own bin.",
+      "earnedBy": { "kind": "talk", "suspectId": "cfo" },
+      "isFalse": true
+    }
+  ],
   "startLocationId": "exchange-floor",
   "locations": [
     {
@@ -114,8 +128,8 @@
           "name": "The CFO's bin",
           "obstacle": "soft",
           "holds": "pigeon-receipt",
-          "inQuickLook": true,
-          "requiresLead": null,
+          "inQuickLook": false,
+          "requiresLead": "cfo-bin-rumour",
           "fallback": { "kind": "ask", "suspectId": "cfo" }
         }
       ]
@@ -142,6 +156,7 @@
     },
     {
       "id": "server-room",
+      "requiresLead": "draft-trail",
       "name": "Company server room",
       "description": "A refrigerated cupboard of blinking boxes, protected by a password that the whole IT department knows and denies knowing.",
       "connections": ["larkspur-hq"],

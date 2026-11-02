@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { SEARCH_BY_PART_RULESET_VERSION } from './search-parts.js';
-import { findClue, recordShown } from './run-state.js';
+import { findClue, grantLeads, recordShown } from './run-state.js';
 import { actingReveals, sceneSituations } from './trait-reveal.js';
 import { z } from 'zod';
 import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
@@ -209,13 +209,18 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
       effect: fallen.some((lie) => lie.brokenBy.includes(clueId)) ? 'breaks-lie' : 'no-effect',
     })),
   );
+  // What the talk earned: a lead for a talk that went well, and one for each lie that fell.
+  const granted = grantLeads(withLies, [
+    ...(result.success ? [{ kind: 'talk' as const, suspectId: suspect.id }] : []),
+    ...fallen.map(({ id }) => ({ kind: 'lie' as const, lieId: id })),
+  ]);
   // A blunder costs its own point; any other failed pressure talk costs one more, up to the day's cap.
   const strained =
     result.critical === 'failure'
-      ? strainNerves(withLies)
+      ? strainNerves(granted)
       : !result.success && intent.approach === 'pressure'
-        ? strainByAction(withLies)
-        : withLies;
+        ? strainByAction(granted)
+        : granted;
   if (strained.condition.nerves < run.condition.nerves && result.critical !== 'failure') {
     consequences.push('nerves-lost');
   }

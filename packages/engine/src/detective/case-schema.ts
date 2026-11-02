@@ -90,6 +90,40 @@ export const PlacePartSchema = z.object({
 });
 export type PlacePart = z.infer<typeof PlacePartSchema>;
 
+/**
+ * What earns a lead, all of it things the hero does: finding a clue, a talk that goes well with a person, a lie
+ * that falls, a conclusion drawn. (Studying a clue with a tool is yet to come and will earn one the same way.)
+ */
+export const LeadTriggerSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('clue'), clueId: EntityIdSchema }),
+  z.object({ kind: z.literal('talk'), suspectId: EntityIdSchema }),
+  z.object({ kind: z.literal('lie'), lieId: EntityIdSchema }),
+  z.object({ kind: z.literal('deduction'), deductionId: EntityIdSchema }),
+]);
+export type LeadTrigger = z.infer<typeof LeadTriggerSchema>;
+
+/** The hours of a day in which a lead can be followed ("at night"); minutes of the day, and it may wrap midnight. */
+export const LeadWindowSchema = z
+  .object({ fromMinute: z.int().min(0).max(1439), untilMinute: z.int().min(0).max(1439) })
+  .refine(({ fromMinute, untilMinute }) => fromMinute !== untilMinute, 'A window of no hours, or of all.');
+export type LeadWindow = z.infer<typeof LeadWindowSchema>;
+
+/**
+ * A pointer the hero earns. What it opens is whatever names it in `requiresLead`: a place (a soft lead, which
+ * puts the place on the map) or a part (a hard lead, which shows the part with its obstacle). It is told to
+ * the hero in the hero's own words and never says what is true; a false lead leads to an empty part or a red
+ * herring, and costs the time of following it.
+ */
+export const LeadSchema = z.object({
+  id: EntityIdSchema,
+  /** One line, from the hero's own clue or talk: why the hero looks there. */
+  reason: NarrativeTextSchema,
+  earnedBy: LeadTriggerSchema,
+  window: LeadWindowSchema.optional(),
+  isFalse: z.boolean(),
+});
+export type Lead = z.infer<typeof LeadSchema>;
+
 /** Connections are two-way: listing a connection on either location links both. */
 export const LocationSchema = z.object({
   id: EntityIdSchema,
@@ -103,6 +137,11 @@ export const LocationSchema = z.object({
   situations: z.array(TraitTriggerSchema).default([]),
   /** How safe the hero's night is if they sleep here; optional, and a place without it is an ordinary one. */
   lodging: LodgingSafetySchema.optional(),
+  /**
+   * The lead that must be earned before the hero knows the place exists: until then it is not on the map or among
+   * the exits, and cannot be walked to. A place without it is known as soon as it is next to one the hero has seen.
+   */
+  requiresLead: EntityIdSchema.optional(),
   /**
    * The things to look at in the place. Optional rather than defaulted, so that the cases of before the parts
    * keep their seal; a place without parts is searched as a whole, as it always was.
@@ -311,5 +350,7 @@ export const DetectiveCaseSchema = z.object({
    * case and change the seal of the cases accepted before the pool existed.
    */
   randomEvents: z.array(RandomEventSchema).max(MAX_RANDOM_EVENTS).optional(),
+  /** Optional for the same reason: the cases of before the leads have none, and keep their seal. */
+  leads: z.array(LeadSchema).optional(),
 });
 export type DetectiveCase = z.infer<typeof DetectiveCaseSchema>;

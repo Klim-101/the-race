@@ -26,10 +26,10 @@ import {
 const MAP = {
   current: 'lobby',
   places: [
-    { id: 'lobby', name: 'Lobby', visited: true, blocked: null },
-    { id: 'archive', name: 'Archive', visited: false, blocked: null },
-    { id: 'office', name: 'Office', visited: false, blocked: 'locked' },
-    { id: 'chapel', name: 'Chapel', visited: false, blocked: 'closed' },
+    { id: 'lobby', name: 'Lobby', visited: true, blocked: null, lead: null },
+    { id: 'archive', name: 'Archive', visited: false, blocked: null, lead: null },
+    { id: 'office', name: 'Office', visited: false, blocked: 'locked', lead: null },
+    { id: 'chapel', name: 'Chapel', visited: false, blocked: 'closed', lead: null },
   ],
   links: [
     { from: 'lobby', to: 'archive' },

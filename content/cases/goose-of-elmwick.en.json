@@ -5,6 +5,20 @@
   "tone": "absurd",
   "title": "The Goose of Elmwick",
   "premise": "The night before the Postal Museum's anniversary gala in Elmwick, a town of The Draft, Admiral Quill vanishes. He is a stuffed goose in a brass-buttoned waistcoat, the museum's mascot for ninety years and the star lot of tomorrow's charity auction. The display stand is empty, the guest list is long, and the mayor wants the goose back before the speeches start.",
+  "leads": [
+    {
+      "id": "catalogue-lot",
+      "reason": "The ink on the archive card has smudged a lot number: somebody keeps an auction catalogue.",
+      "earnedBy": { "kind": "clue", "clueId": "ink-smudge" },
+      "isFalse": false
+    },
+    {
+      "id": "pedestal-glance",
+      "reason": "The curator keeps glancing at the foot of the pedestal.",
+      "earnedBy": { "kind": "talk", "suspectId": "curator" },
+      "isFalse": false
+    }
+  ],
   "startLocationId": "museum-hall",
   "locations": [
     {
@@ -29,8 +43,8 @@
           "name": "The base of the pedestal",
           "obstacle": "sealed",
           "holds": "stand-hollow",
-          "inQuickLook": true,
-          "requiresLead": null,
+          "inQuickLook": false,
+          "requiresLead": "pedestal-glance",
           "fallback": { "kind": "ask", "suspectId": "curator" }
         },
         {
@@ -141,6 +155,7 @@
     },
     {
       "id": "curator-office",
+      "requiresLead": "catalogue-lot",
       "name": "Curator's office",
       "description": "A cramped office with a sofa, a kettle and a door guarded by the curator's secretary, who treats every visitor as a personal insult to the collection.",
       "connections": ["museum-hall"],

@@ -5,6 +5,20 @@
   "tone": "absurd",
   "title": "Гусь из Эльмвика",
   "premise": "Накануне юбилейного гала Почтового музея в Эльмвике, городке мира Черновик, пропал Адмирал Квилл. Это чучело гуся в жилетке с латунными пуговицами: девяносто лет он был талисманом музея и должен был стать главным лотом завтрашнего благотворительного аукциона. Подставка пуста, список гостей длинный, а мэр хочет получить гуся обратно до начала речей.",
+  "leads": [
+    {
+      "id": "catalogue-lot",
+      "reason": "На архивной карточке расплылся номер лота: у кого-то хранится аукционный каталог.",
+      "earnedBy": { "kind": "clue", "clueId": "ink-smudge" },
+      "isFalse": false
+    },
+    {
+      "id": "pedestal-glance",
+      "reason": "Куратор то и дело поглядывает на основание постамента.",
+      "earnedBy": { "kind": "talk", "suspectId": "curator" },
+      "isFalse": false
+    }
+  ],
   "startLocationId": "museum-hall",
   "locations": [
     {
@@ -29,8 +43,8 @@
           "name": "Основание постамента",
           "obstacle": "sealed",
           "holds": "stand-hollow",
-          "inQuickLook": true,
-          "requiresLead": null,
+          "inQuickLook": false,
+          "requiresLead": "pedestal-glance",
           "fallback": { "kind": "ask", "suspectId": "curator" }
         },
         {
@@ -141,6 +155,7 @@
     },
     {
       "id": "curator-office",
+      "requiresLead": "catalogue-lot",
       "name": "Кабинет куратора",
       "description": "Тесный кабинет с диваном и чайником. У двери сидит секретарша куратора и считает каждого посетителя личным оскорблением коллекции.",
       "connections": ["museum-hall"],

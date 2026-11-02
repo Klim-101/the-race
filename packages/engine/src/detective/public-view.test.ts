@@ -55,9 +55,9 @@ describe('the known map', () => {
 
     expect(map.current).toBe('market-square');
     expect(map.places).toEqual([
-      { id: 'market-square', name: 'Market square', visited: true, blocked: null },
-      { id: 'cheese-stall', name: 'Cheese stall', visited: false, blocked: null },
-      { id: 'storage-cellar', name: 'Storage cellar', visited: false, blocked: 'locked' },
+      { id: 'market-square', name: 'Market square', visited: true, blocked: null, lead: null },
+      { id: 'cheese-stall', name: 'Cheese stall', visited: false, blocked: null, lead: null },
+      { id: 'storage-cellar', name: 'Storage cellar', visited: false, blocked: 'locked', lead: null },
     ]);
     expect(map.links).toEqual([
       { from: 'market-square', to: 'cheese-stall' },

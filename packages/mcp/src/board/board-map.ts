@@ -106,7 +106,9 @@ export function renderMap(view: DetectiveRunView, text: TabText): string {
           ? text.map.closed
           : place.visited
             ? ''
-            : text.map.unvisited;
+            : place.lead === null
+              ? text.map.unvisited
+              : text.map.lead;
     const clues = cluesAt.get(place.id) ?? 0;
     const classes = [
       'node',
@@ -121,7 +123,7 @@ export function renderMap(view: DetectiveRunView, text: TabText): string {
         ? ''
         : `<circle class="badge" cx="${whole(x + NODE_WIDTH)}" cy="${whole(y)}" r="11"><title>${escapeHtml(text.map.cluesHere)}: ${String(clues)}</title></circle><text class="badge-n" x="${whole(x + NODE_WIDTH)}" y="${whole(y + 4)}" text-anchor="middle">${String(clues)}</text>`;
     const pick = `data-pick="place:${escapeHtml(place.id)}" data-rel="${escapeHtml(rel(placeTokens(view, place.id)))}" tabindex="0" role="button"`;
-    return `<g class="${classes}" ${pick}><title>${escapeHtml(place.name)}${state === '' ? '' : ` (${escapeHtml(state)})`}</title><rect x="${whole(x)}" y="${whole(y)}" width="${String(NODE_WIDTH)}" height="${String(NODE_HEIGHT)}" rx="8"/><text class="name" x="${whole(x + NODE_WIDTH / 2)}" y="${whole(y + 24)}" text-anchor="middle">${escapeHtml(truncate(place.name, LABEL_LENGTH))}</text><text class="state" x="${whole(x + NODE_WIDTH / 2)}" y="${whole(y + 43)}" text-anchor="middle">${escapeHtml(state)}</text>${badge}</g>`;
+    return `<g class="${classes}" ${pick}><title>${escapeHtml(place.name)}${state === '' ? '' : ` (${escapeHtml(state)})`}${place.lead === null ? '' : `: ${escapeHtml(place.lead)}`}</title><rect x="${whole(x)}" y="${whole(y)}" width="${String(NODE_WIDTH)}" height="${String(NODE_HEIGHT)}" rx="8"/><text class="name" x="${whole(x + NODE_WIDTH / 2)}" y="${whole(y + 24)}" text-anchor="middle">${escapeHtml(truncate(place.name, LABEL_LENGTH))}</text><text class="state" x="${whole(x + NODE_WIDTH / 2)}" y="${whole(y + 43)}" text-anchor="middle">${escapeHtml(state)}</text>${badge}</g>`;
   });
 
   return `<div class="graph"><svg class="map" viewBox="0 0 ${String(layout.width)} ${String(layout.height)}" role="img" aria-label="${escapeHtml(text.map.title)}" style="min-width:${String(Math.min(layout.width, 520))}px"><g class="edges">${edges.join('')}</g>${nodes.join('')}</svg></div>

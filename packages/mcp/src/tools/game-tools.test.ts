@@ -645,7 +645,7 @@ describe('the search by part', () => {
       outcome: {
         kind: 'look',
         foundClueIds: ['ransom-note'],
-        noticedPartIds: ['pedestal-floor', 'pedestal-base', 'service-door-lock', 'pedestal-front'],
+        noticedPartIds: ['pedestal-floor', 'service-door-lock', 'pedestal-front'],
       },
     });
     const view = (await call(runView, {}, context)).body as {
@@ -656,7 +656,7 @@ describe('the search by part', () => {
 
     const refused = await call(
       act,
-      { turn: 1, intent: { kind: 'search', partId: 'pedestal-base' } },
+      { turn: 1, intent: { kind: 'search', partId: 'service-door-lock' } },
       context,
     );
     expect(refused.isError).toBe(true);
@@ -670,5 +670,43 @@ describe('the search by part', () => {
     expect(searched.body).toMatchObject({ outcome: { kind: 'search', partId: 'pedestal-front' } });
     const after = (await call(runView, {}, context)).body as typeof view;
     expect(after.location.parts.find(({ id }) => id === 'pedestal-front')).toMatchObject({ searched: true });
+  });
+});
+
+describe('the leads of a turn', () => {
+  it('tells a lead in the turn that earned it, puts the place on the map, and keeps it off until then', async () => {
+    const context = gameContext();
+    await prepareHero(context);
+    const detectiveCase = partedSampleCase();
+    detectiveCase.leads = [
+      ...(detectiveCase.leads ?? []),
+      {
+        id: 'boiler-whisper',
+        reason: 'The note smells of coal smoke.',
+        earnedBy: { kind: 'clue', clueId: 'ransom-note' },
+        isFalse: false,
+      },
+    ];
+    const boiler = detectiveCase.locations.find(({ id }) => id === 'courtyard');
+    if (boiler !== undefined) boiler.requiresLead = 'boiler-whisper';
+    await installCase(context, detectiveCase);
+    const places = async () =>
+      ((await call(runView, {}, context)).body as { map: { places: { id: string; lead: string | null }[] } })
+        .map.places;
+
+    const looked = await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+
+    expect(looked.body).toMatchObject({
+      leads: [{ id: 'boiler-whisper', reason: 'The note smells of coal smoke.' }],
+    });
+    expect(await places()).toContainEqual({
+      id: 'courtyard',
+      lead: 'The note smells of coal smoke.',
+      name: 'Gala courtyard',
+      visited: false,
+      blocked: null,
+    });
+    const view = (await call(runView, {}, context)).body as { leads: { id: string }[] };
+    expect(view.leads.map(({ id }) => id)).toContain('boiler-whisper');
   });
 });

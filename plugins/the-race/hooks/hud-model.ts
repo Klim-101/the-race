@@ -30,9 +30,15 @@ export function localeOf(data: Record<string, unknown>): 'ru' | 'en' | undefined
 
 function placeOf(value: unknown): HudPlace | undefined {
   if (!isRecord(value)) return undefined;
-  const { id, name, visited, blocked } = value;
+  const { id, name, visited, blocked, lead } = value;
   if (typeof id !== 'string' || typeof name !== 'string' || typeof visited !== 'boolean') return undefined;
-  return { id, name, visited, blocked: blocked === 'locked' || blocked === 'closed' ? blocked : null };
+  return {
+    id,
+    name,
+    visited,
+    blocked: blocked === 'locked' || blocked === 'closed' ? blocked : null,
+    lead: typeof lead === 'string' ? lead : null,
+  };
 }
 
 /** The hero's composure as a word, from the warnings the game shows while the bands apply; the worst band wins. */
