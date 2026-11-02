@@ -49,6 +49,8 @@ export interface CaseValidationContext {
    * may stay whole, as the places of the cases before the parts did.
    */
   readonly requireParts?: boolean;
+  /** Whether a clue that breaks a lie must be about the one who told it (a generated case must). */
+  readonly requireTies?: boolean;
 }
 
 export type CaseValidationResult =
@@ -86,7 +88,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...checkParts(detectiveCase, obtainable, context.requireParts ?? false),
     ...checkSolution(detectiveCase, context.hero, context.traits, obtainable),
     ...checkSolveChance(detectiveCase, context.hero, context.traits, obtainable),
-    ...checkLies(detectiveCase, obtainable),
+    ...checkLies(detectiveCase, obtainable, context.requireTies ?? false),
     ...checkTimeline(detectiveCase),
     ...checkWorldEvents(detectiveCase, context.hero, context.traits),
     ...checkRandomEvents(

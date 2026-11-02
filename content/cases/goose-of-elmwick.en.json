@@ -251,6 +251,7 @@
       "discovery": { "skill": "tech", "difficulty": 10 },
       "situations": ["digital-evidence"],
       "pointsTo": ["postmaster"],
+      "about": ["apprentice"],
       "isRedHerring": false
     },
     {
@@ -299,6 +300,7 @@
       "description": "Wedged between two knocking pipes, the museum apprentice is easy to rattle. Pressed hard enough, he admits that a kind old lady promised him a pound of toffee to hold the handcart while she carried 'something very important' out of the hall.",
       "discovery": { "skill": "pressure", "difficulty": 11 },
       "pointsTo": ["postmaster"],
+      "about": ["apprentice"],
       "isRedHerring": false
     },
     {
@@ -376,7 +378,8 @@
         {
           "id": "apprentice-bed",
           "statement": "I was in bed by nine and never left it.",
-          "brokenBy": ["apprentice-confession", "door-log"]
+          "brokenBy": ["apprentice-confession", "door-log"],
+          "brokenByInsights": ["night-visit"]
         }
       ]
     }

@@ -38,7 +38,7 @@ export interface TabText {
     readonly tried: string;
     readonly noneTried: string;
     readonly results: Record<'insight' | 'already-known' | 'nothing', string>;
-    readonly effects: Record<'breaks-lie' | 'no-effect', string>;
+    readonly effects: Record<'breaks-lie' | 'confirms' | 'implicates' | 'no-effect', string>;
     readonly legend: string;
   };
   readonly map: {
@@ -58,6 +58,9 @@ export interface TabText {
     readonly none: string;
     readonly day: string;
     readonly kinds: Record<'alibi' | 'conceded' | 'secret', string>;
+    /** How the talks have left a person, and the line for one who will not talk for now. */
+    readonly moods: Record<'calm' | 'shaken' | 'cornered' | 'broken', string>;
+    readonly closed: string;
   };
   readonly links: {
     readonly title: string;

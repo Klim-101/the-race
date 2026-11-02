@@ -50,6 +50,7 @@ import {
   type ObstacleKind,
 } from './case-schema.js';
 import { isLeadEarned, isLeadOpen, isPlaceKnown, leadsEarnedBy } from './leads.js';
+import { SUSPECT_MOODS, isClosed, moodOf, moodWord } from './suspect-mood.js';
 import { partsOfPlace } from './search-parts.js';
 import {
   PendingEffectSchema,
@@ -114,7 +115,7 @@ export const InspirationSchema = z.strictObject({
 });
 export type Inspiration = z.infer<typeof InspirationSchema>;
 
-export const SHOWN_EFFECTS = ['breaks-lie', 'no-effect'] as const;
+export const SHOWN_EFFECTS = ['breaks-lie', 'confirms', 'implicates', 'no-effect'] as const;
 export type ShownEffect = (typeof SHOWN_EFFECTS)[number];
 export const LINK_RESULTS = ['insight', 'already-known', 'nothing'] as const;
 export type LinkResult = (typeof LINK_RESULTS)[number];
@@ -138,6 +139,15 @@ export const RunHistorySchema = z.object({
   ),
 });
 export type RunHistory = z.infer<typeof RunHistorySchema>;
+
+export const SuspectMoodSchema = z.object({
+  suspectId: EntityIdSchema,
+  /** How far the suspect has been pushed: calm, shaken, cornered, broken (see `suspect-mood.ts`). */
+  step: z.int().min(0).max(3),
+  /** The minute of the run, counted from its start, until which the suspect will not talk; `null` for one who will. */
+  closedUntil: z.int().min(0).nullable(),
+});
+export type SuspectMood = z.infer<typeof SuspectMoodSchema>;
 
 export const EarnedLeadSchema = z.object({ leadId: EntityIdSchema, turn: z.int().min(1) });
 export type EarnedLead = z.infer<typeof EarnedLeadSchema>;
@@ -190,6 +200,8 @@ export const DetectiveRunStateSchema = z
     noticedPartIds: z.array(EntityIdSchema).default([]),
     /** Parts the hero has searched, with what each gave and the turn: a part searched stays searched. */
     searchedParts: z.array(SearchedPartSchema).default([]),
+    /** How the talks have left the suspects, for those the hero has talked to; a suspect not here is calm. */
+    suspectMoods: z.array(SuspectMoodSchema).default([]),
     /** Leads the hero has earned, with the turn of each; what a lead opens is told by the case. */
     earnedLeads: z.array(EarnedLeadSchema).default([]),
     /** Found clues whose reading was garbled by fatigue; each must be read again before it is used as proof. */
@@ -243,6 +255,11 @@ export const DetectiveRunStateSchema = z
     );
     known('garbledClueIds', run.garbledClueIds, new Set(run.case.clues.map(({ id }) => id)));
     known('closedLocationIds', run.closedLocationIds, locationIds);
+    known(
+      'suspectMoods',
+      run.suspectMoods.map(({ suspectId }) => suspectId),
+      new Set(run.case.suspects.map(({ id }) => id)),
+    );
     known(
       'earnedLeads',
       run.earnedLeads.map(({ leadId }) => leadId),
@@ -325,6 +342,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     signalEvents: [],
     noticedPartIds: [],
     searchedParts: [],
+    suspectMoods: [],
     earnedLeads: [],
     garbledClueIds: [],
     supplies: initialSupplies(input.hero.background, input.hero.lifeState),
@@ -455,6 +473,18 @@ export function grantLeads(run: DetectiveRunState, deeds: readonly LeadTrigger[]
     };
     return given.reduce(findClue, noticeParts(withLead, shown));
   }, run);
+}
+
+/** Sets how a talk left a suspect: how far they have been pushed, and until when they will not talk. */
+export function setSuspectMood(run: DetectiveRunState, mood: SuspectMood): DetectiveRunState {
+  assertActive(run);
+  requireId(
+    'suspect',
+    mood.suspectId,
+    run.case.suspects.map(({ id }) => id),
+  );
+  const others = run.suspectMoods.filter(({ suspectId }) => suspectId !== mood.suspectId);
+  return { ...run, suspectMoods: [...others, mood] };
 }
 
 /** Writes down that clues were shown to a suspect in the turn being played, with what the showing did. */
@@ -729,6 +759,10 @@ export interface DetectiveRunView {
     readonly persona: string;
     /** Where the suspect can be found now; `null` when the case ties them to no place (ask anywhere). */
     readonly place: { readonly id: string; readonly name: string } | null;
+    /** How the talks have left the suspect, as a word: calm, shaken, cornered or broken. */
+    readonly mood: (typeof SUSPECT_MOODS)[number];
+    /** Whether the suspect will not talk for now, after a pressure that had nothing to stand on. */
+    readonly closed: boolean;
     /** What the suspect has said at questioning, in the order they said it. */
     readonly statements: readonly {
       readonly day: number;
@@ -965,6 +999,8 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         name: suspect.name,
         persona: suspect.persona,
         place: place === undefined ? null : { id: place.id, name: place.name },
+        mood: moodWord(moodOf(run, suspect.id).step),
+        closed: isClosed(run, suspect.id),
         statements: run.statements
           .filter(({ suspectId }) => suspectId === suspect.id)
           .map(({ day, kind, text }) => ({ day, kind, text })),

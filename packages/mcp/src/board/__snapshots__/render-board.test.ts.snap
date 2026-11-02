@@ -93,6 +93,7 @@ exports[`the suspects tab > shows who they are, where they were last seen and wh
 <div class="card" data-pick="suspect:a" data-rel="suspect:a" tabindex="0" role="button">
 <strong>Anna</strong>
 <p>Baker</p>
+<p class="tag">calm</p>
 <p class="tag">Last seen: right here</p>
 <h3>What they said</h3>
 <p class="statement"><span class="tag">day 1 · alibi</span><br>I was at the oven all night.</p>
@@ -102,6 +103,7 @@ exports[`the suspects tab > shows who they are, where they were last seen and wh
 <div class="card" data-pick="suspect:c" data-rel="suspect:c" tabindex="0" role="button">
 <strong>Cora</strong>
 <p>Mayor</p>
+<p class="tag">cornered · will not talk for now</p>
 <p class="tag">Last seen: anywhere, apparently</p>
 <h3>What they said</h3>
 <p class="empty">Nothing said yet.</p>
@@ -109,6 +111,7 @@ exports[`the suspects tab > shows who they are, where they were last seen and wh
 <div class="card" data-pick="suspect:b" data-rel="suspect:b" tabindex="0" role="button">
 <strong>Boris</strong>
 <p>Rival</p>
+<p class="tag">calm</p>
 <p class="tag">Last seen: Stall</p>
 <h3>What they said</h3>
 <p class="empty">Nothing said yet.</p>

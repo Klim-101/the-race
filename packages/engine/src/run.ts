@@ -18,8 +18,10 @@ export const RUN_SCHEMA_VERSION = 2;
  * 13: a place can wait for a lead and a part can be shown by one (see `leads.ts`); a deed that earns a lead
  * earns it for good.
  * 14: an obstacle is got past with a tool of the kit, with a roll, and a tool wears (see `gear.ts`).
+ * 15: a shown clue can confirm a fallen lie or implicate a suspect, a conclusion can be put to a suspect, and a
+ * suspect has a state that a fallen lie moves and that changes the next talk (see `suspect-mood.ts`).
  */
-export const RULESET_VERSION = 14;
+export const RULESET_VERSION = 15;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;
