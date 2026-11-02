@@ -35,25 +35,18 @@ A text roguelike that runs inside [Claude Code](https://claude.com/claude-code) 
 
 You need [Claude Code](https://claude.com/claude-code) on your own subscription and [Node.js](https://nodejs.org) 24 (the current LTS) or newer, except 25, with npm 11 (it comes with Node 24). There is nothing else to sign up for: no account, no API key.
 
-1. **Get the code and build it**
-
-   ```sh
-   git clone https://github.com/Klim-101/the-race.git
-   cd the-race
-   npm ci
-   npm run build
-   ```
-
-2. **Install the plugin.** In Claude Code, in any folder:
+1. **Install the plugin.** In Claude Code, in any folder:
 
    ```
-   /plugin marketplace add <path to the cloned repository>
+   /plugin marketplace add Klim-101/the-race
    /plugin install the-race@the-race
    ```
 
-3. **Choose the game folder** when Claude Code asks. It keeps your saves and the evidence board, which you can open in any browser. Pick a plain folder without a cloud drive in the path. You can change it later in `/config`.
+   The plugin carries its own server, so there is nothing to clone or build.
 
-4. **Start a new Claude Code session** so the plugin's server loads, then run:
+2. **Choose the game folder** when Claude Code asks. It keeps your saves and the evidence board, which you can open in any browser. Pick a plain folder without a cloud drive in the path. You can change it later in `/config`.
+
+3. **Start a new Claude Code session** so the plugin's server loads, then run:
 
    ```
    /race

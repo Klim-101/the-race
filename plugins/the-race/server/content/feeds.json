@@ -1,0 +1,144 @@
+[
+  {
+    "id": "bbc-world",
+    "language": "en",
+    "topic": "world",
+    "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+    "enabled": true
+  },
+  {
+    "id": "guardian-world",
+    "language": "en",
+    "topic": "world",
+    "url": "https://www.theguardian.com/world/rss",
+    "enabled": true
+  },
+  {
+    "id": "dw-en",
+    "language": "en",
+    "topic": "world",
+    "url": "https://rss.dw.com/rdf/rss-en-all",
+    "enabled": true
+  },
+  {
+    "id": "aljazeera-en",
+    "language": "en",
+    "topic": "world",
+    "url": "https://www.aljazeera.com/xml/rss/all.xml",
+    "enabled": true
+  },
+  {
+    "id": "bbc-business",
+    "language": "en",
+    "topic": "economy",
+    "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
+    "enabled": true
+  },
+  {
+    "id": "guardian-business",
+    "language": "en",
+    "topic": "economy",
+    "url": "https://www.theguardian.com/business/rss",
+    "enabled": true
+  },
+  {
+    "id": "bbc-technology",
+    "language": "en",
+    "topic": "tech",
+    "url": "https://feeds.bbci.co.uk/news/technology/rss.xml",
+    "enabled": true
+  },
+  {
+    "id": "ars-technica",
+    "language": "en",
+    "topic": "tech",
+    "url": "https://feeds.arstechnica.com/arstechnica/index",
+    "enabled": true
+  },
+  {
+    "id": "bbc-russian",
+    "language": "ru",
+    "topic": "world",
+    "url": "https://feeds.bbci.co.uk/russian/rss.xml",
+    "enabled": true
+  },
+  {
+    "id": "dw-ru",
+    "language": "ru",
+    "topic": "world",
+    "url": "https://rss.dw.com/rdf/rss-ru-all",
+    "enabled": true
+  },
+  { "id": "meduza", "language": "ru", "topic": "world", "url": "https://meduza.io/rss/all", "enabled": true },
+  { "id": "lenta", "language": "ru", "topic": "world", "url": "https://lenta.ru/rss/news", "enabled": true },
+  {
+    "id": "rbc",
+    "language": "ru",
+    "topic": "economy",
+    "url": "https://rssexport.rbc.ru/rbcnews/news/30/full.rss",
+    "enabled": true
+  },
+  {
+    "id": "vedomosti",
+    "language": "ru",
+    "topic": "economy",
+    "url": "https://www.vedomosti.ru/rss/news",
+    "enabled": true
+  },
+  {
+    "id": "kommersant",
+    "language": "ru",
+    "topic": "economy",
+    "url": "https://www.kommersant.ru/RSS/news.xml",
+    "enabled": true
+  },
+  {
+    "id": "habr-news",
+    "language": "ru",
+    "topic": "tech",
+    "url": "https://habr.com/ru/rss/news/",
+    "enabled": true
+  },
+  {
+    "id": "cnews",
+    "language": "ru",
+    "topic": "tech",
+    "url": "https://www.cnews.ru/inc/rss/news.xml",
+    "enabled": true
+  },
+  {
+    "id": "onion",
+    "language": "en",
+    "topic": "humor",
+    "url": "https://www.theonion.com/rss",
+    "enabled": true
+  },
+  {
+    "id": "nottheonion",
+    "language": "en",
+    "topic": "humor",
+    "url": "https://www.reddit.com/r/nottheonion/.rss",
+    "enabled": true
+  },
+  {
+    "id": "postillon",
+    "language": "de",
+    "topic": "humor",
+    "url": "https://www.der-postillon.com/feeds/posts/default",
+    "enabled": true
+  },
+  {
+    "id": "mundo-today",
+    "language": "es",
+    "topic": "humor",
+    "url": "https://www.elmundotoday.com/feed/",
+    "enabled": true
+  },
+  {
+    "id": "anekdot",
+    "language": "ru",
+    "topic": "humor",
+    "url": "https://www.anekdot.ru/rss/export_top.xml",
+    "enabled": true
+  }
+]

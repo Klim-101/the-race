@@ -2,7 +2,7 @@
 
 The RACE ships as a Claude Code plugin. Its source is the `agents/` directory (skills, subagents, commands, hooks and plugin metadata); the installable tree in `plugins/the-race/` is generated from it by `npm run generate` and checked in CI by `npm run lint:generated`. The plugin's MCP server is the engine's front door, declared in the generated `.mcp.json`.
 
-To install from a local checkout, build the repository, then in Claude Code run `/plugin marketplace add <path to the repository>` followed by `/plugin install the-race@the-race`.
+To install, in Claude Code run `/plugin marketplace add Klim-101/the-race` followed by `/plugin install the-race@the-race`. An install copies the plugin's folder and nothing around it, so the MCP server travels inside it: `plugins/the-race/server/main.mjs`, the server with its dependencies in one file, and the feed list beside it. It is made by `npm run bundle` from the sources and checked in CI by `npm run bundle:check`; run `npm run bundle` and commit the result when the server changes. To try a checkout instead, build the repository and add it as a marketplace by its path: the launcher then prefers the built checkout to the bundle.
 
 The plugin also ships a `PreToolUse` hook, `spoiler-guard`, that refuses any tool call naming the game's save directory, so the narrator cannot read the sealed truth by accident. It guards against a spoiler from the narrator, not against a player who opens the files or disables the hook; see [ADR 0006](../adr/0006-keeping-the-narrator-blind-in-claude-code.md).
 
