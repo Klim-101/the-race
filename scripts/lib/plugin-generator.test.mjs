@@ -240,6 +240,15 @@ describe('findStaleFiles and writePlugin', () => {
     writePlugin(root, buildPlugin(agents()));
     expect(listFiles(join(root, PLUGIN_DIR))).not.toContain('commands/new-run.md');
   });
+
+  it('leaves the server bundle alone, when checking and when regenerating', () => {
+    const tree = buildPlugin(agents());
+    mkdirSync(join(root, PLUGIN_DIR, 'server'), { recursive: true });
+    writeFileSync(join(root, PLUGIN_DIR, 'server', 'main.mjs'), '// the bundle');
+    writePlugin(root, tree);
+    expect(findStaleFiles(root, tree)).toEqual([]);
+    expect(readFileSync(join(root, PLUGIN_DIR, 'server', 'main.mjs'), 'utf8')).toBe('// the bundle');
+  });
 });
 
 describe('generate-plugin CLI', () => {

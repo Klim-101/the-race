@@ -50,6 +50,7 @@ npm run typecheck
 npm run test:coverage   # the engine must stay at 100% coverage
 npm run build
 npm run licenses:check  # runtime dependency licenses against the allowlist
+npm run bundle:check    # the committed server bundle matches the sources (`npm run bundle` rewrites it)
 ```
 
 `npm run lint:fix` fixes what it can. CI also scans for secrets (gitleaks) and lints workflows (actionlint, zizmor).
