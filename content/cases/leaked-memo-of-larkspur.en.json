@@ -14,7 +14,27 @@
       "connections": ["harbour-street"],
       "access": { "kind": "open" },
       "exposure": "indoor",
-      "situations": ["crowd"]
+      "situations": ["crowd"],
+      "parts": [
+        {
+          "id": "broker-row",
+          "name": "The row of brokers",
+          "obstacle": null,
+          "holds": "broker-gossip",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "trader-booth",
+          "name": "The trader's booth",
+          "obstacle": "locked",
+          "holds": "big-short-slip",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "trader" }
+        }
+      ]
     },
     {
       "id": "press-room",
@@ -22,7 +42,36 @@
       "description": "A cramped newsroom where five journalists share two telephones and one opinion. The memo was slid under this door before dawn.",
       "connections": ["harbour-street", "ink-alley"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "reporter-desk",
+          "name": "The reporter's desk",
+          "obstacle": null,
+          "holds": "journalist-source",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "press-laptop",
+          "name": "The laptop of the press room",
+          "obstacle": "digital",
+          "holds": "memo-metadata",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "journalist" }
+        },
+        {
+          "id": "coat-pocket",
+          "name": "The pocket of the coat",
+          "obstacle": "soft",
+          "holds": "champagne-bill",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "journalist" }
+        }
+      ]
     },
     {
       "id": "print-shop",
@@ -30,7 +79,18 @@
       "description": "A small printer behind the press room that smells of solvent and toast. The owner prints everything from wedding invitations to share certificates and remembers all of it.",
       "connections": ["ink-alley"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "paper-shelf",
+          "name": "The shelf of paper",
+          "obstacle": null,
+          "holds": "paper-stock",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "larkspur-hq",
@@ -38,7 +98,27 @@
       "description": "A tea company's offices in the colours of strong tea: brown carpets, beige walls and a receptionist who offers visitors a cup and a form to sign for it.",
       "connections": ["larkspur-plaza", "records-vault", "server-room"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "secretary-hook",
+          "name": "The secretary's hook",
+          "obstacle": null,
+          "holds": "vault-pass",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "cfo-bin",
+          "name": "The CFO's bin",
+          "obstacle": "soft",
+          "holds": "pigeon-receipt",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "cfo" }
+        }
+      ]
     },
     {
       "id": "records-vault",
@@ -47,7 +127,18 @@
       "connections": ["larkspur-hq"],
       "access": { "kind": "clue", "clueId": "vault-pass" },
       "exposure": "indoor",
-      "situations": ["confined-space"]
+      "situations": ["confined-space"],
+      "parts": [
+        {
+          "id": "ledger-shelf",
+          "name": "The shelf of ledgers",
+          "obstacle": null,
+          "holds": "trade-ledger",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "server-room",
@@ -56,7 +147,18 @@
       "connections": ["larkspur-hq"],
       "access": { "kind": "skill", "check": { "skill": "tech", "difficulty": 12 } },
       "exposure": "indoor",
-      "situations": ["digital-evidence"]
+      "situations": ["digital-evidence"],
+      "parts": [
+        {
+          "id": "mail-server",
+          "name": "The mail server",
+          "obstacle": "digital",
+          "holds": "deleted-draft",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "cfo" }
+        }
+      ]
     },
     {
       "id": "teahouse",
@@ -64,7 +166,27 @@
       "description": "A family teahouse by the exchange's back door, with chipped cups, honest prices and a tilting sign that has been about to fall for three decades.",
       "connections": ["harbour-street"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "cash-desk",
+          "name": "The cash desk",
+          "obstacle": null,
+          "holds": "clerk-confession",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "notice-board",
+          "name": "The notice board",
+          "obstacle": null,
+          "holds": "mortgage-notice",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "harbour-street",

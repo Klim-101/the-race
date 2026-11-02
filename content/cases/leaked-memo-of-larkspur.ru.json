@@ -14,7 +14,27 @@
       "connections": ["harbour-street"],
       "access": { "kind": "open" },
       "exposure": "indoor",
-      "situations": ["crowd"]
+      "situations": ["crowd"],
+      "parts": [
+        {
+          "id": "broker-row",
+          "name": "Ряд брокеров",
+          "obstacle": null,
+          "holds": "broker-gossip",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "trader-booth",
+          "name": "Кабина трейдера",
+          "obstacle": "locked",
+          "holds": "big-short-slip",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "trader" }
+        }
+      ]
     },
     {
       "id": "press-room",
@@ -22,7 +42,36 @@
       "description": "Тесная редакция, где пять журналистов делят два телефона и одно мнение. Записку просунули под эту дверь ещё до рассвета.",
       "connections": ["harbour-street", "ink-alley"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "reporter-desk",
+          "name": "Стол репортёра",
+          "obstacle": null,
+          "holds": "journalist-source",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "press-laptop",
+          "name": "Ноутбук пресс-комнаты",
+          "obstacle": "digital",
+          "holds": "memo-metadata",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "journalist" }
+        },
+        {
+          "id": "coat-pocket",
+          "name": "Карман пальто",
+          "obstacle": "soft",
+          "holds": "champagne-bill",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "journalist" }
+        }
+      ]
     },
     {
       "id": "print-shop",
@@ -30,7 +79,18 @@
       "description": "Маленькая типография за пресс-комнатой, пахнущая растворителем и гренками. Хозяин печатает всё подряд, от свадебных приглашений до акционерных сертификатов, и помнит каждый заказ.",
       "connections": ["ink-alley"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "paper-shelf",
+          "name": "Полка с бумагой",
+          "obstacle": null,
+          "holds": "paper-stock",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "larkspur-hq",
@@ -38,7 +98,27 @@
       "description": "Офис чайной компании выдержан в цветах крепкого чая: коричневые ковры, бежевые стены и секретарь, которая предлагает посетителям чашку и бланк, чтобы за неё расписаться.",
       "connections": ["larkspur-plaza", "records-vault", "server-room"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "secretary-hook",
+          "name": "Крючок секретаря",
+          "obstacle": null,
+          "holds": "vault-pass",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "cfo-bin",
+          "name": "Корзина финансового директора",
+          "obstacle": "soft",
+          "holds": "pigeon-receipt",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "cfo" }
+        }
+      ]
     },
     {
       "id": "records-vault",
@@ -47,7 +127,18 @@
       "connections": ["larkspur-hq"],
       "access": { "kind": "clue", "clueId": "vault-pass" },
       "exposure": "indoor",
-      "situations": ["confined-space"]
+      "situations": ["confined-space"],
+      "parts": [
+        {
+          "id": "ledger-shelf",
+          "name": "Полка с реестрами",
+          "obstacle": null,
+          "holds": "trade-ledger",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "server-room",
@@ -56,7 +147,18 @@
       "connections": ["larkspur-hq"],
       "access": { "kind": "skill", "check": { "skill": "tech", "difficulty": 12 } },
       "exposure": "indoor",
-      "situations": ["digital-evidence"]
+      "situations": ["digital-evidence"],
+      "parts": [
+        {
+          "id": "mail-server",
+          "name": "Почтовый сервер",
+          "obstacle": "digital",
+          "holds": "deleted-draft",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "cfo" }
+        }
+      ]
     },
     {
       "id": "teahouse",
@@ -64,7 +166,27 @@
       "description": "Семейная чайная у чёрного хода биржи: щербатые чашки, честные цены и покосившаяся вывеска, которая вот-вот упадёт уже лет тридцать.",
       "connections": ["harbour-street"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "cash-desk",
+          "name": "Касса",
+          "obstacle": null,
+          "holds": "clerk-confession",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "notice-board",
+          "name": "Доска объявлений",
+          "obstacle": null,
+          "holds": "mortgage-notice",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "harbour-street",

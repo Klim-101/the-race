@@ -9,6 +9,7 @@ import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { checkFleeDeadline } from './checks/flee-deadline.js';
 import { checkLies } from './checks/lies.js';
 import { checkMapShape, type MapRules } from './checks/map-shape.js';
+import { checkParts } from './checks/parts.js';
 import { checkRandomEvents } from './checks/random-events.js';
 import { checkReachability } from './checks/reachability.js';
 import { checkRedHerrings } from './checks/red-herrings.js';
@@ -42,6 +43,11 @@ export interface CaseValidationContext {
    * squares between the buildings, and more than one building. Left out, any map is accepted.
    */
   readonly map?: MapRules;
+  /**
+   * Whether every place that holds a clue must be split into parts (a generated case must). Left out, a place
+   * may stay whole, as the places of the cases before the parts did.
+   */
+  readonly requireParts?: boolean;
 }
 
 export type CaseValidationResult =
@@ -75,6 +81,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
   const issues = [
     ...checkReachability(detectiveCase, obtainable),
     ...checkSuspectReachability(detectiveCase, obtainable),
+    ...checkParts(detectiveCase, obtainable, context.requireParts ?? false),
     ...checkSolution(detectiveCase, context.hero, context.traits, obtainable),
     ...checkSolveChance(detectiveCase, context.hero, context.traits, obtainable),
     ...checkLies(detectiveCase, obtainable),

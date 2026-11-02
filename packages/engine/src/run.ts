@@ -12,8 +12,10 @@ export const RUN_SCHEMA_VERSION = 2;
  * up to a few points a day (see `strainByAction`).
  * 10: every day has an event of its own: the night leaves the pool enough for the days still to come, and
  * an evening with none drawn brings one (see `random-events.ts`).
+ * 11: a place is made of parts with obstacles (see `case-schema.ts`); the search by part is yet to come, and
+ * until it does a run plays as before.
  */
-export const RULESET_VERSION = 10;
+export const RULESET_VERSION = 11;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;

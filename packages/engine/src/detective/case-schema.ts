@@ -52,6 +52,44 @@ export const EXPOSURES = ['indoor', 'outdoor'] as const;
 export const ExposureSchema = z.enum(EXPOSURES);
 export type Exposure = z.infer<typeof ExposureSchema>;
 
+/**
+ * What stands between the hero and a part of a place; a tool of the kit removes one kind (the catalogue is
+ * kept as data elsewhere, so a kind is added here and in the data and nowhere else).
+ * - `locked`: a lock or a bolt; `dark`: no light to see by; `soft`: upholstery, an envelope, a seam;
+ * - `trace`: a fine mark on a surface or a clue; `sealed`: a sealed or glued thing; `digital`: a device.
+ */
+export const OBSTACLE_KINDS = ['locked', 'dark', 'soft', 'trace', 'sealed', 'digital'] as const;
+export const ObstacleKindSchema = z.enum(OBSTACLE_KINDS);
+export type ObstacleKind = z.infer<typeof ObstacleKindSchema>;
+
+/**
+ * The way to a clue that needs no tool, so a hero with any kit can still have it: ask a person, or follow a
+ * lead that gives the clue another way. The leads themselves are kept for the rules of leads; until then a
+ * lead is only a name, and only a person can be checked.
+ */
+export const PartFallbackSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('ask'), suspectId: EntityIdSchema }),
+  z.object({ kind: z.literal('lead'), leadId: EntityIdSchema }),
+]);
+export type PartFallback = z.infer<typeof PartFallbackSchema>;
+
+/** A place is searched piece by piece: a desk, a cabinet, a bin, a safe, the floor. */
+export const PlacePartSchema = z.object({
+  id: EntityIdSchema,
+  name: NarrativeTextSchema,
+  /** `null` for a part that lies open. */
+  obstacle: ObstacleKindSchema.nullable(),
+  /** The clue (or the red herring) the part holds; `null` for a part with nothing in it. */
+  holds: EntityIdSchema.nullable(),
+  /** Whether a glance round the room shows it. */
+  inQuickLook: z.boolean(),
+  /** The lead that must be earned before the part is shown, if any. */
+  requiresLead: EntityIdSchema.nullable(),
+  /** What a hero without the tool does instead; a part with an obstacle and a clue in it must have one. */
+  fallback: PartFallbackSchema.nullable(),
+});
+export type PlacePart = z.infer<typeof PlacePartSchema>;
+
 /** Connections are two-way: listing a connection on either location links both. */
 export const LocationSchema = z.object({
   id: EntityIdSchema,
@@ -65,6 +103,11 @@ export const LocationSchema = z.object({
   situations: z.array(TraitTriggerSchema).default([]),
   /** How safe the hero's night is if they sleep here; optional, and a place without it is an ordinary one. */
   lodging: LodgingSafetySchema.optional(),
+  /**
+   * The things to look at in the place. Optional rather than defaulted, so that the cases of before the parts
+   * keep their seal; a place without parts is searched as a whole, as it always was.
+   */
+  parts: z.array(PlacePartSchema).optional(),
 });
 export type Location = z.infer<typeof LocationSchema>;
 
