@@ -58,6 +58,9 @@ function collectNarrativeTexts(detectiveCase: DetectiveCase): NarrativeText[] {
     ...detectiveCase.locations.flatMap((location, index) => [
       at(`locations[${String(index)}].name`, location.name),
       at(`locations[${String(index)}].description`, location.description),
+      ...(location.parts ?? []).map((part, partIndex) =>
+        at(`locations[${String(index)}].parts[${String(partIndex)}].name`, part.name),
+      ),
     ]),
     ...detectiveCase.clues.map((clue, index) => at(`clues[${String(index)}].description`, clue.description)),
     ...detectiveCase.suspects.flatMap((suspect, index) => [

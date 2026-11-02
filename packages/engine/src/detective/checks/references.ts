@@ -20,6 +20,12 @@ function checkUniqueIds(detectiveCase: DetectiveCase): CaseIssue[] {
       id: location.id,
       path: `locations[${String(index)}].id`,
     })),
+    ...detectiveCase.locations.flatMap((location, locationIndex) =>
+      (location.parts ?? []).map((part, partIndex) => ({
+        id: part.id,
+        path: `locations[${String(locationIndex)}].parts[${String(partIndex)}].id`,
+      })),
+    ),
     ...detectiveCase.clues.map((clue, index) => ({ id: clue.id, path: `clues[${String(index)}].id` })),
     ...detectiveCase.suspects.flatMap((suspect, suspectIndex) => [
       { id: suspect.id, path: `suspects[${String(suspectIndex)}].id` },
@@ -68,6 +74,13 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
     if (location.access.kind === 'clue') {
       expect(clueIds, 'clue', location.access.clueId, `locations[${String(index)}].access.clueId`);
     }
+    (location.parts ?? []).forEach((part, partIndex) => {
+      const path = `locations[${String(index)}].parts[${String(partIndex)}]`;
+      if (part.holds !== null) expect(clueIds, 'clue', part.holds, `${path}.holds`);
+      if (part.fallback?.kind === 'ask') {
+        expect(suspectIds, 'suspect', part.fallback.suspectId, `${path}.fallback.suspectId`);
+      }
+    });
   });
   detectiveCase.clues.forEach((clue, index) => {
     expect(locationIds, 'location', clue.locationId, `clues[${String(index)}].locationId`);

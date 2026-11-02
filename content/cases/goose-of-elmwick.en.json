@@ -13,7 +13,45 @@
       "description": "A long hall of brass scales, mail sacks and glass cases. At its far end stands an empty plinth with a polite little sign: 'Admiral Quill, please do not touch.'",
       "connections": ["courtyard", "archive", "curator-office"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "pedestal-floor",
+          "name": "The floor round the pedestal",
+          "obstacle": null,
+          "holds": "feather-trail",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "pedestal-base",
+          "name": "The base of the pedestal",
+          "obstacle": "sealed",
+          "holds": "stand-hollow",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "curator" }
+        },
+        {
+          "id": "service-door-lock",
+          "name": "The lock of the service door",
+          "obstacle": "digital",
+          "holds": "door-log",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "curator" }
+        },
+        {
+          "id": "pedestal-front",
+          "name": "The front of the pedestal",
+          "obstacle": null,
+          "holds": "ransom-note",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "courtyard",
@@ -22,7 +60,27 @@
       "connections": ["museum-hall", "boiler-room", "elm-street"],
       "access": { "kind": "open" },
       "exposure": "outdoor",
-      "situations": ["crowd", "high-society"]
+      "situations": ["crowd", "high-society"],
+      "parts": [
+        {
+          "id": "folding-chair",
+          "name": "The folding chair",
+          "obstacle": null,
+          "holds": "archive-key",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "yard-steps",
+          "name": "The steps of the yard",
+          "obstacle": null,
+          "holds": "wet-boots",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "tea-shop",
@@ -30,7 +88,18 @@
       "description": "A tea shop across the courtyard where the waitresses see everything and forgive nothing. The scones are excellent.",
       "connections": ["elm-street"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "serving-counter",
+          "name": "The serving counter",
+          "obstacle": null,
+          "holds": "hatbox-witness",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "post-office",
@@ -38,7 +107,18 @@
       "description": "A sleepy counter with a brass bell, a sorting wall of pigeonholes and an old telegraph operator who has been retired for twenty years and still comes in daily.",
       "connections": ["bell-square"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "telegraph-desk",
+          "name": "The desk of the telegraphist",
+          "obstacle": null,
+          "holds": "letters-rumour",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "archive",
@@ -46,7 +126,18 @@
       "description": "Shelves of undelivered letters, tied in ribbon and stamped 'Return to nobody'. The door has a stout lock and the key is, naturally, missing.",
       "connections": ["museum-hall"],
       "access": { "kind": "clue", "clueId": "archive-key" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "card-index",
+          "name": "The card index",
+          "obstacle": "dark",
+          "holds": "ink-smudge",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "curator" }
+        }
+      ]
     },
     {
       "id": "curator-office",
@@ -54,7 +145,27 @@
       "description": "A cramped office with a sofa, a kettle and a door guarded by the curator's secretary, who treats every visitor as a personal insult to the collection.",
       "connections": ["museum-hall"],
       "access": { "kind": "skill", "check": { "skill": "social", "difficulty": 11 } },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "curator-desk",
+          "name": "The curator's desk",
+          "obstacle": "locked",
+          "holds": "sale-catalogue",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "curator" }
+        },
+        {
+          "id": "office-sofa",
+          "name": "The sofa",
+          "obstacle": "soft",
+          "holds": "gold-cufflink",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "caterer" }
+        }
+      ]
     },
     {
       "id": "boiler-room",
@@ -63,7 +174,18 @@
       "connections": ["courtyard"],
       "access": { "kind": "open" },
       "exposure": "indoor",
-      "situations": ["confined-space"]
+      "situations": ["confined-space"],
+      "parts": [
+        {
+          "id": "knocking-pipes",
+          "name": "The knocking pipes",
+          "obstacle": null,
+          "holds": "apprentice-confession",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "elm-street",

@@ -33,6 +33,13 @@ export type CaseIssueCode =
   | 'too-few-outdoor-places'
   | 'single-building'
   | 'solution-after-culprit-flees'
+  | 'parts-missing'
+  | 'part-in-wrong-place'
+  | 'clue-in-two-parts'
+  | 'clue-without-part'
+  | 'part-without-fallback'
+  | 'fallback-unreachable'
+  | 'part-never-shown'
   | 'real-name'
   | 'wrong-script'
   | 'wrong-language';

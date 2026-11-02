@@ -174,6 +174,7 @@ describe('sample cases', () => {
         locale,
         realNames: REAL_NAMES,
         map: GENERATED_MAP,
+        requireParts: true,
       });
 
       expect(result).toMatchObject({ isValid: true });

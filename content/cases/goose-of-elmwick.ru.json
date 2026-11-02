@@ -13,7 +13,45 @@
       "description": "Длинный зал: латунные весы, почтовые мешки, стеклянные витрины. В дальнем конце пустой постамент с вежливой табличкой: «Адмирал Квилл, просьба не трогать».",
       "connections": ["courtyard", "archive", "curator-office"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "pedestal-floor",
+          "name": "Пол вокруг постамента",
+          "obstacle": null,
+          "holds": "feather-trail",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "pedestal-base",
+          "name": "Основание постамента",
+          "obstacle": "sealed",
+          "holds": "stand-hollow",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "curator" }
+        },
+        {
+          "id": "service-door-lock",
+          "name": "Замок служебной двери",
+          "obstacle": "digital",
+          "holds": "door-log",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "curator" }
+        },
+        {
+          "id": "pedestal-front",
+          "name": "Передняя сторона постамента",
+          "obstacle": null,
+          "holds": "ransom-note",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "courtyard",
@@ -22,7 +60,27 @@
       "connections": ["museum-hall", "boiler-room", "elm-street"],
       "access": { "kind": "open" },
       "exposure": "outdoor",
-      "situations": ["crowd", "high-society"]
+      "situations": ["crowd", "high-society"],
+      "parts": [
+        {
+          "id": "folding-chair",
+          "name": "Складной стул",
+          "obstacle": null,
+          "holds": "archive-key",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "yard-steps",
+          "name": "Ступени двора",
+          "obstacle": null,
+          "holds": "wet-boots",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "tea-shop",
@@ -30,7 +88,18 @@
       "description": "Чайная через двор, где официантки замечают всё и ничего не прощают. Булочки при этом превосходные.",
       "connections": ["elm-street"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "serving-counter",
+          "name": "Стойка с угощением",
+          "obstacle": null,
+          "holds": "hatbox-witness",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "post-office",
@@ -38,7 +107,18 @@
       "description": "Сонная стойка с латунным звонком, стена сортировочных ячеек и старый телеграфист: он двадцать лет как на пенсии, но приходит каждый день.",
       "connections": ["bell-square"],
       "access": { "kind": "open" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "telegraph-desk",
+          "name": "Стол телеграфиста",
+          "obstacle": null,
+          "holds": "letters-rumour",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "archive",
@@ -46,7 +126,18 @@
       "description": "Стеллажи с недоставленными письмами, перевязанными лентой и проштампованными «Вернуть никому». Дверь на крепком замке, а ключ, разумеется, потерялся.",
       "connections": ["museum-hall"],
       "access": { "kind": "clue", "clueId": "archive-key" },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "card-index",
+          "name": "Картотека",
+          "obstacle": "dark",
+          "holds": "ink-smudge",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "curator" }
+        }
+      ]
     },
     {
       "id": "curator-office",
@@ -54,7 +145,27 @@
       "description": "Тесный кабинет с диваном и чайником. У двери сидит секретарша куратора и считает каждого посетителя личным оскорблением коллекции.",
       "connections": ["museum-hall"],
       "access": { "kind": "skill", "check": { "skill": "social", "difficulty": 11 } },
-      "exposure": "indoor"
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "curator-desk",
+          "name": "Стол куратора",
+          "obstacle": "locked",
+          "holds": "sale-catalogue",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "curator" }
+        },
+        {
+          "id": "office-sofa",
+          "name": "Диван",
+          "obstacle": "soft",
+          "holds": "gold-cufflink",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": { "kind": "ask", "suspectId": "caterer" }
+        }
+      ]
     },
     {
       "id": "boiler-room",
@@ -63,7 +174,18 @@
       "connections": ["courtyard"],
       "access": { "kind": "open" },
       "exposure": "indoor",
-      "situations": ["confined-space"]
+      "situations": ["confined-space"],
+      "parts": [
+        {
+          "id": "knocking-pipes",
+          "name": "Стучащие трубы",
+          "obstacle": null,
+          "holds": "apprentice-confession",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
     },
     {
       "id": "elm-street",
