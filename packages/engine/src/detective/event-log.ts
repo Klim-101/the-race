@@ -16,6 +16,7 @@ import {
 import { IntentSchema, resolveIntent, type Intent, type Resolution } from './actions.js';
 import { HeroConditionSchema } from './condition.js';
 import { EntityIdSchema } from './case-schema.js';
+import { GearIdSchema } from './gear.js';
 import { daysPassed } from './clock.js';
 import { MishapKindSchema } from './fatigue.js';
 import { INTERROGATION_APPROACHES } from './interrogation.js';
@@ -43,7 +44,7 @@ const SkillCheckResultSchema = z.object({
 });
 
 const CheckDetailSchema = z.object({
-  subject: z.object({ kind: z.enum(['clue', 'location', 'suspect']), id: z.string().min(1) }),
+  subject: z.object({ kind: z.enum(['clue', 'location', 'suspect', 'part']), id: z.string().min(1) }),
   result: z.union([SkillCheckResultSchema, z.literal('auto')]),
 });
 
@@ -79,6 +80,13 @@ const OutcomeSchema = z.union([
     minutes,
     consequences: z.array(ConsequenceSchema),
     partId: EntityIdSchema.optional(),
+    tool: z
+      .object({
+        id: GearIdSchema,
+        cleared: z.boolean(),
+        wear: z.enum(['spent', 'broken']).nullable(),
+      })
+      .optional(),
     ...fatigue,
   }),
   z.object({ kind: z.literal('rest') }),

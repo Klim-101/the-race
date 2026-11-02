@@ -62,8 +62,14 @@ export function renderHero(view: DetectiveRunView, board: BoardText, text: TabTe
       ? `<p class="empty">${e(t.nothing)}</p>`
       : list(
           view.kit.map(
-            ({ id, state }) =>
-              `${e(named(t.gear, id))}${state === 'lost' ? ` <span class="warn">(${e(t.lost)})</span>` : ''}`,
+            ({ id, state, charges }) =>
+              `${e(named(t.gear, id))}${
+                state === 'owned'
+                  ? charges === null
+                    ? ''
+                    : ` <span class="tag">${e(t.chargesLeft.replace('{n}', String(charges)))}</span>`
+                  : ` <span class="warn">(${e(named({ lost: t.lost, spent: t.spent, broken: t.broken }, state))})</span>`
+              }`,
           ),
         );
   const supplies =

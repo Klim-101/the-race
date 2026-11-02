@@ -4,15 +4,49 @@
 import { z } from 'zod';
 import type { ModifierEffect } from '../meters.js';
 import type { ModifierItem } from '../modifiers.js';
+import { createRng } from '../dice.js';
+import type { ObstacleKind, SkillCheck } from './case-schema.js';
 import { LIFE_STATE_SHIFTS, type LifeState } from './life-state.js';
 
 // Gear is what the hero carries: data, like a condition, that moves a check only through `collectModifier`.
 // It never touches evidence. A robbery or a spill takes a piece of gear, and the piece stays lost, as a
 // penalty, until it is replaced. Another archetype adds its own gear and backgrounds by data.
 
-export const GEAR_IDS = ['phone', 'notebook', 'laptop', 'picks'] as const;
+export const GEAR_IDS = [
+  'phone',
+  'notebook',
+  'laptop',
+  'picks',
+  'magnifier',
+  'knife',
+  'test-kit',
+  'uv-lamp',
+  'powder',
+  'tape-measure',
+  'crowbar',
+  'mirror',
+  'binoculars',
+  'cash',
+] as const;
 export const GearIdSchema = z.enum(GEAR_IDS);
 export type GearId = z.infer<typeof GearIdSchema>;
+
+/**
+ * How a piece of gear gets past obstacles. A tool is data: the kinds it removes, the check it takes (none for a
+ * torch), what a failure costs in minutes, how it wears and whether using it is lawful. A piece that removes
+ * nothing yet is for the studying of clues, which is still to come.
+ * - `lasting`: never wears; `may-break`: a blunder breaks it; `used-up`: each use takes one of its charges.
+ */
+export interface ToolRules {
+  readonly removes: readonly ObstacleKind[];
+  readonly check: SkillCheck | null;
+  readonly failureMinutes: number;
+  readonly wear: 'lasting' | 'may-break' | 'used-up';
+  /** Uses of a piece that is used up; 0 for the rest. */
+  readonly charges: number;
+  /** Whether using it is within the law; what that costs is for the rules of risk. */
+  readonly lawful: boolean;
+}
 
 export interface GearDefinition {
   /** Key of the piece's name in the locale files; the engine holds no player-facing text. */
@@ -21,22 +55,141 @@ export interface GearDefinition {
   readonly effects: readonly ModifierEffect[];
   /** What its loss costs on top of the bonus that is gone; empty for a piece that is only missed. */
   readonly lostEffects: readonly ModifierEffect[];
+  /** How the piece gets past obstacles, if it does. */
+  readonly tool: ToolRules | null;
 }
+
+const NO_EFFECTS = { effects: [], lostEffects: [] } as const;
 
 export const DETECTIVE_GEAR: Readonly<Record<GearId, GearDefinition>> = {
   phone: {
     nameKey: 'gear.phone',
     effects: [{ skills: ['contacts'], amount: 1 }],
     lostEffects: [{ skills: ['contacts'], amount: -1 }],
+    // The torch: light for the dark, with nothing to roll.
+    tool: { removes: ['dark'], check: null, failureMinutes: 0, wear: 'lasting', charges: 0, lawful: true },
   },
-  notebook: { nameKey: 'gear.notebook', effects: [{ skills: ['reasoning'], amount: 1 }], lostEffects: [] },
+  notebook: {
+    nameKey: 'gear.notebook',
+    effects: [{ skills: ['reasoning'], amount: 1 }],
+    lostEffects: [],
+    tool: null,
+  },
   laptop: {
     nameKey: 'gear.laptop',
     effects: [{ skills: ['tech'], amount: 1 }],
     lostEffects: [{ skills: ['tech'], amount: -1 }],
+    tool: {
+      removes: ['digital'],
+      check: { skill: 'tech', difficulty: 10 },
+      failureMinutes: 10,
+      wear: 'lasting',
+      charges: 0,
+      lawful: true,
+    },
   },
-  picks: { nameKey: 'gear.picks', effects: [{ skills: ['perception'], amount: 1 }], lostEffects: [] },
+  picks: {
+    nameKey: 'gear.picks',
+    effects: [{ skills: ['perception'], amount: 1 }],
+    lostEffects: [],
+    tool: {
+      removes: ['locked'],
+      check: { skill: 'tech', difficulty: 10 },
+      failureMinutes: 15,
+      wear: 'may-break',
+      charges: 0,
+      lawful: false,
+    },
+  },
+  magnifier: {
+    nameKey: 'gear.magnifier',
+    ...NO_EFFECTS,
+    tool: {
+      removes: ['trace'],
+      check: { skill: 'perception', difficulty: 9 },
+      failureMinutes: 10,
+      wear: 'lasting',
+      charges: 0,
+      lawful: true,
+    },
+  },
+  knife: {
+    nameKey: 'gear.knife',
+    ...NO_EFFECTS,
+    tool: {
+      removes: ['soft'],
+      check: { skill: 'perception', difficulty: 8 },
+      failureMinutes: 10,
+      wear: 'lasting',
+      charges: 0,
+      lawful: false,
+    },
+  },
+  'test-kit': {
+    nameKey: 'gear.test-kit',
+    ...NO_EFFECTS,
+    tool: {
+      removes: ['trace'],
+      check: { skill: 'reasoning', difficulty: 9 },
+      failureMinutes: 15,
+      wear: 'used-up',
+      charges: 2,
+      lawful: true,
+    },
+  },
+  'uv-lamp': {
+    nameKey: 'gear.uv-lamp',
+    ...NO_EFFECTS,
+    tool: {
+      removes: ['trace', 'dark'],
+      check: { skill: 'perception', difficulty: 8 },
+      failureMinutes: 10,
+      wear: 'lasting',
+      charges: 0,
+      lawful: true,
+    },
+  },
+  powder: {
+    nameKey: 'gear.powder',
+    ...NO_EFFECTS,
+    tool: {
+      removes: ['trace'],
+      check: { skill: 'perception', difficulty: 8 },
+      failureMinutes: 10,
+      wear: 'used-up',
+      charges: 3,
+      lawful: true,
+    },
+  },
+  'tape-measure': { nameKey: 'gear.tape-measure', ...NO_EFFECTS, tool: studyOnly('lasting') },
+  crowbar: {
+    nameKey: 'gear.crowbar',
+    ...NO_EFFECTS,
+    tool: {
+      removes: ['locked', 'sealed'],
+      check: { skill: 'pressure', difficulty: 9 },
+      failureMinutes: 20,
+      wear: 'lasting',
+      charges: 0,
+      lawful: false,
+    },
+  },
+  mirror: { nameKey: 'gear.mirror', ...NO_EFFECTS, tool: studyOnly('lasting') },
+  binoculars: { nameKey: 'gear.binoculars', ...NO_EFFECTS, tool: studyOnly('lasting') },
+  cash: { nameKey: 'gear.cash', ...NO_EFFECTS, tool: studyOnly('used-up', 2) },
 };
+
+/** A piece that gets past no obstacle yet: it is for what the hero will do with clues and people. */
+function studyOnly(wear: ToolRules['wear'], charges = 0): ToolRules {
+  return {
+    removes: [],
+    check: null,
+    failureMinutes: 0,
+    wear,
+    charges,
+    lawful: true,
+  };
+}
 
 export const BACKGROUNDS = [
   'police',
@@ -89,10 +242,16 @@ export const BACKGROUND_KITS: Readonly<Record<Background, readonly GearId[]>> = 
   'street-private-eye': ['phone', 'picks'],
 };
 
-export const GearStateSchema = z.enum(['owned', 'lost']);
+/** `spent`: used up; `broken`: it broke. Neither can be used again. */
+export const GearStateSchema = z.enum(['owned', 'lost', 'spent', 'broken']);
 export type GearState = z.infer<typeof GearStateSchema>;
 
-export const KitItemSchema = z.object({ id: GearIdSchema, state: GearStateSchema });
+export const KitItemSchema = z.object({
+  id: GearIdSchema,
+  state: GearStateSchema,
+  /** Uses left of a piece that is used up; absent for the rest, and for a kit from before the tools. */
+  charges: z.int().min(0).optional(),
+});
 export type KitItem = z.infer<typeof KitItemSchema>;
 
 /** The kit of a background, with the piece a life state adds when the hero does not already carry it. */
@@ -108,14 +267,15 @@ export function withGearState(kit: readonly KitItem[], id: GearId, state: GearSt
   if (!kit.some((item) => item.id === id)) {
     throw new RangeError(`The hero has no gear "${id}" in their kit.`);
   }
-  return kit.map((item) => (item.id === id ? { id, state } : item));
+  return kit.map((item) => (item.id === id ? { ...item, id, state } : item));
 }
 
 /** The kit as modifier items: a piece in hand gives its bonus, a lost one only its penalty. */
 export function gearModifiers(kit: readonly KitItem[]): ModifierItem[] {
   return kit.map(({ id, state }) => ({
     id,
-    effects: state === 'owned' ? DETECTIVE_GEAR[id].effects : DETECTIVE_GEAR[id].lostEffects,
+    effects:
+      state === 'owned' ? DETECTIVE_GEAR[id].effects : state === 'lost' ? DETECTIVE_GEAR[id].lostEffects : [],
   }));
 }
 
@@ -123,8 +283,92 @@ export interface KitView {
   readonly id: GearId;
   readonly nameKey: string;
   readonly state: GearState;
+  /** The obstacles the piece gets past, which the hero knows of their own kit. */
+  readonly removes: readonly ObstacleKind[];
+  /** Uses left of a piece that is used up; `null` for the rest. */
+  readonly charges: number | null;
 }
 
 export function viewKit(kit: readonly KitItem[]): KitView[] {
-  return kit.map(({ id, state }) => ({ id, nameKey: DETECTIVE_GEAR[id].nameKey, state }));
+  return kit.map((item) => ({
+    id: item.id,
+    nameKey: DETECTIVE_GEAR[item.id].nameKey,
+    state: item.state,
+    removes: DETECTIVE_GEAR[item.id].tool?.removes ?? [],
+    charges: chargesLeft(item),
+  }));
+}
+
+/** Uses left of a piece that is used up, counting a piece not yet used as full; `null` for a piece that is not. */
+export function chargesLeft(item: KitItem): number | null {
+  const rules = DETECTIVE_GEAR[item.id].tool;
+  return rules?.wear === 'used-up' ? (item.charges ?? rules.charges) : null;
+}
+
+/** What using a tool does to it: a used-up piece loses a charge, a lockpick breaks on a blunder. */
+export function worn(item: KitItem, blundered: boolean): { item: KitItem; wear: 'spent' | 'broken' | null } {
+  const rules = DETECTIVE_GEAR[item.id].tool;
+  if (rules?.wear === 'used-up') {
+    const charges = (item.charges ?? rules.charges) - 1;
+    return charges > 0
+      ? { item: { ...item, charges }, wear: null }
+      : { item: { ...item, charges: 0, state: 'spent' }, wear: 'spent' };
+  }
+  if (rules?.wear === 'may-break' && blundered) return { item: { ...item, state: 'broken' }, wear: 'broken' };
+  return { item, wear: null };
+}
+
+/** The tools a hero may be handed on top of what their background gives; the kit they come with is never a die. */
+const EXTRA_TOOLS: readonly GearId[] = GEAR_IDS.filter(
+  (id) => id !== 'phone' && id !== 'notebook' && id !== 'laptop' && id !== 'picks',
+);
+
+/** What each background leans towards: a tool it is likelier to be handed, three times as likely as any other. */
+export const BACKGROUND_TOOL_LEAN: Readonly<Record<Background, readonly GearId[]>> = {
+  police: ['crowbar', 'powder'],
+  journalist: ['mirror', 'binoculars'],
+  locksmith: ['crowbar', 'mirror'],
+  analyst: ['magnifier', 'tape-measure'],
+  'bus-driver': ['binoculars', 'cash'],
+  nurse: ['test-kit', 'knife'],
+  schoolteacher: ['magnifier', 'tape-measure'],
+  electrician: ['tape-measure', 'mirror'],
+  sommelier: ['test-kit', 'magnifier'],
+  accountant: ['magnifier', 'cash'],
+  courier: ['cash', 'binoculars'],
+  bailiff: ['crowbar', 'powder'],
+  translator: ['cash', 'magnifier'],
+  librarian: ['magnifier', 'uv-lamp'],
+  pharmacist: ['test-kit', 'uv-lamp'],
+  'radio-presenter': ['cash', 'binoculars'],
+  'retired-inspector': ['powder', 'magnifier'],
+  'dismissed-auditor': ['magnifier', 'cash'],
+  'investigative-blogger': ['binoculars', 'mirror'],
+  'street-private-eye': ['powder', 'binoculars'],
+};
+
+const LEAN_WEIGHT = 3;
+
+/**
+ * The kit a hero starts a run with: what their background gives, the phone in any case, and one tool more drawn
+ * from the seed with a lean towards the background. The case generator never sees it.
+ */
+export function startingKit(
+  background: Background,
+  lifeState: LifeState | undefined,
+  seed: string,
+): KitItem[] {
+  const own = initialKit(background, lifeState);
+  const withPhone: KitItem[] = own.some(({ id }) => id === 'phone')
+    ? own
+    : [{ id: 'phone', state: 'owned' }, ...own];
+  const pool = EXTRA_TOOLS.filter((id) => !withPhone.some((item) => item.id === id)).flatMap((id) =>
+    Array.from({ length: BACKGROUND_TOOL_LEAN[background].includes(id) ? LEAN_WEIGHT : 1 }, () => id),
+  );
+  const at = createRng(`${seed}:kit`).roll(pool.length) - 1;
+  const drawn: KitItem[] = pool.slice(at, at + 1).map((id) => ({ id, state: 'owned' }));
+  return [...withPhone, ...drawn].map((item) => {
+    const rules = DETECTIVE_GEAR[item.id].tool;
+    return rules?.wear === 'used-up' ? { ...item, charges: rules.charges } : item;
+  });
 }

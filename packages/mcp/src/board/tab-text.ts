@@ -132,6 +132,10 @@ export interface TabText {
     readonly warnings: string;
     readonly kit: string;
     readonly lost: string;
+    /** A tool that is used up or broken, and the uses left of one that is used up ({n}). */
+    readonly spent: string;
+    readonly broken: string;
+    readonly chargesLeft: string;
     readonly supplies: string;
     readonly nothing: string;
     readonly pending: string;

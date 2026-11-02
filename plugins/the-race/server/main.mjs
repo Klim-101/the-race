@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 13;
+var RULESET_VERSION = 14;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -33008,6 +33008,74 @@ function createHeroSchema(archetype) {
   });
 }
 
+// packages/engine/src/dice.ts
+var D20_SIDES = 20;
+var CRITICAL_SUCCESS_DIE = 20;
+var CRITICAL_FAILURE_DIE = 1;
+function hashSeed(seed) {
+  let hash2 = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash2 ^= seed.charCodeAt(index);
+    hash2 = Math.imul(hash2, 16777619);
+  }
+  return hash2 >>> 0;
+}
+function restoreRng(state) {
+  if (!Number.isInteger(state) || state < 0 || state > 4294967295) {
+    throw new RangeError(`Rng state must be a 32-bit unsigned integer, got ${String(state)}.`);
+  }
+  let current = state;
+  const next = () => {
+    current = current + 1831565813 >>> 0;
+    let mixed = Math.imul(current ^ current >>> 15, current | 1);
+    mixed ^= mixed + Math.imul(mixed ^ mixed >>> 7, mixed | 61);
+    return ((mixed ^ mixed >>> 14) >>> 0) / 4294967296;
+  };
+  return {
+    next,
+    roll(sides) {
+      if (!Number.isInteger(sides) || sides < 1) {
+        throw new RangeError(`A die needs at least one side, got ${String(sides)}.`);
+      }
+      return Math.floor(next() * sides) + 1;
+    },
+    state: () => current
+  };
+}
+function createRng(seed) {
+  return restoreRng(typeof seed === "string" ? hashSeed(seed) : seed >>> 0);
+}
+function isCheckSuccess(die, skillLevel, modifier, difficulty) {
+  if (die === CRITICAL_SUCCESS_DIE) return true;
+  if (die === CRITICAL_FAILURE_DIE) return false;
+  return die + skillLevel + modifier >= difficulty;
+}
+function passChanceWithoutLuck(skillLevel, modifier, difficulty) {
+  let faces = 0;
+  for (let die = CRITICAL_FAILURE_DIE + 1; die < CRITICAL_SUCCESS_DIE; die += 1) {
+    if (isCheckSuccess(die, skillLevel, modifier, difficulty)) faces += 1;
+  }
+  return faces / D20_SIDES;
+}
+function rollCheck(rng, skills, check2, modifier = 0) {
+  const rngState = rng.state();
+  const die = rng.roll(D20_SIDES);
+  const skillLevel = skills[check2.skill];
+  const total = die + skillLevel + modifier;
+  const critical = die === CRITICAL_SUCCESS_DIE ? "success" : die === CRITICAL_FAILURE_DIE ? "failure" : null;
+  return {
+    skill: check2.skill,
+    die,
+    skillLevel,
+    modifier,
+    total,
+    difficulty: check2.difficulty,
+    critical,
+    success: isCheckSuccess(die, skillLevel, modifier, check2.difficulty),
+    rngState
+  };
+}
+
 // packages/engine/src/detective/life-state.ts
 var LIFE_STATES = [
   "just-dismissed",
@@ -33034,22 +33102,151 @@ var LIFE_STATE_SHIFTS = {
 };
 
 // packages/engine/src/detective/gear.ts
-var GEAR_IDS = ["phone", "notebook", "laptop", "picks"];
+var GEAR_IDS = [
+  "phone",
+  "notebook",
+  "laptop",
+  "picks",
+  "magnifier",
+  "knife",
+  "test-kit",
+  "uv-lamp",
+  "powder",
+  "tape-measure",
+  "crowbar",
+  "mirror",
+  "binoculars",
+  "cash"
+];
 var GearIdSchema = external_exports.enum(GEAR_IDS);
+var NO_EFFECTS = { effects: [], lostEffects: [] };
 var DETECTIVE_GEAR = {
   phone: {
     nameKey: "gear.phone",
     effects: [{ skills: ["contacts"], amount: 1 }],
-    lostEffects: [{ skills: ["contacts"], amount: -1 }]
+    lostEffects: [{ skills: ["contacts"], amount: -1 }],
+    // The torch: light for the dark, with nothing to roll.
+    tool: { removes: ["dark"], check: null, failureMinutes: 0, wear: "lasting", charges: 0, lawful: true }
   },
-  notebook: { nameKey: "gear.notebook", effects: [{ skills: ["reasoning"], amount: 1 }], lostEffects: [] },
+  notebook: {
+    nameKey: "gear.notebook",
+    effects: [{ skills: ["reasoning"], amount: 1 }],
+    lostEffects: [],
+    tool: null
+  },
   laptop: {
     nameKey: "gear.laptop",
     effects: [{ skills: ["tech"], amount: 1 }],
-    lostEffects: [{ skills: ["tech"], amount: -1 }]
+    lostEffects: [{ skills: ["tech"], amount: -1 }],
+    tool: {
+      removes: ["digital"],
+      check: { skill: "tech", difficulty: 10 },
+      failureMinutes: 10,
+      wear: "lasting",
+      charges: 0,
+      lawful: true
+    }
   },
-  picks: { nameKey: "gear.picks", effects: [{ skills: ["perception"], amount: 1 }], lostEffects: [] }
+  picks: {
+    nameKey: "gear.picks",
+    effects: [{ skills: ["perception"], amount: 1 }],
+    lostEffects: [],
+    tool: {
+      removes: ["locked"],
+      check: { skill: "tech", difficulty: 10 },
+      failureMinutes: 15,
+      wear: "may-break",
+      charges: 0,
+      lawful: false
+    }
+  },
+  magnifier: {
+    nameKey: "gear.magnifier",
+    ...NO_EFFECTS,
+    tool: {
+      removes: ["trace"],
+      check: { skill: "perception", difficulty: 9 },
+      failureMinutes: 10,
+      wear: "lasting",
+      charges: 0,
+      lawful: true
+    }
+  },
+  knife: {
+    nameKey: "gear.knife",
+    ...NO_EFFECTS,
+    tool: {
+      removes: ["soft"],
+      check: { skill: "perception", difficulty: 8 },
+      failureMinutes: 10,
+      wear: "lasting",
+      charges: 0,
+      lawful: false
+    }
+  },
+  "test-kit": {
+    nameKey: "gear.test-kit",
+    ...NO_EFFECTS,
+    tool: {
+      removes: ["trace"],
+      check: { skill: "reasoning", difficulty: 9 },
+      failureMinutes: 15,
+      wear: "used-up",
+      charges: 2,
+      lawful: true
+    }
+  },
+  "uv-lamp": {
+    nameKey: "gear.uv-lamp",
+    ...NO_EFFECTS,
+    tool: {
+      removes: ["trace", "dark"],
+      check: { skill: "perception", difficulty: 8 },
+      failureMinutes: 10,
+      wear: "lasting",
+      charges: 0,
+      lawful: true
+    }
+  },
+  powder: {
+    nameKey: "gear.powder",
+    ...NO_EFFECTS,
+    tool: {
+      removes: ["trace"],
+      check: { skill: "perception", difficulty: 8 },
+      failureMinutes: 10,
+      wear: "used-up",
+      charges: 3,
+      lawful: true
+    }
+  },
+  "tape-measure": { nameKey: "gear.tape-measure", ...NO_EFFECTS, tool: studyOnly("lasting") },
+  crowbar: {
+    nameKey: "gear.crowbar",
+    ...NO_EFFECTS,
+    tool: {
+      removes: ["locked", "sealed"],
+      check: { skill: "pressure", difficulty: 9 },
+      failureMinutes: 20,
+      wear: "lasting",
+      charges: 0,
+      lawful: false
+    }
+  },
+  mirror: { nameKey: "gear.mirror", ...NO_EFFECTS, tool: studyOnly("lasting") },
+  binoculars: { nameKey: "gear.binoculars", ...NO_EFFECTS, tool: studyOnly("lasting") },
+  cash: { nameKey: "gear.cash", ...NO_EFFECTS, tool: studyOnly("used-up", 2) }
 };
+function studyOnly(wear, charges = 0) {
+  return {
+    removes: [],
+    check: null,
+    failureMinutes: 0,
+    wear,
+    charges,
+    lawful: true
+  };
+}
 var BACKGROUNDS = [
   "police",
   "journalist",
@@ -33096,8 +33293,13 @@ var BACKGROUND_KITS = {
   "investigative-blogger": ["phone", "laptop"],
   "street-private-eye": ["phone", "picks"]
 };
-var GearStateSchema = external_exports.enum(["owned", "lost"]);
-var KitItemSchema = external_exports.object({ id: GearIdSchema, state: GearStateSchema });
+var GearStateSchema = external_exports.enum(["owned", "lost", "spent", "broken"]);
+var KitItemSchema = external_exports.object({
+  id: GearIdSchema,
+  state: GearStateSchema,
+  /** Uses left of a piece that is used up; absent for the rest, and for a kit from before the tools. */
+  charges: external_exports.int().min(0).optional()
+});
 function initialKit(background, lifeState) {
   const own2 = BACKGROUND_KITS[background];
   const added = lifeState === void 0 ? void 0 : LIFE_STATE_SHIFTS[lifeState].gear;
@@ -33107,11 +33309,69 @@ function initialKit(background, lifeState) {
 function gearModifiers(kit) {
   return kit.map(({ id, state }) => ({
     id,
-    effects: state === "owned" ? DETECTIVE_GEAR[id].effects : DETECTIVE_GEAR[id].lostEffects
+    effects: state === "owned" ? DETECTIVE_GEAR[id].effects : state === "lost" ? DETECTIVE_GEAR[id].lostEffects : []
   }));
 }
 function viewKit(kit) {
-  return kit.map(({ id, state }) => ({ id, nameKey: DETECTIVE_GEAR[id].nameKey, state }));
+  return kit.map((item) => ({
+    id: item.id,
+    nameKey: DETECTIVE_GEAR[item.id].nameKey,
+    state: item.state,
+    removes: DETECTIVE_GEAR[item.id].tool?.removes ?? [],
+    charges: chargesLeft(item)
+  }));
+}
+function chargesLeft(item) {
+  const rules = DETECTIVE_GEAR[item.id].tool;
+  return rules?.wear === "used-up" ? item.charges ?? rules.charges : null;
+}
+function worn(item, blundered) {
+  const rules = DETECTIVE_GEAR[item.id].tool;
+  if (rules?.wear === "used-up") {
+    const charges = (item.charges ?? rules.charges) - 1;
+    return charges > 0 ? { item: { ...item, charges }, wear: null } : { item: { ...item, charges: 0, state: "spent" }, wear: "spent" };
+  }
+  if (rules?.wear === "may-break" && blundered) return { item: { ...item, state: "broken" }, wear: "broken" };
+  return { item, wear: null };
+}
+var EXTRA_TOOLS = GEAR_IDS.filter(
+  (id) => id !== "phone" && id !== "notebook" && id !== "laptop" && id !== "picks"
+);
+var BACKGROUND_TOOL_LEAN = {
+  police: ["crowbar", "powder"],
+  journalist: ["mirror", "binoculars"],
+  locksmith: ["crowbar", "mirror"],
+  analyst: ["magnifier", "tape-measure"],
+  "bus-driver": ["binoculars", "cash"],
+  nurse: ["test-kit", "knife"],
+  schoolteacher: ["magnifier", "tape-measure"],
+  electrician: ["tape-measure", "mirror"],
+  sommelier: ["test-kit", "magnifier"],
+  accountant: ["magnifier", "cash"],
+  courier: ["cash", "binoculars"],
+  bailiff: ["crowbar", "powder"],
+  translator: ["cash", "magnifier"],
+  librarian: ["magnifier", "uv-lamp"],
+  pharmacist: ["test-kit", "uv-lamp"],
+  "radio-presenter": ["cash", "binoculars"],
+  "retired-inspector": ["powder", "magnifier"],
+  "dismissed-auditor": ["magnifier", "cash"],
+  "investigative-blogger": ["binoculars", "mirror"],
+  "street-private-eye": ["powder", "binoculars"]
+};
+var LEAN_WEIGHT = 3;
+function startingKit(background, lifeState, seed) {
+  const own2 = initialKit(background, lifeState);
+  const withPhone = own2.some(({ id }) => id === "phone") ? own2 : [{ id: "phone", state: "owned" }, ...own2];
+  const pool = EXTRA_TOOLS.filter((id) => !withPhone.some((item) => item.id === id)).flatMap(
+    (id) => Array.from({ length: BACKGROUND_TOOL_LEAN[background].includes(id) ? LEAN_WEIGHT : 1 }, () => id)
+  );
+  const at3 = createRng(`${seed}:kit`).roll(pool.length) - 1;
+  const drawn = pool.slice(at3, at3 + 1).map((id) => ({ id, state: "owned" }));
+  return [...withPhone, ...drawn].map((item) => {
+    const rules = DETECTIVE_GEAR[item.id].tool;
+    return rules?.wear === "used-up" ? { ...item, charges: rules.charges } : item;
+  });
 }
 
 // packages/engine/src/traits.ts
@@ -33680,74 +33940,6 @@ function assembleHero(input2, rng, rule = DEFAULT_TRAIT_RULE) {
 }
 function viewHero({ hero, traits }) {
   return { hero, hiddenTraitCount: traits.length };
-}
-
-// packages/engine/src/dice.ts
-var D20_SIDES = 20;
-var CRITICAL_SUCCESS_DIE = 20;
-var CRITICAL_FAILURE_DIE = 1;
-function hashSeed(seed) {
-  let hash2 = 2166136261;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash2 ^= seed.charCodeAt(index);
-    hash2 = Math.imul(hash2, 16777619);
-  }
-  return hash2 >>> 0;
-}
-function restoreRng(state) {
-  if (!Number.isInteger(state) || state < 0 || state > 4294967295) {
-    throw new RangeError(`Rng state must be a 32-bit unsigned integer, got ${String(state)}.`);
-  }
-  let current = state;
-  const next = () => {
-    current = current + 1831565813 >>> 0;
-    let mixed = Math.imul(current ^ current >>> 15, current | 1);
-    mixed ^= mixed + Math.imul(mixed ^ mixed >>> 7, mixed | 61);
-    return ((mixed ^ mixed >>> 14) >>> 0) / 4294967296;
-  };
-  return {
-    next,
-    roll(sides) {
-      if (!Number.isInteger(sides) || sides < 1) {
-        throw new RangeError(`A die needs at least one side, got ${String(sides)}.`);
-      }
-      return Math.floor(next() * sides) + 1;
-    },
-    state: () => current
-  };
-}
-function createRng(seed) {
-  return restoreRng(typeof seed === "string" ? hashSeed(seed) : seed >>> 0);
-}
-function isCheckSuccess(die, skillLevel, modifier, difficulty) {
-  if (die === CRITICAL_SUCCESS_DIE) return true;
-  if (die === CRITICAL_FAILURE_DIE) return false;
-  return die + skillLevel + modifier >= difficulty;
-}
-function passChanceWithoutLuck(skillLevel, modifier, difficulty) {
-  let faces = 0;
-  for (let die = CRITICAL_FAILURE_DIE + 1; die < CRITICAL_SUCCESS_DIE; die += 1) {
-    if (isCheckSuccess(die, skillLevel, modifier, difficulty)) faces += 1;
-  }
-  return faces / D20_SIDES;
-}
-function rollCheck(rng, skills, check2, modifier = 0) {
-  const rngState = rng.state();
-  const die = rng.roll(D20_SIDES);
-  const skillLevel = skills[check2.skill];
-  const total = die + skillLevel + modifier;
-  const critical = die === CRITICAL_SUCCESS_DIE ? "success" : die === CRITICAL_FAILURE_DIE ? "failure" : null;
-  return {
-    skill: check2.skill,
-    die,
-    skillLevel,
-    modifier,
-    total,
-    difficulty: check2.difficulty,
-    critical,
-    success: isCheckSuccess(die, skillLevel, modifier, check2.difficulty),
-    rngState
-  };
 }
 
 // packages/engine/src/assert-never.ts
@@ -35131,9 +35323,25 @@ function partsOfPlace(run, locationId) {
   if (run.rulesetVersion < SEARCH_BY_PART_RULESET_VERSION) return [];
   return run.case.locations.find(({ id }) => id === locationId)?.parts ?? [];
 }
-var OBSTACLES_THE_PHONE_CLEARS = /* @__PURE__ */ new Set(["dark"]);
-function canClear(obstacle) {
-  return obstacle === null || OBSTACLES_THE_PHONE_CLEARS.has(obstacle);
+var TOOLS_RULESET_VERSION = 14;
+var WEAR_ORDER = ["lasting", "may-break", "used-up"];
+function chooseTool(run, obstacle, toolId) {
+  if (obstacle === null) return { kind: "none" };
+  if (run.rulesetVersion < TOOLS_RULESET_VERSION) {
+    return obstacle === "dark" ? { kind: "none" } : { kind: "refused", code: "needs-tool" };
+  }
+  const usable = run.kit.flatMap((item) => {
+    const rules = DETECTIVE_GEAR[item.id].tool;
+    return item.state === "owned" && rules?.removes.includes(obstacle) === true ? [{ item, rules }] : [];
+  });
+  if (toolId !== void 0) {
+    const named2 = usable.find(({ item }) => item.id === toolId);
+    return named2 === void 0 ? { kind: "refused", code: "wrong-tool" } : { kind: "tool", ...named2 };
+  }
+  const best = [...usable].sort(
+    (a, b) => WEAR_ORDER.indexOf(a.rules.wear) - WEAR_ORDER.indexOf(b.rules.wear)
+  )[0];
+  return best === void 0 ? { kind: "refused", code: "needs-tool" } : { kind: "tool", ...best };
 }
 
 // packages/engine/src/detective/clue-number.ts
@@ -35667,7 +35875,7 @@ function createDetectiveRun(input2) {
     concededLieIds: [],
     condition: initialCondition(),
     actionStrain: { day: 1, spent: 0 },
-    kit: initialKit(input2.hero.background, input2.hero.lifeState),
+    kit: startingKit(input2.hero.background, input2.hero.lifeState, input2.seed),
     closedLocationIds: [],
     drawnEvents: [],
     signalEvents: [],
@@ -35733,6 +35941,13 @@ function recordPartSearch(run, partId, locationId, foundClueIds) {
       { partId, locationId, turn: run.turn + 1, foundClueIds: [...foundClueIds] }
     ]
   };
+}
+function wearTool(run, gearId, blundered) {
+  assertActive(run);
+  const item = run.kit.find(({ id }) => id === gearId);
+  if (item === void 0) throw new RangeError(`The hero has no gear "${gearId}" in their kit.`);
+  const next = worn(item, blundered).item;
+  return { ...run, kit: run.kit.map((piece) => piece.id === gearId ? next : piece) };
 }
 function findClue(run, clueId) {
   assertActive(run);
@@ -36728,9 +36943,10 @@ var IntentSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("move"), locationId: EntityIdSchema }),
   /**
    * A thorough search. Of the whole place: every hidden clue gets a check. Of a place made of parts (from the
-   * ruleset of parts on) it is a search of one part, named by `partId`.
+   * ruleset of parts on) it is a search of one part, named by `partId`, with the tool of the kit named by
+   * `toolId` against an obstacle (left out, the kit's best fit is used).
    */
-  external_exports.object({ kind: external_exports.literal("search"), partId: EntityIdSchema.optional() }),
+  external_exports.object({ kind: external_exports.literal("search"), partId: EntityIdSchema.optional(), toolId: GearIdSchema.optional() }),
   /** Question a suspect of the place, showing clues that may break their lies. */
   InterrogateIntentSchema,
   /** Link found clues into an insight. */
@@ -36824,26 +37040,72 @@ function resolveLook(run, rng) {
   const outcome = { kind: "look", foundClueIds: found.map(({ id }) => id), minutes: LOOK_MINUTES };
   return { ok: true, run: settled.run, outcome, details: [], revealed: lockOutReveals(run, run.locationId) };
 }
-function resolveSearchPart(run, rng, location, parts, partId) {
+function resolveSearchPart(run, rng, location, parts, partId, toolId) {
   const part = parts.find(({ id }) => id === partId);
   if (part === void 0) return refuse3("unknown-part", "Name one of the parts of this place to search.");
   if (!run.noticedPartIds.includes(part.id)) {
     return refuse3("part-not-noticed", "The hero has not noticed that part yet.");
   }
-  if (run.searchedParts.some((searched2) => searched2.partId === part.id)) {
+  if (run.searchedParts.some((searched) => searched.partId === part.id)) {
     return refuse3("part-searched", "That part has been searched already.");
   }
   if (part.requiresLead !== null && isLeadEarned(run, part.requiresLead) && !isLeadOpen(run, part.requiresLead)) {
     return refuse3("lead-window", "That is not the hour for it: the lead is followed at another time of day.");
   }
-  if (!canClear(part.obstacle)) {
-    return refuse3("needs-tool", "The hero has nothing to get past that with.");
+  const choice = chooseTool(run, part.obstacle, toolId);
+  if (choice.kind === "refused") {
+    return refuse3(
+      choice.code,
+      choice.code === "wrong-tool" ? "That tool is not in the kit, or does not get past that." : "The hero has nothing to get past that with."
+    );
   }
-  const clue = hiddenClues(run, location.id).find(({ id }) => id === part.holds);
+  if (choice.kind === "none") return searchPartForClue(run, rng, location, part, [], [], []);
+  const { rules, item } = choice;
   const details = [];
   const results = [];
   const felt = [];
-  const revealed = lockOutReveals(run, location.id);
+  const revealed = [];
+  let cleared = true;
+  let blundered = false;
+  if (rules.check !== null) {
+    const attempt = roll(run, rng, rules.check, location.situations);
+    felt.push(...attempt.felt);
+    revealed.push(...attempt.revealed);
+    details.push({ subject: { kind: "part", id: part.id }, result: attempt.result });
+    results.push(attempt.result);
+    cleared = attempt.result.success;
+    blundered = attempt.result.critical === "failure";
+  }
+  const used = worn(item, blundered);
+  const tool = { id: item.id, cleared, wear: used.wear };
+  const worndown = wearTool(run, item.id, blundered);
+  if (cleared) return searchPartForClue(worndown, rng, location, part, details, felt, revealed, tool);
+  const strained = blundered ? worndown : strainByAction(worndown);
+  const minutes2 = PART_SEARCH_MINUTES + rules.failureMinutes;
+  const settled = settle2(strained, rng, minutes2, results);
+  const frayed = strained.condition.nerves < worndown.condition.nerves;
+  return {
+    ok: true,
+    run: settled.run,
+    outcome: {
+      kind: "search",
+      foundClueIds: [],
+      minutes: minutes2,
+      consequences: ["time-lost", ...frayed ? ["nerves-lost"] : [], ...settled.consequences],
+      partId: part.id,
+      tool
+    },
+    details,
+    felt: distinctFelt([...felt, ...settled.felt]),
+    revealed
+  };
+}
+function searchPartForClue(run, rng, location, part, carriedDetails, carriedFelt, carriedRevealed, tool) {
+  const clue = hiddenClues(run, location.id).find(({ id }) => id === part.holds);
+  const details = [...carriedDetails];
+  const results = [];
+  const felt = [...carriedFelt];
+  const revealed = [...lockOutReveals(run, location.id), ...carriedRevealed];
   let found;
   if (clue !== void 0) {
     const subject = { kind: "clue", id: clue.id };
@@ -36882,17 +37144,18 @@ function resolveSearchPart(run, rng, location, parts, partId) {
       foundClueIds: found === void 0 ? [] : [found.id],
       minutes: minutes2,
       consequences,
-      partId: part.id
+      partId: part.id,
+      ...tool === void 0 ? {} : { tool }
     },
     details,
     felt: distinctFelt([...felt, ...settled.felt]),
     revealed
   };
 }
-function resolveSearch(run, rng, partId) {
+function resolveSearch(run, rng, partId, toolId) {
   const location = locationById(run.case, run.locationId);
   const parts = partsOfPlace(run, location.id);
-  if (parts.length > 0) return resolveSearchPart(run, rng, location, parts, partId);
+  if (parts.length > 0) return resolveSearchPart(run, rng, location, parts, partId, toolId);
   if (partId !== void 0) return refuse3("unknown-part", "This place has no parts to search.");
   const reinspection = run.searchedLocationIds.includes(location.id);
   const hidden = hiddenClues(run, location.id);
@@ -37059,7 +37322,7 @@ function dispatchIntent(run, input2, rng) {
     case "look":
       return resolveLook(run, rng);
     case "search":
-      return resolveSearch(run, rng, intent.partId);
+      return resolveSearch(run, rng, intent.partId, intent.toolId);
     case "move":
       return resolveMove(run, rng, intent.locationId);
     case "rest":
@@ -37157,7 +37420,7 @@ var SkillCheckResultSchema = external_exports.object({
   rngState: external_exports.int().min(0).max(4294967295)
 });
 var CheckDetailSchema = external_exports.object({
-  subject: external_exports.object({ kind: external_exports.enum(["clue", "location", "suspect"]), id: external_exports.string().min(1) }),
+  subject: external_exports.object({ kind: external_exports.enum(["clue", "location", "suspect", "part"]), id: external_exports.string().min(1) }),
   result: external_exports.union([SkillCheckResultSchema, external_exports.literal("auto")])
 });
 var ConsequenceSchema = external_exports.enum(["time-lost", "reputation-lost", "mishap", "nerves-lost"]);
@@ -37190,6 +37453,11 @@ var OutcomeSchema = external_exports.union([
     minutes,
     consequences: external_exports.array(ConsequenceSchema),
     partId: EntityIdSchema.optional(),
+    tool: external_exports.object({
+      id: GearIdSchema,
+      cleared: external_exports.boolean(),
+      wear: external_exports.enum(["spent", "broken"]).nullable()
+    }).optional(),
     ...fatigue
   }),
   external_exports.object({ kind: external_exports.literal("rest") }),
@@ -49738,14 +50006,18 @@ var accuse2 = defineTool({
 var ActIntentSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("look") }),
   external_exports.object({ kind: external_exports.literal("move"), locationId: EntityIdSchema }),
-  external_exports.object({ kind: external_exports.literal("search"), partId: EntityIdSchema.optional() }),
+  external_exports.object({
+    kind: external_exports.literal("search"),
+    partId: EntityIdSchema.optional(),
+    toolId: GearIdSchema.optional()
+  }),
   external_exports.object({ kind: external_exports.literal("rest") }),
   UseIntentSchema,
   RereadIntentSchema
 ]);
 var act = defineTool({
   name: "act",
-  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`), rest (sleep through the night), use (`itemId` of a supply in the kit) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
+  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), use (`itemId` of a supply in the kit) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
   inputSchema: external_exports.object({ turn: TurnSchema, intent: ActIntentSchema }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, intent }, context2) => playIntent(context2, turn, intent)
@@ -49975,6 +50247,9 @@ var en_default3 = {
       warnings: "Mind this",
       kit: "Kit",
       lost: "lost",
+      spent: "used up",
+      broken: "broken",
+      chargesLeft: "left: {n}",
       supplies: "Supplies",
       nothing: "nothing",
       pending: "On its way",
@@ -50067,7 +50342,17 @@ var en_default3 = {
         phone: "phone",
         notebook: "notebook",
         laptop: "laptop",
-        picks: "lock picks"
+        picks: "lock picks",
+        magnifier: "magnifying glass",
+        knife: "pocket knife",
+        "test-kit": "test kit",
+        "uv-lamp": "UV lamp",
+        powder: "fingerprint powder",
+        "tape-measure": "tape measure",
+        crowbar: "crowbar",
+        mirror: "mirror on a handle",
+        binoculars: "binoculars",
+        cash: "envelope of cash"
       },
       consumables: {
         coffee: "coffee",
@@ -50339,6 +50624,9 @@ var ru_default2 = {
       warnings: "\u041E\u0431\u0440\u0430\u0442\u0438\u0442\u0435 \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u0435",
       kit: "\u0421\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435",
       lost: "\u043F\u043E\u0442\u0435\u0440\u044F\u043D\u043E",
+      spent: "\u0438\u0437\u0440\u0430\u0441\u0445\u043E\u0434\u043E\u0432\u0430\u043D\u043E",
+      broken: "\u0441\u043B\u043E\u043C\u0430\u043D\u043E",
+      chargesLeft: "\u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C: {n}",
       supplies: "\u0417\u0430\u043F\u0430\u0441\u044B",
       nothing: "\u043D\u0438\u0447\u0435\u0433\u043E",
       pending: "\u0421\u043A\u043E\u0440\u043E \u043F\u043E\u0434\u0435\u0439\u0441\u0442\u0432\u0443\u0435\u0442",
@@ -50431,7 +50719,17 @@ var ru_default2 = {
         phone: "\u0442\u0435\u043B\u0435\u0444\u043E\u043D",
         notebook: "\u0431\u043B\u043E\u043A\u043D\u043E\u0442",
         laptop: "\u043D\u043E\u0443\u0442\u0431\u0443\u043A",
-        picks: "\u043E\u0442\u043C\u044B\u0447\u043A\u0438"
+        picks: "\u043E\u0442\u043C\u044B\u0447\u043A\u0438",
+        magnifier: "\u043B\u0443\u043F\u0430",
+        knife: "\u0441\u043A\u043B\u0430\u0434\u043D\u043E\u0439 \u043D\u043E\u0436",
+        "test-kit": "\u043D\u0430\u0431\u043E\u0440 \u0440\u0435\u0430\u0433\u0435\u043D\u0442\u043E\u0432",
+        "uv-lamp": "\u0423\u0424-\u043B\u0430\u043C\u043F\u0430",
+        powder: "\u0434\u0430\u043A\u0442\u0438\u043B\u043E\u0441\u043A\u043E\u043F\u0438\u0447\u0435\u0441\u043A\u0438\u0439 \u043F\u043E\u0440\u043E\u0448\u043E\u043A",
+        "tape-measure": "\u0440\u0443\u043B\u0435\u0442\u043A\u0430",
+        crowbar: "\u043C\u043E\u043D\u0442\u0438\u0440\u043E\u0432\u043A\u0430",
+        mirror: "\u0437\u0435\u0440\u043A\u0430\u043B\u043E \u043D\u0430 \u0440\u0443\u0447\u043A\u0435",
+        binoculars: "\u0431\u0438\u043D\u043E\u043A\u043B\u044C",
+        cash: "\u043A\u043E\u043D\u0432\u0435\u0440\u0442 \u0441 \u043D\u0430\u043B\u0438\u0447\u043D\u044B\u043C\u0438"
       },
       consumables: {
         coffee: "\u043A\u043E\u0444\u0435",
@@ -50855,7 +51153,7 @@ function renderHero(view, board, text) {
   const warnings = view.warnings.length === 0 ? "" : list2(view.warnings.map((id) => `<span class="warn">${e(named(t.warningNames, id))}</span>`));
   const kit = view.kit.length === 0 ? `<p class="empty">${e(t.nothing)}</p>` : list2(
     view.kit.map(
-      ({ id, state }) => `${e(named(t.gear, id))}${state === "lost" ? ` <span class="warn">(${e(t.lost)})</span>` : ""}`
+      ({ id, state, charges }) => `${e(named(t.gear, id))}${state === "owned" ? charges === null ? "" : ` <span class="tag">${e(t.chargesLeft.replace("{n}", String(charges)))}</span>` : ` <span class="warn">(${e(named({ lost: t.lost, spent: t.spent, broken: t.broken }, state))})</span>`}`
     )
   );
   const supplies = view.supplies.length === 0 ? `<p class="empty">${e(t.nothing)}</p>` : list2(view.supplies.map(({ id, count }) => `${e(named(t.consumables, id))} \xD7${String(count)}`));

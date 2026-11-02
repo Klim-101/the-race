@@ -34,7 +34,8 @@ import {
   type Revealed,
 } from './trait-reveal.js';
 import { isLeadEarned, isLeadOpen, isPlaceKnown } from './leads.js';
-import { canClear, partsOfPlace } from './search-parts.js';
+import { chooseTool, partsOfPlace } from './search-parts.js';
+import { GearIdSchema, worn, type GearId } from './gear.js';
 import { buildNeighbors } from './obtainability.js';
 import { closedSourcesOf, drawDayEvents, drawOwedDayEvent, isLocationClosed } from './random-events.js';
 import {
@@ -45,6 +46,7 @@ import {
   moveTo,
   noticeParts,
   recordPartSearch,
+  wearTool,
   signalOfRun,
   spendTime,
   strainByAction,
@@ -69,9 +71,10 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('move'), locationId: EntityIdSchema }),
   /**
    * A thorough search. Of the whole place: every hidden clue gets a check. Of a place made of parts (from the
-   * ruleset of parts on) it is a search of one part, named by `partId`.
+   * ruleset of parts on) it is a search of one part, named by `partId`, with the tool of the kit named by
+   * `toolId` against an obstacle (left out, the kit's best fit is used).
    */
-  z.object({ kind: z.literal('search'), partId: EntityIdSchema.optional() }),
+  z.object({ kind: z.literal('search'), partId: EntityIdSchema.optional(), toolId: GearIdSchema.optional() }),
   /** Question a suspect of the place, showing clues that may break their lies. */
   InterrogateIntentSchema,
   /** Link found clues into an insight. */
@@ -115,6 +118,7 @@ export type RefusalCode =
   | 'part-not-noticed'
   | 'part-searched'
   | 'needs-tool'
+  | 'wrong-tool'
   | 'lead-window'
   | 'not-found'
   | 'no-insight'
@@ -164,6 +168,12 @@ export type Outcome = (
       readonly consequences: readonly Consequence[];
       /** The part that was searched, in a place made of parts. */
       readonly partId?: string;
+      /** The tool used against the obstacle of the part: whether it got through, and how it wore. */
+      readonly tool?: {
+        readonly id: GearId;
+        readonly cleared: boolean;
+        readonly wear: 'spent' | 'broken' | null;
+      };
     }
   | { readonly kind: 'rest' }
   | InterrogationOutcome
@@ -177,7 +187,7 @@ export type Outcome = (
 
 /** The full record of a check, for the engine's own log: it does name what was being checked. */
 export interface CheckDetail {
-  readonly subject: { readonly kind: 'clue' | 'location' | 'suspect'; readonly id: string };
+  readonly subject: { readonly kind: 'clue' | 'location' | 'suspect' | 'part'; readonly id: string };
   /** `'auto'`: found without a roll, as by a photographic memory. */
   readonly result: SkillCheckResult | 'auto';
 }
@@ -305,6 +315,7 @@ function resolveSearchPart(
   location: Location,
   parts: readonly PlacePart[],
   partId: string | undefined,
+  toolId: GearId | undefined,
 ): Resolution {
   const part = parts.find(({ id }) => id === partId);
   if (part === undefined) return refuse('unknown-part', 'Name one of the parts of this place to search.');
@@ -321,15 +332,77 @@ function resolveSearchPart(
   ) {
     return refuse('lead-window', 'That is not the hour for it: the lead is followed at another time of day.');
   }
-  if (!canClear(part.obstacle)) {
-    return refuse('needs-tool', 'The hero has nothing to get past that with.');
+  const choice = chooseTool(run, part.obstacle, toolId);
+  if (choice.kind === 'refused') {
+    return refuse(
+      choice.code,
+      choice.code === 'wrong-tool'
+        ? 'That tool is not in the kit, or does not get past that.'
+        : 'The hero has nothing to get past that with.',
+    );
   }
+  if (choice.kind === 'none') return searchPartForClue(run, rng, location, part, [], [], []);
 
-  const clue = hiddenClues(run, location.id).find(({ id }) => id === part.holds);
+  // The tool against the obstacle: a roll for most, none for a torch. It wears whether it gets through or not.
+  const { rules, item } = choice;
   const details: CheckDetail[] = [];
   const results: SkillCheckResult[] = [];
   const felt: SignalFelt[] = [];
-  const revealed: Revealed[] = lockOutReveals(run, location.id);
+  const revealed: Revealed[] = [];
+  let cleared = true;
+  let blundered = false;
+  if (rules.check !== null) {
+    const attempt = roll(run, rng, rules.check, location.situations);
+    felt.push(...attempt.felt);
+    revealed.push(...attempt.revealed);
+    details.push({ subject: { kind: 'part', id: part.id }, result: attempt.result });
+    results.push(attempt.result);
+    cleared = attempt.result.success;
+    blundered = attempt.result.critical === 'failure';
+  }
+  const used = worn(item, blundered);
+  const tool = { id: item.id, cleared, wear: used.wear };
+  const worndown = wearTool(run, item.id, blundered);
+  if (cleared) return searchPartForClue(worndown, rng, location, part, details, felt, revealed, tool);
+
+  // It did not get through: the time of the attempt, and a point of nerves unless a blunder already took one.
+  const strained = blundered ? worndown : strainByAction(worndown);
+  const minutes = PART_SEARCH_MINUTES + rules.failureMinutes;
+  const settled = settle(strained, rng, minutes, results);
+  const frayed = strained.condition.nerves < worndown.condition.nerves;
+  return {
+    ok: true,
+    run: settled.run,
+    outcome: {
+      kind: 'search',
+      foundClueIds: [],
+      minutes,
+      consequences: ['time-lost', ...(frayed ? (['nerves-lost'] as const) : []), ...settled.consequences],
+      partId: part.id,
+      tool,
+    },
+    details,
+    felt: distinctFelt([...felt, ...settled.felt]),
+    revealed,
+  };
+}
+
+/** What the part holds, once its obstacle is out of the way: found by a roll, unless it lies in plain sight. */
+function searchPartForClue(
+  run: DetectiveRunState,
+  rng: Rng,
+  location: Location,
+  part: PlacePart,
+  carriedDetails: readonly CheckDetail[],
+  carriedFelt: readonly SignalFelt[],
+  carriedRevealed: readonly Revealed[],
+  tool?: NonNullable<Extract<Outcome, { kind: 'search' }>['tool']>,
+): Resolution {
+  const clue = hiddenClues(run, location.id).find(({ id }) => id === part.holds);
+  const details: CheckDetail[] = [...carriedDetails];
+  const results: SkillCheckResult[] = [];
+  const felt: SignalFelt[] = [...carriedFelt];
+  const revealed: Revealed[] = [...lockOutReveals(run, location.id), ...carriedRevealed];
   let found: Clue | undefined;
   if (clue !== undefined) {
     const subject = { kind: 'clue', id: clue.id } as const;
@@ -374,6 +447,7 @@ function resolveSearchPart(
       minutes,
       consequences,
       partId: part.id,
+      ...(tool === undefined ? {} : { tool }),
     },
     details,
     felt: distinctFelt([...felt, ...settled.felt]),
@@ -381,10 +455,15 @@ function resolveSearchPart(
   };
 }
 
-function resolveSearch(run: DetectiveRunState, rng: Rng, partId: string | undefined): Resolution {
+function resolveSearch(
+  run: DetectiveRunState,
+  rng: Rng,
+  partId: string | undefined,
+  toolId: GearId | undefined,
+): Resolution {
   const location = locationById(run.case, run.locationId);
   const parts = partsOfPlace(run, location.id);
-  if (parts.length > 0) return resolveSearchPart(run, rng, location, parts, partId);
+  if (parts.length > 0) return resolveSearchPart(run, rng, location, parts, partId, toolId);
   if (partId !== undefined) return refuse('unknown-part', 'This place has no parts to search.');
   const reinspection = run.searchedLocationIds.includes(location.id);
   const hidden = hiddenClues(run, location.id);
@@ -602,7 +681,7 @@ function dispatchIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resol
     case 'look':
       return resolveLook(run, rng);
     case 'search':
-      return resolveSearch(run, rng, intent.partId);
+      return resolveSearch(run, rng, intent.partId, intent.toolId);
     case 'move':
       return resolveMove(run, rng, intent.locationId);
     case 'rest':

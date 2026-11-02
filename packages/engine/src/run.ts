@@ -17,8 +17,9 @@ export const RUN_SCHEMA_VERSION = 2;
  * 12: a place made of parts is searched by part, and a quick look shows the parts (see `search-parts.ts`).
  * 13: a place can wait for a lead and a part can be shown by one (see `leads.ts`); a deed that earns a lead
  * earns it for good.
+ * 14: an obstacle is got past with a tool of the kit, with a roll, and a tool wears (see `gear.ts`).
  */
-export const RULESET_VERSION = 13;
+export const RULESET_VERSION = 14;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;
