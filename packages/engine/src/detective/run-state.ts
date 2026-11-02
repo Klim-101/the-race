@@ -62,7 +62,16 @@ import {
   type PendingView,
   type SupplyView,
 } from './consumables.js';
-import { GearIdSchema, KitItemSchema, initialKit, viewKit, withGearState, type KitView } from './gear.js';
+import {
+  GearIdSchema,
+  KitItemSchema,
+  startingKit,
+  viewKit,
+  withGearState,
+  worn,
+  type GearId,
+  type KitView,
+} from './gear.js';
 import { clueNumber } from './clue-number.js';
 import { buildNeighbors } from './obtainability.js';
 import { isLocationClosed, suspectPlace } from './random-events.js';
@@ -310,7 +319,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     concededLieIds: [],
     condition: initialCondition(),
     actionStrain: { day: 1, spent: 0 },
-    kit: initialKit(input.hero.background, input.hero.lifeState),
+    kit: startingKit(input.hero.background, input.hero.lifeState, input.seed),
     closedLocationIds: [],
     drawnEvents: [],
     signalEvents: [],
@@ -393,6 +402,15 @@ export function recordPartSearch(
       { partId, locationId, turn: run.turn + 1, foundClueIds: [...foundClueIds] },
     ],
   };
+}
+
+/** Wears a tool of the kit by one use: a used-up piece loses a charge, a lockpick breaks on a blunder. */
+export function wearTool(run: DetectiveRunState, gearId: GearId, blundered: boolean): DetectiveRunState {
+  assertActive(run);
+  const item = run.kit.find(({ id }) => id === gearId);
+  if (item === undefined) throw new RangeError(`The hero has no gear "${gearId}" in their kit.`);
+  const next = worn(item, blundered).item;
+  return { ...run, kit: run.kit.map((piece) => (piece.id === gearId ? next : piece)) };
 }
 
 export function findClue(run: DetectiveRunState, clueId: string): DetectiveRunState {

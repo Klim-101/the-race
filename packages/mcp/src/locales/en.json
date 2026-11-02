@@ -196,6 +196,9 @@
       "warnings": "Mind this",
       "kit": "Kit",
       "lost": "lost",
+      "spent": "used up",
+      "broken": "broken",
+      "chargesLeft": "left: {n}",
       "supplies": "Supplies",
       "nothing": "nothing",
       "pending": "On its way",
@@ -288,7 +291,17 @@
         "phone": "phone",
         "notebook": "notebook",
         "laptop": "laptop",
-        "picks": "lock picks"
+        "picks": "lock picks",
+        "magnifier": "magnifying glass",
+        "knife": "pocket knife",
+        "test-kit": "test kit",
+        "uv-lamp": "UV lamp",
+        "powder": "fingerprint powder",
+        "tape-measure": "tape measure",
+        "crowbar": "crowbar",
+        "mirror": "mirror on a handle",
+        "binoculars": "binoculars",
+        "cash": "envelope of cash"
       },
       "consumables": {
         "coffee": "coffee",
