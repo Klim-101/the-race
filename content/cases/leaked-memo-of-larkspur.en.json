@@ -177,6 +177,7 @@
     },
     {
       "id": "teahouse",
+      "venue": "teahouse",
       "name": "The Brindle Leaf teahouse",
       "description": "A family teahouse by the exchange's back door, with chipped cups, honest prices and a tilting sign that has been about to fall for three decades.",
       "connections": ["harbour-street"],

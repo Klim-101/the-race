@@ -155,6 +155,7 @@
         "moveFailed": "Tried to get into {name} and could not",
         "search": "Searched the place: found {n}",
         "rest": "Rested for the night",
+        "sit": "Sat down for a while: nerves back by {n}",
         "interrogate": "Questioned {name}, {approach}, showing {n} clues",
         "insight": "Concluded: {text}",
         "alreadyKnown": "Reached a conclusion that was already drawn",

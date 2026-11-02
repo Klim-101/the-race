@@ -92,6 +92,19 @@ describe('viewTurns', () => {
     expect(viewTurns(startRun(cheeseCase(), 'a'), [])).toEqual([]);
   });
 
+  it('says what a sitting at a venue gave back', () => {
+    const detectiveCase = cheeseCase();
+    const square = detectiveCase.locations.find(({ id }) => id === 'market-square');
+    if (square !== undefined) square.venue = 'teahouse';
+    const start = startRun(detectiveCase, 'tea');
+    const run = { ...start, condition: { ...start.condition, nerves: 5 } };
+    const resolution = resolveIntent(run, { kind: 'sit' }, restoreRng(run.rngState));
+    if (!resolution.ok) throw new Error(`Refused: ${resolution.refusal.code}`);
+    const log = recordResolution([], run, { kind: 'sit' }, resolution);
+
+    expect(viewTurns(resolution.run, log)).toMatchObject([{ kind: 'sit', restored: 1 }]);
+  });
+
   it('shows what the player did, newest first, with the day and the hour each turn ended at', () => {
     const detectiveCase = cheeseCase();
     let run = startRun(detectiveCase, 'story');

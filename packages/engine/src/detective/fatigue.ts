@@ -112,7 +112,14 @@ export function applyFatigue(
   rng: Rng,
 ): Resolution & { ok: true } {
   const { outcome } = resolution;
-  if (outcome.kind === 'accuse' || outcome.kind === 'rest' || outcome.kind === 'use') return resolution;
+  if (
+    outcome.kind === 'accuse' ||
+    outcome.kind === 'rest' ||
+    outcome.kind === 'sit' ||
+    outcome.kind === 'use'
+  ) {
+    return resolution;
+  }
   let { run } = resolution;
   let extra: Partial<Fatigue> = {};
   let minutes = 0;

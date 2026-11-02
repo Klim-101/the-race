@@ -47,6 +47,11 @@ export const LODGING_SAFETIES = ['safe', 'ordinary', 'risky'] as const;
 export const LodgingSafetySchema = z.enum(LODGING_SAFETIES);
 export type LodgingSafety = z.infer<typeof LodgingSafetySchema>;
 
+/** A place where one can sit down for a while: a teahouse, a cafe. The case marks them; the engine never guesses. */
+export const VENUES = ['teahouse', 'cafe'] as const;
+export const VenueSchema = z.enum(VENUES);
+export type Venue = z.infer<typeof VenueSchema>;
+
 /** Whether a place is inside a building or out of doors: the weather and the road only touch the second. */
 export const EXPOSURES = ['indoor', 'outdoor'] as const;
 export const ExposureSchema = z.enum(EXPOSURES);
@@ -137,6 +142,8 @@ export const LocationSchema = z.object({
   situations: z.array(TraitTriggerSchema).default([]),
   /** How safe the hero's night is if they sleep here; optional, and a place without it is an ordinary one. */
   lodging: LodgingSafetySchema.optional(),
+  /** Set for a place where the hero can sit down and win back a little of their nerves. */
+  venue: VenueSchema.optional(),
   /**
    * The lead that must be earned before the hero knows the place exists: until then it is not on the map or among
    * the exits, and cannot be walked to. A place without it is known as soon as it is next to one the hero has seen.

@@ -546,6 +546,7 @@ const TURNS: TurnView[] = [
   { turn: 3, day: 1, minute: 1100, kind: 'interrogate', suspect: 'Anna', approach: 'pressure', showed: 2 },
   { turn: 2, day: 1, minute: 700, kind: 'search', found: 1 },
   { turn: 1, day: 1, minute: 500, kind: 'rest' },
+  { turn: 1, day: 1, minute: 495, kind: 'sit', restored: 1 },
   { turn: 0, day: 1, minute: 490, kind: 'look', found: 3 },
   { turn: -1, day: 1, minute: 480, kind: 'move', to: 'Stall', entered: true },
   { turn: -2, day: 1, minute: 470, kind: 'move', to: 'Cellar', entered: false },
