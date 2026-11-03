@@ -39,11 +39,11 @@ A text roguelike that runs inside [Claude Code](https://claude.com/claude-code) 
 
 You need [Claude Code](https://claude.com/claude-code) on your own subscription and [Node.js](https://nodejs.org) 24 (the current LTS) or newer, except 25, with npm 11 (it comes with Node 24). There is nothing else to sign up for: no account, no API key.
 
-1. **Install the plugin.** In Claude Code, in any folder:
+1. **Install the plugin.** In a terminal, in any folder:
 
-   ```
-   /plugin marketplace add Klim-101/the-race
-   /plugin install the-race@the-race
+   ```sh
+   claude plugin marketplace add Klim-101/the-race
+   claude plugin install the-race@the-race
    ```
 
    The plugin carries its own server, so there is nothing to clone or build.
@@ -57,6 +57,15 @@ You need [Claude Code](https://claude.com/claude-code) on your own subscription 
    ```
 
    `/race` starts a new run or resumes the current one. `/race-help` explains how to play in a few lines.
+
+4. **Update later.** A new version reaches you only after the marketplace is refreshed. In a terminal:
+
+   ```sh
+   claude plugin marketplace update the-race
+   claude plugin update the-race@the-race
+   ```
+
+   Then start a new Claude Code session, because the server is loaded once per session.
 
 The game is played in **your language**: the narrator answers in the language you write in (Russian and English are supported), and you describe what you do in your own words. Headlines are fetched from public feeds; if they cannot be reached, the run still starts, just without the day's news. More on the plugin, the game folder and the HUD: [PLUGIN.md](docs/public/PLUGIN.md).
 
