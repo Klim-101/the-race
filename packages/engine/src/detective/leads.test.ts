@@ -171,9 +171,75 @@ describe('earning a lead', () => {
         reason: 'The hero has a reason to look: office hint.',
         window: null,
         openNow: true,
+        source: { kind: 'clue', clueId: 'flour-crumbs' },
         opens: [{ kind: 'place', id: 'mayor-office', name: 'Mayor office' }],
       },
     ]);
+  });
+});
+
+describe('what earned a lead', () => {
+  const sourceOf = (run: DetectiveRunState, leadId: string) =>
+    viewRun(run).leads.find(({ id }) => id === leadId)?.source;
+
+  it('is written down with the lead and shown in the view, whatever the deed', () => {
+    const talked = ok(
+      resolveIntent(atStall(), { kind: 'interrogate', suspectId: 'baker', approach: 'social' }, dice(20)),
+    ).run;
+    const fell = ok(
+      resolveIntent(
+        findClue(atStall(), 'cart-tracks'),
+        { kind: 'interrogate', suspectId: 'baker', approach: 'social', clueIds: ['cart-tracks'] },
+        dice(5),
+      ),
+    ).run;
+
+    expect(sourceOf(findClue(newRun(), 'flour-crumbs'), 'office-hint')).toEqual({
+      kind: 'clue',
+      clueId: 'flour-crumbs',
+    });
+    expect(sourceOf(talked, 'baker-trust')).toEqual({ kind: 'talk', suspectId: 'baker' });
+    expect(sourceOf(fell, 'asleep-fell')).toEqual({ kind: 'lie', suspectId: 'baker' });
+    expect(sourceOf(addInsight(newRun(), 'motive-debt'), 'debt-seen')).toEqual({
+      kind: 'deduction',
+      insightId: 'motive-debt',
+    });
+  });
+
+  it('names a rumour by its place and a study by its clue and tool, and a lie of nobody by no one', () => {
+    const withSource = (source: unknown) =>
+      ({ ...newRun(), earnedLeads: [{ leadId: 'office-hint', turn: 1, source }] }) as DetectiveRunState;
+
+    expect(sourceOf(withSource({ kind: 'locals', locationId: 'cheese-stall' }), 'office-hint')).toEqual({
+      kind: 'locals',
+      locationId: 'cheese-stall',
+    });
+    expect(
+      sourceOf(withSource({ kind: 'study', clueId: 'flour-crumbs', tool: 'magnifier' }), 'office-hint'),
+    ).toEqual({ kind: 'study', clueId: 'flour-crumbs', tool: 'magnifier' });
+    expect(sourceOf(withSource({ kind: 'study', clueId: 'flour-crumbs' }), 'office-hint')).toEqual({
+      kind: 'study',
+      clueId: 'flour-crumbs',
+      tool: null,
+    });
+    expect(sourceOf(withSource({ kind: 'lie', lieId: 'no-such-lie' }), 'office-hint')).toEqual({
+      kind: 'lie',
+      suspectId: null,
+    });
+  });
+
+  it('is shown as none for a lead earned before it was written down, and the save still loads', () => {
+    const old = { ...newRun(), earnedLeads: [{ leadId: 'office-hint', turn: 1 }] };
+
+    expect(DetectiveRunStateSchema.safeParse(old).success).toBe(true);
+    expect(sourceOf(old, 'office-hint')).toBeNull();
+  });
+
+  it('is told of earned leads only, and never whether a lead is false', () => {
+    const view = viewRun(findClue(newRun(), 'flour-crumbs'));
+
+    expect(view.leads.map(({ id }) => id)).toEqual(['office-hint']);
+    expect(JSON.stringify(view)).not.toContain('isFalse');
   });
 });
 

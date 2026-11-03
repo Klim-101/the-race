@@ -60,6 +60,20 @@ export interface TabText {
     readonly effects: Record<'breaks-lie' | 'confirms' | 'implicates' | 'no-effect', string>;
     readonly legend: string;
   };
+  /** The leads pinned on the corkboard: what each says, what earned it and whether it can be followed now. */
+  readonly leadPins: {
+    readonly tag: string;
+    readonly opens: string;
+    readonly opensNothing: string;
+    readonly followNow: string;
+    readonly shutNow: string;
+    /** What earned a lead: {n} a clue number, {name} a person, {place} a place, {tool} a tool. */
+    readonly from: Record<
+      'clue' | 'study' | 'studyWith' | 'talk' | 'lie' | 'deduction' | 'locals' | 'unknown',
+      string
+    >;
+    readonly legend: string;
+  };
   /** The grid of clue cards: its filters and what a card says about a clue. */
   readonly clueGrid: {
     readonly filters: string;

@@ -100,6 +100,16 @@ svg.board .num{font:700 13px system-ui,sans-serif;fill:#8a3b2a;letter-spacing:.0
 svg.board .caption{fill:#2a2622;paint-order:stroke;stroke:#f1e1c0;stroke-width:3px;stroke-linejoin:round}
 svg.board .where text{font-size:11px;fill:#6b4a2b}
 svg.board .garbled .paper{stroke-dasharray:5 3;stroke:#b26a00}
+svg.board .lead-pin .paper{fill:#e8f1f8;stroke:#9db8d6;stroke-width:1;filter:drop-shadow(2px 3px 2px rgba(0,0,0,.35))}
+svg.board .lead-pin .num{font:700 12px system-ui,sans-serif;fill:#2b5fa3;letter-spacing:.08em}
+svg.board .lead-pin text{fill:#2a2622;font-size:11px}
+svg.board .lead-pin text.line{font-size:13px}
+svg.board .lead-pin text.status{fill:#2f6a3a;font-weight:700}
+svg.board .lead-pin.idle .paper{stroke-dasharray:5 3}
+svg.board .lead-pin.idle text.status{fill:#6b6354}
+svg.board .lead-pin.shut .paper{fill:#dcd9d2;stroke:#a39e92;stroke-dasharray:5 3}
+svg.board .lead-pin.shut text.status{fill:#b26a00}
+svg.board .thread.earned{stroke:#2f7a4a;stroke-width:2;stroke-dasharray:8 4}
 svg.board .pin{fill:#c0392b;stroke:#7b1f14;stroke-width:1.5}
 svg.board .thread{fill:none;stroke-linecap:round}
 svg.board .thread.made{stroke:#b3261e;stroke-width:2.5}

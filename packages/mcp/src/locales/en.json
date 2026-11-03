@@ -401,6 +401,24 @@
       "closeHint": "Click again, or press Esc, to put it back.",
       "fullText": "Full text"
     },
+    "leadPins": {
+      "tag": "Lead",
+      "opens": "Opens",
+      "opensNothing": "has opened nothing yet",
+      "followNow": "can be followed now",
+      "shutNow": "shut at this hour",
+      "from": {
+        "clue": "from clue {n}",
+        "study": "from studying {n}",
+        "studyWith": "from studying {n} with {tool}",
+        "talk": "from a talk with {name}",
+        "lie": "{name}'s lie fell",
+        "deduction": "from a conclusion",
+        "locals": "from asking the locals at {place}",
+        "unknown": "what earned it is not recorded"
+      },
+      "legend": "Green thread: a lead to what earned it."
+    },
     "clueGrid": {
       "filters": "Filter the clues",
       "place": "Found at",
