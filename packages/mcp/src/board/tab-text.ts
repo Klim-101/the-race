@@ -118,6 +118,10 @@ export interface TabText {
     readonly lead: string;
     readonly closed: string;
     readonly cluesHere: string;
+    /** The letter at the north of the compass, the rooms of a building ({n}) and the caption of places with no street. */
+    readonly north: string;
+    readonly rooms: string;
+    readonly elsewhere: string;
     readonly legend: string;
   };
   readonly statements: {

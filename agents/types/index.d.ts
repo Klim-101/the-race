@@ -11,6 +11,9 @@ export type HudPlace = {
   blocked: 'locked' | 'closed' | null;
   /** The reason of the lead that named the place, until the hero has been there. */
   lead: string | null;
+  /** Inside a building or out of doors, and for a room the building it belongs to. */
+  exposure: 'indoor' | 'outdoor';
+  building: string | null;
 };
 
 export type Hud = {

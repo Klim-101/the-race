@@ -111,7 +111,10 @@
       "lead": "on a lead",
       "closed": "closed",
       "cluesHere": "clues found here",
-      "legend": "Only what the detective has seen is on the map."
+      "north": "N",
+      "rooms": "{n} rooms",
+      "elsewhere": "Elsewhere",
+      "legend": "Streets and squares are the open ground; a block is a building, with all its known rooms in it. The red pin and outline are where you are. Only what the detective has seen is on the map."
     },
     "statements": {
       "moods": { "calm": "calm", "shaken": "shaken", "cornered": "cornered", "broken": "broken" },

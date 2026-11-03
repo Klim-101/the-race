@@ -59,8 +59,24 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
     map: {
       current: 'market',
       places: [
-        { id: 'market', name: 'Market', visited: true, blocked: null, lead: null },
-        { id: 'archive', name: 'Archive', visited: false, blocked: null, lead: 'A cat points the way.' },
+        {
+          id: 'market',
+          name: 'Market',
+          visited: true,
+          blocked: null,
+          lead: null,
+          exposure: 'outdoor',
+          building: null,
+        },
+        {
+          id: 'archive',
+          name: 'Archive',
+          visited: false,
+          blocked: null,
+          lead: 'A cat points the way.',
+          exposure: 'outdoor',
+          building: null,
+        },
       ],
       links: [{ from: 'market', to: 'archive' }],
     },

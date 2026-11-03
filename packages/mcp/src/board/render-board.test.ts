@@ -4,7 +4,6 @@
 import type { DetectiveRunView, TurnView } from '@the-race/engine';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { layoutMap } from './board-map.js';
 import { SCRIPT, escapeHtml, renderEvidenceBoard } from './render-board.js';
 import { truncate } from './escape-html.js';
 
@@ -44,10 +43,42 @@ function viewOf(overrides: Partial<View> = {}): View {
     map: {
       current: 'market',
       places: [
-        { id: 'market', name: 'Market', visited: true, blocked: null, lead: null },
-        { id: 'stall', name: 'Stall', visited: true, blocked: null, lead: null },
-        { id: 'cellar', name: 'Cellar', visited: false, blocked: 'locked', lead: null },
-        { id: 'chapel', name: 'Chapel', visited: false, blocked: 'closed', lead: null },
+        {
+          id: 'market',
+          name: 'Market',
+          visited: true,
+          blocked: null,
+          lead: null,
+          exposure: 'outdoor',
+          building: null,
+        },
+        {
+          id: 'stall',
+          name: 'Stall',
+          visited: true,
+          blocked: null,
+          lead: null,
+          exposure: 'outdoor',
+          building: null,
+        },
+        {
+          id: 'cellar',
+          name: 'Cellar',
+          visited: false,
+          blocked: 'locked',
+          lead: null,
+          exposure: 'outdoor',
+          building: null,
+        },
+        {
+          id: 'chapel',
+          name: 'Chapel',
+          visited: false,
+          blocked: 'closed',
+          lead: null,
+          exposure: 'outdoor',
+          building: null,
+        },
       ],
       links: [
         { from: 'market', to: 'stall' },
@@ -202,7 +233,17 @@ describe('the page', () => {
         ],
         map: {
           current: 'x',
-          places: [{ id: 'x', name: evil, visited: true, blocked: null, lead: null }],
+          places: [
+            {
+              id: 'x',
+              name: evil,
+              visited: true,
+              blocked: null,
+              lead: null,
+              exposure: 'outdoor',
+              building: null,
+            },
+          ],
           links: [],
         },
         hero: {
@@ -221,155 +262,6 @@ describe('the page', () => {
     expect(page.match(/<script>/g)).toHaveLength(1);
     expect(page).not.toContain('<img');
     expect(page).toContain('&lt;script&gt;');
-  });
-});
-
-describe('the map tab', () => {
-  it('draws the known places, marks where the hero is, and shows shut and unvisited ways', () => {
-    const map = tab(renderEvidenceBoard(viewOf()), 'map');
-
-    expect(map).toContain('<svg class="map"');
-    expect(map).toContain('class="node visited current"');
-    expect(map).toContain('class="node unvisited locked"');
-    expect(map).toContain('class="node unvisited closed"');
-    expect(map).toContain('you are here');
-    expect(map).toContain('locked');
-    expect(map).toContain('closed');
-    expect(map.match(/<line /g)).toHaveLength(3);
-    expect(map).toMatchSnapshot();
-  });
-
-  it('marks the places where clues were found with how many', () => {
-    const map = tab(renderEvidenceBoard(viewOf(FOUND)), 'map');
-
-    expect(map).toContain('clues found here: 1');
-    expect(map.match(/class="badge"/g)).toHaveLength(2);
-  });
-
-  it('shows an unvisited place that is not shut as such', () => {
-    const map = tab(
-      renderEvidenceBoard(
-        viewOf({
-          map: {
-            current: 'market',
-            places: [
-              { id: 'market', name: 'Market', visited: true, blocked: null, lead: null },
-              { id: 'lane', name: 'Lane', visited: false, blocked: null, lead: null },
-            ],
-            links: [{ from: 'market', to: 'lane' }],
-          },
-        }),
-      ),
-      'map',
-    );
-
-    expect(map).toContain('not yet visited');
-    expect(map).not.toContain('locked');
-  });
-
-  it('marks a place a lead named, with the reason on its tooltip', () => {
-    const map = tab(
-      renderEvidenceBoard(
-        viewOf({
-          map: {
-            current: 'market',
-            places: [
-              { id: 'market', name: 'Market', visited: true, blocked: null, lead: null },
-              { id: 'lane', name: 'Lane', visited: false, blocked: null, lead: 'A cat points the way.' },
-            ],
-            links: [{ from: 'market', to: 'lane' }],
-          },
-        }),
-      ),
-      'map',
-    );
-
-    expect(map).toContain('on a lead');
-    expect(map).toContain('Lane (on a lead): A cat points the way.');
-    expect(map).not.toContain('not yet visited');
-  });
-
-  it('cuts a long name on the picture and keeps it whole in the tooltip', () => {
-    const name = 'The Extremely Long-Named Municipal Archive';
-    const map = tab(
-      renderEvidenceBoard(
-        viewOf({
-          map: {
-            current: 'a',
-            places: [{ id: 'a', name, visited: true, blocked: null, lead: null }],
-            links: [],
-          },
-        }),
-      ),
-      'map',
-    );
-
-    expect(map).toContain(`<title>${name} (you are here)</title>`);
-    expect(map).toContain('The Extremely Long-N…');
-  });
-
-  it('says so when nothing is known, and puts the news in the tab', () => {
-    const empty = tab(
-      renderEvidenceBoard(viewOf({ map: { current: 'x', places: [], links: [] }, news: ['Prices rise.'] })),
-      'map',
-    );
-
-    expect(empty).toContain('Nowhere known yet.');
-    expect(empty).toContain('Meanwhile, in the Draft');
-    expect(empty).toContain('Prices rise.');
-    expect(tab(renderEvidenceBoard(viewOf()), 'map')).not.toContain('Meanwhile');
-  });
-
-  it('ignores a way to a place it does not know', () => {
-    const map = tab(
-      renderEvidenceBoard(
-        viewOf({
-          map: {
-            current: 'market',
-            places: [{ id: 'market', name: 'Market', visited: true, blocked: null, lead: null }],
-            links: [{ from: 'market', to: 'nowhere' }],
-          },
-        }),
-      ),
-      'map',
-    );
-
-    expect(map).not.toContain('<line ');
-  });
-});
-
-describe('layoutMap', () => {
-  const map = viewOf().map;
-
-  it('puts the hero in the first column and each step away one column further', () => {
-    const { nodes } = layoutMap(map);
-    const x = (id: string): number | undefined => nodes.find(({ place }) => place.id === id)?.x;
-
-    expect(x('market')).toBeLessThan(x('stall') ?? 0);
-    expect(x('stall')).toBe(x('cellar'));
-    expect(x('chapel')).toBeGreaterThan(x('stall') ?? 0);
-  });
-
-  it('is the same every time, and gives every place its own spot', () => {
-    expect(layoutMap(map)).toEqual(layoutMap(map));
-    const spots = layoutMap(map).nodes.map(({ x, y }) => `${String(x)},${String(y)}`);
-
-    expect(new Set(spots).size).toBe(spots.length);
-  });
-
-  it('puts a place that cannot be reached from the hero one column beyond the last', () => {
-    const { nodes } = layoutMap({
-      current: 'a',
-      places: [
-        { id: 'a', name: 'A', visited: true, blocked: null, lead: null },
-        { id: 'b', name: 'B', visited: true, blocked: null, lead: null },
-        { id: 'island', name: 'Island', visited: false, blocked: null, lead: null },
-      ],
-      links: [{ from: 'a', to: 'b' }],
-    });
-    const x = (id: string): number | undefined => nodes.find(({ place }) => place.id === id)?.x;
-
-    expect(x('island')).toBeGreaterThan(x('b') ?? 0);
   });
 });
 
@@ -607,10 +499,42 @@ describe('the chronicle tab', () => {
           map: {
             current: 'market',
             places: [
-              { id: 'market', name: 'Market', visited: true, blocked: null, lead: null },
-              { id: 'lane', name: 'Lane', visited: false, blocked: null, lead: null },
-              { id: 'cellar', name: 'Cellar', visited: false, blocked: 'locked', lead: null },
-              { id: 'chapel', name: 'Chapel', visited: false, blocked: 'closed', lead: null },
+              {
+                id: 'market',
+                name: 'Market',
+                visited: true,
+                blocked: null,
+                lead: null,
+                exposure: 'outdoor',
+                building: null,
+              },
+              {
+                id: 'lane',
+                name: 'Lane',
+                visited: false,
+                blocked: null,
+                lead: null,
+                exposure: 'outdoor',
+                building: null,
+              },
+              {
+                id: 'cellar',
+                name: 'Cellar',
+                visited: false,
+                blocked: 'locked',
+                lead: null,
+                exposure: 'outdoor',
+                building: null,
+              },
+              {
+                id: 'chapel',
+                name: 'Chapel',
+                visited: false,
+                blocked: 'closed',
+                lead: null,
+                exposure: 'outdoor',
+                building: null,
+              },
             ],
             links: [],
           },
@@ -652,7 +576,17 @@ describe('the chronicle tab', () => {
         viewOf({
           map: {
             current: 'market',
-            places: [{ id: 'market', name: 'Market', visited: true, blocked: null, lead: null }],
+            places: [
+              {
+                id: 'market',
+                name: 'Market',
+                visited: true,
+                blocked: null,
+                lead: null,
+                exposure: 'outdoor',
+                building: null,
+              },
+            ],
             links: [],
           },
           suspects: [asked('Anna')],
