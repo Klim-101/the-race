@@ -795,6 +795,8 @@ export interface DetectiveRunView {
     readonly mood: (typeof SUSPECT_MOODS)[number];
     /** Whether the suspect will not talk for now, after a pressure that had nothing to stand on. */
     readonly closed: boolean;
+    /** The day and the minute from which a closed suspect will talk again; `null` for one who will talk now. */
+    readonly talksAgain: { readonly day: number; readonly minute: number } | null;
     /** What the suspect has said at questioning, in the order they said it. */
     readonly statements: readonly {
       readonly day: number;
@@ -856,6 +858,14 @@ function requireLocation(detectiveCase: DetectiveCase, id: string): Location {
     throw new RangeError(`There is no location "${id}" in this run.`);
   }
   return location;
+}
+
+/** When a closed suspect opens again, as a day and a minute of the clock; nothing for one who is not closed. */
+function talksAgainOf(run: DetectiveRunState, suspectId: string): { day: number; minute: number } | null {
+  const { closedUntil } = moodOf(run, suspectId);
+  return closedUntil === null || !isClosed(run, suspectId)
+    ? null
+    : { day: Math.floor(closedUntil / MINUTES_PER_DAY) + 1, minute: closedUntil % MINUTES_PER_DAY };
 }
 
 /** The events that have come with their days, and the working time left: today to midnight, then each full day. */
@@ -1038,6 +1048,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         place: place === undefined ? null : { id: place.id, name: place.name },
         mood: moodWord(moodOf(run, suspect.id).step),
         closed: isClosed(run, suspect.id),
+        talksAgain: talksAgainOf(run, suspect.id),
         statements: run.statements
           .filter(({ suspectId }) => suspectId === suspect.id)
           .map(({ day, kind, text }) => ({ day, kind, text })),

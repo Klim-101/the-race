@@ -124,6 +124,7 @@ describe('the game tools over the server', () => {
           'persona',
           'place',
           'statements',
+          'talksAgain',
         ]);
       }
     };

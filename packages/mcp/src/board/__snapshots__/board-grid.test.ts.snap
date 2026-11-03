@@ -1,0 +1,85 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`a suspect card > matches its snapshot 1`] = `
+"
+<h2>The cast</h2>
+<div class="card suspect" data-pick="suspect:a" data-rel="suspect:a place:market clue:flour" tabindex="0" role="button">
+<div class="who"><svg class="portrait p1" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27"/><circle class="head" cx="28" cy="21" r="9"/><path class="body" d="M10 52c1-12 8-18 18-18s17 6 18 18z"/><text x="28" y="25" text-anchor="middle">A</text></svg><div><strong>Anna</strong>
+<p>Someone</p>
+<p class="tag">Last seen: right here</p>
+<p><span class="gauge mood-cornered" role="img" aria-label="cornered"><span class="step on"></span><span class="step on"></span><span class="step on"></span><span class="step"></span></span> <span class="tag">Mood: cornered</span></p></div></div>
+<p class="warn">will not talk until day 3, 02:05</p>
+<h3>What they said</h3>
+<div class="day"><span class="tag">day 1</span>
+<p class="statement"><span class="tag">alibi</span><br>I never left the oven.</p></div>
+<div class="day"><span class="tag">day 2</span>
+<p class="statement fell"><span class="tag">gave ground · a lie that fell</span><br><s>I left at nine.</s><br><span class="tag">broken by:</span> <span class="chip fx-breaks-lie" data-pick="clue:flour" data-rel="clue:flour place:market suspect:a suspect:b" tabindex="0" role="button"><span class="num">MIRA-02</span> </span></p></div>
+<h3>Shown to them</h3>
+<p class="chips"><span class="chip fx-breaks-lie" data-pick="clue:flour" data-rel="clue:flour place:market suspect:a suspect:b" tabindex="0" role="button"><span class="num">MIRA-02</span> broke a lie · turn 6</span></p>
+</div>
+<div class="card suspect" data-pick="suspect:b" data-rel="suspect:b clue:key clue:flour" tabindex="0" role="button">
+<div class="who"><svg class="portrait p2" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27"/><circle class="head" cx="28" cy="21" r="9"/><path class="body" d="M10 52c1-12 8-18 18-18s17 6 18 18z"/><text x="28" y="25" text-anchor="middle">B</text></svg><div><strong>Boris</strong>
+<p>Someone</p>
+<p class="tag">Last seen: anywhere, apparently</p>
+<p><span class="gauge mood-broken" role="img" aria-label="broken"><span class="step on"></span><span class="step on"></span><span class="step on"></span><span class="step on"></span></span> <span class="tag">Mood: broken</span></p></div></div>
+<h3>What they said</h3>
+<p class="empty">Nothing said yet.</p>
+<h3>Shown to them</h3>
+<p class="chips"><span class="chip fx-implicates" data-pick="clue:key" data-rel="clue:key place:stall suspect:b" tabindex="0" role="button"><span class="num">MIRA-01</span> bore on them · turn 7</span> <span class="chip fx-confirms" data-pick="clue:flour" data-rel="clue:flour place:market suspect:a suspect:b" tabindex="0" role="button"><span class="num">MIRA-02</span> confirmed a fallen lie · turn 8</span></p>
+</div>
+<div class="card suspect" data-pick="suspect:c" data-rel="suspect:c" tabindex="0" role="button">
+<div class="who"><svg class="portrait p3" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27"/><circle class="head" cx="28" cy="21" r="9"/><path class="body" d="M10 52c1-12 8-18 18-18s17 6 18 18z"/><text x="28" y="25" text-anchor="middle">C</text></svg><div><strong>Cora</strong>
+<p>Someone</p>
+<p class="tag">Last seen: anywhere, apparently</p>
+<p><span class="gauge mood-calm" role="img" aria-label="calm"><span class="step on"></span><span class="step"></span><span class="step"></span><span class="step"></span></span> <span class="tag">Mood: calm</span></p></div></div>
+<h3>What they said</h3>
+<p class="empty">Nothing said yet.</p>
+<h3>Shown to them</h3>
+<p class="empty">Nothing shown yet.</p>
+</div>
+"
+`;
+
+exports[`the clue grid > matches its snapshot 1`] = `
+"
+<h2>Links</h2>
+<p class="card"><strong>Links still to be made:</strong> Every conclusion has been drawn.</p>
+
+<h2>Links tried</h2>
+<ul class="tried"><li data-rel="clue:key clue:flour"><span class="num">MIRA-01</span> + <span class="num">MIRA-02</span> <span class="result">led nowhere</span> <span class="tag">turn 9</span>
+<details><summary>Full text</summary><p><span class="num">MIRA-01</span> Text of key.</p><p><span class="num">MIRA-02</span> Text of flour.</p></details></li></ul>
+<h2>Evidence (3)</h2>
+<div class="filters" role="search" aria-label="Filter the clues">
+<label>Found at <select id="f-place"><option value="">any</option><option value="stall">Stall</option><option value="market">Market</option></select></label>
+<label>Shown to <select id="f-suspect"><option value="">any</option><option value="a">Anna</option><option value="b">Boris</option></select></label>
+<label><input type="checkbox" id="f-garbled"> to be read again</label>
+<label><input type="checkbox" id="f-unused"> not yet used in a link</label>
+<label>Number <input type="search" id="f-number" placeholder="such as MIRA-01" size="12"></label>
+</div>
+<div class="grid"><div class="card clue-card" id="card-key" data-pick="clue:key" data-rel="clue:key place:stall suspect:b" data-place="stall" data-shown="b" data-garbled="1" data-unused="0" data-number="MIRA-01" tabindex="0" role="button">
+<span class="tag"><span class="num">MIRA-01</span> · found at Stall · turn 2</span>
+<p class="text">Text of key.</p>
+<p class="warn">read badly: read it again before it counts</p>
+<p class="tag">Shown to: Boris (bore on them)</p>
+<p class="tag">used in 1 links: MIRA-01 + MIRA-02</p>
+<p class="tag ways"><a href="#board">On the corkboard</a> · <a href="#map">On the map</a></p>
+</div>
+<div class="card clue-card" id="card-flour" data-pick="clue:flour" data-rel="clue:flour place:market suspect:a suspect:b" data-place="market" data-shown="a b" data-garbled="0" data-unused="0" data-number="MIRA-02" tabindex="0" role="button">
+<span class="tag"><span class="num">MIRA-02</span> · found at Market · turn 3</span>
+<p class="text">Text of flour.</p>
+<p class="tag">Shown to: Anna (broke a lie), Boris (confirmed a fallen lie)</p>
+<p class="tag">used in 1 links: MIRA-01 + MIRA-02</p>
+<p class="tag ways"><a href="#board">On the corkboard</a> · <a href="#map">On the map</a></p>
+</div>
+<div class="card clue-card" id="card-glove" data-pick="clue:glove" data-rel="clue:glove place:market" data-place="market" data-shown="" data-garbled="0" data-unused="1" data-number="MIRA-03" tabindex="0" role="button">
+<span class="tag"><span class="num">MIRA-03</span> · found at Market · turn 4</span>
+<p class="text">Text of glove.</p>
+<p class="tag">Shown to: not shown to anyone yet</p>
+<p class="tag">not used in any link</p>
+<p class="tag ways"><a href="#board">On the corkboard</a> · <a href="#map">On the map</a></p>
+</div></div>
+<p class="empty" id="clue-none" hidden>No clue fits.</p>
+<h2>Conclusions (0)</h2>
+<p class="empty">No conclusions yet. Do try to have one.</p>
+"
+`;

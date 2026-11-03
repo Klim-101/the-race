@@ -157,9 +157,9 @@ describe('what lights up when something is picked', () => {
   });
 
   it('lights a person with the clues they were shown, and a place with the clues found there', () => {
-    expect(suspectTokens(view, 'a')).toEqual(['suspect:a', 'clue:flour']);
+    expect(suspectTokens(view, 'a')).toEqual(['suspect:a', 'place:market', 'clue:flour']);
     expect(suspectTokens(view, 'c')).toEqual(['suspect:c']);
-    expect(placeTokens(view, 'market')).toEqual(['place:market', 'clue:flour', 'clue:glove']);
+    expect(placeTokens(view, 'market')).toEqual(['place:market', 'suspect:a', 'clue:flour', 'clue:glove']);
     expect(placeTokens(view, 'chapel')).toEqual(['place:chapel']);
   });
 
@@ -174,7 +174,7 @@ describe('what lights up when something is picked', () => {
     const old = viewOf({ ...PLAYED, history: { finds: [], shown: [], links: [] } });
 
     expect(clueTokens(old, 'key')).toEqual(['clue:key', 'place:stall']);
-    expect(placeTokens(old, 'stall')).toEqual(['place:stall', 'clue:key']);
+    expect(placeTokens(old, 'stall')).toEqual(['place:stall', 'suspect:b', 'clue:key']);
   });
 
   it('lights a thread with the clues it joins and, for a thread to a person, the person', () => {
@@ -409,7 +409,7 @@ describe('the corkboard tab', () => {
     const map = tab(renderEvidenceBoard(viewOf(PLAYED)), 'map');
 
     expect(map).toContain('data-pick="place:market"');
-    expect(map).toContain('data-rel="place:market clue:flour clue:glove"');
+    expect(map).toContain('data-rel="place:market suspect:a clue:flour clue:glove"');
   });
 });
 
@@ -446,11 +446,14 @@ describe('the notebooks', () => {
   it('tell each person the clues they were shown, in order, and say nothing of a person shown nothing', () => {
     const suspects = tab(page, 'suspects');
 
-    expect(suspects).toContain('Clues shown to them');
-    expect(suspects).toContain('Flour on the cellar steps. <span class="effect">broke a lie</span>');
-    expect(suspects).toContain('A rusty key under the counter. <span class="effect">no effect</span>');
-    const cora = /Cora<\/strong>[\s\S]*?<\/div>/.exec(suspects)?.[0] ?? '';
-    expect(cora).not.toContain('Clues shown to them');
+    expect(suspects).toContain('Shown to them');
+    expect(suspects).toContain('MIRA-02</span> broke a lie · turn 6');
+    expect(suspects).toContain('MIRA-02</span> no effect · turn 7');
+    expect(suspects).toContain('MIRA-01</span> no effect · turn 8');
+    expect(suspects.indexOf('turn 6')).toBeLessThan(suspects.indexOf('turn 7'));
+    const cora = /Cora<\/strong>[\s\S]*$/.exec(suspects)?.[0] ?? '';
+    expect(cora).not.toContain('class="chip');
+    expect(cora).toContain('Nothing shown yet.');
   });
 
   it('name a clue by its id when its text is gone, and keep the story whole without the script', () => {

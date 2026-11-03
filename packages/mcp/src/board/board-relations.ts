@@ -51,20 +51,23 @@ export function clueTokens(view: DetectiveRunView, clueId: string): string[] {
   ]);
 }
 
-/** What lights a person: themselves and every clue they were shown. */
+/** What lights a person: themselves, the place they are found at and every clue they were shown. */
 export function suspectTokens(view: DetectiveRunView, suspectId: string): string[] {
+  const place = view.suspects.find(({ id }) => id === suspectId)?.place;
   return unique([
     token('suspect', suspectId),
+    ...(place === null || place === undefined ? [] : [token('place', place.id)]),
     ...shownPairs(view)
       .filter((pair) => pair.suspectId === suspectId)
       .map(({ clueId }) => token('clue', clueId)),
   ]);
 }
 
-/** What lights a place: itself, every clue found there and every lead that opens it. */
+/** What lights a place: itself, the people found there, every clue found there and every lead that opens it. */
 export function placeTokens(view: DetectiveRunView, placeId: string): string[] {
   return unique([
     token('place', placeId),
+    ...view.suspects.filter(({ place }) => place?.id === placeId).map(({ id }) => token('suspect', id)),
     ...view.leads
       .filter(({ opens }) => opens.some(({ kind, id }) => kind === 'place' && id === placeId))
       .map(({ id }) => token('lead', id)),

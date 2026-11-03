@@ -413,6 +413,27 @@ describe('evidence_board', () => {
     expect(context.fs.files.get(first)).toContain('<meta name="turn" content="0">');
   });
 
+  it('shows the alibi of a suspect and never a lie that still holds, nor a field of the truth', async () => {
+    const context = await activeRun();
+    await call(question, { turn: 0, suspectId: 'curator', approach: 'social' }, context);
+    const path = runBoardFile(context.saveDir, await newestRunId(context.saveDir, context.fs));
+    const page = context.fs.files.get(path) ?? '';
+    const loaded = await loadTheRun(context.saveDir, context.saveFs);
+    if (!loaded.ok) throw new Error('The run must load.');
+    const { run } = loaded;
+    const said = new Set(run.statements.map(({ text }) => text));
+
+    expect(page).toContain('class="card suspect"');
+    for (const { statement } of run.case.suspects.flatMap(({ lies }) => lies)) {
+      expect(said.has(statement) || !page.includes(escapeHtml(statement))).toBe(true);
+    }
+    expect(run.case.suspects.flatMap(({ lies }) => lies).length).toBeGreaterThan(0);
+    for (const secret of run.case.suspects.map((suspect) => suspect.secret)) {
+      expect(page).not.toContain(escapeHtml(secret));
+    }
+    expect(page).not.toMatch(/isFalse|culprit|brokenBy|solution/);
+  });
+
   it('keeps one file between calls, so a tab left open follows the run', async () => {
     const context = await activeRun();
 

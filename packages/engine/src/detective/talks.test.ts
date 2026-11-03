@@ -336,6 +336,12 @@ describe('a pressure with nothing to stand on', () => {
 
     expect(talk.outcome.closed).toBe(true);
     expect(viewRun(talk.run).suspects.find(({ id }) => id === 'baker')?.closed).toBe(true);
+    const talksAgain = viewRun(talk.run).suspects.find(({ id }) => id === 'baker')?.talksAgain;
+    expect(talksAgain).toEqual({
+      day: talk.run.clock.day,
+      minute: talk.run.clock.minute + HOSTILE_MINUTES,
+    });
+    expect(viewRun(talk.run).suspects.find(({ id }) => id === 'rival')?.talksAgain).toBeNull();
     expect(refusalOf(ask(talk.run, 'baker', 'social', [], createRng(1)))).toBe('suspect-closed');
   });
 
@@ -344,6 +350,7 @@ describe('a pressure with nothing to stand on', () => {
 
     const later = spendTime(talk.run, HOSTILE_MINUTES);
     expect(viewRun(later).suspects.find(({ id }) => id === 'baker')?.closed).toBe(false);
+    expect(viewRun(later).suspects.find(({ id }) => id === 'baker')?.talksAgain).toBeNull();
     expect(ask(later, 'baker', 'social', [], dice(10)).ok).toBe(true);
     expect(ask(moveTo(talk.run, 'market-square'), 'rival', 'social', [], dice(10)).ok).toBe(true);
   });
