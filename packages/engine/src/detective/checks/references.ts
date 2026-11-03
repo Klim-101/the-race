@@ -142,6 +142,12 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
       case 'deduction':
         expect(deductionIds, 'deduction', earnedBy.deductionId, `${path}.deductionId`);
         break;
+      case 'locals':
+        expect(locationIds, 'location', earnedBy.locationId, `${path}.locationId`);
+        break;
+      case 'study':
+        expect(clueIds, 'clue', earnedBy.clueId, `${path}.clueId`);
+        break;
       /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
       default:
         assertNever(earnedBy);

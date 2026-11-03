@@ -22,8 +22,9 @@ export const RUN_SCHEMA_VERSION = 2;
  * suspect has a state that a fallen lie moves and that changes the next talk (see `suspect-mood.ts`).
  * 16: using a tool that is not lawful risks being seen, and the police may detain the hero (see `risk.ts`).
  * 17: the hero can sit down at a teahouse or a cafe to win back a point of nerves, twice a day (see `venue.ts`).
+ * 18: the hero can ask the locals for a rumour and study a clue with a tool, and either can earn a lead (see `ask.ts`).
  */
-export const RULESET_VERSION = 17;
+export const RULESET_VERSION = 18;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;

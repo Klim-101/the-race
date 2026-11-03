@@ -341,6 +341,8 @@ describe('the tools as data', () => {
         charges: 2,
         lawful: true,
         suitcase: false,
+        study: false,
+        helpsAsking: true,
       },
     ]);
   });

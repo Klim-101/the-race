@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { LocaleSchema } from '../locale.js';
 import { InformationSourceSchema, TraitTriggerSchema } from '../traits.js';
 import { DetectiveSkillSchema } from './archetype.js';
+import { GearIdSchema } from './gear.js';
 
 export const CASE_SCHEMA_VERSION = 1;
 
@@ -97,13 +98,21 @@ export type PlacePart = z.infer<typeof PlacePartSchema>;
 
 /**
  * What earns a lead, all of it things the hero does: finding a clue, a talk that goes well with a person, a lie
- * that falls, a conclusion drawn. (Studying a clue with a tool is yet to come and will earn one the same way.)
+ * that falls, a conclusion drawn, a rumour from the locals, a clue studied with a tool.
  */
 export const LeadTriggerSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('clue'), clueId: EntityIdSchema }),
   z.object({ kind: z.literal('talk'), suspectId: EntityIdSchema }),
   z.object({ kind: z.literal('lie'), lieId: EntityIdSchema }),
   z.object({ kind: z.literal('deduction'), deductionId: EntityIdSchema }),
+  /** A rumour: a contacts roll in that place, asking the locals. It is the one way to open a place with no clue in hand. */
+  z.object({ kind: z.literal('locals'), locationId: EntityIdSchema }),
+  /**
+   * A clue the hero holds, studied with a tool: handwriting under a glass, a stain under a lamp. With no `tool` any
+   * tool will do, the phone's camera included, so every hero can earn it; with one, only that tool (and the case is
+   * not asked to be solvable by it, since the generator never sees the kit).
+   */
+  z.object({ kind: z.literal('study'), clueId: EntityIdSchema, tool: GearIdSchema.optional() }),
 ]);
 export type LeadTrigger = z.infer<typeof LeadTriggerSchema>;
 

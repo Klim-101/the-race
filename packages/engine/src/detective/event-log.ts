@@ -99,6 +99,23 @@ const OutcomeSchema = z.union([
     ...fatigue,
   }),
   z.object({ kind: z.literal('rest') }),
+  z.object({
+    kind: z.literal('ask'),
+    minutes,
+    succeeded: z.boolean(),
+    consequences: z.array(ConsequenceSchema),
+    tool: z.object({ id: GearIdSchema, wear: z.enum(['spent', 'broken']).nullable() }).optional(),
+    ...fatigue,
+  }),
+  z.object({
+    kind: z.literal('study'),
+    clueId: EntityIdSchema,
+    minutes,
+    succeeded: z.boolean(),
+    consequences: z.array(ConsequenceSchema),
+    tool: z.object({ id: GearIdSchema, wear: z.enum(['spent', 'broken']).nullable() }),
+    ...fatigue,
+  }),
   z.object({ kind: z.literal('sit'), minutes, nervesRestored: z.int().min(0), sitsLeft: z.int().min(0) }),
   z.object({
     kind: z.literal('interrogate'),

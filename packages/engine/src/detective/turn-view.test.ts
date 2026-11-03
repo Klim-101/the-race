@@ -11,7 +11,7 @@ import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { recordResolution, type RunLog } from './event-log.js';
 import { DEFAULT_TURNS_SHOWN, viewTurns } from './turn-view.js';
 import { DETECTIVE_TRAITS } from './traits.js';
-import { createDetectiveRun, viewRun, type DetectiveRunState } from './run-state.js';
+import { createDetectiveRun, findClue, viewRun, type DetectiveRunState } from './run-state.js';
 
 const CASE_FILES = [
   'goose-of-elmwick.en.json',
@@ -103,6 +103,23 @@ describe('viewTurns', () => {
     const log = recordResolution([], run, { kind: 'sit' }, resolution);
 
     expect(viewTurns(resolution.run, log)).toMatchObject([{ kind: 'sit', restored: 1 }]);
+  });
+
+  it('says what asking the locals and studying a clue came to', () => {
+    const start = startRun(cheeseCase(), 'rumour');
+    let run = findClue(start, 'cellar-key');
+    let log: RunLog = [];
+    for (const intent of [{ kind: 'ask' }, { kind: 'study', clueId: 'cellar-key' }] as Intent[]) {
+      const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
+      if (!resolution.ok) throw new Error(`Refused: ${resolution.refusal.code}`);
+      log = recordResolution(log, run, intent, resolution);
+      run = resolution.run;
+    }
+
+    expect(viewTurns(run, log)).toMatchObject([
+      { kind: 'study', clue: 'A rusty key dropped next to the fountain.' },
+      { kind: 'ask' },
+    ]);
   });
 
   it('shows what the player did, newest first, with the day and the hour each turn ended at', () => {

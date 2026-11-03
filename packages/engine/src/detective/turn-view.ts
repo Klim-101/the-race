@@ -19,6 +19,8 @@ export type TurnDetail =
   | { readonly kind: 'search'; readonly found: number }
   | { readonly kind: 'rest' }
   | { readonly kind: 'sit'; readonly restored: number }
+  | { readonly kind: 'ask'; readonly succeeded: boolean }
+  | { readonly kind: 'study'; readonly clue: string; readonly succeeded: boolean }
   | {
       readonly kind: 'interrogate';
       readonly suspect: string;
@@ -52,6 +54,17 @@ function detailOf(run: DetectiveRunState, entry: LogEntry): TurnDetail {
       return { kind: 'rest' };
     case 'sit':
       return { kind: 'sit', restored: outcome.nervesRestored };
+    case 'ask':
+      return { kind: 'ask', succeeded: outcome.succeeded };
+    case 'study':
+      return {
+        kind: 'study',
+        clue: run.case.clues
+          .filter(({ id }) => id === outcome.clueId)
+          .map(({ description }) => description)
+          .join(''),
+        succeeded: outcome.succeeded,
+      };
     case 'interrogate':
       return {
         kind: 'interrogate',
