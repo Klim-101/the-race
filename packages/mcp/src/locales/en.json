@@ -168,7 +168,6 @@
       "closed": "Closed for now",
       "unquestioned": "Not yet questioned",
       "reread": "To be read again",
-      "turns": "Latest turns",
       "noTurns": "No turns yet.",
       "turn": {
         "look": "Looked around: found {n}",
@@ -418,6 +417,33 @@
         "unknown": "what earned it is not recorded"
       },
       "legend": "Green thread: a lead to what earned it."
+    },
+    "strip": {
+      "title": "The days",
+      "day": "Day {n}",
+      "today": "today",
+      "night": "night",
+      "timeLeft": "Working time left today",
+      "legend": "Each bar is a turn, laid on the hours of its day, with its symbol where it ended. The night is shaded. Click a turn to light what it touched.",
+      "held": "held by the police",
+      "intoNight": "ran into the night",
+      "nightFollowed": "the night followed",
+      "leadHours": "Lead hours",
+      "world": "In the world",
+      "kinds": {
+        "move": "walk",
+        "look": "look around",
+        "search": "search",
+        "ask": "ask the locals",
+        "study": "study a clue",
+        "talk": "talk",
+        "deduce": "reasoning",
+        "reread": "read again",
+        "sit": "sit down",
+        "use": "use something",
+        "rest": "rest",
+        "accuse": "accusation"
+      }
     },
     "clueGrid": {
       "filters": "Filter the clues",

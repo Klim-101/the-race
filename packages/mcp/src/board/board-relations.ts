@@ -149,13 +149,21 @@ export function pickableTokens(view: DetectiveRunView): string[] {
  */
 export function highlightRules(view: DetectiveRunView): string {
   return pickableTokens(view)
-    .map((entry) => {
-      // The doubled attributes outweigh the page's dimming of cards on the board (`main[data-sel] svg.board
-      // g[data-rel]`), which would otherwise keep a related card grey.
-      const lit = `main[data-sel="${entry}"][data-sel] [data-rel~="${entry}"][data-rel]`;
-      return `${lit}{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
-${lit} > rect{stroke:var(--accent);stroke-width:3}
-${lit}:is(path,line){stroke-width:4;outline:0}`;
-    })
+    .map((entry) => litRules(entry, `[data-rel~="${entry}"]`))
     .join('\n');
 }
+
+/**
+ * The rules that light what matches when `selection` is picked. The doubled attributes outweigh the page's
+ * dimming of cards on the board (`main[data-sel] svg.board g[data-rel]`), which would otherwise keep a related
+ * card grey.
+ */
+export function litRules(selection: string, match: string): string {
+  const lit = `main[data-sel="${selection}"][data-sel] ${match}[data-rel]`;
+  return `${lit}{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+${lit} > rect{stroke:var(--accent);stroke-width:3}
+${lit}:is(path,line){stroke-width:4;outline:0}`;
+}
+
+/** Whether an id may be written into a selector: kebab-case only, so none can break out of a rule. */
+export const isSafeId = safe;

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { dirname } from 'node:path';
-import { viewRun, viewTurns, type DetectiveRunState, type RunLog } from '@the-race/engine';
+import { viewDayStrip, viewRun, viewTurns, type DetectiveRunState, type RunLog } from '@the-race/engine';
 import { replaceFile, runBoardFile } from '@the-race/saves';
 import { renderEvidenceBoard } from './board/render-board.js';
 import type { ServerContext } from './context.js';
@@ -26,8 +26,9 @@ export async function writeBoard(
     path,
     renderEvidenceBoard(
       viewRun(run),
-      viewTurns(run, log),
+      viewTurns(run, log, log.length),
       before === undefined ? undefined : viewRun(before),
+      viewDayStrip(run, log),
     ),
   );
   return path;

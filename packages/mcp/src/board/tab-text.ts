@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { Locale } from '@the-race/engine';
+import type { Locale, StripKind } from '@the-race/engine';
 import { LOCALE_TEXT } from '../locales/index.js';
 
 /** What the tabs of the evidence board say. The case's own text is never here. */
@@ -73,6 +73,22 @@ export interface TabText {
       string
     >;
     readonly legend: string;
+  };
+  /** The strip of each day on the chronicle tab: its words, and the name of each kind of turn. */
+  readonly strip: {
+    readonly title: string;
+    /** A day ({n}), and the words for the current day, the night and the working time left. */
+    readonly day: string;
+    readonly today: string;
+    readonly night: string;
+    readonly timeLeft: string;
+    readonly legend: string;
+    readonly held: string;
+    readonly intoNight: string;
+    readonly nightFollowed: string;
+    readonly leadHours: string;
+    readonly world: string;
+    readonly kinds: Record<StripKind, string>;
   };
   /** The grid of clue cards: its filters and what a card says about a clue. */
   readonly clueGrid: {
@@ -155,7 +171,6 @@ export interface TabText {
     readonly closed: string;
     readonly unquestioned: string;
     readonly reread: string;
-    readonly turns: string;
     readonly noTurns: string;
     /** One line for each kind of turn; {name}, {n}, {approach} and {text} are filled in. */
     readonly turn: {

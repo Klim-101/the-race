@@ -160,15 +160,15 @@ var require_code = __commonJS({
       return c2.emptyStr() ? c1 : c1.emptyStr() ? c2 : str`${c1}${c2}`;
     }
     exports.strConcat = strConcat;
-    function interpolate(x) {
-      return typeof x == "number" || typeof x == "boolean" || x === null ? x : safeStringify(Array.isArray(x) ? x.join(",") : x);
+    function interpolate(x2) {
+      return typeof x2 == "number" || typeof x2 == "boolean" || x2 === null ? x2 : safeStringify(Array.isArray(x2) ? x2.join(",") : x2);
     }
-    function stringify(x) {
-      return new _Code(safeStringify(x));
+    function stringify(x2) {
+      return new _Code(safeStringify(x2));
     }
     exports.stringify = stringify;
-    function safeStringify(x) {
-      return JSON.stringify(x).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
+    function safeStringify(x2) {
+      return JSON.stringify(x2).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
     }
     exports.safeStringify = safeStringify;
     function getProperty(key) {
@@ -1031,8 +1031,8 @@ var require_codegen = __commonJS({
       for (const n in from)
         names[n] = (names[n] || 0) - (from[n] || 0);
     }
-    function not(x) {
-      return typeof x == "boolean" || typeof x == "number" || x === null ? !x : (0, code_1._)`!${par(x)}`;
+    function not(x2) {
+      return typeof x2 == "boolean" || typeof x2 == "number" || x2 === null ? !x2 : (0, code_1._)`!${par(x2)}`;
     }
     exports.not = not;
     var andCode = mappend(exports.operators.AND);
@@ -1046,10 +1046,10 @@ var require_codegen = __commonJS({
     }
     exports.or = or;
     function mappend(op) {
-      return (x, y) => x === code_1.nil ? y : y === code_1.nil ? x : (0, code_1._)`${par(x)} ${op} ${par(y)}`;
+      return (x2, y) => x2 === code_1.nil ? y : y === code_1.nil ? x2 : (0, code_1._)`${par(x2)} ${op} ${par(y)}`;
     }
-    function par(x) {
-      return x instanceof code_1.Name ? x : (0, code_1._)`(${x})`;
+    function par(x2) {
+      return x2 instanceof code_1.Name ? x2 : (0, code_1._)`(${x2})`;
     }
   }
 });
@@ -1139,8 +1139,8 @@ var require_util = __commonJS({
     exports.unescapeJsonPointer = unescapeJsonPointer;
     function eachItem(xs, f) {
       if (Array.isArray(xs)) {
-        for (const x of xs)
-          f(x);
+        for (const x2 of xs)
+          f(x2);
       } else {
         f(xs);
       }
@@ -1441,8 +1441,8 @@ var require_rules = __commonJS({
     exports.getRules = exports.isJSONType = void 0;
     var _jsonTypes = ["string", "number", "integer", "boolean", "null", "object", "array"];
     var jsonTypes = new Set(_jsonTypes);
-    function isJSONType(x) {
-      return typeof x == "string" && jsonTypes.has(x);
+    function isJSONType(x2) {
+      return typeof x2 == "string" && jsonTypes.has(x2);
     }
     exports.isJSONType = isJSONType;
     function getRules() {
@@ -7268,15 +7268,15 @@ var require_code3 = __commonJS({
       return c2.emptyStr() ? c1 : c1.emptyStr() ? c2 : str`${c1}${c2}`;
     }
     exports.strConcat = strConcat;
-    function interpolate(x) {
-      return typeof x == "number" || typeof x == "boolean" || x === null ? x : safeStringify(Array.isArray(x) ? x.join(",") : x);
+    function interpolate(x2) {
+      return typeof x2 == "number" || typeof x2 == "boolean" || x2 === null ? x2 : safeStringify(Array.isArray(x2) ? x2.join(",") : x2);
     }
-    function stringify(x) {
-      return new _Code(safeStringify(x));
+    function stringify(x2) {
+      return new _Code(safeStringify(x2));
     }
     exports.stringify = stringify;
-    function safeStringify(x) {
-      return JSON.stringify(x).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
+    function safeStringify(x2) {
+      return JSON.stringify(x2).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
     }
     exports.safeStringify = safeStringify;
     function getProperty(key) {
@@ -8139,8 +8139,8 @@ var require_codegen2 = __commonJS({
       for (const n in from)
         names[n] = (names[n] || 0) - (from[n] || 0);
     }
-    function not(x) {
-      return typeof x == "boolean" || typeof x == "number" || x === null ? !x : (0, code_1._)`!${par(x)}`;
+    function not(x2) {
+      return typeof x2 == "boolean" || typeof x2 == "number" || x2 === null ? !x2 : (0, code_1._)`!${par(x2)}`;
     }
     exports.not = not;
     var andCode = mappend(exports.operators.AND);
@@ -8154,10 +8154,10 @@ var require_codegen2 = __commonJS({
     }
     exports.or = or;
     function mappend(op) {
-      return (x, y) => x === code_1.nil ? y : y === code_1.nil ? x : (0, code_1._)`${par(x)} ${op} ${par(y)}`;
+      return (x2, y) => x2 === code_1.nil ? y : y === code_1.nil ? x2 : (0, code_1._)`${par(x2)} ${op} ${par(y)}`;
     }
-    function par(x) {
-      return x instanceof code_1.Name ? x : (0, code_1._)`(${x})`;
+    function par(x2) {
+      return x2 instanceof code_1.Name ? x2 : (0, code_1._)`(${x2})`;
     }
   }
 });
@@ -8247,8 +8247,8 @@ var require_util2 = __commonJS({
     exports.unescapeJsonPointer = unescapeJsonPointer;
     function eachItem(xs, f) {
       if (Array.isArray(xs)) {
-        for (const x of xs)
-          f(x);
+        for (const x2 of xs)
+          f(x2);
       } else {
         f(xs);
       }
@@ -8549,8 +8549,8 @@ var require_rules2 = __commonJS({
     exports.getRules = exports.isJSONType = void 0;
     var _jsonTypes = ["string", "number", "integer", "boolean", "null", "object", "array"];
     var jsonTypes = new Set(_jsonTypes);
-    function isJSONType(x) {
-      return typeof x == "string" && jsonTypes.has(x);
+    function isJSONType(x2) {
+      return typeof x2 == "string" && jsonTypes.has(x2);
     }
     exports.isJSONType = isJSONType;
     function getRules() {
@@ -14199,21 +14199,21 @@ function required(Class2, schema, mask) {
   ));
   return clone(schema, mergeDefs(schema._zod.def, { shape: newShape }));
 }
-function aborted(x, startIndex = 0) {
-  if (x.aborted === true)
+function aborted(x2, startIndex = 0) {
+  if (x2.aborted === true)
     return true;
-  for (let i = startIndex; i < x.issues.length; i++) {
-    if (x.issues[i]?.continue !== true) {
+  for (let i = startIndex; i < x2.issues.length; i++) {
+    if (x2.issues[i]?.continue !== true) {
       return true;
     }
   }
   return false;
 }
-function explicitlyAborted(x, startIndex = 0) {
-  if (x.aborted === true)
+function explicitlyAborted(x2, startIndex = 0) {
+  if (x2.aborted === true)
     return true;
-  for (let i = startIndex; i < x.issues.length; i++) {
-    if (x.issues[i]?.continue === false) {
+  for (let i = startIndex; i < x2.issues.length; i++) {
+    if (x2.issues[i]?.continue === false) {
       return true;
     }
   }
@@ -15641,9 +15641,9 @@ var Doc = class {
       return;
     }
     const content = arg;
-    const lines = content.split("\n").filter((x) => x);
-    const minIndent = Math.min(...lines.map((x) => x.length - x.trimStart().length));
-    const dedented = lines.map((x) => x.slice(minIndent)).map((x) => " ".repeat(this.indent * 2) + x);
+    const lines = content.split("\n").filter((x2) => x2);
+    const minIndent = Math.min(...lines.map((x2) => x2.length - x2.trimStart().length));
+    const dedented = lines.map((x2) => x2.slice(minIndent)).map((x2) => " ".repeat(this.indent * 2) + x2);
     for (const line of dedented) {
       this.content.push(line);
     }
@@ -17697,7 +17697,7 @@ var $ZodNonOptional = /* @__PURE__ */ $constructor("$ZodNonOptional", (inst, def
   $ZodType.init(inst, def);
   defineLazyInternal(inst, "values", (zod) => {
     const v = zod.def.innerType._zod.values;
-    return v ? new Set([...v].filter((x) => x !== void 0)) : void 0;
+    return v ? new Set([...v].filter((x2) => x2 !== void 0)) : void 0;
   });
   inst._zod.parse = (payload, ctx) => {
     const result = def.innerType._zod.run(payload, ctx);
@@ -29576,7 +29576,7 @@ var objectProcessor = (schema, ctx, _json, params) => {
 var unionProcessor = (schema, ctx, json2, params) => {
   const def = schema._zod.def;
   const isExclusive = def.inclusive === false;
-  const options = def.options.map((x, i) => processSchema(x, ctx, {
+  const options = def.options.map((x2, i) => processSchema(x2, ctx, {
     ...params,
     path: [...params.path, isExclusive ? "oneOf" : "anyOf", i]
   }));
@@ -29610,7 +29610,7 @@ var tupleProcessor = (schema, ctx, _json, params) => {
   json2.type = "array";
   const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
   const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
-  const prefixItems = def.items.map((x, i) => processSchema(x, ctx, {
+  const prefixItems = def.items.map((x2, i) => processSchema(x2, ctx, {
     ...params,
     path: [...params.path, prefixPath, i]
   }));
@@ -36777,17 +36777,17 @@ function incidentOf(rng) {
   return { kind: "gear", condition: "ill-equipped" };
 }
 function passNight(run, rng, cause, day) {
-  const whole3 = cause !== "collapse";
+  const whole4 = cause !== "collapse";
   const location = run.case.locations.find(({ id }) => id === run.locationId);
   const lodging = location?.lodging ?? DEFAULT_LODGING;
   const healed = sleptOff(run.condition);
-  const restored = whole3 ? nervesRestoredOnNight(day) : (
+  const restored = whole4 ? nervesRestoredOnNight(day) : (
     // A night cut short gives back no more than the floor, and no sleep debt.
     NIGHT_NERVES_FLOOR
   );
   let nerves = Math.min(DETECTIVE_NERVES.max, healed.nerves + restored);
   const nervesRestored = nerves - run.condition.nerves;
-  const sleepDebt = whole3 ? applyMeterRate(DETECTIVE_SLEEP_DEBT, healed.sleepDebt, "drain", "night") : healed.sleepDebt;
+  const sleepDebt = whole4 ? applyMeterRate(DETECTIVE_SLEEP_DEBT, healed.sleepDebt, "drain", "night") : healed.sleepDebt;
   let condition = { ...healed, nerves, sleepDebt };
   const incident = rng.roll(100) <= INCIDENT_CHANCE[lodging] ? incidentOf(rng) : null;
   let minute = DAY_START_MINUTE;
@@ -36812,7 +36812,7 @@ function passNight(run, rng, cause, day) {
     run: { ...settled, rngState: rng.state() },
     report: {
       cause,
-      whole: whole3,
+      whole: whole4,
       day,
       locationId: run.locationId,
       lodging,
@@ -38219,6 +38219,87 @@ function computeProfileStats(records) {
   };
 }
 
+// packages/engine/src/detective/day-strip.ts
+var NOTHING = { clueIds: [], placeId: null, suspectId: null };
+var KIND_OF = {
+  move: "move",
+  look: "look",
+  search: "search",
+  ask: "ask",
+  study: "study",
+  interrogate: "talk",
+  deduce: "deduce",
+  reread: "reread",
+  sit: "sit",
+  use: "use",
+  rest: "rest",
+  accuse: "accuse"
+};
+function minutesOf(outcome, startMinute) {
+  return outcome.kind === "rest" ? MINUTES_PER_DAY - startMinute : outcome.kind === "accuse" ? 0 : outcome.minutes;
+}
+function touchedOf(outcome, placeId) {
+  switch (outcome.kind) {
+    case "look":
+    case "search":
+      return { clueIds: outcome.foundClueIds, placeId, suspectId: null };
+    case "move":
+      return { ...NOTHING, placeId: outcome.entered ? outcome.to : outcome.from };
+    case "study":
+    case "reread":
+      return { clueIds: [outcome.clueId], placeId, suspectId: null };
+    case "interrogate":
+      return {
+        clueIds: outcome.presented.map(({ clueId }) => clueId),
+        placeId,
+        suspectId: outcome.suspectId
+      };
+    case "ask":
+    case "sit":
+    case "deduce":
+    case "use":
+    case "rest":
+    case "accuse":
+      return { ...NOTHING, placeId };
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever2(outcome);
+  }
+}
+function placed(run, log) {
+  const out = [];
+  let at3 = run.locationId;
+  for (const entry of log.toReversed()) {
+    const { outcome } = entry;
+    if (outcome.kind === "move" && outcome.entered) {
+      out.push({ entry, place: outcome.to });
+      at3 = outcome.from;
+    } else {
+      out.push({ entry, place: outcome.kind === "move" ? outcome.from : at3 });
+    }
+  }
+  return out.reverse();
+}
+function viewDayStrip(run, log) {
+  return placed(run, log).map(({ entry, place }, index) => {
+    const before = log[index - 1]?.clock ?? { day: 1, minute: DAY_START_MINUTE };
+    const minutes2 = minutesOf(entry.outcome, before.minute);
+    const reach = before.minute + minutes2;
+    const detained = entry.outcome.kind === "search" ? entry.outcome.detainedMinutes ?? null : null;
+    return {
+      turn: entry.turn,
+      kind: KIND_OF[entry.outcome.kind],
+      day: before.day,
+      startMinute: before.minute,
+      endMinute: Math.min(reach, MINUTES_PER_DAY),
+      crossedMidnight: reach > MINUTES_PER_DAY,
+      endedInNight: entry.night !== null,
+      detainedMinutes: detained,
+      touched: touchedOf(entry.outcome, place)
+    };
+  });
+}
+
 // packages/engine/src/detective/turn-view.ts
 var DEFAULT_TURNS_SHOWN = 12;
 function detailOf(run, entry) {
@@ -38781,10 +38862,10 @@ function escape2(word) {
 }
 function matcher({ stems, words }) {
   const stem = stems.map(escape2).join("|");
-  const whole3 = words.map(escape2).join("|");
+  const whole4 = words.map(escape2).join("|");
   const stemPart = `(?<![\\p{L}\\p{N}])(?:${stem})[\\p{L}]*`;
-  const wholePart = `(?<![\\p{L}\\p{N}])(?:${whole3})(?![\\p{L}\\p{N}])`;
-  return new RegExp(whole3 === "" ? stemPart : `${stemPart}|${wholePart}`, "iu");
+  const wholePart = `(?<![\\p{L}\\p{N}])(?:${whole4})(?![\\p{L}\\p{N}])`;
+  return new RegExp(whole4 === "" ? stemPart : `${stemPart}|${wholePart}`, "iu");
 }
 var DROP_MATCHERS = TRAGEDY_CATEGORIES.map((category) => ({
   category,
@@ -39227,8 +39308,8 @@ function escape3(word) {
 }
 function findViolence(text, locale) {
   const stems = STEMS[locale].map(escape3).join("|");
-  const whole3 = WHOLE_WORDS[locale].map(escape3).join("|");
-  const pattern = `(?<![\\p{L}])(?:${stems})[\\p{L}]*|(?<![\\p{L}])(?:${whole3})(?![\\p{L}])`;
+  const whole4 = WHOLE_WORDS[locale].map(escape3).join("|");
+  const pattern = `(?<![\\p{L}])(?:${stems})[\\p{L}]*|(?<![\\p{L}])(?:${whole4})(?![\\p{L}])`;
   return new RegExp(pattern, "iu").exec(text)?.[0];
 }
 
@@ -42033,13 +42114,13 @@ var NAMED_ENTITIES = {
   nbsp: " "
 };
 function decodeEntities(text) {
-  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (whole3, body2) => {
+  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (whole4, body2) => {
     if (body2.startsWith("#")) {
       const hex3 = body2[1] === "x" || body2[1] === "X";
       const code = parseInt(body2.slice(hex3 ? 2 : 1), hex3 ? 16 : 10);
       return code > 0 && code <= 1114111 ? String.fromCodePoint(code) : " ";
     }
-    return NAMED_ENTITIES[body2.toLowerCase()] ?? whole3;
+    return NAMED_ENTITIES[body2.toLowerCase()] ?? whole4;
   });
 }
 function cleanText(raw, limit) {
@@ -42658,7 +42739,7 @@ function addIssueToContext(ctx, issueData) {
       // then global override map
       overrideMap === en_default2 ? void 0 : en_default2
       // then global default map
-    ].filter((x) => !!x)
+    ].filter((x2) => !!x2)
   });
   ctx.common.issues.push(issue3);
 }
@@ -42721,10 +42802,10 @@ var INVALID2 = Object.freeze({
 });
 var DIRTY = (value) => ({ status: "dirty", value });
 var OK = (value) => ({ status: "valid", value });
-var isAborted = (x) => x.status === "aborted";
-var isDirty = (x) => x.status === "dirty";
-var isValid = (x) => x.status === "valid";
-var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
+var isAborted = (x2) => x2.status === "aborted";
+var isDirty = (x2) => x2.status === "dirty";
+var isValid = (x2) => x2.status === "valid";
+var isAsync = (x2) => typeof Promise !== "undefined" && x2 instanceof Promise;
 
 // node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
@@ -45176,7 +45257,7 @@ var ZodTuple2 = class _ZodTuple extends ZodType2 {
       if (!schema)
         return null;
       return schema._parse(new ParseInputLazyPath(ctx, item, ctx.path, itemIndex));
-    }).filter((x) => !!x);
+    }).filter((x2) => !!x2);
     if (ctx.common.async) {
       return Promise.all(items).then((results) => {
         return ParseStatus.mergeArray(status, results);
@@ -45429,7 +45510,7 @@ var ZodFunction2 = class _ZodFunction extends ZodType2 {
       return makeIssue({
         data: args,
         path: ctx.path,
-        errorMaps: [ctx.common.contextualErrorMap, ctx.schemaErrorMap, getErrorMap2(), en_default2].filter((x) => !!x),
+        errorMaps: [ctx.common.contextualErrorMap, ctx.schemaErrorMap, getErrorMap2(), en_default2].filter((x2) => !!x2),
         issueData: {
           code: ZodIssueCode2.invalid_arguments,
           argumentsError: error62
@@ -45440,7 +45521,7 @@ var ZodFunction2 = class _ZodFunction extends ZodType2 {
       return makeIssue({
         data: returns,
         path: ctx.path,
-        errorMaps: [ctx.common.contextualErrorMap, ctx.schemaErrorMap, getErrorMap2(), en_default2].filter((x) => !!x),
+        errorMaps: [ctx.common.contextualErrorMap, ctx.schemaErrorMap, getErrorMap2(), en_default2].filter((x2) => !!x2),
         issueData: {
           code: ZodIssueCode2.invalid_return_type,
           returnTypeError: error62
@@ -46651,7 +46732,7 @@ function parseIntersectionDef(def, refs) {
       ...refs,
       currentPath: [...refs.currentPath, "allOf", "1"]
     })
-  ].filter((x) => !!x);
+  ].filter((x2) => !!x2);
   let unevaluatedProperties = refs.target === "jsonSchema2019-09" ? { unevaluatedProperties: false } : void 0;
   const mergedAllOf = [];
   allOf.forEach((schema) => {
@@ -46891,7 +46972,7 @@ function escapeNonAlphaNumeric(source) {
   return result;
 }
 function addFormat(schema, value, message, refs) {
-  if (schema.format || schema.anyOf?.some((x) => x.format)) {
+  if (schema.format || schema.anyOf?.some((x2) => x2.format)) {
     if (!schema.anyOf) {
       schema.anyOf = [];
     }
@@ -46919,7 +47000,7 @@ function addFormat(schema, value, message, refs) {
   }
 }
 function addPattern2(schema, regex, message, refs) {
-  if (schema.pattern || schema.allOf?.some((x) => x.pattern)) {
+  if (schema.pattern || schema.allOf?.some((x2) => x2.pattern)) {
     if (!schema.allOf) {
       schema.allOf = [];
     }
@@ -47145,17 +47226,17 @@ function parseUnionDef(def, refs) {
   if (refs.target === "openApi3")
     return asAnyOf(def, refs);
   const options = def.options instanceof Map ? Array.from(def.options.values()) : def.options;
-  if (options.every((x) => x._def.typeName in primitiveMappings && (!x._def.checks || !x._def.checks.length))) {
-    const types = options.reduce((types2, x) => {
-      const type = primitiveMappings[x._def.typeName];
+  if (options.every((x2) => x2._def.typeName in primitiveMappings && (!x2._def.checks || !x2._def.checks.length))) {
+    const types = options.reduce((types2, x2) => {
+      const type = primitiveMappings[x2._def.typeName];
       return type && !types2.includes(type) ? [...types2, type] : types2;
     }, []);
     return {
       type: types.length > 1 ? types : types[0]
     };
-  } else if (options.every((x) => x._def.typeName === "ZodLiteral" && !x.description)) {
-    const types = options.reduce((acc, x) => {
-      const type = typeof x._def.value;
+  } else if (options.every((x2) => x2._def.typeName === "ZodLiteral" && !x2.description)) {
+    const types = options.reduce((acc, x2) => {
+      const type = typeof x2._def.value;
       switch (type) {
         case "string":
         case "number":
@@ -47164,7 +47245,7 @@ function parseUnionDef(def, refs) {
         case "bigint":
           return [...acc, "integer"];
         case "object":
-          if (x._def.value === null)
+          if (x2._def.value === null)
             return [...acc, "null"];
         case "symbol":
         case "undefined":
@@ -47174,30 +47255,30 @@ function parseUnionDef(def, refs) {
       }
     }, []);
     if (types.length === options.length) {
-      const uniqueTypes = types.filter((x, i, a) => a.indexOf(x) === i);
+      const uniqueTypes = types.filter((x2, i, a) => a.indexOf(x2) === i);
       return {
         type: uniqueTypes.length > 1 ? uniqueTypes : uniqueTypes[0],
-        enum: options.reduce((acc, x) => {
-          return acc.includes(x._def.value) ? acc : [...acc, x._def.value];
+        enum: options.reduce((acc, x2) => {
+          return acc.includes(x2._def.value) ? acc : [...acc, x2._def.value];
         }, [])
       };
     }
-  } else if (options.every((x) => x._def.typeName === "ZodEnum")) {
+  } else if (options.every((x2) => x2._def.typeName === "ZodEnum")) {
     return {
       type: "string",
-      enum: options.reduce((acc, x) => [
+      enum: options.reduce((acc, x2) => [
         ...acc,
-        ...x._def.values.filter((x2) => !acc.includes(x2))
+        ...x2._def.values.filter((x3) => !acc.includes(x3))
       ], [])
     };
   }
   return asAnyOf(def, refs);
 }
 var asAnyOf = (def, refs) => {
-  const anyOf = (def.options instanceof Map ? Array.from(def.options.values()) : def.options).map((x, i) => parseDef(x._def, {
+  const anyOf = (def.options instanceof Map ? Array.from(def.options.values()) : def.options).map((x2, i) => parseDef(x2._def, {
     ...refs,
     currentPath: [...refs.currentPath, "anyOf", `${i}`]
-  })).filter((x) => !!x && (!refs.strictUnions || typeof x === "object" && Object.keys(x).length > 0));
+  })).filter((x2) => !!x2 && (!refs.strictUnions || typeof x2 === "object" && Object.keys(x2).length > 0));
   return anyOf.length ? { anyOf } : void 0;
 };
 
@@ -47387,7 +47468,7 @@ var parsePipelineDef = (def, refs) => {
     currentPath: [...refs.currentPath, "allOf", a ? "1" : "0"]
   });
   return {
-    allOf: [a, b].filter((x) => x !== void 0)
+    allOf: [a, b].filter((x2) => x2 !== void 0)
   };
 };
 
@@ -47422,10 +47503,10 @@ function parseTupleDef(def, refs) {
     return {
       type: "array",
       minItems: def.items.length,
-      items: def.items.map((x, i) => parseDef(x._def, {
+      items: def.items.map((x2, i) => parseDef(x2._def, {
         ...refs,
         currentPath: [...refs.currentPath, "items", `${i}`]
-      })).reduce((acc, x) => x === void 0 ? acc : [...acc, x], []),
+      })).reduce((acc, x2) => x2 === void 0 ? acc : [...acc, x2], []),
       additionalItems: parseDef(def.rest._def, {
         ...refs,
         currentPath: [...refs.currentPath, "additionalItems"]
@@ -47436,10 +47517,10 @@ function parseTupleDef(def, refs) {
       type: "array",
       minItems: def.items.length,
       maxItems: def.items.length,
-      items: def.items.map((x, i) => parseDef(x._def, {
+      items: def.items.map((x2, i) => parseDef(x2._def, {
         ...refs,
         currentPath: [...refs.currentPath, "items", `${i}`]
-      })).reduce((acc, x) => x === void 0 ? acc : [...acc, x], [])
+      })).reduce((acc, x2) => x2 === void 0 ? acc : [...acc, x2], [])
     };
   }
 }
@@ -50469,13 +50550,15 @@ function pickableTokens(view) {
   ]).filter((entry) => safe(entry.slice(entry.indexOf(":") + 1)));
 }
 function highlightRules(view) {
-  return pickableTokens(view).map((entry) => {
-    const lit = `main[data-sel="${entry}"][data-sel] [data-rel~="${entry}"][data-rel]`;
-    return `${lit}{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+  return pickableTokens(view).map((entry) => litRules(entry, `[data-rel~="${entry}"]`)).join("\n");
+}
+function litRules(selection, match) {
+  const lit = `main[data-sel="${selection}"][data-sel] ${match}[data-rel]`;
+  return `${lit}{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
 ${lit} > rect{stroke:var(--accent);stroke-width:3}
 ${lit}:is(path,line){stroke-width:4;outline:0}`;
-  }).join("\n");
 }
+var isSafeId = safe;
 
 // packages/mcp/src/board/board-new.ts
 var NOTHING_NEW = {
@@ -50508,6 +50591,147 @@ function freshSince(view, previous) {
       })
     )
   };
+}
+
+// packages/mcp/src/board/board-strip.ts
+var WIDTH = 960;
+var LEFT = 36;
+var RIGHT = 12;
+var SPAN = WIDTH - LEFT - RIGHT;
+var MINUTES = 1440;
+var NIGHT_UNTIL = 480;
+var BAR_TOP = 40;
+var BAR_HEIGHT = 22;
+var LEAD_TOP = 76;
+var LEAD_STEP = 9;
+var MIN_BAR = 4;
+var STRIP_SYMBOLS = {
+  move: "\u2192",
+  look: "\u25CE",
+  search: "\u2315",
+  ask: "?",
+  study: "\u25D0",
+  talk: "\u201C",
+  deduce: "\u2234",
+  reread: "\u21BA",
+  sit: "\u2248",
+  use: "+",
+  rest: "\u263E",
+  accuse: "!"
+};
+var x = (minute) => LEFT + minute / MINUTES * SPAN;
+var whole = (value) => String(Math.round(value));
+var fill = (line, values) => Object.entries(values).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, value), line);
+function touchedTokens(turn) {
+  const { clueIds, placeId, suspectId } = turn.touched;
+  return [
+    ...clueIds.map((id) => token("clue", id)),
+    ...placeId === null ? [] : [token("place", placeId)],
+    ...suspectId === null ? [] : [token("suspect", suspectId)]
+  ].filter((entry) => isSafeId(entry.slice(entry.indexOf(":") + 1)));
+}
+function turnRules(strip) {
+  return strip.flatMap((turn) => {
+    const self = `turn:${String(turn.turn)}`;
+    return [
+      litRules(self, `[data-rel~="${self}"]`),
+      ...touchedTokens(turn).map((entry) => litRules(self, `[data-pick="${entry}"]`))
+    ];
+  }).join("\n");
+}
+function rect(className, from, to, y, height) {
+  return `<rect class="${className}" x="${whole(x(from))}" y="${String(y)}" width="${whole(Math.max(0, x(to) - x(from)))}" height="${String(height)}"/>`;
+}
+function turnBar(turn, line, text) {
+  const e = escapeHtml;
+  const words = text.strip;
+  const width = Math.max(MIN_BAR, x(turn.endMinute) - x(turn.startMinute));
+  const left = x(turn.startMinute);
+  const classes = [
+    "turn",
+    `k-${turn.kind}`,
+    turn.crossedMidnight ? "crossed" : "",
+    turn.detainedMinutes === null ? "" : "held",
+    turn.endedInNight ? "night-after" : ""
+  ].filter((name) => name !== "");
+  const notes = [
+    ...turn.detainedMinutes === null ? [] : [words.held],
+    ...turn.crossedMidnight ? [words.intoNight] : [],
+    ...turn.endedInNight ? [words.nightFollowed] : []
+  ];
+  const held = turn.detainedMinutes === null ? "" : rect(
+    "detention",
+    Math.max(turn.startMinute, turn.endMinute - turn.detainedMinutes),
+    turn.endMinute,
+    BAR_TOP,
+    BAR_HEIGHT
+  );
+  const self = `turn:${String(turn.turn)}`;
+  const end = left + width;
+  const title = `${words.kinds[turn.kind]}: ${line}${notes.length === 0 ? "" : ` (${notes.join("; ")})`}`;
+  return `<g class="${classes.join(" ")}" data-pick="${self}" data-rel="${self}" tabindex="0" role="button" aria-label="${e(title)}"><title>${e(title)}</title><rect class="bar" x="${whole(left)}" y="${String(BAR_TOP)}" width="${whole(width)}" height="${String(BAR_HEIGHT)}" rx="3"/>${held}<circle class="end" cx="${whole(end)}" cy="${String(BAR_TOP + BAR_HEIGHT / 2)}" r="9"/><text class="symbol" x="${whole(end)}" y="${String(BAR_TOP + BAR_HEIGHT / 2 + 4)}" text-anchor="middle">${e(STRIP_SYMBOLS[turn.kind])}</text></g>`;
+}
+function leadBands(view, text) {
+  const e = escapeHtml;
+  const windowed = view.leads.flatMap(
+    (lead) => lead.window === null ? [] : [{ lead, window: lead.window }]
+  );
+  const markup = windowed.map(({ lead, window }, row) => {
+    const y = LEAD_TOP + row * LEAD_STEP;
+    const parts = window.fromMinute < window.untilMinute ? [rect("lead-hours", window.fromMinute, window.untilMinute, y, 6)] : [
+      rect("lead-hours", window.fromMinute, MINUTES, y, 6),
+      rect("lead-hours", 0, window.untilMinute, y, 6)
+    ];
+    const title = `${text.strip.leadHours}: ${lead.reason} (${windowText(window, text.chronicle)})`;
+    return `<g class="lead-band${lead.openNow ? "" : " shut"}" data-pick="${e(token("lead", lead.id))}" data-rel="${e(rel(leadTokens(view, lead.id)))}" tabindex="0" role="button" aria-label="${e(title)}"><title>${e(title)}</title>${parts.join("")}</g>`;
+  });
+  return { markup: markup.join(""), rows: windowed.length };
+}
+function axis(text) {
+  const ticks = [0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => {
+    const minute = hour * 60;
+    return `<line class="tick" x1="${whole(x(minute))}" y1="${String(BAR_TOP - 6)}" x2="${whole(x(minute))}" y2="${String(BAR_TOP + BAR_HEIGHT + 6)}"/><text class="hour" x="${whole(x(minute))}" y="${String(BAR_TOP + BAR_HEIGHT + 20)}" text-anchor="middle">${String(hour).padStart(2, "0")}</text>`;
+  });
+  return `${rect("night-shade", 0, NIGHT_UNTIL, BAR_TOP - 6, BAR_HEIGHT + 12)}<text class="night-label" x="${whole(x(NIGHT_UNTIL / 2))}" y="${String(BAR_TOP - 12)}" text-anchor="middle">${escapeHtml(text.strip.night)}</text>${ticks.join("")}`;
+}
+function dayStrip(day, view, turns, listed, lines, text) {
+  const e = escapeHtml;
+  const words = text.strip;
+  const today = day === view.clock.day;
+  const bands = leadBands(view, text);
+  const events = view.chronicle.events.filter((event) => event.day === day);
+  const flags = events.map(
+    (event, index) => `<g class="flag" tabindex="0"><title>${e(`${words.world}: ${event.text}`)}</title><path d="M${whole(x(NIGHT_UNTIL) + index * 14)} ${String(BAR_TOP - 8)} v-22 l12 6 l-12 6"/></g>`
+  );
+  const left = today ? `<rect class="time-left" x="${whole(x(view.clock.minute))}" y="8" width="${whole(x(MINUTES) - x(view.clock.minute))}" height="6"><title>${e(words.timeLeft)}</title></rect><line class="now" x1="${whole(x(view.clock.minute))}" y1="${String(BAR_TOP - 10)}" x2="${whole(x(view.clock.minute))}" y2="${String(BAR_TOP + BAR_HEIGHT + 10)}"/>` : "";
+  const height = LEAD_TOP + Math.max(1, bands.rows) * LEAD_STEP + 6;
+  const bars = turns.map((turn) => turnBar(turn, lines.get(turn.turn) ?? "", text)).join("");
+  const label = fill(words.day, { n: String(day) });
+  const items = listed.map(
+    (turn) => `<li data-pick="turn:${String(turn.turn)}" data-rel="turn:${String(turn.turn)}" tabindex="0" role="button"><span class="tag">${e(clock(turn.minute))}</span> ${e(turnText(turn, text))}</li>`
+  );
+  return `<details class="day-strip"${today ? " open" : ""}>
+<summary>${e(label)}${today ? ` \xB7 ${e(words.today)}` : ""}</summary>
+<div class="graph"><svg class="strip" viewBox="0 0 ${String(WIDTH)} ${String(height)}" role="group" aria-label="${e(label)}">${axis(text)}${left}${bands.markup}${flags.join("")}${bars}</svg></div>
+${items.length === 0 ? "" : `<ol class="day-turns">${items.join("")}</ol>`}
+</details>`;
+}
+function renderStrips(view, strip, turns, text) {
+  const lines = new Map(turns.map((turn) => [turn.turn, turnText(turn, text)]));
+  const barDay = new Map(strip.map((turn) => [turn.turn, turn.day]));
+  const oldestFirst = turns.toReversed();
+  const days = Array.from({ length: view.clock.day }, (_, index) => index + 1);
+  return `<p class="note">${escapeHtml(text.strip.legend)}</p>
+${days.map(
+    (day) => dayStrip(
+      day,
+      view,
+      strip.filter((turn) => turn.day === day),
+      oldestFirst.filter((turn) => (barDay.get(turn.turn) ?? turn.day) === day),
+      lines,
+      text
+    )
+  ).join("\n")}`;
 }
 
 // packages/mcp/src/locales/en.json
@@ -50681,7 +50905,6 @@ var en_default3 = {
       closed: "Closed for now",
       unquestioned: "Not yet questioned",
       reread: "To be read again",
-      turns: "Latest turns",
       noTurns: "No turns yet.",
       turn: {
         look: "Looked around: found {n}",
@@ -50932,6 +51155,33 @@ var en_default3 = {
       },
       legend: "Green thread: a lead to what earned it."
     },
+    strip: {
+      title: "The days",
+      day: "Day {n}",
+      today: "today",
+      night: "night",
+      timeLeft: "Working time left today",
+      legend: "Each bar is a turn, laid on the hours of its day, with its symbol where it ended. The night is shaded. Click a turn to light what it touched.",
+      held: "held by the police",
+      intoNight: "ran into the night",
+      nightFollowed: "the night followed",
+      leadHours: "Lead hours",
+      world: "In the world",
+      kinds: {
+        move: "walk",
+        look: "look around",
+        search: "search",
+        ask: "ask the locals",
+        study: "study a clue",
+        talk: "talk",
+        deduce: "reasoning",
+        reread: "read again",
+        sit: "sit down",
+        use: "use something",
+        rest: "rest",
+        accuse: "accusation"
+      }
+    },
     clueGrid: {
       filters: "Filter the clues",
       place: "Found at",
@@ -51125,7 +51375,6 @@ var ru_default2 = {
       closed: "\u041F\u043E\u043A\u0430 \u0437\u0430\u043A\u0440\u044B\u0442\u043E",
       unquestioned: "\u0415\u0449\u0451 \u043D\u0435 \u043E\u043F\u0440\u043E\u0448\u0435\u043D\u044B",
       reread: "\u041F\u0435\u0440\u0435\u0447\u0438\u0442\u0430\u0442\u044C",
-      turns: "\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 \u0445\u043E\u0434\u044B",
       noTurns: "\u0425\u043E\u0434\u043E\u0432 \u043F\u043E\u043A\u0430 \u043D\u0435 \u0431\u044B\u043B\u043E.",
       turn: {
         look: "\u041E\u0441\u043C\u043E\u0442\u0440\u0435\u043B\u0438\u0441\u044C: \u043D\u0430\u0439\u0434\u0435\u043D\u043E {n}",
@@ -51376,6 +51625,33 @@ var ru_default2 = {
       },
       legend: "\u0417\u0435\u043B\u0451\u043D\u0430\u044F \u043D\u0438\u0442\u044C: \u043E\u0442 \u0437\u0430\u0446\u0435\u043F\u043A\u0438 \u043A \u0442\u043E\u043C\u0443, \u0447\u0442\u043E \u0435\u0451 \u0434\u0430\u043B\u043E."
     },
+    strip: {
+      title: "\u0414\u043D\u0438",
+      day: "\u0414\u0435\u043D\u044C {n}",
+      today: "\u0441\u0435\u0433\u043E\u0434\u043D\u044F",
+      night: "\u043D\u043E\u0447\u044C",
+      timeLeft: "\u0420\u0430\u0431\u043E\u0447\u0435\u0433\u043E \u0432\u0440\u0435\u043C\u0435\u043D\u0438 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0441\u0435\u0433\u043E\u0434\u043D\u044F",
+      legend: "\u041A\u0430\u0436\u0434\u0430\u044F \u043F\u043E\u043B\u043E\u0441\u0430 \u2014 \u0445\u043E\u0434 \u043D\u0430 \u0447\u0430\u0441\u0430\u0445 \u0441\u0432\u043E\u0435\u0433\u043E \u0434\u043D\u044F, \u0437\u043D\u0430\u0447\u043E\u043A \u0441\u0442\u043E\u0438\u0442 \u0442\u0430\u043C, \u0433\u0434\u0435 \u0445\u043E\u0434 \u043A\u043E\u043D\u0447\u0438\u043B\u0441\u044F. \u041D\u043E\u0447\u044C \u0437\u0430\u0442\u0435\u043D\u0435\u043D\u0430. \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \u043D\u0430 \u0445\u043E\u0434, \u0447\u0442\u043E\u0431\u044B \u043F\u043E\u0434\u0441\u0432\u0435\u0442\u0438\u0442\u044C \u0442\u043E, \u0447\u0435\u0433\u043E \u043E\u043D \u043A\u043E\u0441\u043D\u0443\u043B\u0441\u044F.",
+      held: "\u0437\u0430\u0434\u0435\u0440\u0436\u0430\u043D \u043F\u043E\u043B\u0438\u0446\u0438\u0435\u0439",
+      intoNight: "\u0437\u0430\u0442\u044F\u043D\u0443\u043B\u0441\u044F \u0432 \u043D\u043E\u0447\u044C",
+      nightFollowed: "\u043F\u043E\u0441\u043B\u0435 \u043D\u0435\u0433\u043E \u043D\u0430\u0441\u0442\u0443\u043F\u0438\u043B\u0430 \u043D\u043E\u0447\u044C",
+      leadHours: "\u0427\u0430\u0441\u044B \u0437\u0430\u0446\u0435\u043F\u043E\u043A",
+      world: "\u0412 \u043C\u0438\u0440\u0435",
+      kinds: {
+        move: "\u0434\u043E\u0440\u043E\u0433\u0430",
+        look: "\u043E\u0441\u043C\u043E\u0442\u0440",
+        search: "\u043E\u0431\u044B\u0441\u043A",
+        ask: "\u0440\u0430\u0441\u0441\u043F\u0440\u043E\u0441\u044B \u043C\u0435\u0441\u0442\u043D\u044B\u0445",
+        study: "\u0438\u0437\u0443\u0447\u0435\u043D\u0438\u0435 \u0443\u043B\u0438\u043A\u0438",
+        talk: "\u0440\u0430\u0437\u0433\u043E\u0432\u043E\u0440",
+        deduce: "\u0440\u0430\u0437\u043C\u044B\u0448\u043B\u0435\u043D\u0438\u044F",
+        reread: "\u043F\u0435\u0440\u0435\u0447\u0438\u0442\u044B\u0432\u0430\u043D\u0438\u0435",
+        sit: "\u043F\u0435\u0440\u0435\u0434\u044B\u0448\u043A\u0430",
+        use: "\u043F\u0440\u0438\u043C\u0435\u043D\u0435\u043D\u0438\u0435",
+        rest: "\u043E\u0442\u0434\u044B\u0445",
+        accuse: "\u043E\u0431\u0432\u0438\u043D\u0435\u043D\u0438\u0435"
+      }
+    },
     clueGrid: {
       filters: "\u041E\u0442\u0431\u043E\u0440 \u0443\u043B\u0438\u043A",
       place: "\u041D\u0430\u0439\u0434\u0435\u043D\u043E \u0432",
@@ -51417,34 +51693,34 @@ function duration3(minutes2, text) {
 }
 function turnText(turn, text) {
   const t = text.chronicle.turn;
-  const fill = (line, values) => Object.entries(values).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, value), line);
+  const fill2 = (line, values) => Object.entries(values).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, value), line);
   switch (turn.kind) {
     case "look":
-      return fill(t.look, { n: String(turn.found) });
+      return fill2(t.look, { n: String(turn.found) });
     case "move":
-      return fill(turn.entered ? t.move : t.moveFailed, { name: turn.to });
+      return fill2(turn.entered ? t.move : t.moveFailed, { name: turn.to });
     case "search":
-      return fill(t.search, { n: String(turn.found) });
+      return fill2(t.search, { n: String(turn.found) });
     case "rest":
       return t.rest;
     case "sit":
-      return fill(t.sit, { n: String(turn.restored) });
+      return fill2(t.sit, { n: String(turn.restored) });
     case "ask":
-      return fill(t.ask, { result: turn.succeeded ? t.gotSomething : t.gotNothing });
+      return fill2(t.ask, { result: turn.succeeded ? t.gotSomething : t.gotNothing });
     case "study":
-      return fill(t.study, { result: turn.succeeded ? t.gotSomething : t.gotNothing });
+      return fill2(t.study, { result: turn.succeeded ? t.gotSomething : t.gotNothing });
     case "interrogate":
-      return fill(t.interrogate, {
+      return fill2(t.interrogate, {
         name: turn.suspect,
         approach: named(text.chronicle.approaches, turn.approach),
         n: String(turn.showed)
       });
     case "deduce":
-      return turn.result === "insight" ? fill(t.insight, { text: turn.insight ?? "" }) : turn.result === "already-known" ? t.alreadyKnown : t.nothing;
+      return turn.result === "insight" ? fill2(t.insight, { text: turn.insight ?? "" }) : turn.result === "already-known" ? t.alreadyKnown : t.nothing;
     case "reread":
-      return fill(t.reread, { text: truncate(turn.clue, REREAD_LENGTH) });
+      return fill2(t.reread, { text: truncate(turn.clue, REREAD_LENGTH) });
     case "use":
-      return fill(t.use, { name: named(text.hero.consumables, turn.item) });
+      return fill2(t.use, { name: named(text.hero.consumables, turn.item) });
     case "accuse":
       return t.accuse;
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
@@ -51481,7 +51757,7 @@ function openQuestions(view, text) {
     )
   ];
 }
-function renderChronicle(view, turns, text, fresh = NOTHING_NEW) {
+function renderChronicle(view, turns, text, fresh = NOTHING_NEW, strip = []) {
   const t = text.chronicle;
   const e = escapeHtml;
   const open3 = openQuestions(view, t);
@@ -51490,6 +51766,8 @@ function renderChronicle(view, turns, text, fresh = NOTHING_NEW) {
 <p>${e(t.left)}: <strong>${e(duration3(view.chronicle.activeMinutesLeft, t))}</strong></p>${view.weather === null ? "" : `
 <p>${e(t.weatherToday)}: ${e(named(t.weathers, view.weather))}</p>`}
 </div>
+<h3>${e(text.strip.title)}</h3>
+${turns.length === 0 ? `<p class="empty">${e(t.noTurns)}</p>` : ""}${renderStrips(view, strip, turns, text)}
 <h3>${e(t.inspired)}</h3>
 ${view.inspiration === null ? `<p class="empty">${e(t.inspiredNone)}</p>` : `<p><span class="tag">${e(named(t.seedKinds, view.inspiration.kind))}</span> ${e(view.inspiration.premise)}</p>`}
 <h3>${e(t.events)}</h3>
@@ -51510,13 +51788,7 @@ ${view.leads.length === 0 ? `<p class="empty">${e(t.noLeads)}</p>` : list(
     )
   )}
 <h3>${e(t.open)}</h3>
-${open3.length === 0 ? `<p class="empty">${e(t.nothingOpen)}</p>` : list(open3)}
-<h3>${e(t.turns)}</h3>
-${turns.length === 0 ? `<p class="empty">${e(t.noTurns)}</p>` : list(
-    turns.map(
-      (turn) => `<span class="tag">${e(t.day)} ${String(turn.day)} \xB7 ${clock(turn.minute)}</span> ${e(turnText(turn, text))}`
-    )
-  )}`;
+${open3.length === 0 ? `<p class="empty">${e(t.nothingOpen)}</p>` : list(open3)}`;
 }
 
 // packages/mcp/src/board/board-links.ts
@@ -51587,9 +51859,9 @@ function tried(view, text) {
   const number4 = numberOf(view);
   const items = view.history.links.map(({ clueIds, result, turn }) => {
     const names = clueIds.map((id) => `<span class="num">${e(number4(id))}</span>`).join(" + ");
-    const whole3 = clueIds.map((id) => `<p><span class="num">${e(number4(id))}</span> ${e(description.get(id) ?? id)}</p>`).join("");
+    const whole4 = clueIds.map((id) => `<p><span class="num">${e(number4(id))}</span> ${e(description.get(id) ?? id)}</p>`).join("");
     return `<li data-rel="${e(rel(threadTokens(clueIds)))}">${names} <span class="result">${e(text.corkboard.results[result])}</span> <span class="tag">${e(text.corkboard.step.replace("{n}", String(turn)))}</span>
-<details><summary>${e(text.corkboard.fullText)}</summary>${whole3}</details></li>`;
+<details><summary>${e(text.corkboard.fullText)}</summary>${whole4}</details></li>`;
   });
   return `<ul class="tried">${items.join("\n")}</ul>`;
 }
@@ -51699,7 +51971,7 @@ var BASE_WIDTH = MARGIN * 2 + COLUMNS * CARD_W + (COLUMNS - 1) * GAP;
 var LEAD_X = MARGIN + COLUMNS * (CARD_W + GAP);
 var LEAD_LINE = 30;
 var ROW_STEP = CARD_H + GAP + 8;
-var whole = (value) => String(Math.round(value));
+var whole2 = (value) => String(Math.round(value));
 var nameOf = (names, id) => names.get(id) ?? id;
 function wrap(text, length, lines) {
   const out = [];
@@ -51737,35 +52009,35 @@ function renderCork(view, board, text) {
   const captionLength = Math.max(8, Math.floor((people > 1 ? step : PHOTO_W + 40) / 7.5));
   const photoPin = /* @__PURE__ */ new Map();
   const photos = view.suspects.map((suspect, index) => {
-    const x = startX + index * step;
-    photoPin.set(suspect.id, { x: x + PHOTO_W / 2, y: photoTop + PHOTO_H + CAPTION_H });
+    const x2 = startX + index * step;
+    photoPin.set(suspect.id, { x: x2 + PHOTO_W / 2, y: photoTop + PHOTO_H + CAPTION_H });
     const caption = wrap(suspect.name, captionLength, CAPTION_LINES).map(
-      (line, row) => `<text class="caption" x="${whole(x + PHOTO_W / 2)}" y="${whole(photoTop + PHOTO_H + 18 + row * CAPTION_STEP)}" text-anchor="middle">${e(line)}</text>`
+      (line, row) => `<text class="caption" x="${whole2(x2 + PHOTO_W / 2)}" y="${whole2(photoTop + PHOTO_H + 18 + row * CAPTION_STEP)}" text-anchor="middle">${e(line)}</text>`
     ).join("");
     const initial = Array.from(suspect.name).slice(0, 1).join("").toUpperCase();
     const attrs = `data-pick="suspect:${e(suspect.id)}" data-rel="${e(rel(suspectTokens(view, suspect.id)))}" tabindex="0" role="button" aria-label="${e(suspect.name)}"`;
-    return `<g class="photo" ${attrs}><title>${e(suspect.name)}</title><rect class="paper" x="${whole(x)}" y="${whole(photoTop)}" width="${String(PHOTO_W)}" height="${String(PHOTO_H)}" rx="3"/><rect class="print" x="${whole(x + 8)}" y="${whole(photoTop + 8)}" width="${String(PHOTO_W - 16)}" height="${String(PHOTO_H - 16)}" rx="2"/><text class="initial" x="${whole(x + PHOTO_W / 2)}" y="${whole(photoTop + 8 + (PHOTO_H - 16) / 2 + 14)}" text-anchor="middle">${e(initial)}</text>${caption}<circle class="pin" cx="${whole(x + PHOTO_W / 2)}" cy="${whole(photoTop)}" r="6"/></g>`;
+    return `<g class="photo" ${attrs}><title>${e(suspect.name)}</title><rect class="paper" x="${whole2(x2)}" y="${whole2(photoTop)}" width="${String(PHOTO_W)}" height="${String(PHOTO_H)}" rx="3"/><rect class="print" x="${whole2(x2 + 8)}" y="${whole2(photoTop + 8)}" width="${String(PHOTO_W - 16)}" height="${String(PHOTO_H - 16)}" rx="2"/><text class="initial" x="${whole2(x2 + PHOTO_W / 2)}" y="${whole2(photoTop + 8 + (PHOTO_H - 16) / 2 + 14)}" text-anchor="middle">${e(initial)}</text>${caption}<circle class="pin" cx="${whole2(x2 + PHOTO_W / 2)}" cy="${whole2(photoTop)}" r="6"/></g>`;
   });
   const cardsTop = photoTop + (people > 0 ? PHOTO_H + CAPTION_H + 56 : 0);
   const cluePin = /* @__PURE__ */ new Map();
   const cards = view.clues.map((clue, index) => {
-    const x = MARGIN + index % COLUMNS * (CARD_W + GAP);
+    const x2 = MARGIN + index % COLUMNS * (CARD_W + GAP);
     const y = cardsTop + Math.floor(index / COLUMNS) * ROW_STEP;
-    cluePin.set(clue.id, { x: x + CARD_W / 2, y });
+    cluePin.set(clue.id, { x: x2 + CARD_W / 2, y });
     const place = placeName.get(clue.locationId) ?? clue.locationId;
     const turn = turnOf.get(clue.id);
     const where = `${words.foundAt} ${place}${turn === void 0 ? "" : ` \xB7 ${words.step.replace("{n}", String(turn))}`}`;
-    const placed = wrap(where, WHERE_LENGTH, WHERE_LINES);
-    const whereLines = placed.map(
-      (line, row) => `<text x="${whole(x + 12)}" y="${whole(y + CARD_H - 14 - (placed.length - 1 - row) * 14)}">${e(line)}</text>`
+    const placed2 = wrap(where, WHERE_LENGTH, WHERE_LINES);
+    const whereLines = placed2.map(
+      (line, row) => `<text x="${whole2(x2 + 12)}" y="${whole2(y + CARD_H - 14 - (placed2.length - 1 - row) * 14)}">${e(line)}</text>`
     ).join("");
     const lines = wrap(clue.description, LINE_LENGTH, LINES).map(
-      (line, row) => `<text class="line" x="${whole(x + 12)}" y="${whole(y + 46 + row * 17)}">${e(truncate(line, LINE_LENGTH))}</text>`
+      (line, row) => `<text class="line" x="${whole2(x2 + 12)}" y="${whole2(y + 46 + row * 17)}">${e(truncate(line, LINE_LENGTH))}</text>`
     ).join("");
     const attrs = `data-pick="clue:${e(clue.id)}" data-rel="${e(rel(clueTokens(view, clue.id)))}" tabindex="0" role="button" aria-controls="${e(openedId(clue.id))}" data-open="${e(clue.id)}" aria-label="${e(`${clue.number}: ${truncate(clue.description, 90)}`)}"`;
     const placeAttrs = `data-pick="place:${e(clue.locationId)}" data-rel="${e(rel(placeTokens(view, clue.locationId)))}"`;
-    const turned = `rotate(${tilt(index).toFixed(1)} ${whole(x + CARD_W / 2)} ${whole(y + CARD_H / 2)})`;
-    return `<g class="card-pin${clue.garbled ? " garbled" : ""}" transform="${turned}" ${attrs}><title>${e(clue.description)}</title><rect class="paper" x="${whole(x)}" y="${whole(y)}" width="${String(CARD_W)}" height="${String(CARD_H)}" rx="3"/><text class="num" x="${whole(x + 12)}" y="${whole(y + 26)}">${e(clue.number)}</text>${lines}<g class="where" ${placeAttrs}>${whereLines}</g><circle class="pin" cx="${whole(x + CARD_W / 2)}" cy="${whole(y)}" r="6"/></g>`;
+    const turned = `rotate(${tilt(index).toFixed(1)} ${whole2(x2 + CARD_W / 2)} ${whole2(y + CARD_H / 2)})`;
+    return `<g class="card-pin${clue.garbled ? " garbled" : ""}" transform="${turned}" ${attrs}><title>${e(clue.description)}</title><rect class="paper" x="${whole2(x2)}" y="${whole2(y)}" width="${String(CARD_W)}" height="${String(CARD_H)}" rx="3"/><text class="num" x="${whole2(x2 + 12)}" y="${whole2(y + 26)}">${e(clue.number)}</text>${lines}<g class="where" ${placeAttrs}>${whereLines}</g><circle class="pin" cx="${whole2(x2 + CARD_W / 2)}" cy="${whole2(y)}" r="6"/></g>`;
   });
   const suspectName = new Map(view.suspects.map(({ id, name }) => [id, name]));
   const clueNumber2 = new Map(view.clues.map(({ id, number: number4 }) => [id, number4]));
@@ -51804,11 +52076,11 @@ function renderCork(view, board, text) {
       { cls: "status", line: status }
     ];
     const body2 = pinLines.map(
-      ({ cls, line }, row) => `<text${cls === "" ? "" : ` class="${cls}"`} x="${whole(LEAD_X + 12)}" y="${whole(y + 40 + row * 15)}">${e(line)}</text>`
+      ({ cls, line }, row) => `<text${cls === "" ? "" : ` class="${cls}"`} x="${whole2(LEAD_X + 12)}" y="${whole2(y + 40 + row * 15)}">${e(line)}</text>`
     ).join("");
     const attrs = `data-pick="lead:${e(lead.id)}" data-rel="${e(rel(leadTokens(view, lead.id)))}" tabindex="0" role="button" aria-label="${e(`${text.leadPins.tag}: ${truncate(lead.reason, 90)}`)}"`;
-    const turned = `rotate(${tilt(index + 3).toFixed(1)} ${whole(LEAD_X + CARD_W / 2)} ${whole(y + CARD_H / 2)})`;
-    return `<g class="lead-pin${state}" transform="${turned}" ${attrs}><title>${e(`${lead.reason} (${sourceLine(lead)}${opens === "" ? "" : `; ${text.leadPins.opens}: ${opens}`}) \u2014 ${status}`)}</title><rect class="paper" x="${whole(LEAD_X)}" y="${whole(y)}" width="${String(CARD_W)}" height="${String(CARD_H)}" rx="3"/><text class="num" x="${whole(LEAD_X + 12)}" y="${whole(y + 22)}">${e(text.leadPins.tag.toUpperCase())}</text>${body2}<circle class="pin" cx="${whole(LEAD_X + CARD_W / 2)}" cy="${whole(y)}" r="6"/></g>`;
+    const turned = `rotate(${tilt(index + 3).toFixed(1)} ${whole2(LEAD_X + CARD_W / 2)} ${whole2(y + CARD_H / 2)})`;
+    return `<g class="lead-pin${state}" transform="${turned}" ${attrs}><title>${e(`${lead.reason} (${sourceLine(lead)}${opens === "" ? "" : `; ${text.leadPins.opens}: ${opens}`}) \u2014 ${status}`)}</title><rect class="paper" x="${whole2(LEAD_X)}" y="${whole2(y)}" width="${String(CARD_W)}" height="${String(CARD_H)}" rx="3"/><text class="num" x="${whole2(LEAD_X + 12)}" y="${whole2(y + 22)}">${e(text.leadPins.tag.toUpperCase())}</text>${body2}<circle class="pin" cx="${whole2(LEAD_X + CARD_W / 2)}" cy="${whole2(y)}" r="6"/></g>`;
   });
   const threads = [];
   const links = [...view.history.links].sort(
@@ -51820,7 +52092,7 @@ function renderCork(view, board, text) {
       return at3 === void 0 ? [] : [at3];
     });
     if (points.length < 2) continue;
-    const d = points.map(({ x, y }, index) => `${index === 0 ? "M" : "L"}${whole(x)} ${whole(y)}`).join(" ");
+    const d = points.map(({ x: x2, y }, index) => `${index === 0 ? "M" : "L"}${whole2(x2)} ${whole2(y)}`).join(" ");
     const kind = link.result === "nothing" ? "cold" : "made";
     threads.push(`<path class="thread ${kind}" d="${d}" data-rel="${e(rel(threadTokens(link.clueIds)))}"/>`);
   }
@@ -51828,7 +52100,7 @@ function renderCork(view, board, text) {
     const from = cluePin.get(clueId);
     const to = photoPin.get(suspectId);
     if (from === void 0 || to === void 0) continue;
-    const d = `M${whole(from.x)} ${whole(from.y)} C${whole(from.x)} ${whole(from.y - 70)} ${whole(to.x)} ${whole(to.y + 70)} ${whole(to.x)} ${whole(to.y)}`;
+    const d = `M${whole2(from.x)} ${whole2(from.y)} C${whole2(from.x)} ${whole2(from.y - 70)} ${whole2(to.x)} ${whole2(to.y + 70)} ${whole2(to.x)} ${whole2(to.y)}`;
     threads.push(
       `<path class="thread shown ${effect === "breaks-lie" ? "breaks" : "plain"}" d="${d}" data-rel="${e(rel(threadTokens([clueId], suspectId)))}"/>`
     );
@@ -51840,7 +52112,7 @@ function renderCork(view, board, text) {
       const to = tied.startsWith("clue:") ? cluePin.get(id) : tied.startsWith("suspect:") ? photoPin.get(id) : void 0;
       if (to === void 0) continue;
       const lift = to.y < from.y ? -70 : 70;
-      const d = `M${whole(from.x)} ${whole(from.y)} C${whole(from.x)} ${whole(from.y + lift)} ${whole(to.x)} ${whole(to.y - lift)} ${whole(to.x)} ${whole(to.y)}`;
+      const d = `M${whole2(from.x)} ${whole2(from.y)} C${whole2(from.x)} ${whole2(from.y + lift)} ${whole2(to.x)} ${whole2(to.y - lift)} ${whole2(to.x)} ${whole2(to.y)}`;
       threads.push(`<path class="thread earned" d="${d}" data-rel="${e(rel([`lead:${lead.id}`, tied]))}"/>`);
     }
   }
@@ -51874,16 +52146,16 @@ function conditionWords(view, text) {
 }
 function freshLines(view, fresh, text) {
   const t = text.fresh;
-  const fill = (line, values) => Object.entries(values).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, value), line);
+  const fill2 = (line, values) => Object.entries(values).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, value), line);
   return [
-    ...view.clues.filter(({ id }) => fresh.clueIds.has(id)).map(({ number: number4 }) => fill(t.clue, { n: number4 })),
-    ...view.leads.filter(({ id }) => fresh.leadIds.has(id)).map(({ reason }) => fill(t.lead, { text: reason })),
-    ...view.suspects.filter(({ id }) => fresh.lieSuspectIds.has(id)).map(({ name }) => fill(t.lie, { name })),
-    ...view.suspects.filter(({ id }) => fresh.moods.has(id)).map(({ name, mood }) => fill(t.mood, { name, mood: text.statements.moods[mood] })),
+    ...view.clues.filter(({ id }) => fresh.clueIds.has(id)).map(({ number: number4 }) => fill2(t.clue, { n: number4 })),
+    ...view.leads.filter(({ id }) => fresh.leadIds.has(id)).map(({ reason }) => fill2(t.lead, { text: reason })),
+    ...view.suspects.filter(({ id }) => fresh.lieSuspectIds.has(id)).map(({ name }) => fill2(t.lie, { name })),
+    ...view.suspects.filter(({ id }) => fresh.moods.has(id)).map(({ name, mood }) => fill2(t.mood, { name, mood: text.statements.moods[mood] })),
     ...[...fresh.tools.values()].map(
-      (item) => fill(t.tool, {
+      (item) => fill2(t.tool, {
         name: named(text.hero.gear, item.id),
-        state: item.state === "owned" ? fill(text.hero.chargesLeft, { n: String(item.charges) }) : named({ lost: text.hero.lost, spent: text.hero.spent, broken: text.hero.broken }, item.state)
+        state: item.state === "owned" ? fill2(text.hero.chargesLeft, { n: String(item.charges) }) : named({ lost: text.hero.lost, spent: text.hero.spent, broken: text.hero.broken }, item.state)
       })
     )
   ];
@@ -52019,7 +52291,7 @@ function layoutMap(map2) {
   const width = MARGIN2 * 2 + columns.size * NODE_WIDTH + Math.max(0, columns.size - 1) * GAP_X;
   return { width, height: MARGIN2 * 2 + tallest, nodes };
 }
-var whole2 = (value) => String(Math.round(value));
+var whole3 = (value) => String(Math.round(value));
 function renderMap(view, text) {
   const { map: map2 } = view;
   if (map2.places.length === 0) return `<p class="empty">${escapeHtml(text.map.empty)}</p>`;
@@ -52031,10 +52303,10 @@ function renderMap(view, text) {
     const a = at3.get(from);
     const b = at3.get(to);
     return a === void 0 || b === void 0 ? [] : [
-      `<line x1="${whole2(a.x + NODE_WIDTH / 2)}" y1="${whole2(a.y + NODE_HEIGHT / 2)}" x2="${whole2(b.x + NODE_WIDTH / 2)}" y2="${whole2(b.y + NODE_HEIGHT / 2)}"/>`
+      `<line x1="${whole3(a.x + NODE_WIDTH / 2)}" y1="${whole3(a.y + NODE_HEIGHT / 2)}" x2="${whole3(b.x + NODE_WIDTH / 2)}" y2="${whole3(b.y + NODE_HEIGHT / 2)}"/>`
     ];
   });
-  const nodes = layout.nodes.map(({ place, x, y }) => {
+  const nodes = layout.nodes.map(({ place, x: x2, y }) => {
     const current = place.id === map2.current;
     const state = current ? text.map.you : place.blocked === "locked" ? text.map.locked : place.blocked === "closed" ? text.map.closed : place.visited ? "" : place.lead === null ? text.map.unvisited : text.map.lead;
     const clues = cluesAt.get(place.id) ?? 0;
@@ -52044,9 +52316,9 @@ function renderMap(view, text) {
       current ? "current" : "",
       place.blocked ?? ""
     ].filter((name) => name !== "").join(" ");
-    const badge = clues === 0 ? "" : `<circle class="badge" cx="${whole2(x + NODE_WIDTH)}" cy="${whole2(y)}" r="11"><title>${escapeHtml(text.map.cluesHere)}: ${String(clues)}</title></circle><text class="badge-n" x="${whole2(x + NODE_WIDTH)}" y="${whole2(y + 4)}" text-anchor="middle">${String(clues)}</text>`;
+    const badge = clues === 0 ? "" : `<circle class="badge" cx="${whole3(x2 + NODE_WIDTH)}" cy="${whole3(y)}" r="11"><title>${escapeHtml(text.map.cluesHere)}: ${String(clues)}</title></circle><text class="badge-n" x="${whole3(x2 + NODE_WIDTH)}" y="${whole3(y + 4)}" text-anchor="middle">${String(clues)}</text>`;
     const pick5 = `data-pick="place:${escapeHtml(place.id)}" data-rel="${escapeHtml(rel(placeTokens(view, place.id)))}" tabindex="0" role="button"`;
-    return `<g class="${classes}" ${pick5}><title>${escapeHtml(place.name)}${state === "" ? "" : ` (${escapeHtml(state)})`}${place.lead === null ? "" : `: ${escapeHtml(place.lead)}`}</title><rect x="${whole2(x)}" y="${whole2(y)}" width="${String(NODE_WIDTH)}" height="${String(NODE_HEIGHT)}" rx="8"/><text class="name" x="${whole2(x + NODE_WIDTH / 2)}" y="${whole2(y + 24)}" text-anchor="middle">${escapeHtml(truncate(place.name, LABEL_LENGTH))}</text><text class="state" x="${whole2(x + NODE_WIDTH / 2)}" y="${whole2(y + 43)}" text-anchor="middle">${escapeHtml(state)}</text>${badge}</g>`;
+    return `<g class="${classes}" ${pick5}><title>${escapeHtml(place.name)}${state === "" ? "" : ` (${escapeHtml(state)})`}${place.lead === null ? "" : `: ${escapeHtml(place.lead)}`}</title><rect x="${whole3(x2)}" y="${whole3(y)}" width="${String(NODE_WIDTH)}" height="${String(NODE_HEIGHT)}" rx="8"/><text class="name" x="${whole3(x2 + NODE_WIDTH / 2)}" y="${whole3(y + 24)}" text-anchor="middle">${escapeHtml(truncate(place.name, LABEL_LENGTH))}</text><text class="state" x="${whole3(x2 + NODE_WIDTH / 2)}" y="${whole3(y + 43)}" text-anchor="middle">${escapeHtml(state)}</text>${badge}</g>`;
   });
   return `<div class="graph"><svg class="map" viewBox="0 0 ${String(layout.width)} ${String(layout.height)}" role="img" aria-label="${escapeHtml(text.map.title)}" style="min-width:${String(Math.min(layout.width, 520))}px"><g class="edges">${edges.join("")}</g>${nodes.join("")}</svg></div>
 <p class="tag">${escapeHtml(text.map.legend)}</p>`;
@@ -52258,6 +52530,32 @@ ul.tried li{margin:0 0 8px;padding:6px 14px 6px 18px;border-left:3px double var(
 ul.tried .result{font:12px system-ui,sans-serif;color:var(--red);text-transform:uppercase;letter-spacing:.05em}
 ul.tried .tag{color:var(--paper-tag)}
 [hidden]{display:none!important}
+details.day-strip{margin:0 0 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);padding:6px 10px}
+details.day-strip>summary{cursor:pointer;font:600 14px system-ui,sans-serif;color:var(--accent)}
+svg.strip{display:block;width:100%;min-width:720px;height:auto;font:11px system-ui,sans-serif}
+svg.strip text{fill:var(--ink)}
+svg.strip .night-shade{fill:var(--soft)}
+svg.strip .night-label,svg.strip .hour{fill:var(--muted)}
+svg.strip .tick{stroke:var(--line);stroke-width:1}
+svg.strip .time-left{fill:var(--accent)}
+svg.strip .now{stroke:var(--accent);stroke-width:2;stroke-dasharray:3 3}
+svg.strip .turn .bar{fill:var(--paper);stroke:var(--muted);stroke-width:1.5}
+svg.strip .turn .end{fill:var(--card);stroke:var(--muted);stroke-width:1.5}
+svg.strip .turn .symbol{font:700 12px system-ui,sans-serif}
+svg.strip .turn.k-move .bar{fill:#dbe7f3}
+svg.strip .turn.k-look .bar,svg.strip .turn.k-search .bar{fill:#e8e2c8}
+svg.strip .turn.k-talk .bar,svg.strip .turn.k-ask .bar{fill:#f1d9d3}
+svg.strip .turn.k-deduce .bar,svg.strip .turn.k-study .bar,svg.strip .turn.k-reread .bar{fill:#dcebd6}
+svg.strip .turn.k-rest .bar,svg.strip .turn.k-sit .bar{fill:#e1dcef}
+svg.strip .turn.held .detention{fill:var(--red);opacity:.55}
+svg.strip .turn.held .bar{stroke:var(--red);stroke-width:2.5}
+svg.strip .turn.crossed .bar{stroke-dasharray:6 3}
+svg.strip .turn.night-after .end{stroke:var(--accent);stroke-width:3}
+svg.strip .lead-hours{fill:#2b5fa3;opacity:.7}
+svg.strip .lead-band.shut .lead-hours{fill:var(--muted)}
+svg.strip .flag path{fill:var(--accent);stroke:var(--accent)}
+.day-turns{list-style:none;padding:0;margin:6px 0 0}
+.day-turns li{padding:2px 8px;border-left:3px double var(--margin)}
 .suspect .who{display:flex;gap:12px;align-items:center}
 .suspect .who p{margin:0}
 svg.portrait{flex:0 0 56px;width:56px;height:56px;font:700 22px Georgia,serif}
@@ -52288,7 +52586,7 @@ svg.portrait.p0{--tone:#8a3b2a}svg.portrait.p1{--tone:#2b5fa3}svg.portrait.p2{--
 @media (max-width:560px){body{padding:16px}h1{font-size:1.5rem}}
 @media print{body{background:#fff;color:#000}.opened{display:none!important}.tab{display:block!important}nav.tabs{display:none}.card,.graph,.cork{break-inside:avoid}}
 `;
-function renderEvidenceBoard(view, turns = [], previous) {
+function renderEvidenceBoard(view, turns = [], previous, strip = []) {
   const board = BOARD_TEXT[view.locale];
   const text = TAB_TEXT[view.locale];
   const e = escapeHtml;
@@ -52306,7 +52604,8 @@ function renderEvidenceBoard(view, turns = [], previous) {
 <style>${STYLE}
 ${highlightRules(view)}
 ${openedRules(view)}
-${cardRules(view)}</style>
+${cardRules(view)}
+${turnRules(strip)}</style>
 </head>
 <body>
 <main>
@@ -52332,7 +52631,7 @@ ${news}
 </section>
 <section class="tab" id="chronicle">
 <h2>${e(text.tabs.chronicle)}</h2>
-${renderChronicle(view, turns, text, fresh)}
+${renderChronicle(view, turns, text, fresh, strip)}
 </section>
 <section class="tab" id="hero">
 <h2>${e(text.tabs.hero)}</h2>
@@ -52354,8 +52653,9 @@ async function writeBoard(context2, runId, run, log, before) {
     path,
     renderEvidenceBoard(
       viewRun(run),
-      viewTurns(run, log),
-      before === void 0 ? void 0 : viewRun(before)
+      viewTurns(run, log, log.length),
+      before === void 0 ? void 0 : viewRun(before),
+      viewDayStrip(run, log)
     )
   );
   return path;

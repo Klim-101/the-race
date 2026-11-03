@@ -351,6 +351,20 @@ describe('evidence_board', () => {
     expect(context.fs.files.get(path)).toContain('<meta name="turn" content="2">');
   });
 
+  it('lays every turn of the run on its day, from the first turn to the last', async () => {
+    const context = await activeRun();
+    await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+    await call(act, { turn: 1, intent: { kind: 'rest' } }, context);
+    await call(act, { turn: 2, intent: { kind: 'look' } }, context);
+    const path = runBoardFile(context.saveDir, await newestRunId(context.saveDir, context.fs));
+    const page = context.fs.files.get(path) ?? '';
+
+    expect(page.match(/<g class="turn /g)).toHaveLength(3);
+    expect(page).toContain('class="turn k-rest night-after"');
+    expect(page.match(/<details class="day-strip"/g)).toHaveLength(2);
+    expect(page).toContain('[data-sel="turn:3"][data-sel]');
+  });
+
   it('is left as it was by a turn that is refused', async () => {
     const context = await activeRun();
     await call(act, { turn: 0, intent: { kind: 'look' } }, context);

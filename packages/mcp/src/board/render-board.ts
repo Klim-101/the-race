@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createHash } from 'node:crypto';
-import type { DetectiveRunView, TurnView } from '@the-race/engine';
+import type { DetectiveRunView, StripTurn, TurnView } from '@the-race/engine';
 import { renderChronicle } from './board-chronicle.js';
 import { cardRules, renderClues } from './board-clues.js';
 import { renderCork } from './board-cork.js';
@@ -12,6 +12,7 @@ import { openedRules } from './board-opened.js';
 import { renderHero } from './board-hero.js';
 import { renderMap } from './board-map.js';
 import { renderSuspects } from './board-suspects.js';
+import { turnRules } from './board-strip.js';
 import { highlightRules } from './board-relations.js';
 import { BOARD_TEXT } from './board-text.js';
 import { escapeHtml } from './escape-html.js';
@@ -153,6 +154,32 @@ ul.tried li{margin:0 0 8px;padding:6px 14px 6px 18px;border-left:3px double var(
 ul.tried .result{font:12px system-ui,sans-serif;color:var(--red);text-transform:uppercase;letter-spacing:.05em}
 ul.tried .tag{color:var(--paper-tag)}
 [hidden]{display:none!important}
+details.day-strip{margin:0 0 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);padding:6px 10px}
+details.day-strip>summary{cursor:pointer;font:600 14px system-ui,sans-serif;color:var(--accent)}
+svg.strip{display:block;width:100%;min-width:720px;height:auto;font:11px system-ui,sans-serif}
+svg.strip text{fill:var(--ink)}
+svg.strip .night-shade{fill:var(--soft)}
+svg.strip .night-label,svg.strip .hour{fill:var(--muted)}
+svg.strip .tick{stroke:var(--line);stroke-width:1}
+svg.strip .time-left{fill:var(--accent)}
+svg.strip .now{stroke:var(--accent);stroke-width:2;stroke-dasharray:3 3}
+svg.strip .turn .bar{fill:var(--paper);stroke:var(--muted);stroke-width:1.5}
+svg.strip .turn .end{fill:var(--card);stroke:var(--muted);stroke-width:1.5}
+svg.strip .turn .symbol{font:700 12px system-ui,sans-serif}
+svg.strip .turn.k-move .bar{fill:#dbe7f3}
+svg.strip .turn.k-look .bar,svg.strip .turn.k-search .bar{fill:#e8e2c8}
+svg.strip .turn.k-talk .bar,svg.strip .turn.k-ask .bar{fill:#f1d9d3}
+svg.strip .turn.k-deduce .bar,svg.strip .turn.k-study .bar,svg.strip .turn.k-reread .bar{fill:#dcebd6}
+svg.strip .turn.k-rest .bar,svg.strip .turn.k-sit .bar{fill:#e1dcef}
+svg.strip .turn.held .detention{fill:var(--red);opacity:.55}
+svg.strip .turn.held .bar{stroke:var(--red);stroke-width:2.5}
+svg.strip .turn.crossed .bar{stroke-dasharray:6 3}
+svg.strip .turn.night-after .end{stroke:var(--accent);stroke-width:3}
+svg.strip .lead-hours{fill:#2b5fa3;opacity:.7}
+svg.strip .lead-band.shut .lead-hours{fill:var(--muted)}
+svg.strip .flag path{fill:var(--accent);stroke:var(--accent)}
+.day-turns{list-style:none;padding:0;margin:6px 0 0}
+.day-turns li{padding:2px 8px;border-left:3px double var(--margin)}
 .suspect .who{display:flex;gap:12px;align-items:center}
 .suspect .who p{margin:0}
 svg.portrait{flex:0 0 56px;width:56px;height:56px;font:700 22px Georgia,serif}
@@ -196,6 +223,7 @@ export function renderEvidenceBoard(
   view: DetectiveRunView,
   turns: readonly TurnView[] = [],
   previous?: DetectiveRunView,
+  strip: readonly StripTurn[] = [],
 ): string {
   const board = BOARD_TEXT[view.locale];
   const text = TAB_TEXT[view.locale];
@@ -218,7 +246,8 @@ export function renderEvidenceBoard(
 <style>${STYLE}
 ${highlightRules(view)}
 ${openedRules(view)}
-${cardRules(view)}</style>
+${cardRules(view)}
+${turnRules(strip)}</style>
 </head>
 <body>
 <main>
@@ -244,7 +273,7 @@ ${news}
 </section>
 <section class="tab" id="chronicle">
 <h2>${e(text.tabs.chronicle)}</h2>
-${renderChronicle(view, turns, text, fresh)}
+${renderChronicle(view, turns, text, fresh, strip)}
 </section>
 <section class="tab" id="hero">
 <h2>${e(text.tabs.hero)}</h2>
