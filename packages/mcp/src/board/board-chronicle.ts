@@ -3,19 +3,30 @@
 
 import { assertNever, type DetectiveRunView, type TurnView } from '@the-race/engine';
 import { escapeHtml, truncate } from './escape-html.js';
+import { clueTokens, leadTokens, placeTokens, rel, suspectTokens, token } from './board-relations.js';
+import { NOTHING_NEW, type Fresh } from './board-new.js';
 import { named, type TabText } from './tab-text.js';
 
 const REREAD_LENGTH = 70;
 
 const list = (items: readonly string[]): string =>
-  `<ul>${items.map((item) => `<li>${item}</li>`).join('')}</ul>`;
+  `<ul>${items.map((item) => (item.startsWith('<li') ? item : `<li>${item}</li>`)).join('')}</ul>`;
 
-function clock(minute: number): string {
+/** A list item that can be picked: it lights what ties to it, on this tab and on the others. */
+const pickable = (
+  entity: 'clue' | 'suspect' | 'place' | 'lead',
+  id: string,
+  tokens: readonly string[],
+  body: string,
+): string =>
+  `<li data-pick="${escapeHtml(token(entity, id))}" data-rel="${escapeHtml(rel(tokens))}" tabindex="0" role="button">${body}</li>`;
+
+export function clock(minute: number): string {
   return `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
 }
 
 /** The working time left as hours and minutes. */
-function duration(minutes: number, text: TabText['chronicle']): string {
+export function duration(minutes: number, text: TabText['chronicle']): string {
   const hours = Math.floor(minutes / 60);
   return `${String(hours)} ${text.hours} ${String(minutes % 60)} ${text.minutes}`;
 }
@@ -78,24 +89,31 @@ function windowText(
 function openQuestions(view: DetectiveRunView, text: TabText['chronicle']): string[] {
   const places = view.map.places.filter(({ visited }) => !visited);
   const name = (place: { readonly name: string }): string => escapeHtml(place.name);
+  const atPlace = (word: string) => (place: (typeof places)[number]) =>
+    pickable('place', place.id, placeTokens(view, place.id), `${escapeHtml(word)}: ${name(place)}`);
   return [
-    ...places
-      .filter(({ blocked }) => blocked === null)
-      .map((place) => `${escapeHtml(text.unvisited)}: ${name(place)}`),
-    ...places
-      .filter(({ blocked }) => blocked === 'locked')
-      .map((place) => `${escapeHtml(text.locked)}: ${name(place)}`),
-    ...places
-      .filter(({ blocked }) => blocked === 'closed')
-      .map((place) => `${escapeHtml(text.closed)}: ${name(place)}`),
+    ...places.filter(({ blocked }) => blocked === null).map(atPlace(text.unvisited)),
+    ...places.filter(({ blocked }) => blocked === 'locked').map(atPlace(text.locked)),
+    ...places.filter(({ blocked }) => blocked === 'closed').map(atPlace(text.closed)),
     ...view.suspects
       .filter(({ statements }) => statements.length === 0)
-      .map((suspect) => `${escapeHtml(text.unquestioned)}: ${escapeHtml(suspect.name)}`),
+      .map((suspect) =>
+        pickable(
+          'suspect',
+          suspect.id,
+          suspectTokens(view, suspect.id),
+          `${escapeHtml(text.unquestioned)}: ${escapeHtml(suspect.name)}`,
+        ),
+      ),
     ...view.clues
       .filter(({ garbled }) => garbled)
-      .map(
-        ({ description }) =>
+      .map(({ id, description }) =>
+        pickable(
+          'clue',
+          id,
+          clueTokens(view, id),
           `${escapeHtml(text.reread)}: ${escapeHtml(truncate(description, REREAD_LENGTH))}`,
+        ),
       ),
   ];
 }
@@ -105,7 +123,12 @@ function openQuestions(view: DetectiveRunView, text: TabText['chronicle']): stri
  * turns the player took. Nothing in it says which statement is false or which suspect is guilty: the open
  * questions are only what has not been tried.
  */
-export function renderChronicle(view: DetectiveRunView, turns: readonly TurnView[], text: TabText): string {
+export function renderChronicle(
+  view: DetectiveRunView,
+  turns: readonly TurnView[],
+  text: TabText,
+  fresh: Fresh = NOTHING_NEW,
+): string {
   const t = text.chronicle;
   const e = escapeHtml;
   const open = openQuestions(view, t);
@@ -136,9 +159,13 @@ ${
   view.leads.length === 0
     ? `<p class="empty">${e(t.noLeads)}</p>`
     : list(
-        view.leads.map(
-          ({ reason, window }) =>
-            `${e(reason)}${window === null ? '' : ` <span class="tag">${e(windowText(window, t))}</span>`}`,
+        view.leads.map(({ id, reason, window }) =>
+          pickable(
+            'lead',
+            id,
+            leadTokens(view, id),
+            `${e(reason)}${window === null ? '' : ` <span class="tag">${e(windowText(window, t))}</span>`}${fresh.leadIds.has(id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ''}`,
+          ),
         ),
       )
 }

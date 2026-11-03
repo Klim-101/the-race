@@ -1,8 +1,6 @@
 {
   "board": {
     "pageTitle": "Evidence board",
-    "day": "Day",
-    "of": "of",
     "clues": "Evidence",
     "noClues": "Nothing on the board yet. The wall is embarrassingly bare.",
     "garbled": "read badly: read it again before it counts",
@@ -86,6 +84,24 @@
       "hero": "Hero and kit"
     },
     "nav": "Sections of the board",
+    "header": {
+      "turn": "Turn {n}",
+      "day": "Day {day} of {total}, {time}",
+      "timeLeft": "Working time left",
+      "condition": "Condition",
+      "reputationBands": { "good": "good name", "middling": "name in doubt", "poor": "name in tatters" },
+      "nervesBands": { "steady": "steady nerves", "strained": "nerves on edge", "frayed": "nerves frayed" },
+      "sleepBands": { "rested": "rested", "tired": "tired", "exhausted": "exhausted" }
+    },
+    "fresh": {
+      "title": "New in the last turn",
+      "mark": "new",
+      "clue": "Clue found: {n}",
+      "lead": "Lead earned: {text}",
+      "lie": "A lie fell: {name}",
+      "mood": "{name} is now {mood}",
+      "tool": "{name} ({state})"
+    },
     "map": {
       "title": "Known places",
       "empty": "Nowhere known yet.",

@@ -11,7 +11,7 @@ type ShownEffect = DetectiveRunView['history']['shown'][number]['effect'];
 // what is decided here, in plain code, from the public view alone, and the page still reads whole without the
 // script. The relations are the player's own doing: where they found a clue and whom they showed it to.
 
-export type Entity = 'clue' | 'suspect' | 'place';
+export type Entity = 'clue' | 'suspect' | 'place' | 'lead';
 
 export const token = (entity: Entity, id: string): string => `${entity}:${id}`;
 
@@ -61,13 +61,26 @@ export function suspectTokens(view: DetectiveRunView, suspectId: string): string
   ]);
 }
 
-/** What lights a place: itself and every clue found there. */
+/** What lights a place: itself, every clue found there and every lead that opens it. */
 export function placeTokens(view: DetectiveRunView, placeId: string): string[] {
   return unique([
     token('place', placeId),
+    ...view.leads
+      .filter(({ opens }) => opens.some(({ kind, id }) => kind === 'place' && id === placeId))
+      .map(({ id }) => token('lead', id)),
     ...view.clues
       .filter(({ id, locationId }) => (foundAt(view, id) ?? locationId) === placeId)
       .map(({ id }) => token('clue', id)),
+  ]);
+}
+
+/** What lights a lead: itself and the places it opens. */
+export function leadTokens(view: DetectiveRunView, leadId: string): string[] {
+  return unique([
+    token('lead', leadId),
+    ...(view.leads.find(({ id }) => id === leadId)?.opens ?? [])
+      .filter(({ kind }) => kind === 'place')
+      .map(({ id }) => token('place', id)),
   ]);
 }
 
@@ -88,6 +101,7 @@ export function pickableTokens(view: DetectiveRunView): string[] {
     ...view.clues.map(({ id }) => token('clue', id)),
     ...view.suspects.map(({ id }) => token('suspect', id)),
     ...view.map.places.map(({ id }) => token('place', id)),
+    ...view.leads.map(({ id }) => token('lead', id)),
   ]).filter((entry) => safe(entry.slice(entry.indexOf(':') + 1)));
 }
 

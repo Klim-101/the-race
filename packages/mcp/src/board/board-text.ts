@@ -7,8 +7,6 @@ import { LOCALE_TEXT } from '../locales/index.js';
 /** Everything the evidence board says that is not the case's own text. */
 export interface BoardText {
   readonly pageTitle: string;
-  readonly day: string;
-  readonly of: string;
   readonly clues: string;
   readonly noClues: string;
   readonly garbled: string;

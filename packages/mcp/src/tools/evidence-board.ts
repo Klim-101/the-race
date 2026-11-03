@@ -3,10 +3,10 @@
 
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { viewRun, viewTurns } from '@the-race/engine';
-import { replaceFile, runBoardFile } from '@the-race/saves';
+import { viewRun } from '@the-race/engine';
+import { runBoardFile } from '@the-race/saves';
 import { z } from 'zod';
-import { renderEvidenceBoard } from '../board/render-board.js';
+import { ensureBoard } from '../board-file.js';
 import { defineTool } from '../define-tool.js';
 import { requireRun } from '../play.js';
 import { ToolFailure } from '../tool-error.js';
@@ -20,10 +20,11 @@ export const evidenceBoard = defineTool({
     'tried), the map of the places the detective knows with the news of the world, the conclusions, a chronicle (the time left, what the world has ' +
     'done, what is still open and the last turns the player took) and the hero with their condition, kit ' +
     'and the climate of the country. It holds exactly what the player may know and nothing more. It is written in the folder of the ' +
-    'run, under `board/`, and the player opens it in a browser. Call it when the player asks to see ' +
-    'the evidence, the board or the notes, and offer it now and then once there are several clues. It ' +
-    'changes nothing in the run and costs no time. Each run has a page of its own, always the same file, so a tab ' +
-    'the player left open shows the new state after a reload; a new run has a new page. The result carries `link`, a file:// address to give to ' +
+    'run, under `board/`, and the player opens it in a browser. Call it for the link: the first time ' +
+    'a clue is found, when the player asks to see the evidence, the board or the notes, and for a run resumed ' +
+    'in a new session. The server rewrites the page after every turn, so there is no need to call it to ' +
+    'refresh it. It changes nothing in the run and costs no time. Each run has a page of its own, always the ' +
+    'same file, so a tab the player left open shows the new state after a reload; a new run has a new page. The result carries `link`, a file:// address to give to ' +
     'the player as a clickable link, and `path`, the same page as a path to show in words. Never open, ' +
     'read or search the file yourself.',
   inputSchema: z.object({}),
@@ -38,9 +39,7 @@ export const evidenceBoard = defineTool({
     const view = viewRun(run);
     const path = runBoardFile(context.saveDir, runId);
     try {
-      await context.saveFs.mkdir(dirname(path));
-      // Replaced whole, so a browser that reloads at that moment gets the old page or the new one, never half.
-      await replaceFile(context.saveFs, path, renderEvidenceBoard(view, viewTurns(run, log)));
+      await ensureBoard(context, runId, run, log);
     } catch {
       // The system message stays out of the answer; the folder is the player's own and is named in it.
       throw new ToolFailure({

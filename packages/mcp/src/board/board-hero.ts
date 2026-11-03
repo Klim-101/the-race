@@ -4,6 +4,7 @@
 import { MAX_REPUTATION, type DetectiveRunView } from '@the-race/engine';
 import type { BoardText } from './board-text.js';
 import { escapeHtml } from './escape-html.js';
+import { NOTHING_NEW, type Fresh } from './board-new.js';
 import { named, type TabText } from './tab-text.js';
 
 const list = (items: readonly string[]): string =>
@@ -36,7 +37,12 @@ ${list(profile.seasons.map(({ id, weather }) => `${escapeHtml(climate.seasonName
  * The hero and what they carry: who they are, how they hold up, the kit and supplies, what is on its way, the
  * traits that have shown themselves and how many have not, and the weather of the country they work in.
  */
-export function renderHero(view: DetectiveRunView, board: BoardText, text: TabText): string {
+export function renderHero(
+  view: DetectiveRunView,
+  board: BoardText,
+  text: TabText,
+  fresh: Fresh = NOTHING_NEW,
+): string {
   const t = text.hero;
   const e = escapeHtml;
   const { condition } = view;
@@ -69,7 +75,7 @@ export function renderHero(view: DetectiveRunView, board: BoardText, text: TabTe
                     ? ''
                     : ` <span class="tag">${e(t.chargesLeft.replace('{n}', String(charges)))}</span>`
                   : ` <span class="warn">(${e(named({ lost: t.lost, spent: t.spent, broken: t.broken }, state))})</span>`
-              }`,
+              }${fresh.tools.has(id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ''}`,
           ),
         );
   const supplies =

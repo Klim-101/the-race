@@ -15,6 +15,27 @@ export interface TabText {
     readonly hero: string;
   };
   readonly nav: string;
+  /** The header over every tab: the turn, the day, the time left, and the hero in words and never in numbers. */
+  readonly header: {
+    /** One turn ({n}) and the day ({day}, {total}, {time}). */
+    readonly turn: string;
+    readonly day: string;
+    readonly timeLeft: string;
+    readonly condition: string;
+    readonly reputationBands: Record<'good' | 'middling' | 'poor', string>;
+    readonly nervesBands: Record<'steady' | 'strained' | 'frayed', string>;
+    readonly sleepBands: Record<'rested' | 'tired' | 'exhausted', string>;
+  };
+  /** What the last turn changed: the heading, the small mark, and one line for each kind of change. */
+  readonly fresh: {
+    readonly title: string;
+    readonly mark: string;
+    readonly clue: string;
+    readonly lead: string;
+    readonly lie: string;
+    readonly mood: string;
+    readonly tool: string;
+  };
   /** The corkboard and the history the notebooks tell: where a clue was found, to whom it was shown, the links tried. */
   readonly corkboard: {
     readonly title: string;

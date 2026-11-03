@@ -14,7 +14,7 @@ exports[`the chronicle tab > tells each kind of turn in the player's own terms, 
 <h3>Leads</h3>
 <p class="empty">No leads yet.</p>
 <h3>Still open</h3>
-<ul><li>Locked: Cellar</li><li>Closed for now: Chapel</li><li>Not yet questioned: Anna</li><li>Not yet questioned: Boris</li><li>Not yet questioned: Cora</li></ul>
+<ul><li data-pick="place:cellar" data-rel="place:cellar" tabindex="0" role="button">Locked: Cellar</li><li data-pick="place:chapel" data-rel="place:chapel" tabindex="0" role="button">Closed for now: Chapel</li><li data-pick="suspect:a" data-rel="suspect:a" tabindex="0" role="button">Not yet questioned: Anna</li><li data-pick="suspect:b" data-rel="suspect:b" tabindex="0" role="button">Not yet questioned: Boris</li><li data-pick="suspect:c" data-rel="suspect:c" tabindex="0" role="button">Not yet questioned: Cora</li></ul>
 <h3>Latest turns</h3>
 <ul><li><span class="tag">Day 2 · 10:00</span> Made the accusation</li><li><span class="tag">Day 2 · 09:50</span> Took coffee</li><li><span class="tag">Day 2 · 09:40</span> Read again: A rusty key under the counter.</li><li><span class="tag">Day 2 · 09:30</span> Linked clues that led nowhere</li><li><span class="tag">Day 2 · 09:20</span> Reached a conclusion that was already drawn</li><li><span class="tag">Day 2 · 09:10</span> Concluded: The baker hid the flour &lt;b&gt;.</li><li><span class="tag">Day 1 · 18:20</span> Questioned Anna, with pressure, showing 2 clues</li><li><span class="tag">Day 1 · 11:40</span> Searched the place: found 1</li><li><span class="tag">Day 1 · 08:20</span> Rested for the night</li><li><span class="tag">Day 1 · 08:15</span> Sat down for a while: nerves back by 1</li><li><span class="tag">Day 1 · 08:13</span> Asked the locals: something to go on</li><li><span class="tag">Day 1 · 08:12</span> Asked the locals: nothing</li><li><span class="tag">Day 1 · 08:11</span> Studied a clue: something to go on</li><li><span class="tag">Day 1 · 08:10</span> Studied a clue: nothing</li><li><span class="tag">Day 1 · 08:10</span> Looked around: found 3</li><li><span class="tag">Day 1 · 08:00</span> Went to Stall</li><li><span class="tag">Day 1 · 07:50</span> Tried to get into Cellar and could not</li></ul>
 "
@@ -40,7 +40,7 @@ exports[`the clues and links tab > says on each conclusion which clues it was dr
 <p class="tag">Shown to: not shown to anyone yet</p>
 </div>
 <h2>Conclusions (1)</h2>
-<div class="card"><p>The baker lied about the flour.</p>
+<div class="card" data-rel="clue:key clue:flour"><p>The baker lied about the flour.</p>
 <p class="tag">Drawn from:</p>
 <span class="source"><span class="num">MIRA-01</span> A rusty key under the counter.</span>
 <span class="source"><span class="num">MIRA-02</span> Flour on the cellar steps.</span></div>

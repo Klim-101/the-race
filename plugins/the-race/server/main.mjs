@@ -45208,13 +45208,13 @@ var ZodRecord2 = class _ZodRecord extends ZodType2 {
   get element() {
     return this._def.valueType;
   }
-  static create(first, second, third) {
+  static create(first, second, third2) {
     if (second instanceof ZodType2) {
       return new _ZodRecord({
         keyType: first,
         valueType: second,
         typeName: ZodFirstPartyTypeKind2.ZodRecord,
-        ...processCreateParams(third)
+        ...processCreateParams(third2)
       });
     }
     return new _ZodRecord({
@@ -50328,234 +50328,8 @@ function defineTool(spec) {
   };
 }
 
-// packages/mcp/src/profile.ts
-async function keepProfile(context2, run, log) {
-  const record2 = profileRecordOf(run, log);
-  if (record2 === void 0) return;
-  try {
-    await recordRun(context2.profileDir, record2, context2.saveFs);
-  } catch {
-  }
-}
-async function recordsOrNone(context2) {
-  const loaded = await loadProfile(context2.profileDir, context2.saveFs);
-  return loaded.ok ? loaded.records : [];
-}
-async function requireProfile(context2) {
-  const loaded = await loadProfile(context2.profileDir, context2.saveFs);
-  if (!loaded.ok) {
-    throw new ToolFailure({
-      code: "profile-unusable",
-      message: `The profile cannot be read (${loaded.reason}).`,
-      remediation: "Tell the player in one line that the profile file looks damaged and is left as it is, and go on with the game."
-    });
-  }
-  return loaded.records;
-}
-
-// packages/mcp/src/play.ts
-var TurnSchema = external_exports.int().min(0).describe(
-  'The run\'s current turn number, exactly as `turn` in the last run_view or in the "view" of the last result. A stale number is refused with the code "stale-turn" and nothing changes.'
-);
-var RunSummarySchema = external_exports.object({
-  /** The case's title and the language of the run: a HUD that listens to the tools tells one run from the next. */
-  title: external_exports.string(),
-  locale: external_exports.enum(["ru", "en"]),
-  turn: external_exports.int().min(0),
-  status: external_exports.enum(["active", "won", "lost", "gave-up"]),
-  endReason: external_exports.string().nullable(),
-  clock: external_exports.object({ day: external_exports.int(), minute: external_exports.int(), totalDays: external_exports.int() }),
-  reputation: external_exports.int(),
-  warnings: external_exports.array(external_exports.string()),
-  location: external_exports.object({ id: external_exports.string(), name: external_exports.string() }),
-  /** The places the hero knows, as in `run_view`, so a HUD never has to rebuild the map from the exits. */
-  map: external_exports.object({
-    current: external_exports.string(),
-    places: external_exports.array(
-      external_exports.object({
-        id: external_exports.string(),
-        name: external_exports.string(),
-        visited: external_exports.boolean(),
-        blocked: external_exports.enum(["locked", "closed"]).nullable(),
-        /** The reason of the lead that named the place, until the hero has been there. */
-        lead: external_exports.string().nullable()
-      })
-    ),
-    links: external_exports.array(external_exports.object({ from: external_exports.string(), to: external_exports.string() }))
-  }),
-  clueCount: external_exports.int(),
-  insightCount: external_exports.int(),
-  /** How many of the hero's traits are still hidden: a number and nothing about which. */
-  hiddenTraitCount: external_exports.int()
-});
-function summarizeRun(run) {
-  const view = viewRun(run);
-  return {
-    title: view.title,
-    locale: view.locale,
-    turn: view.turn,
-    status: view.status,
-    endReason: run.endReason,
-    clock: view.clock,
-    reputation: view.reputation,
-    warnings: [...view.warnings],
-    location: { id: view.location.id, name: view.location.name },
-    map: {
-      current: view.map.current,
-      places: view.map.places.map((place) => ({ ...place })),
-      links: view.map.links.map((link) => ({ ...link }))
-    },
-    clueCount: view.clues.length,
-    insightCount: view.insights.length,
-    hiddenTraitCount: view.hiddenTraitCount
-  };
-}
-var OutcomeSchema2 = external_exports.looseObject({ kind: external_exports.string() });
-var TurnEventSchema = external_exports.object({ description: external_exports.string(), effect: external_exports.string() });
-var FeltSignalSchema = external_exports.object({
-  signal: external_exports.string(),
-  effect: external_exports.enum(["helped", "hindered", "shielded"]),
-  skill: external_exports.string().optional(),
-  meter: external_exports.string().optional()
-});
-var RevealedTraitSchema = external_exports.object({
-  trait: external_exports.string(),
-  polarity: external_exports.enum(["positive", "negative", "mixed"]),
-  reason: external_exports.enum(REVEAL_REASONS)
-});
-var TurnResultSchema = external_exports.object({
-  outcome: OutcomeSchema2,
-  /** The random events this turn brought (in the day, at midday or in the evening, or in the night); often none. */
-  events: external_exports.array(TurnEventSchema).default([]),
-  /** What the signal did in this turn; empty for a hero without a signal and for a turn it did not touch. */
-  felt: external_exports.array(FeltSignalSchema).default([]),
-  /** The hidden traits this turn showed, each told once; empty on most turns. */
-  revealed: external_exports.array(RevealedTraitSchema).default([]),
-  /** The leads this turn earned, in the hero's own words; the view lists them all. Often none. */
-  leads: external_exports.array(external_exports.object({ id: external_exports.string(), reason: external_exports.string() })).default([]),
-  view: RunSummarySchema
-});
-var SAVE_PROBLEMS = {
-  corrupt: "The saved run is damaged and cannot be read.",
-  "unsupported-version": "The saved run was made by another version of the game.",
-  unreadable: "The saved run could not be read from the disk.",
-  "log-mismatch": "The saved run does not match its own history."
-};
-function saveUnusable(reason) {
-  return new ToolFailure({
-    code: "save-unusable",
-    message: SAVE_PROBLEMS[reason],
-    remediation: "Tell the player in one plain sentence that an earlier save could not be loaded and was left as it is, then offer a new run: it starts beside the damaged one, which blocks nothing."
-  });
-}
-async function requireRun(context2) {
-  const { run, damaged } = await loadCurrentRun(context2.saveDir, context2.saveFs);
-  if (run !== void 0) return { runId: run.runId, run: run.run, log: run.log };
-  const [newest] = damaged;
-  if (newest !== void 0) throw saveUnusable(newest.reason);
-  throw new ToolFailure({
-    code: "no-run",
-    message: "There is no run to play.",
-    remediation: "Call run_view to see where things stand; if there is no run, offer the player a new one."
-  });
-}
-function assertFreshTurn(run, turn) {
-  if (run.turn !== turn) {
-    throw new ToolFailure({
-      code: "stale-turn",
-      message: `The run is at turn ${String(run.turn)}, not turn ${String(turn)}. Nothing was changed.`,
-      remediation: "Call run_view and use its `turn`. The earlier call may already have been carried out: look at the view before deciding whether to act again."
-    });
-  }
-}
-function feltOfTurn(run, felt) {
-  const signal = run.hero.signalId;
-  return signal === void 0 ? [] : felt.map(
-    (item) => item.kind === "shield" ? { signal, effect: "shielded", meter: item.meter } : {
-      signal,
-      effect: item.amount > 0 ? "helped" : "hindered",
-      skill: item.skill
-    }
-  );
-}
-function revealedOfTurn(revealed) {
-  return revealed.map(({ traitId, polarity, reason }) => ({ trait: traitId, polarity, reason }));
-}
-function eventsOfTurn(before, after) {
-  const pool = after.case.randomEvents ?? [];
-  return after.drawnEvents.slice(before.drawnEvents.length).flatMap(({ eventId }) => pool.filter(({ id }) => id === eventId)).map(({ description, effect }) => ({ description, effect: effect.kind }));
-}
-async function playIntent(context2, turn, intent) {
-  const { run, log } = await requireRun(context2);
-  assertFreshTurn(run, turn);
-  const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
-  if (!resolution.ok) throw new ToolFailure(refusalToToolError(resolution.refusal));
-  const caseLeads = resolution.run.case.leads ?? [];
-  const recorded = recordResolution(log, run, intent, resolution);
-  await saveRun(context2.saveDir, resolution.run, context2.saveFs, recorded);
-  await keepProfile(context2, resolution.run, recorded);
-  return {
-    outcome: { ...resolution.outcome },
-    events: eventsOfTurn(run, resolution.run),
-    felt: feltOfTurn(run, resolution.felt ?? []),
-    revealed: revealedOfTurn(resolution.revealed),
-    leads: resolution.newLeadIds.flatMap(
-      (leadId) => caseLeads.filter(({ id }) => id === leadId).map(({ id, reason }) => ({ id, reason }))
-    ),
-    view: summarizeRun(resolution.run)
-  };
-}
-
-// packages/mcp/src/tools/accuse.ts
-var accuse2 = defineTool({
-  name: "accuse",
-  description: 'The final accusation, and it ends the run for good: it cannot be undone. `culpritId` is a suspect from run_view, `motiveInsightId` the id of an insight the hero has made as the motive (or null for none) and `evidenceClueIds` the found clues laid out as proof. Call it only after the player has confirmed these three choices; never to test a theory. The fields are exactly `turn`, `culpritId`, `motiveInsightId` and `evidenceClueIds`, and they are easy to confuse with the neighbouring tools: `culpritId` is not `suspectId`, `motiveInsightId` is not `insightId`, `evidenceClueIds` is not `clueIds`; `turn` is a number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with "stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, place): the run is over, so this is the only place the truth is ever shown. Tell it as the closing scene and add nothing the outcome does not contain.',
-  inputSchema: external_exports.object({
-    turn: TurnSchema,
-    culpritId: EntityIdSchema,
-    motiveInsightId: EntityIdSchema.nullable(),
-    evidenceClueIds: external_exports.array(EntityIdSchema)
-  }),
-  outputSchema: TurnResultSchema,
-  handler: ({ turn, ...rest }, context2) => playIntent(context2, turn, { kind: "accuse", ...rest })
-});
-
-// packages/mcp/src/tools/act.ts
-var ActIntentSchema = external_exports.discriminatedUnion("kind", [
-  external_exports.object({ kind: external_exports.literal("look") }),
-  external_exports.object({ kind: external_exports.literal("move"), locationId: EntityIdSchema }),
-  external_exports.object({
-    kind: external_exports.literal("search"),
-    partId: EntityIdSchema.optional(),
-    toolId: GearIdSchema.optional()
-  }),
-  external_exports.object({ kind: external_exports.literal("rest") }),
-  external_exports.object({ kind: external_exports.literal("sit") }),
-  external_exports.object({ kind: external_exports.literal("ask"), toolId: GearIdSchema.optional() }),
-  external_exports.object({ kind: external_exports.literal("study"), clueId: EntityIdSchema, toolId: GearIdSchema.optional() }),
-  UseIntentSchema,
-  RereadIntentSchema
-]);
-var act = defineTool({
-  name: "act",
-  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
-  inputSchema: external_exports.object({ turn: TurnSchema, intent: ActIntentSchema }),
-  outputSchema: TurnResultSchema,
-  handler: ({ turn, intent }, context2) => playIntent(context2, turn, intent)
-});
-
-// packages/mcp/src/tools/deduce.ts
-var deduce2 = defineTool({
-  name: "deduce",
-  description: 'Links two or more clues the hero has found into an insight. `clueIds` are ids of found clues from run_view (none may be garbled: reread them first). The size of a link is public: `openLinks` of run_view lists how many clues each conclusion still to be made takes, and a set of any other size is refused with "wrong-link-size" before any time is spent, so only try sizes it lists. Takes game time, more when the link leads nowhere. Call it when the player connects clues, while the run is active. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes. The `outcome.result` is "insight" (new: its text is in run_view), "already-known" or "nothing" (the link leads nowhere; say so without hinting how close it was). Do not use it to accuse and do not guess clue ids the player never found.',
-  inputSchema: external_exports.object({ turn: TurnSchema, clueIds: external_exports.array(EntityIdSchema).min(2) }),
-  outputSchema: TurnResultSchema,
-  handler: ({ turn, clueIds }, context2) => playIntent(context2, turn, { kind: "deduce", clueIds })
-});
-
-// packages/mcp/src/tools/evidence-board.ts
+// packages/mcp/src/board-file.ts
 import { dirname as dirname2 } from "node:path";
-import { pathToFileURL } from "node:url";
 
 // packages/mcp/src/board/render-board.ts
 import { createHash as createHash2 } from "node:crypto";
@@ -50569,12 +50343,112 @@ function truncate(text, max) {
   return characters.length <= max ? text : `${characters.slice(0, max - 1).join("")}\u2026`;
 }
 
+// packages/mcp/src/board/board-relations.ts
+var token = (entity, id) => `${entity}:${id}`;
+var SAFE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+var safe = (id) => SAFE.test(id);
+function shownPairs(view) {
+  const pairs = /* @__PURE__ */ new Map();
+  for (const { clueId, suspectId, effect } of view.history.shown) {
+    const key = `${clueId}
+${suspectId}`;
+    const before = pairs.get(key);
+    pairs.set(key, { clueId, suspectId, effect: before?.effect === "breaks-lie" ? "breaks-lie" : effect });
+  }
+  return [...pairs.values()];
+}
+var unique = (tokens) => [...new Set(tokens)];
+function foundAt(view, clueId) {
+  return view.history.finds.find((find) => find.clueId === clueId)?.locationId;
+}
+function clueTokens(view, clueId) {
+  const place = foundAt(view, clueId) ?? view.clues.find(({ id }) => id === clueId)?.locationId;
+  return unique([
+    token("clue", clueId),
+    ...place === void 0 ? [] : [token("place", place)],
+    ...shownPairs(view).filter((pair) => pair.clueId === clueId).map(({ suspectId }) => token("suspect", suspectId))
+  ]);
+}
+function suspectTokens(view, suspectId) {
+  return unique([
+    token("suspect", suspectId),
+    ...shownPairs(view).filter((pair) => pair.suspectId === suspectId).map(({ clueId }) => token("clue", clueId))
+  ]);
+}
+function placeTokens(view, placeId) {
+  return unique([
+    token("place", placeId),
+    ...view.leads.filter(({ opens }) => opens.some(({ kind, id }) => kind === "place" && id === placeId)).map(({ id }) => token("lead", id)),
+    ...view.clues.filter(({ id, locationId }) => (foundAt(view, id) ?? locationId) === placeId).map(({ id }) => token("clue", id))
+  ]);
+}
+function leadTokens(view, leadId) {
+  return unique([
+    token("lead", leadId),
+    ...(view.leads.find(({ id }) => id === leadId)?.opens ?? []).filter(({ kind }) => kind === "place").map(({ id }) => token("place", id))
+  ]);
+}
+function threadTokens(clueIds, suspectId) {
+  return unique([
+    ...clueIds.map((id) => token("clue", id)),
+    ...suspectId === void 0 ? [] : [token("suspect", suspectId)]
+  ]);
+}
+var rel = (tokens) => tokens.join(" ");
+function pickableTokens(view) {
+  return unique([
+    ...view.clues.map(({ id }) => token("clue", id)),
+    ...view.suspects.map(({ id }) => token("suspect", id)),
+    ...view.map.places.map(({ id }) => token("place", id)),
+    ...view.leads.map(({ id }) => token("lead", id))
+  ]).filter((entry) => safe(entry.slice(entry.indexOf(":") + 1)));
+}
+function highlightRules(view) {
+  return pickableTokens(view).map((entry) => {
+    const lit = `main[data-sel="${entry}"][data-sel] [data-rel~="${entry}"][data-rel]`;
+    return `${lit}{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+${lit} > rect{stroke:var(--accent);stroke-width:3}
+${lit}:is(path,line){stroke-width:4;outline:0}`;
+  }).join("\n");
+}
+
+// packages/mcp/src/board/board-new.ts
+var NOTHING_NEW = {
+  clueIds: /* @__PURE__ */ new Set(),
+  leadIds: /* @__PURE__ */ new Set(),
+  lieSuspectIds: /* @__PURE__ */ new Set(),
+  moods: /* @__PURE__ */ new Map(),
+  tools: /* @__PURE__ */ new Map()
+};
+var wornOut = (before, now) => before.state !== now.state || before.charges !== null && now.charges !== null && now.charges < before.charges;
+function freshSince(view, previous) {
+  if (previous === void 0) return NOTHING_NEW;
+  const knownClues = new Set(previous.clues.map(({ id }) => id));
+  const knownLeads = new Set(previous.leads.map(({ id }) => id));
+  const moodBefore = new Map(previous.suspects.map(({ id, mood }) => [id, mood]));
+  const kitBefore = new Map(previous.kit.map((item) => [item.id, item]));
+  return {
+    clueIds: new Set(view.clues.filter(({ id }) => !knownClues.has(id)).map(({ id }) => id)),
+    leadIds: new Set(view.leads.filter(({ id }) => !knownLeads.has(id)).map(({ id }) => id)),
+    lieSuspectIds: new Set(
+      view.history.shown.slice(previous.history.shown.length).filter(({ effect }) => effect === "breaks-lie").map(({ suspectId }) => suspectId)
+    ),
+    moods: new Map(
+      view.suspects.filter(({ id, mood }) => moodBefore.get(id) !== mood).map(({ id, mood }) => [id, mood])
+    ),
+    tools: new Map(
+      view.kit.flatMap((item) => {
+        const before = kitBefore.get(item.id);
+        return before !== void 0 && wornOut(before, item) ? [[item.id, item]] : [];
+      })
+    )
+  };
+}
+
 // packages/mcp/src/locales/en.json
 var en_default3 = {
   board: {
     pageTitle: "Evidence board",
-    day: "Day",
-    of: "of",
     clues: "Evidence",
     noClues: "Nothing on the board yet. The wall is embarrassingly bare.",
     garbled: "read badly: read it again before it counts",
@@ -50658,6 +50532,24 @@ var en_default3 = {
       hero: "Hero and kit"
     },
     nav: "Sections of the board",
+    header: {
+      turn: "Turn {n}",
+      day: "Day {day} of {total}, {time}",
+      timeLeft: "Working time left",
+      condition: "Condition",
+      reputationBands: { good: "good name", middling: "name in doubt", poor: "name in tatters" },
+      nervesBands: { steady: "steady nerves", strained: "nerves on edge", frayed: "nerves frayed" },
+      sleepBands: { rested: "rested", tired: "tired", exhausted: "exhausted" }
+    },
+    fresh: {
+      title: "New in the last turn",
+      mark: "new",
+      clue: "Clue found: {n}",
+      lead: "Lead earned: {text}",
+      lie: "A lie fell: {name}",
+      mood: "{name} is now {mood}",
+      tool: "{name} ({state})"
+    },
     map: {
       title: "Known places",
       empty: "Nowhere known yet.",
@@ -50960,8 +50852,6 @@ var en_default3 = {
 var ru_default2 = {
   board: {
     pageTitle: "\u0414\u043E\u0441\u043A\u0430 \u0443\u043B\u0438\u043A",
-    day: "\u0414\u0435\u043D\u044C",
-    of: "\u0438\u0437",
     clues: "\u0423\u043B\u0438\u043A\u0438",
     noClues: "\u041D\u0430 \u0434\u043E\u0441\u043A\u0435 \u043F\u043E\u043A\u0430 \u043F\u0443\u0441\u0442\u043E. \u0417\u0440\u0435\u043B\u0438\u0449\u0435, \u0447\u0435\u0441\u0442\u043D\u043E \u0433\u043E\u0432\u043E\u0440\u044F, \u0436\u0430\u043B\u043A\u043E\u0435.",
     garbled: "\u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043E \u043F\u043B\u043E\u0445\u043E: \u043F\u0435\u0440\u0435\u0447\u0438\u0442\u0430\u0439\u0442\u0435, \u0438\u043D\u0430\u0447\u0435 \u0432 \u0441\u0447\u0451\u0442 \u043D\u0435 \u043F\u043E\u0439\u0434\u0451\u0442",
@@ -51045,6 +50935,28 @@ var ru_default2 = {
       hero: "\u0413\u0435\u0440\u043E\u0439 \u0438 \u0441\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435"
     },
     nav: "\u0420\u0430\u0437\u0434\u0435\u043B\u044B \u0434\u043E\u0441\u043A\u0438",
+    header: {
+      turn: "\u0425\u043E\u0434 {n}",
+      day: "\u0414\u0435\u043D\u044C {day} \u0438\u0437 {total}, {time}",
+      timeLeft: "\u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0440\u0430\u0431\u043E\u0447\u0435\u0433\u043E \u0432\u0440\u0435\u043C\u0435\u043D\u0438",
+      condition: "\u0421\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u0435",
+      reputationBands: { good: "\u0434\u043E\u0431\u0440\u043E\u0435 \u0438\u043C\u044F", middling: "\u0438\u043C\u044F \u043F\u043E\u0434 \u0441\u043E\u043C\u043D\u0435\u043D\u0438\u0435\u043C", poor: "\u0438\u043C\u044F \u0432 \u043A\u043B\u043E\u0447\u044C\u044F" },
+      nervesBands: {
+        steady: "\u043D\u0435\u0440\u0432\u044B \u0432 \u043F\u043E\u0440\u044F\u0434\u043A\u0435",
+        strained: "\u043D\u0435\u0440\u0432\u044B \u043D\u0430 \u043F\u0440\u0435\u0434\u0435\u043B\u0435",
+        frayed: "\u043D\u0435\u0440\u0432\u044B \u0438\u0441\u0442\u0440\u0451\u043F\u0430\u043D\u044B"
+      },
+      sleepBands: { rested: "\u0432\u044B\u0441\u043F\u0430\u043B\u0441\u044F", tired: "\u0443\u0441\u0442\u0430\u043B", exhausted: "\u0432\u0430\u043B\u0438\u0442\u0441\u044F \u0441 \u043D\u043E\u0433" }
+    },
+    fresh: {
+      title: "\u041D\u043E\u0432\u043E\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u0445\u043E\u0434",
+      mark: "\u043D\u043E\u0432\u043E\u0435",
+      clue: "\u041D\u0430\u0439\u0434\u0435\u043D\u0430 \u0443\u043B\u0438\u043A\u0430: {n}",
+      lead: "\u041D\u043E\u0432\u0430\u044F \u0437\u0430\u0446\u0435\u043F\u043A\u0430: {text}",
+      lie: "\u041B\u043E\u0436\u044C \u0440\u0443\u0445\u043D\u0443\u043B\u0430: {name}",
+      mood: "{name}: {mood}",
+      tool: "{name} ({state})"
+    },
     map: {
       title: "\u0418\u0437\u0432\u0435\u0441\u0442\u043D\u044B\u0435 \u043C\u0435\u0441\u0442\u0430",
       empty: "\u041F\u043E\u043A\u0430 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0438\u0437\u0432\u0435\u0441\u0442\u043D\u043E.",
@@ -51355,7 +51267,8 @@ var TAB_TEXT = {
 
 // packages/mcp/src/board/board-chronicle.ts
 var REREAD_LENGTH = 70;
-var list = (items) => `<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+var list = (items) => `<ul>${items.map((item) => item.startsWith("<li") ? item : `<li>${item}</li>`).join("")}</ul>`;
+var pickable = (entity, id, tokens, body2) => `<li data-pick="${escapeHtml(token(entity, id))}" data-rel="${escapeHtml(rel(tokens))}" tabindex="0" role="button">${body2}</li>`;
 function clock(minute) {
   return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
 }
@@ -51406,17 +51319,30 @@ function windowText(window, text) {
 function openQuestions(view, text) {
   const places = view.map.places.filter(({ visited }) => !visited);
   const name = (place) => escapeHtml(place.name);
+  const atPlace = (word) => (place) => pickable("place", place.id, placeTokens(view, place.id), `${escapeHtml(word)}: ${name(place)}`);
   return [
-    ...places.filter(({ blocked }) => blocked === null).map((place) => `${escapeHtml(text.unvisited)}: ${name(place)}`),
-    ...places.filter(({ blocked }) => blocked === "locked").map((place) => `${escapeHtml(text.locked)}: ${name(place)}`),
-    ...places.filter(({ blocked }) => blocked === "closed").map((place) => `${escapeHtml(text.closed)}: ${name(place)}`),
-    ...view.suspects.filter(({ statements }) => statements.length === 0).map((suspect) => `${escapeHtml(text.unquestioned)}: ${escapeHtml(suspect.name)}`),
+    ...places.filter(({ blocked }) => blocked === null).map(atPlace(text.unvisited)),
+    ...places.filter(({ blocked }) => blocked === "locked").map(atPlace(text.locked)),
+    ...places.filter(({ blocked }) => blocked === "closed").map(atPlace(text.closed)),
+    ...view.suspects.filter(({ statements }) => statements.length === 0).map(
+      (suspect) => pickable(
+        "suspect",
+        suspect.id,
+        suspectTokens(view, suspect.id),
+        `${escapeHtml(text.unquestioned)}: ${escapeHtml(suspect.name)}`
+      )
+    ),
     ...view.clues.filter(({ garbled }) => garbled).map(
-      ({ description }) => `${escapeHtml(text.reread)}: ${escapeHtml(truncate(description, REREAD_LENGTH))}`
+      ({ id, description }) => pickable(
+        "clue",
+        id,
+        clueTokens(view, id),
+        `${escapeHtml(text.reread)}: ${escapeHtml(truncate(description, REREAD_LENGTH))}`
+      )
     )
   ];
 }
-function renderChronicle(view, turns, text) {
+function renderChronicle(view, turns, text, fresh = NOTHING_NEW) {
   const t = text.chronicle;
   const e = escapeHtml;
   const open3 = openQuestions(view, t);
@@ -51436,7 +51362,12 @@ ${view.chronicle.events.length === 0 ? `<p class="empty">${e(t.noEvents)}</p>` :
 <h3>${e(t.leads)}</h3>
 ${view.leads.length === 0 ? `<p class="empty">${e(t.noLeads)}</p>` : list(
     view.leads.map(
-      ({ reason, window }) => `${e(reason)}${window === null ? "" : ` <span class="tag">${e(windowText(window, t))}</span>`}`
+      ({ id, reason, window }) => pickable(
+        "lead",
+        id,
+        leadTokens(view, id),
+        `${e(reason)}${window === null ? "" : ` <span class="tag">${e(windowText(window, t))}</span>`}${fresh.leadIds.has(id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ""}`
+      )
     )
   )}
 <h3>${e(t.open)}</h3>
@@ -51447,67 +51378,6 @@ ${turns.length === 0 ? `<p class="empty">${e(t.noTurns)}</p>` : list(
       (turn) => `<span class="tag">${e(t.day)} ${String(turn.day)} \xB7 ${clock(turn.minute)}</span> ${e(turnText(turn, text))}`
     )
   )}`;
-}
-
-// packages/mcp/src/board/board-relations.ts
-var token = (entity, id) => `${entity}:${id}`;
-var SAFE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-var safe = (id) => SAFE.test(id);
-function shownPairs(view) {
-  const pairs = /* @__PURE__ */ new Map();
-  for (const { clueId, suspectId, effect } of view.history.shown) {
-    const key = `${clueId}
-${suspectId}`;
-    const before = pairs.get(key);
-    pairs.set(key, { clueId, suspectId, effect: before?.effect === "breaks-lie" ? "breaks-lie" : effect });
-  }
-  return [...pairs.values()];
-}
-var unique = (tokens) => [...new Set(tokens)];
-function foundAt(view, clueId) {
-  return view.history.finds.find((find) => find.clueId === clueId)?.locationId;
-}
-function clueTokens(view, clueId) {
-  const place = foundAt(view, clueId) ?? view.clues.find(({ id }) => id === clueId)?.locationId;
-  return unique([
-    token("clue", clueId),
-    ...place === void 0 ? [] : [token("place", place)],
-    ...shownPairs(view).filter((pair) => pair.clueId === clueId).map(({ suspectId }) => token("suspect", suspectId))
-  ]);
-}
-function suspectTokens(view, suspectId) {
-  return unique([
-    token("suspect", suspectId),
-    ...shownPairs(view).filter((pair) => pair.suspectId === suspectId).map(({ clueId }) => token("clue", clueId))
-  ]);
-}
-function placeTokens(view, placeId) {
-  return unique([
-    token("place", placeId),
-    ...view.clues.filter(({ id, locationId }) => (foundAt(view, id) ?? locationId) === placeId).map(({ id }) => token("clue", id))
-  ]);
-}
-function threadTokens(clueIds, suspectId) {
-  return unique([
-    ...clueIds.map((id) => token("clue", id)),
-    ...suspectId === void 0 ? [] : [token("suspect", suspectId)]
-  ]);
-}
-var rel = (tokens) => tokens.join(" ");
-function pickableTokens(view) {
-  return unique([
-    ...view.clues.map(({ id }) => token("clue", id)),
-    ...view.suspects.map(({ id }) => token("suspect", id)),
-    ...view.map.places.map(({ id }) => token("place", id))
-  ]).filter((entry) => safe(entry.slice(entry.indexOf(":") + 1)));
-}
-function highlightRules(view) {
-  return pickableTokens(view).map((entry) => {
-    const lit = `main[data-sel="${entry}"][data-sel] [data-rel~="${entry}"][data-rel]`;
-    return `${lit}{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
-${lit} > rect{stroke:var(--accent);stroke-width:3}
-${lit}:is(path,line){stroke-width:4;outline:0}`;
-  }).join("\n");
 }
 
 // packages/mcp/src/board/board-opened.ts
@@ -51666,6 +51536,53 @@ ${renderOpened(view, board, text)}</div>
 <p class="note">${e(words.legend)}</p>`;
 }
 
+// packages/mcp/src/board/board-header.ts
+function third(value, max) {
+  const share = max <= 0 ? 0 : value / max;
+  return share < 1 / 3 ? 0 : share < 2 / 3 ? 1 : 2;
+}
+function conditionWords(view, text) {
+  const words = text.header;
+  const { condition } = view;
+  const reputation = ["poor", "middling", "good"][third(view.reputation, MAX_REPUTATION)];
+  const nerves = ["frayed", "strained", "steady"][third(condition.nerves, condition.maxNerves)];
+  const sleep = ["rested", "tired", "exhausted"][third(condition.sleepDebt, condition.maxSleepDebt)];
+  return [
+    words.nervesBands[nerves],
+    words.sleepBands[sleep],
+    ...condition.conditions.map(({ id }) => named(text.hero.conditionNames, id)),
+    words.reputationBands[reputation]
+  ];
+}
+function freshLines(view, fresh, text) {
+  const t = text.fresh;
+  const fill = (line, values) => Object.entries(values).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, value), line);
+  return [
+    ...view.clues.filter(({ id }) => fresh.clueIds.has(id)).map(({ number: number4 }) => fill(t.clue, { n: number4 })),
+    ...view.leads.filter(({ id }) => fresh.leadIds.has(id)).map(({ reason }) => fill(t.lead, { text: reason })),
+    ...view.suspects.filter(({ id }) => fresh.lieSuspectIds.has(id)).map(({ name }) => fill(t.lie, { name })),
+    ...view.suspects.filter(({ id }) => fresh.moods.has(id)).map(({ name, mood }) => fill(t.mood, { name, mood: text.statements.moods[mood] })),
+    ...[...fresh.tools.values()].map(
+      (item) => fill(t.tool, {
+        name: named(text.hero.gear, item.id),
+        state: item.state === "owned" ? fill(text.hero.chargesLeft, { n: String(item.charges) }) : named({ lost: text.hero.lost, spent: text.hero.spent, broken: text.hero.broken }, item.state)
+      })
+    )
+  ];
+}
+function renderHeader(view, board, text, fresh) {
+  const e = escapeHtml;
+  const words = text.header;
+  const lines = freshLines(view, fresh, text);
+  const day = words.day.replace("{day}", String(view.clock.day)).replace("{total}", String(view.clock.totalDays)).replace("{time}", clock(view.clock.minute));
+  return `<header class="head">
+<h1>${e(view.title)}</h1>
+<p class="meta">${e(words.turn.replace("{n}", String(view.turn)))} \xB7 ${e(day)} \xB7 ${e(board.status[view.status])} \xB7 ${e(board.detective)}: ${e(view.hero.name)}</p>
+<p class="meta">${e(words.timeLeft)}: <strong>${e(duration3(view.chronicle.activeMinutesLeft, text.chronicle))}</strong> \xB7 ${e(words.condition)}: ${e(conditionWords(view, text).join(", "))}</p>${lines.length === 0 ? "" : `
+<div class="fresh"><span class="tag">${e(text.fresh.title)}</span><ul>${lines.map((line) => `<li>${e(line)}</li>`).join("")}</ul></div>`}
+</header>`;
+}
+
 // packages/mcp/src/board/board-hero.ts
 var list2 = (items) => `<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
 function meter(label, value, max) {
@@ -51685,7 +51602,7 @@ ${list2(profile.seasons.map(({ id, weather }) => `${escapeHtml(climate.seasonNam
 <p>${escapeHtml(climate.hazards)}: ${escapeHtml(hazards)}</p>
 </div>`;
 }
-function renderHero(view, board, text) {
+function renderHero(view, board, text, fresh = NOTHING_NEW) {
   const t = text.hero;
   const e = escapeHtml;
   const { condition } = view;
@@ -51700,7 +51617,7 @@ function renderHero(view, board, text) {
   const warnings = view.warnings.length === 0 ? "" : list2(view.warnings.map((id) => `<span class="warn">${e(named(t.warningNames, id))}</span>`));
   const kit = view.kit.length === 0 ? `<p class="empty">${e(t.nothing)}</p>` : list2(
     view.kit.map(
-      ({ id, state, charges }) => `${e(named(t.gear, id))}${state === "owned" ? charges === null ? "" : ` <span class="tag">${e(t.chargesLeft.replace("{n}", String(charges)))}</span>` : ` <span class="warn">(${e(named({ lost: t.lost, spent: t.spent, broken: t.broken }, state))})</span>`}`
+      ({ id, state, charges }) => `${e(named(t.gear, id))}${state === "owned" ? charges === null ? "" : ` <span class="tag">${e(t.chargesLeft.replace("{n}", String(charges)))}</span>` : ` <span class="warn">(${e(named({ lost: t.lost, spent: t.spent, broken: t.broken }, state))})</span>`}${fresh.tools.has(id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ""}`
     )
   );
   const supplies = view.supplies.length === 0 ? `<p class="empty">${e(t.nothing)}</p>` : list2(view.supplies.map(({ id, count }) => `${e(named(t.consumables, id))} \xD7${String(count)}`));
@@ -51852,7 +51769,7 @@ function shut(restore){if(m.getAttribute('data-open')===null)return;m.removeAttr
 function pick(t){if(m.getAttribute('data-sel')===t){m.removeAttribute('data-sel')}else{m.setAttribute('data-sel',t)}}
 function show(el){var id=el.getAttribute('data-open');if(!id){shut(false);return}if(m.getAttribute('data-open')===id){shut(true);return}m.setAttribute('data-open',id);back=el;var card=document.getElementById('open-'+id);if(card&&card.focus)card.focus()}
 function choose(el){pick(el.getAttribute('data-pick'));show(el)}
-document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}var el=t.closest&&t.closest('[data-pick]');if(el){choose(el)}else if(!(t.closest&&t.closest('a'))){m.removeAttribute('data-sel');shut(false)}});
+document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}if(t.closest&&t.closest('nav.tabs')){shut(false);return}var el=t.closest&&t.closest('[data-pick]');if(el){choose(el)}else if(!(t.closest&&t.closest('a'))){m.removeAttribute('data-sel');shut(false)}});
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){m.removeAttribute('data-sel');shut(true);return}if(e.key==='Enter'||e.key===' '){var el=e.target.closest&&e.target.closest('[data-pick]');if(el){e.preventDefault();choose(el)}}});
 })();`;
 var SCRIPT_HASH = createHash2("sha256").update(SCRIPT).digest("base64");
@@ -51863,6 +51780,11 @@ var STYLE = `
 body{margin:0;padding:24px 16px 48px;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,'Times New Roman',serif;overflow-wrap:anywhere}
 main{max-width:1040px;margin:0 auto}
 h1{margin:0 0 4px;font-size:1.8rem}
+.head{border-bottom:2px solid var(--line);margin:0 0 12px;padding:0 0 8px}
+.head .meta{margin:0 0 4px}
+.fresh{margin:6px 0 0;padding:6px 12px;background:var(--paper);color:var(--paper-ink);border-left:3px double var(--margin);box-shadow:1px 2px 4px var(--shadow);font-family:'Segoe Print','Bradley Hand',Georgia,serif}
+.fresh ul{margin:2px 0 0}
+.new{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;background:var(--margin);color:var(--card);font:700 11px/1.6 system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;vertical-align:middle}
 h2{margin:28px 0 12px;font-size:1.1rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
 h3{margin:22px 0 8px;font-size:1rem;color:var(--accent)}
 .meta{color:var(--muted);margin:0 0 16px}
@@ -51965,7 +51887,7 @@ function shownTo(view, suspectId, text) {
 ${lines.join("\n")}
 `;
 }
-function renderSuspects(view, board, text) {
+function renderSuspects(view, board, text, fresh) {
   const e = escapeHtml;
   return view.suspects.map((suspect) => {
     const where = suspect.place === null ? board.anywhere : suspect.place.id === view.location.id ? board.here : suspect.place.name;
@@ -51974,7 +51896,7 @@ function renderSuspects(view, board, text) {
     ).join("\n");
     const attrs = `data-pick="suspect:${e(suspect.id)}" data-rel="${e(rel(suspectTokens(view, suspect.id)))}" tabindex="0" role="button"`;
     return `<div class="card" ${attrs}>
-<strong>${e(suspect.name)}</strong>
+<strong>${e(suspect.name)}</strong>${fresh.moods.has(suspect.id) || fresh.lieSuspectIds.has(suspect.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ""}
 <p>${e(suspect.persona)}</p>
 <p class="tag">${e(text.statements.moods[suspect.mood])}${suspect.closed ? ` \xB7 ${e(text.statements.closed)}` : ""}</p>
 <p class="tag">${e(board.whereabouts)}: ${e(where)}</p>
@@ -51996,7 +51918,7 @@ function tried(view, text) {
   });
   return `<ul class="tried">${items.join("\n")}</ul>`;
 }
-function renderClues(view, board, text) {
+function renderClues(view, board, text, fresh) {
   const e = escapeHtml;
   const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
   const suspectName = new Map(view.suspects.map(({ id, name }) => [id, name]));
@@ -52012,7 +51934,7 @@ function renderClues(view, board, text) {
     );
     const shownLine = shown.length === 0 ? text.corkboard.nobody : shown.join(", ");
     return `<div class="card" ${attrs}>
-<span class="tag"><span class="num">${e(clue.number)}</span> \xB7 ${e(where)}</span>
+<span class="tag"><span class="num">${e(clue.number)}</span> \xB7 ${e(where)}</span>${fresh.clueIds.has(clue.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ""}
 <p>${e(clue.description)}</p>${clue.garbled ? `
 <p class="warn">${e(board.garbled)}</p>` : ""}
 <p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
@@ -52026,7 +51948,7 @@ function renderClues(view, board, text) {
     const from = sources.length === 0 ? "" : `
 <p class="tag">${e(text.corkboard.drawnFrom)}:</p>
 ${sources.join("\n")}`;
-    return `<div class="card"><p>${e(insight)}</p>${from}</div>`;
+    return `<div class="card" data-rel="${e(rel(threadTokens(clueIds)))}"><p>${e(insight)}</p>${from}</div>`;
   }).join("\n");
   return `<h2>${e(text.links.title)}</h2>
 ${renderLinks(view, text)}
@@ -52037,18 +51959,18 @@ ${clues}
 <h2>${e(board.insights)} (${String(view.insights.length)})</h2>
 ${insights}`;
 }
-function renderEvidenceBoard(view, turns = []) {
+function renderEvidenceBoard(view, turns = [], previous) {
   const board = BOARD_TEXT[view.locale];
   const text = TAB_TEXT[view.locale];
   const e = escapeHtml;
-  const hour = String(Math.floor(view.clock.minute / 60)).padStart(2, "0");
-  const minute = String(view.clock.minute % 60).padStart(2, "0");
+  const fresh = freshSince(view, previous);
   const news = view.news.length === 0 ? "" : `<h2>${e(board.news)}</h2>
 <ul>${view.news.map((line) => `<li>${e(line)}</li>`).join("\n")}</ul>`;
   return `<!doctype html>
 <html lang="${view.locale}">
 <head>
 <meta charset="utf-8">
+<meta name="turn" content="${String(view.turn)}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-${SCRIPT_HASH}'">
 <title>${e(board.pageTitle)}: ${e(view.title)}</title>
@@ -52058,8 +51980,7 @@ ${openedRules(view)}</style>
 </head>
 <body>
 <main>
-<h1>${e(view.title)}</h1>
-<p class="meta">${e(board.day)} ${String(view.clock.day)} ${e(board.of)} ${String(view.clock.totalDays)}, ${hour}:${minute} \xB7 ${e(board.status[view.status])} \xB7 ${e(board.detective)}: ${e(view.hero.name)}</p>
+${renderHeader(view, board, text, fresh)}
 <p class="premise">${e(view.premise)}</p>
 <p class="meta">${e(board.nowAt)}: <strong>${e(view.location.name)}</strong></p>
 <nav class="tabs" aria-label="${e(text.nav)}">${TAB_IDS.map((id) => `<a href="#${id}">${e(text.tabs[id])}</a>`).join("")}</nav>
@@ -52069,10 +51990,10 @@ ${renderCork(view, board, text)}
 </section>
 <section class="tab notebook" id="suspects">
 <h2>${e(board.suspects)}</h2>
-${renderSuspects(view, board, text)}
+${renderSuspects(view, board, text, fresh)}
 </section>
 <section class="tab notebook" id="clues">
-${renderClues(view, board, text)}
+${renderClues(view, board, text, fresh)}
 </section>
 <section class="tab" id="map">
 <h2>${e(text.map.title)}</h2>
@@ -52081,11 +52002,11 @@ ${news}
 </section>
 <section class="tab" id="chronicle">
 <h2>${e(text.tabs.chronicle)}</h2>
-${renderChronicle(view, turns, text)}
+${renderChronicle(view, turns, text, fresh)}
 </section>
 <section class="tab" id="hero">
 <h2>${e(text.tabs.hero)}</h2>
-${renderHero(view, board, text)}
+${renderHero(view, board, text, fresh)}
 </section>
 </main>
 <script>${SCRIPT}</script>
@@ -52094,10 +52015,266 @@ ${renderHero(view, board, text)}
 `;
 }
 
+// packages/mcp/src/board-file.ts
+async function writeBoard(context2, runId, run, log, before) {
+  const path = runBoardFile(context2.saveDir, runId);
+  await context2.saveFs.mkdir(dirname2(path));
+  await replaceFile(
+    context2.saveFs,
+    path,
+    renderEvidenceBoard(
+      viewRun(run),
+      viewTurns(run, log),
+      before === void 0 ? void 0 : viewRun(before)
+    )
+  );
+  return path;
+}
+async function ensureBoard(context2, runId, run, log) {
+  const path = runBoardFile(context2.saveDir, runId);
+  const page = await context2.saveFs.readFile(path);
+  if (page?.includes(`<meta name="turn" content="${String(run.turn)}">`) === true) return path;
+  return writeBoard(context2, runId, run, log);
+}
+async function keepBoard(context2, runId, run, log, before) {
+  try {
+    await writeBoard(context2, runId, run, log, before);
+  } catch {
+  }
+}
+
+// packages/mcp/src/profile.ts
+async function keepProfile(context2, run, log) {
+  const record2 = profileRecordOf(run, log);
+  if (record2 === void 0) return;
+  try {
+    await recordRun(context2.profileDir, record2, context2.saveFs);
+  } catch {
+  }
+}
+async function recordsOrNone(context2) {
+  const loaded = await loadProfile(context2.profileDir, context2.saveFs);
+  return loaded.ok ? loaded.records : [];
+}
+async function requireProfile(context2) {
+  const loaded = await loadProfile(context2.profileDir, context2.saveFs);
+  if (!loaded.ok) {
+    throw new ToolFailure({
+      code: "profile-unusable",
+      message: `The profile cannot be read (${loaded.reason}).`,
+      remediation: "Tell the player in one line that the profile file looks damaged and is left as it is, and go on with the game."
+    });
+  }
+  return loaded.records;
+}
+
+// packages/mcp/src/play.ts
+var TurnSchema = external_exports.int().min(0).describe(
+  'The run\'s current turn number, exactly as `turn` in the last run_view or in the "view" of the last result. A stale number is refused with the code "stale-turn" and nothing changes.'
+);
+var RunSummarySchema = external_exports.object({
+  /** The case's title and the language of the run: a HUD that listens to the tools tells one run from the next. */
+  title: external_exports.string(),
+  locale: external_exports.enum(["ru", "en"]),
+  turn: external_exports.int().min(0),
+  status: external_exports.enum(["active", "won", "lost", "gave-up"]),
+  endReason: external_exports.string().nullable(),
+  clock: external_exports.object({ day: external_exports.int(), minute: external_exports.int(), totalDays: external_exports.int() }),
+  reputation: external_exports.int(),
+  warnings: external_exports.array(external_exports.string()),
+  location: external_exports.object({ id: external_exports.string(), name: external_exports.string() }),
+  /** The places the hero knows, as in `run_view`, so a HUD never has to rebuild the map from the exits. */
+  map: external_exports.object({
+    current: external_exports.string(),
+    places: external_exports.array(
+      external_exports.object({
+        id: external_exports.string(),
+        name: external_exports.string(),
+        visited: external_exports.boolean(),
+        blocked: external_exports.enum(["locked", "closed"]).nullable(),
+        /** The reason of the lead that named the place, until the hero has been there. */
+        lead: external_exports.string().nullable()
+      })
+    ),
+    links: external_exports.array(external_exports.object({ from: external_exports.string(), to: external_exports.string() }))
+  }),
+  clueCount: external_exports.int(),
+  insightCount: external_exports.int(),
+  /** How many of the hero's traits are still hidden: a number and nothing about which. */
+  hiddenTraitCount: external_exports.int()
+});
+function summarizeRun(run) {
+  const view = viewRun(run);
+  return {
+    title: view.title,
+    locale: view.locale,
+    turn: view.turn,
+    status: view.status,
+    endReason: run.endReason,
+    clock: view.clock,
+    reputation: view.reputation,
+    warnings: [...view.warnings],
+    location: { id: view.location.id, name: view.location.name },
+    map: {
+      current: view.map.current,
+      places: view.map.places.map((place) => ({ ...place })),
+      links: view.map.links.map((link) => ({ ...link }))
+    },
+    clueCount: view.clues.length,
+    insightCount: view.insights.length,
+    hiddenTraitCount: view.hiddenTraitCount
+  };
+}
+var OutcomeSchema2 = external_exports.looseObject({ kind: external_exports.string() });
+var TurnEventSchema = external_exports.object({ description: external_exports.string(), effect: external_exports.string() });
+var FeltSignalSchema = external_exports.object({
+  signal: external_exports.string(),
+  effect: external_exports.enum(["helped", "hindered", "shielded"]),
+  skill: external_exports.string().optional(),
+  meter: external_exports.string().optional()
+});
+var RevealedTraitSchema = external_exports.object({
+  trait: external_exports.string(),
+  polarity: external_exports.enum(["positive", "negative", "mixed"]),
+  reason: external_exports.enum(REVEAL_REASONS)
+});
+var TurnResultSchema = external_exports.object({
+  outcome: OutcomeSchema2,
+  /** The random events this turn brought (in the day, at midday or in the evening, or in the night); often none. */
+  events: external_exports.array(TurnEventSchema).default([]),
+  /** What the signal did in this turn; empty for a hero without a signal and for a turn it did not touch. */
+  felt: external_exports.array(FeltSignalSchema).default([]),
+  /** The hidden traits this turn showed, each told once; empty on most turns. */
+  revealed: external_exports.array(RevealedTraitSchema).default([]),
+  /** The leads this turn earned, in the hero's own words; the view lists them all. Often none. */
+  leads: external_exports.array(external_exports.object({ id: external_exports.string(), reason: external_exports.string() })).default([]),
+  view: RunSummarySchema
+});
+var SAVE_PROBLEMS = {
+  corrupt: "The saved run is damaged and cannot be read.",
+  "unsupported-version": "The saved run was made by another version of the game.",
+  unreadable: "The saved run could not be read from the disk.",
+  "log-mismatch": "The saved run does not match its own history."
+};
+function saveUnusable(reason) {
+  return new ToolFailure({
+    code: "save-unusable",
+    message: SAVE_PROBLEMS[reason],
+    remediation: "Tell the player in one plain sentence that an earlier save could not be loaded and was left as it is, then offer a new run: it starts beside the damaged one, which blocks nothing."
+  });
+}
+async function requireRun(context2) {
+  const { run, damaged } = await loadCurrentRun(context2.saveDir, context2.saveFs);
+  if (run !== void 0) return { runId: run.runId, run: run.run, log: run.log };
+  const [newest] = damaged;
+  if (newest !== void 0) throw saveUnusable(newest.reason);
+  throw new ToolFailure({
+    code: "no-run",
+    message: "There is no run to play.",
+    remediation: "Call run_view to see where things stand; if there is no run, offer the player a new one."
+  });
+}
+function assertFreshTurn(run, turn) {
+  if (run.turn !== turn) {
+    throw new ToolFailure({
+      code: "stale-turn",
+      message: `The run is at turn ${String(run.turn)}, not turn ${String(turn)}. Nothing was changed.`,
+      remediation: "Call run_view and use its `turn`. The earlier call may already have been carried out: look at the view before deciding whether to act again."
+    });
+  }
+}
+function feltOfTurn(run, felt) {
+  const signal = run.hero.signalId;
+  return signal === void 0 ? [] : felt.map(
+    (item) => item.kind === "shield" ? { signal, effect: "shielded", meter: item.meter } : {
+      signal,
+      effect: item.amount > 0 ? "helped" : "hindered",
+      skill: item.skill
+    }
+  );
+}
+function revealedOfTurn(revealed) {
+  return revealed.map(({ traitId, polarity, reason }) => ({ trait: traitId, polarity, reason }));
+}
+function eventsOfTurn(before, after) {
+  const pool = after.case.randomEvents ?? [];
+  return after.drawnEvents.slice(before.drawnEvents.length).flatMap(({ eventId }) => pool.filter(({ id }) => id === eventId)).map(({ description, effect }) => ({ description, effect: effect.kind }));
+}
+async function playIntent(context2, turn, intent) {
+  const { runId, run, log } = await requireRun(context2);
+  assertFreshTurn(run, turn);
+  const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
+  if (!resolution.ok) throw new ToolFailure(refusalToToolError(resolution.refusal));
+  const caseLeads = resolution.run.case.leads ?? [];
+  const recorded = recordResolution(log, run, intent, resolution);
+  await saveRun(context2.saveDir, resolution.run, context2.saveFs, recorded);
+  await keepProfile(context2, resolution.run, recorded);
+  await keepBoard(context2, runId, resolution.run, recorded, run);
+  return {
+    outcome: { ...resolution.outcome },
+    events: eventsOfTurn(run, resolution.run),
+    felt: feltOfTurn(run, resolution.felt ?? []),
+    revealed: revealedOfTurn(resolution.revealed),
+    leads: resolution.newLeadIds.flatMap(
+      (leadId) => caseLeads.filter(({ id }) => id === leadId).map(({ id, reason }) => ({ id, reason }))
+    ),
+    view: summarizeRun(resolution.run)
+  };
+}
+
+// packages/mcp/src/tools/accuse.ts
+var accuse2 = defineTool({
+  name: "accuse",
+  description: 'The final accusation, and it ends the run for good: it cannot be undone. `culpritId` is a suspect from run_view, `motiveInsightId` the id of an insight the hero has made as the motive (or null for none) and `evidenceClueIds` the found clues laid out as proof. Call it only after the player has confirmed these three choices; never to test a theory. The fields are exactly `turn`, `culpritId`, `motiveInsightId` and `evidenceClueIds`, and they are easy to confuse with the neighbouring tools: `culpritId` is not `suspectId`, `motiveInsightId` is not `insightId`, `evidenceClueIds` is not `clueIds`; `turn` is a number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with "stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, place): the run is over, so this is the only place the truth is ever shown. Tell it as the closing scene and add nothing the outcome does not contain.',
+  inputSchema: external_exports.object({
+    turn: TurnSchema,
+    culpritId: EntityIdSchema,
+    motiveInsightId: EntityIdSchema.nullable(),
+    evidenceClueIds: external_exports.array(EntityIdSchema)
+  }),
+  outputSchema: TurnResultSchema,
+  handler: ({ turn, ...rest }, context2) => playIntent(context2, turn, { kind: "accuse", ...rest })
+});
+
+// packages/mcp/src/tools/act.ts
+var ActIntentSchema = external_exports.discriminatedUnion("kind", [
+  external_exports.object({ kind: external_exports.literal("look") }),
+  external_exports.object({ kind: external_exports.literal("move"), locationId: EntityIdSchema }),
+  external_exports.object({
+    kind: external_exports.literal("search"),
+    partId: EntityIdSchema.optional(),
+    toolId: GearIdSchema.optional()
+  }),
+  external_exports.object({ kind: external_exports.literal("rest") }),
+  external_exports.object({ kind: external_exports.literal("sit") }),
+  external_exports.object({ kind: external_exports.literal("ask"), toolId: GearIdSchema.optional() }),
+  external_exports.object({ kind: external_exports.literal("study"), clueId: EntityIdSchema, toolId: GearIdSchema.optional() }),
+  UseIntentSchema,
+  RereadIntentSchema
+]);
+var act = defineTool({
+  name: "act",
+  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
+  inputSchema: external_exports.object({ turn: TurnSchema, intent: ActIntentSchema }),
+  outputSchema: TurnResultSchema,
+  handler: ({ turn, intent }, context2) => playIntent(context2, turn, intent)
+});
+
+// packages/mcp/src/tools/deduce.ts
+var deduce2 = defineTool({
+  name: "deduce",
+  description: 'Links two or more clues the hero has found into an insight. `clueIds` are ids of found clues from run_view (none may be garbled: reread them first). The size of a link is public: `openLinks` of run_view lists how many clues each conclusion still to be made takes, and a set of any other size is refused with "wrong-link-size" before any time is spent, so only try sizes it lists. Takes game time, more when the link leads nowhere. Call it when the player connects clues, while the run is active. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes. The `outcome.result` is "insight" (new: its text is in run_view), "already-known" or "nothing" (the link leads nowhere; say so without hinting how close it was). Do not use it to accuse and do not guess clue ids the player never found.',
+  inputSchema: external_exports.object({ turn: TurnSchema, clueIds: external_exports.array(EntityIdSchema).min(2) }),
+  outputSchema: TurnResultSchema,
+  handler: ({ turn, clueIds }, context2) => playIntent(context2, turn, { kind: "deduce", clueIds })
+});
+
 // packages/mcp/src/tools/evidence-board.ts
+import { dirname as dirname3 } from "node:path";
+import { pathToFileURL } from "node:url";
 var evidenceBoard = defineTool({
   name: "evidence_board",
-  description: "Writes the evidence board: a single HTML page the player opens in a browser, in six tabs: a corkboard with the people as photographs, the clues as cards and thread for the links tried and the clues shown, the suspects and the clues as notebooks (where each clue was found, to whom it was shown, the links tried), the map of the places the detective knows with the news of the world, the conclusions, a chronicle (the time left, what the world has done, what is still open and the last turns the player took) and the hero with their condition, kit and the climate of the country. It holds exactly what the player may know and nothing more. It is written in the folder of the run, under `board/`, and the player opens it in a browser. Call it when the player asks to see the evidence, the board or the notes, and offer it now and then once there are several clues. It changes nothing in the run and costs no time. Each run has a page of its own, always the same file, so a tab the player left open shows the new state after a reload; a new run has a new page. The result carries `link`, a file:// address to give to the player as a clickable link, and `path`, the same page as a path to show in words. Never open, read or search the file yourself.",
+  description: "Writes the evidence board: a single HTML page the player opens in a browser, in six tabs: a corkboard with the people as photographs, the clues as cards and thread for the links tried and the clues shown, the suspects and the clues as notebooks (where each clue was found, to whom it was shown, the links tried), the map of the places the detective knows with the news of the world, the conclusions, a chronicle (the time left, what the world has done, what is still open and the last turns the player took) and the hero with their condition, kit and the climate of the country. It holds exactly what the player may know and nothing more. It is written in the folder of the run, under `board/`, and the player opens it in a browser. Call it for the link: the first time a clue is found, when the player asks to see the evidence, the board or the notes, and for a run resumed in a new session. The server rewrites the page after every turn, so there is no need to call it to refresh it. It changes nothing in the run and costs no time. Each run has a page of its own, always the same file, so a tab the player left open shows the new state after a reload; a new run has a new page. The result carries `link`, a file:// address to give to the player as a clickable link, and `path`, the same page as a path to show in words. Never open, read or search the file yourself.",
   inputSchema: external_exports.object({}),
   outputSchema: external_exports.object({
     path: external_exports.string(),
@@ -52110,12 +52287,11 @@ var evidenceBoard = defineTool({
     const view = viewRun(run);
     const path = runBoardFile(context2.saveDir, runId);
     try {
-      await context2.saveFs.mkdir(dirname2(path));
-      await replaceFile(context2.saveFs, path, renderEvidenceBoard(view, viewTurns(run, log)));
+      await ensureBoard(context2, runId, run, log);
     } catch {
       throw new ToolFailure({
         code: "board-unwritable",
-        message: `The evidence board could not be written to ${dirname2(path)}.`,
+        message: `The evidence board could not be written to ${dirname3(path)}.`,
         remediation: 'Tell the player in one plain sentence that the board folder cannot be written, and that they can choose another game folder in the plugin settings (the "Game folder" option, or the RACE_GAME_FOLDER variable) and start a new session. The run itself is fine: carry on without the board.'
       });
     }

@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the header > matches its snapshot 1`] = `
+"
+<h1>The Vanishing Wheel</h1>
+<p class="meta">Turn 4 · Day 2 of 3, 09:05 · in progress · Detective: Mira</p>
+<p class="meta">Working time left: <strong>10 h 0 min</strong> · Condition: steady nerves, rested, good name</p>
+<div class="fresh"><span class="tag">New in the last turn</span><ul><li>Clue found: MIRA-01</li><li>Lead earned: A cat points the way.</li><li>A lie fell: Anna</li><li>Anna is now shaken</li><li>lockpicks (left: 2)</li></ul></div>
+"
+`;
