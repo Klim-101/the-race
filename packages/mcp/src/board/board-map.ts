@@ -3,7 +3,8 @@
 
 import type { DetectiveRunView } from '@the-race/engine';
 import { wrap } from './board-cork.js';
-import { placeTokens, rel, token } from './board-relations.js';
+import { planId, planKey, renderPlan } from './board-plan.js';
+import { isSafeId, placeTokens, rel, token } from './board-relations.js';
 import { escapeHtml, truncate } from './escape-html.js';
 import type { TabText } from './tab-text.js';
 
@@ -338,7 +339,10 @@ export function renderMap(view: DetectiveRunView, text: TabText): string {
     const classes = ['block', visited ? 'visited' : 'unvisited', current ? 'current' : '', door.blocked ?? '']
       .filter((name) => name !== '')
       .join(' ');
-    const pick = `data-pick="${e(token('place', door.id))}" data-rel="${e(rel(tokens))}" tabindex="0" role="button"`;
+    const opens = isSafeId(door.building) ? door.building : null;
+    const plan =
+      opens === null ? '' : ` data-open="${e(planKey(opens))}" aria-controls="${e(planId(opens))}"`;
+    const pick = `data-pick="${e(token('place', door.id))}" data-rel="${e(rel(tokens))}" tabindex="0" role="button"${plan}`;
     // The door is a short line from the block to the band it stands on.
     const doorLine =
       home === null
@@ -359,10 +363,17 @@ export function renderMap(view: DetectiveRunView, text: TabText): string {
       )}<text class="state" x="${whole(left + BLOCK_W / 2)}" y="${whole(top + 51)}" text-anchor="middle">${e(rest)}</text>${current ? pin(left + 10, top + BLOCK_H - 10, text.map.you) : ''}${sign(door.blocked, left + BLOCK_W - 10, top + 10, state)}${leadMark(door, left + 10, top + 10)}${badge(clues, left + BLOCK_W, top, text.map.cluesHere)}</g>`;
   });
 
+  // The plan of each building, hidden until its block is clicked (see `planRules`).
+  const plans = layout.blocks.flatMap(({ door, rooms, street }) =>
+    isSafeId(door.building)
+      ? [renderPlan(view, rooms, door, door.building, street?.place.name ?? null, text)]
+      : [],
+  );
   const caption =
     layout.elsewhere === null
       ? ''
       : `<text class="elsewhere" x="${whole(layout.elsewhere.x)}" y="${whole(layout.elsewhere.y)}">${e(text.map.elsewhere)}</text>`;
   return `<div class="graph paper-map"><svg class="map" viewBox="0 0 ${String(layout.width)} ${String(layout.height)}" role="img" aria-label="${e(text.map.title)}" style="min-width:${String(Math.min(layout.width, 720))}px">${compass(layout.width, text.map.north)}<g class="lanes">${lanes.join('')}</g>${streets.join('')}${blocks.join('')}${caption}</svg></div>
-<p class="tag">${e(text.map.legend)}</p>`;
+<p class="tag">${e(text.map.legend)}</p>
+${plans.join('\n')}`;
 }

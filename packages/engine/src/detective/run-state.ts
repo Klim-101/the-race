@@ -786,6 +786,22 @@ export interface DetectiveRunView {
     }[];
   };
   /**
+   * The parts the hero has noticed in each place they have visited, in the order the case lists them, for the plan
+   * of a building: what stands in the way of each, whether it has been searched and the clues the search gave. What
+   * a part holds is never here before it is found, and a place with no noticed part is left out.
+   */
+  readonly placeParts: readonly {
+    readonly placeId: string;
+    readonly parts: readonly {
+      readonly id: string;
+      readonly name: string;
+      readonly obstacle: ObstacleKind | null;
+      readonly searched: boolean;
+      /** The ids of the clues the search found; empty for a part not searched and for one that held nothing. */
+      readonly gave: readonly string[];
+    }[];
+  }[];
+  /**
    * The places the hero knows, as a graph: every place visited, and every place next to one of them, which
    * stays a name until the hero goes there. Nothing beyond what the hero has seen is in it.
    */
@@ -964,6 +980,27 @@ function sourceOf(run: DetectiveRunState, deed: LeadTrigger): LeadSource {
   }
 }
 
+/** The noticed parts of every place the hero has been to, with what the searches of them gave. */
+function viewPlaceParts(run: DetectiveRunState): DetectiveRunView['placeParts'] {
+  return run.case.locations
+    .filter(({ id }) => run.visitedLocationIds.includes(id))
+    .flatMap(({ id: placeId }) => {
+      const parts = partsOfPlace(run, placeId)
+        .filter(({ id }) => run.noticedPartIds.includes(id))
+        .map(({ id, name, obstacle }) => {
+          const searched = run.searchedParts.find(({ partId }) => partId === id);
+          return {
+            id,
+            name,
+            obstacle,
+            searched: searched !== undefined,
+            gave: (searched?.foundClueIds ?? []).filter((clueId) => run.foundClueIds.includes(clueId)),
+          };
+        });
+      return parts.length === 0 ? [] : [{ placeId, parts }];
+    });
+}
+
 function viewLeads(run: DetectiveRunState): DetectiveRunView['leads'] {
   const { locations } = run.case;
   const leads = run.case.leads ?? [];
@@ -1119,6 +1156,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
       exits,
     },
     map: viewMap(run),
+    placeParts: viewPlaceParts(run),
     leads: viewLeads(run),
     suspects: detectiveCase.suspects.map((suspect) => {
       const placeId = suspectPlace(run, suspect);

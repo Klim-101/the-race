@@ -243,6 +243,43 @@ describe('what earned a lead', () => {
   });
 });
 
+describe('the parts of the places the hero has been to', () => {
+  const partsOf = (run: DetectiveRunState) => viewRun(run).placeParts;
+
+  it('are the noticed ones only, with what the search gave, and a place not visited has none', () => {
+    const run = atStall(newRun({ edit: () => undefined }));
+    expect(partsOf(run)).toEqual([]);
+
+    const seen = looked(run);
+    const noticed = partsOf(seen);
+    expect(noticed.map(({ placeId }) => placeId)).toEqual(['cheese-stall']);
+    expect(noticed[0]?.parts.every(({ searched, gave }) => !searched && gave.length === 0)).toBe(true);
+
+    const searched = ok(resolveIntent(seen, { kind: 'search', partId: 'plinth' }, dice(20))).run;
+    const plinth = partsOf(searched)[0]?.parts.find(({ id }) => id === 'plinth');
+    expect(plinth).toMatchObject({ searched: true, gave: ['flour-crumbs'] });
+  });
+
+  it('never name what a part holds before it is found, nor a part that was not noticed', () => {
+    const seen = looked(atStall(newRun({ edit: () => undefined })));
+
+    const text = JSON.stringify(partsOf(seen));
+
+    expect(text).not.toContain('flour-crumbs');
+    expect(text).not.toContain('blue-glove');
+    expect(text).not.toContain('holds');
+  });
+
+  it('keep the obstacle of a part, and are none in a run from before parts', () => {
+    const seen = looked(atStall(newRun({ edit: () => undefined })));
+    const crate = partsOf(seen)[0]?.parts.find(({ id }) => id === 'crate');
+    const old = atStall(newRun({ ruleset: LEADS_RULESET_VERSION - 3 }));
+
+    expect(crate).toMatchObject({ obstacle: 'locked', searched: false, gave: [] });
+    expect(partsOf(old)).toEqual([]);
+  });
+});
+
 function looked(run: DetectiveRunState): DetectiveRunState {
   return ok(resolveIntent(run, { kind: 'look' }, createRng(3))).run;
 }

@@ -448,6 +448,27 @@
         "accuse": "accusation"
       }
     },
+    "plan": {
+      "title": "Plan of {name}",
+      "opensOnto": "Opens onto",
+      "closeHint": "Click the building again, or press Esc, to put the plan away.",
+      "notEntered": "not entered yet",
+      "noParts": "nothing noticed here yet",
+      "searched": "searched",
+      "gave": "gave",
+      "gaveNothing": "found nothing",
+      "tool": "tool in the kit: {tool}",
+      "noTool": "no tool for it in the kit",
+      "doorTo": "door between {a} and {b}",
+      "obstacles": {
+        "locked": "locked",
+        "dark": "dark",
+        "soft": "soft cover",
+        "trace": "a faint trace",
+        "sealed": "sealed",
+        "digital": "digital lock"
+      }
+    },
     "clueGrid": {
       "filters": "Filter the clues",
       "place": "Found at",
