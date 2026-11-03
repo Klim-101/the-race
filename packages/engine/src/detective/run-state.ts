@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { z } from 'zod';
+import { assertNever } from '../assert-never.js';
 import type { Rng } from '../dice.js';
 import type { Locale } from '../locale.js';
 import {
@@ -43,8 +44,10 @@ import {
 import {
   DetectiveCaseSchema,
   EntityIdSchema,
+  LeadTriggerSchema,
   type DetectiveCase,
   type Exposure,
+  type Lead,
   type LeadTrigger,
   type Location,
   type ObstacleKind,
@@ -153,7 +156,12 @@ export const SuspectMoodSchema = z.object({
 });
 export type SuspectMood = z.infer<typeof SuspectMoodSchema>;
 
-export const EarnedLeadSchema = z.object({ leadId: EntityIdSchema, turn: z.int().min(1) });
+export const EarnedLeadSchema = z.object({
+  leadId: EntityIdSchema,
+  turn: z.int().min(1),
+  /** The deed that earned the lead. A lead earned before the engine wrote it down has none. */
+  source: LeadTriggerSchema.optional(),
+});
 export type EarnedLead = z.infer<typeof EarnedLeadSchema>;
 
 export const SearchedPartSchema = z.object({
@@ -475,8 +483,10 @@ export function findClue(run: DetectiveRunState, clueId: string): DetectiveRunSt
  * way round an obstacle hands over the clue behind it, which can earn leads in its turn.
  */
 export function grantLeads(run: DetectiveRunState, deeds: readonly LeadTrigger[]): DetectiveRunState {
-  const earned = deeds.flatMap((deed) => leadsEarnedBy(run, deed));
-  return [...new Set(earned)].reduce((state, lead) => {
+  const earned = new Map<Lead, LeadTrigger>();
+  for (const deed of deeds)
+    for (const lead of leadsEarnedBy(run, deed)) earned.set(lead, earned.get(lead) ?? deed);
+  return [...earned].reduce((state, [lead, deed]) => {
     const parts = state.case.locations.flatMap((location) => location.parts ?? []);
     const shown = parts.filter(({ requiresLead }) => requiresLead === lead.id).map(({ id }) => id);
     const given = parts.flatMap((part) =>
@@ -486,7 +496,7 @@ export function grantLeads(run: DetectiveRunState, deeds: readonly LeadTrigger[]
     );
     const withLead: DetectiveRunState = {
       ...state,
-      earnedLeads: [...state.earnedLeads, { leadId: lead.id, turn: state.turn + 1 }],
+      earnedLeads: [...state.earnedLeads, { leadId: lead.id, turn: state.turn + 1, source: deed }],
     };
     return given.reduce(findClue, noticeParts(withLead, shown));
   }, run);
@@ -689,6 +699,15 @@ export function recordDrawnEvent(
 }
 
 /** What the player and the narrator may know. It leaves out the truth, the solution and unrevealed traits. */
+/** The deed that earned a lead, named by ids the hero already knows; never whether the lead is false. */
+export type LeadSource =
+  | { readonly kind: 'clue'; readonly clueId: string }
+  | { readonly kind: 'talk'; readonly suspectId: string }
+  | { readonly kind: 'lie'; readonly suspectId: string | null }
+  | { readonly kind: 'deduction'; readonly insightId: string }
+  | { readonly kind: 'locals'; readonly locationId: string }
+  | { readonly kind: 'study'; readonly clueId: string; readonly tool: string | null };
+
 export interface DetectiveRunView {
   readonly title: string;
   readonly premise: string;
@@ -811,6 +830,8 @@ export interface DetectiveRunView {
   readonly leads: readonly {
     readonly id: string;
     readonly reason: string;
+    /** What the hero did to earn it, or `null` for a lead earned before this was written down. */
+    readonly source: LeadSource | null;
     /** The hours of the day the lead can be followed in, if it has a window. */
     readonly window: { readonly fromMinute: number; readonly untilMinute: number } | null;
     /** Whether the hour of the day lets the hero follow it now. */
@@ -913,16 +934,40 @@ function leadMarker(run: DetectiveRunState, location: Location): string | null {
   return lead !== undefined && isLeadEarned(run, lead.id) ? lead.reason : null;
 }
 
+/** What earned a lead, in the ids of the thing the hero did it with; a lie is named by the person who told it. */
+function sourceOf(run: DetectiveRunState, deed: LeadTrigger): LeadSource {
+  switch (deed.kind) {
+    case 'clue':
+      return { kind: 'clue', clueId: deed.clueId };
+    case 'talk':
+      return { kind: 'talk', suspectId: deed.suspectId };
+    case 'lie': {
+      const liar = run.case.suspects.find(({ lies }) => lies.some(({ id }) => id === deed.lieId));
+      return { kind: 'lie', suspectId: liar?.id ?? null };
+    }
+    case 'deduction':
+      return { kind: 'deduction', insightId: deed.deductionId };
+    case 'locals':
+      return { kind: 'locals', locationId: deed.locationId };
+    case 'study':
+      return { kind: 'study', clueId: deed.clueId, tool: deed.tool ?? null };
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever(deed);
+  }
+}
+
 function viewLeads(run: DetectiveRunState): DetectiveRunView['leads'] {
   const { locations } = run.case;
   const leads = run.case.leads ?? [];
-  return run.earnedLeads.flatMap(({ leadId }) =>
+  return run.earnedLeads.flatMap(({ leadId, source }) =>
     leads
       .filter(({ id }) => id === leadId)
       .map(({ id, reason, window }) => ({
         id,
         reason,
         window: window ?? null,
+        source: source === undefined ? null : sourceOf(run, source),
         openNow: isLeadOpen(run, id),
         opens: [
           ...locations

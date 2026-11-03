@@ -989,10 +989,11 @@ describe('the weather in the chronicle', () => {
 
 describe('the leads on the chronicle tab', () => {
   const leads = [
-    { id: 'a', reason: 'A cat points the way.', window: null, openNow: true, opens: [] },
+    { id: 'a', reason: 'A cat points the way.', source: null, window: null, openNow: true, opens: [] },
     {
       id: 'b',
       reason: 'The archive is watched by day.',
+      source: null,
       window: { fromMinute: 22 * 60, untilMinute: 5 * 60 + 30 },
       openNow: false,
       opens: [],

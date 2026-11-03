@@ -79,6 +79,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
 const LEAD = {
   id: 'cat',
   reason: 'A cat points the way.',
+  source: null,
   window: null,
   openNow: true,
   opens: [{ kind: 'place', id: 'archive', name: 'Archive' }],

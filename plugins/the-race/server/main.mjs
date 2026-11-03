@@ -35886,7 +35886,12 @@ var SuspectMoodSchema = external_exports.object({
   /** The minute of the run, counted from its start, until which the suspect will not talk; `null` for one who will. */
   closedUntil: external_exports.int().min(0).nullable()
 });
-var EarnedLeadSchema = external_exports.object({ leadId: EntityIdSchema, turn: external_exports.int().min(1) });
+var EarnedLeadSchema = external_exports.object({
+  leadId: EntityIdSchema,
+  turn: external_exports.int().min(1),
+  /** The deed that earned the lead. A lead earned before the engine wrote it down has none. */
+  source: LeadTriggerSchema.optional()
+});
 var SearchedPartSchema = external_exports.object({
   partId: EntityIdSchema,
   locationId: EntityIdSchema,
@@ -36152,8 +36157,10 @@ function findClue(run, clueId) {
   );
 }
 function grantLeads(run, deeds) {
-  const earned = deeds.flatMap((deed) => leadsEarnedBy(run, deed));
-  return [...new Set(earned)].reduce((state, lead) => {
+  const earned = /* @__PURE__ */ new Map();
+  for (const deed of deeds)
+    for (const lead of leadsEarnedBy(run, deed)) earned.set(lead, earned.get(lead) ?? deed);
+  return [...earned].reduce((state, [lead, deed]) => {
     const parts = state.case.locations.flatMap((location) => location.parts ?? []);
     const shown2 = parts.filter(({ requiresLead }) => requiresLead === lead.id).map(({ id }) => id);
     const given = parts.flatMap(
@@ -36161,7 +36168,7 @@ function grantLeads(run, deeds) {
     );
     const withLead = {
       ...state,
-      earnedLeads: [...state.earnedLeads, { leadId: lead.id, turn: state.turn + 1 }]
+      earnedLeads: [...state.earnedLeads, { leadId: lead.id, turn: state.turn + 1, source: deed }]
     };
     return given.reduce(findClue, noticeParts(withLead, shown2));
   }, run);
@@ -36322,14 +36329,36 @@ function leadMarker(run, location) {
   const lead = run.case.leads?.find(({ id }) => id === location.requiresLead);
   return lead !== void 0 && isLeadEarned(run, lead.id) ? lead.reason : null;
 }
+function sourceOf(run, deed) {
+  switch (deed.kind) {
+    case "clue":
+      return { kind: "clue", clueId: deed.clueId };
+    case "talk":
+      return { kind: "talk", suspectId: deed.suspectId };
+    case "lie": {
+      const liar = run.case.suspects.find(({ lies }) => lies.some(({ id }) => id === deed.lieId));
+      return { kind: "lie", suspectId: liar?.id ?? null };
+    }
+    case "deduction":
+      return { kind: "deduction", insightId: deed.deductionId };
+    case "locals":
+      return { kind: "locals", locationId: deed.locationId };
+    case "study":
+      return { kind: "study", clueId: deed.clueId, tool: deed.tool ?? null };
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever2(deed);
+  }
+}
 function viewLeads(run) {
   const { locations } = run.case;
   const leads = run.case.leads ?? [];
   return run.earnedLeads.flatMap(
-    ({ leadId }) => leads.filter(({ id }) => id === leadId).map(({ id, reason, window }) => ({
+    ({ leadId, source }) => leads.filter(({ id }) => id === leadId).map(({ id, reason, window }) => ({
       id,
       reason,
       window: window ?? null,
+      source: source === void 0 ? null : sourceOf(run, source),
       openNow: isLeadOpen(run, id),
       opens: [
         ...locations.filter(({ requiresLead }) => requiresLead === id).map((place) => ({ kind: "place", id: place.id, name: place.name })),
@@ -50366,12 +50395,36 @@ var unique = (tokens) => [...new Set(tokens)];
 function foundAt(view, clueId) {
   return view.history.finds.find((find) => find.clueId === clueId)?.locationId;
 }
+function leadSourceTokens(view, lead) {
+  const { source } = lead;
+  if (source === null) return [];
+  switch (source.kind) {
+    case "clue":
+    case "study":
+      return [token("clue", source.clueId)];
+    case "talk":
+      return [token("suspect", source.suspectId)];
+    case "lie":
+      return source.suspectId === null ? [] : [token("suspect", source.suspectId)];
+    case "deduction":
+      return (view.insights.find(({ id }) => id === source.insightId)?.clueIds ?? []).map(
+        (id) => token("clue", id)
+      );
+    case "locals":
+      return [token("place", source.locationId)];
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever2(source);
+  }
+}
+var leadsTying = (view, tied) => view.leads.filter((lead) => leadSourceTokens(view, lead).includes(tied)).map(({ id }) => token("lead", id));
 function clueTokens(view, clueId) {
   const place = foundAt(view, clueId) ?? view.clues.find(({ id }) => id === clueId)?.locationId;
   return unique([
     token("clue", clueId),
     ...place === void 0 ? [] : [token("place", place)],
-    ...shownPairs(view).filter((pair) => pair.clueId === clueId).map(({ suspectId }) => token("suspect", suspectId))
+    ...shownPairs(view).filter((pair) => pair.clueId === clueId).map(({ suspectId }) => token("suspect", suspectId)),
+    ...leadsTying(view, token("clue", clueId))
   ]);
 }
 function suspectTokens(view, suspectId) {
@@ -50379,7 +50432,8 @@ function suspectTokens(view, suspectId) {
   return unique([
     token("suspect", suspectId),
     ...place === null || place === void 0 ? [] : [token("place", place.id)],
-    ...shownPairs(view).filter((pair) => pair.suspectId === suspectId).map(({ clueId }) => token("clue", clueId))
+    ...shownPairs(view).filter((pair) => pair.suspectId === suspectId).map(({ clueId }) => token("clue", clueId)),
+    ...leadsTying(view, token("suspect", suspectId))
   ]);
 }
 function placeTokens(view, placeId) {
@@ -50387,13 +50441,16 @@ function placeTokens(view, placeId) {
     token("place", placeId),
     ...view.suspects.filter(({ place }) => place?.id === placeId).map(({ id }) => token("suspect", id)),
     ...view.leads.filter(({ opens }) => opens.some(({ kind, id }) => kind === "place" && id === placeId)).map(({ id }) => token("lead", id)),
+    ...leadsTying(view, token("place", placeId)),
     ...view.clues.filter(({ id, locationId }) => (foundAt(view, id) ?? locationId) === placeId).map(({ id }) => token("clue", id))
   ]);
 }
 function leadTokens(view, leadId) {
+  const lead = view.leads.find(({ id }) => id === leadId);
   return unique([
     token("lead", leadId),
-    ...(view.leads.find(({ id }) => id === leadId)?.opens ?? []).filter(({ kind }) => kind === "place").map(({ id }) => token("place", id))
+    ...(lead?.opens ?? []).filter(({ kind }) => kind === "place").map(({ id }) => token("place", id)),
+    ...lead === void 0 ? [] : leadSourceTokens(view, lead)
   ]);
 }
 function threadTokens(clueIds, suspectId) {
@@ -50857,6 +50914,24 @@ var en_default3 = {
       closeHint: "Click again, or press Esc, to put it back.",
       fullText: "Full text"
     },
+    leadPins: {
+      tag: "Lead",
+      opens: "Opens",
+      opensNothing: "has opened nothing yet",
+      followNow: "can be followed now",
+      shutNow: "shut at this hour",
+      from: {
+        clue: "from clue {n}",
+        study: "from studying {n}",
+        studyWith: "from studying {n} with {tool}",
+        talk: "from a talk with {name}",
+        lie: "{name}'s lie fell",
+        deduction: "from a conclusion",
+        locals: "from asking the locals at {place}",
+        unknown: "what earned it is not recorded"
+      },
+      legend: "Green thread: a lead to what earned it."
+    },
     clueGrid: {
       filters: "Filter the clues",
       place: "Found at",
@@ -51283,6 +51358,24 @@ var ru_default2 = {
       closeHint: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437 \u0438\u043B\u0438 Esc, \u0447\u0442\u043E\u0431\u044B \u0443\u0431\u0440\u0430\u0442\u044C.",
       fullText: "\u041F\u043E\u043B\u043D\u044B\u0439 \u0442\u0435\u043A\u0441\u0442"
     },
+    leadPins: {
+      tag: "\u0417\u0430\u0446\u0435\u043F\u043A\u0430",
+      opens: "\u041E\u0442\u043A\u0440\u044B\u0432\u0430\u0435\u0442",
+      opensNothing: "\u043F\u043E\u043A\u0430 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043E\u0442\u043A\u0440\u044B\u043B\u0430",
+      followNow: "\u043C\u043E\u0436\u043D\u043E \u0438\u0434\u0442\u0438 \u043F\u043E \u043D\u0435\u0439 \u0441\u0435\u0439\u0447\u0430\u0441",
+      shutNow: "\u0432 \u044D\u0442\u043E\u0442 \u0447\u0430\u0441 \u0437\u0430\u043A\u0440\u044B\u0442\u0430",
+      from: {
+        clue: "\u0438\u0437 \u0443\u043B\u0438\u043A\u0438 {n}",
+        study: "\u0438\u0437 \u0438\u0437\u0443\u0447\u0435\u043D\u0438\u044F {n}",
+        studyWith: "\u0438\u0437 \u0438\u0437\u0443\u0447\u0435\u043D\u0438\u044F {n}: {tool}",
+        talk: "\u0438\u0437 \u0440\u0430\u0437\u0433\u043E\u0432\u043E\u0440\u0430 \u0441 {name}",
+        lie: "\u043B\u043E\u0436\u044C {name} \u0440\u0443\u0445\u043D\u0443\u043B\u0430",
+        deduction: "\u0438\u0437 \u0432\u044B\u0432\u043E\u0434\u0430",
+        locals: "\u0438\u0437 \u0440\u0430\u0441\u0441\u043F\u0440\u043E\u0441\u043E\u0432 \u043C\u0435\u0441\u0442\u043D\u044B\u0445: {place}",
+        unknown: "\u0447\u0435\u043C \u0437\u0430\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u0430 \u2014 \u043D\u0435 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E"
+      },
+      legend: "\u0417\u0435\u043B\u0451\u043D\u0430\u044F \u043D\u0438\u0442\u044C: \u043E\u0442 \u0437\u0430\u0446\u0435\u043F\u043A\u0438 \u043A \u0442\u043E\u043C\u0443, \u0447\u0442\u043E \u0435\u0451 \u0434\u0430\u043B\u043E."
+    },
     clueGrid: {
       filters: "\u041E\u0442\u0431\u043E\u0440 \u0443\u043B\u0438\u043A",
       place: "\u041D\u0430\u0439\u0434\u0435\u043D\u043E \u0432",
@@ -51602,9 +51695,12 @@ var WHERE_LENGTH = 30;
 var WHERE_LINES = 3;
 var LINE_LENGTH = 22;
 var LINES = 3;
-var WIDTH = MARGIN * 2 + COLUMNS * CARD_W + (COLUMNS - 1) * GAP;
+var BASE_WIDTH = MARGIN * 2 + COLUMNS * CARD_W + (COLUMNS - 1) * GAP;
+var LEAD_X = MARGIN + COLUMNS * (CARD_W + GAP);
+var LEAD_LINE = 30;
 var ROW_STEP = CARD_H + GAP + 8;
 var whole = (value) => String(Math.round(value));
+var nameOf = (names, id) => names.get(id) ?? id;
 function wrap(text, length, lines) {
   const out = [];
   let current = "";
@@ -51629,14 +51725,14 @@ var tilt = (index) => index * 37 % 7 * 0.7 - 2.1;
 function renderCork(view, board, text) {
   const e = escapeHtml;
   const words = text.corkboard;
-  if (view.clues.length === 0 && view.suspects.length === 0) {
+  if (view.clues.length === 0 && view.suspects.length === 0 && view.leads.length === 0) {
     return `<p class="empty">${e(words.empty)}</p>`;
   }
   const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
   const turnOf = new Map(view.history.finds.map(({ clueId, turn }) => [clueId, turn]));
   const people = view.suspects.length;
-  const step = people > 1 ? Math.min(PHOTO_W + 40, (WIDTH - 2 * MARGIN - PHOTO_W) / (people - 1)) : 0;
-  const startX = (WIDTH - ((people - 1) * step + PHOTO_W)) / 2;
+  const step = people > 1 ? Math.min(PHOTO_W + 40, (BASE_WIDTH - 2 * MARGIN - PHOTO_W) / (people - 1)) : 0;
+  const startX = (BASE_WIDTH - ((people - 1) * step + PHOTO_W)) / 2;
   const photoTop = MARGIN;
   const captionLength = Math.max(8, Math.floor((people > 1 ? step : PHOTO_W + 40) / 7.5));
   const photoPin = /* @__PURE__ */ new Map();
@@ -51671,6 +51767,49 @@ function renderCork(view, board, text) {
     const turned = `rotate(${tilt(index).toFixed(1)} ${whole(x + CARD_W / 2)} ${whole(y + CARD_H / 2)})`;
     return `<g class="card-pin${clue.garbled ? " garbled" : ""}" transform="${turned}" ${attrs}><title>${e(clue.description)}</title><rect class="paper" x="${whole(x)}" y="${whole(y)}" width="${String(CARD_W)}" height="${String(CARD_H)}" rx="3"/><text class="num" x="${whole(x + 12)}" y="${whole(y + 26)}">${e(clue.number)}</text>${lines}<g class="where" ${placeAttrs}>${whereLines}</g><circle class="pin" cx="${whole(x + CARD_W / 2)}" cy="${whole(y)}" r="6"/></g>`;
   });
+  const suspectName = new Map(view.suspects.map(({ id, name }) => [id, name]));
+  const clueNumber2 = new Map(view.clues.map(({ id, number: number4 }) => [id, number4]));
+  const sourceLine = (lead) => {
+    const t = text.leadPins.from;
+    const { source } = lead;
+    if (source === null) return t.unknown;
+    switch (source.kind) {
+      case "clue":
+        return t.clue.replace("{n}", nameOf(clueNumber2, source.clueId));
+      case "study":
+        return source.tool === null ? t.study.replace("{n}", nameOf(clueNumber2, source.clueId)) : t.studyWith.replace("{n}", nameOf(clueNumber2, source.clueId)).replace("{tool}", named(text.hero.gear, source.tool));
+      case "talk":
+        return t.talk.replace("{name}", nameOf(suspectName, source.suspectId));
+      case "lie":
+        return source.suspectId === null ? t.unknown : t.lie.replace("{name}", nameOf(suspectName, source.suspectId));
+      case "deduction":
+        return t.deduction;
+      case "locals":
+        return t.locals.replace("{place}", nameOf(placeName, source.locationId));
+      /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+      default:
+        return assertNever2(source);
+    }
+  };
+  const leadCards = view.leads.map((lead, index) => {
+    const y = cardsTop + index * ROW_STEP;
+    const opens = lead.opens.map(({ name }) => name).join(", ");
+    const status = !lead.openNow ? text.leadPins.shutNow : lead.opens.length === 0 ? text.leadPins.opensNothing : text.leadPins.followNow;
+    const state = !lead.openNow ? " shut" : lead.opens.length === 0 ? " idle" : "";
+    const pinLines = [
+      ...wrap(lead.reason, LINE_LENGTH, 2).map((line) => ({ cls: "line", line })),
+      { cls: "", line: truncate(sourceLine(lead), LEAD_LINE) },
+      ...lead.opens.length === 0 ? [] : [{ cls: "", line: truncate(`${text.leadPins.opens}: ${opens}`, LEAD_LINE) }],
+      ...lead.window === null ? [] : [{ cls: "", line: truncate(windowText(lead.window, text.chronicle), LEAD_LINE) }],
+      { cls: "status", line: status }
+    ];
+    const body2 = pinLines.map(
+      ({ cls, line }, row) => `<text${cls === "" ? "" : ` class="${cls}"`} x="${whole(LEAD_X + 12)}" y="${whole(y + 40 + row * 15)}">${e(line)}</text>`
+    ).join("");
+    const attrs = `data-pick="lead:${e(lead.id)}" data-rel="${e(rel(leadTokens(view, lead.id)))}" tabindex="0" role="button" aria-label="${e(`${text.leadPins.tag}: ${truncate(lead.reason, 90)}`)}"`;
+    const turned = `rotate(${tilt(index + 3).toFixed(1)} ${whole(LEAD_X + CARD_W / 2)} ${whole(y + CARD_H / 2)})`;
+    return `<g class="lead-pin${state}" transform="${turned}" ${attrs}><title>${e(`${lead.reason} (${sourceLine(lead)}${opens === "" ? "" : `; ${text.leadPins.opens}: ${opens}`}) \u2014 ${status}`)}</title><rect class="paper" x="${whole(LEAD_X)}" y="${whole(y)}" width="${String(CARD_W)}" height="${String(CARD_H)}" rx="3"/><text class="num" x="${whole(LEAD_X + 12)}" y="${whole(y + 22)}">${e(text.leadPins.tag.toUpperCase())}</text>${body2}<circle class="pin" cx="${whole(LEAD_X + CARD_W / 2)}" cy="${whole(y)}" r="6"/></g>`;
+  });
   const threads = [];
   const links = [...view.history.links].sort(
     (a, b) => Number(a.result !== "nothing") - Number(b.result !== "nothing")
@@ -51694,12 +51833,25 @@ function renderCork(view, board, text) {
       `<path class="thread shown ${effect === "breaks-lie" ? "breaks" : "plain"}" d="${d}" data-rel="${e(rel(threadTokens([clueId], suspectId)))}"/>`
     );
   }
+  for (const [index, lead] of view.leads.entries()) {
+    const from = { x: LEAD_X + CARD_W / 2, y: cardsTop + index * ROW_STEP };
+    for (const tied of leadSourceTokens(view, lead)) {
+      const id = tied.slice(tied.indexOf(":") + 1);
+      const to = tied.startsWith("clue:") ? cluePin.get(id) : tied.startsWith("suspect:") ? photoPin.get(id) : void 0;
+      if (to === void 0) continue;
+      const lift = to.y < from.y ? -70 : 70;
+      const d = `M${whole(from.x)} ${whole(from.y)} C${whole(from.x)} ${whole(from.y + lift)} ${whole(to.x)} ${whole(to.y - lift)} ${whole(to.x)} ${whole(to.y)}`;
+      threads.push(`<path class="thread earned" d="${d}" data-rel="${e(rel([`lead:${lead.id}`, tied]))}"/>`);
+    }
+  }
   const rows = Math.max(1, Math.ceil(view.clues.length / COLUMNS));
-  const height = cardsTop + (view.clues.length === 0 ? 0 : rows * ROW_STEP) + MARGIN;
+  const tall = Math.max(view.clues.length === 0 ? 0 : rows, view.leads.length);
+  const height = cardsTop + tall * ROW_STEP + MARGIN;
+  const width = BASE_WIDTH + (view.leads.length === 0 ? 0 : CARD_W + GAP);
   return `<p class="note">${e(words.hint)}</p>
-<div class="cork-wrap"><div class="cork"><svg class="board" viewBox="0 0 ${String(WIDTH)} ${String(height)}" role="group" aria-label="${e(words.title)}">${threads.join("")}${photos.join("")}${cards.join("")}</svg></div>
+<div class="cork-wrap"><div class="cork"><svg class="board" viewBox="0 0 ${String(width)} ${String(height)}" role="group" aria-label="${e(words.title)}">${threads.join("")}${photos.join("")}${cards.join("")}${leadCards.join("")}</svg></div>
 ${renderOpened(view, board, text)}</div>
-<p class="note">${e(words.legend)}</p>`;
+<p class="note">${e(words.legend)}${view.leads.length === 0 ? "" : ` ${e(text.leadPins.legend)}`}</p>`;
 }
 
 // packages/mcp/src/board/board-header.ts
@@ -52053,6 +52205,16 @@ svg.board .num{font:700 13px system-ui,sans-serif;fill:#8a3b2a;letter-spacing:.0
 svg.board .caption{fill:#2a2622;paint-order:stroke;stroke:#f1e1c0;stroke-width:3px;stroke-linejoin:round}
 svg.board .where text{font-size:11px;fill:#6b4a2b}
 svg.board .garbled .paper{stroke-dasharray:5 3;stroke:#b26a00}
+svg.board .lead-pin .paper{fill:#e8f1f8;stroke:#9db8d6;stroke-width:1;filter:drop-shadow(2px 3px 2px rgba(0,0,0,.35))}
+svg.board .lead-pin .num{font:700 12px system-ui,sans-serif;fill:#2b5fa3;letter-spacing:.08em}
+svg.board .lead-pin text{fill:#2a2622;font-size:11px}
+svg.board .lead-pin text.line{font-size:13px}
+svg.board .lead-pin text.status{fill:#2f6a3a;font-weight:700}
+svg.board .lead-pin.idle .paper{stroke-dasharray:5 3}
+svg.board .lead-pin.idle text.status{fill:#6b6354}
+svg.board .lead-pin.shut .paper{fill:#dcd9d2;stroke:#a39e92;stroke-dasharray:5 3}
+svg.board .lead-pin.shut text.status{fill:#b26a00}
+svg.board .thread.earned{stroke:#2f7a4a;stroke-width:2;stroke-dasharray:8 4}
 svg.board .pin{fill:#c0392b;stroke:#7b1f14;stroke-width:1.5}
 svg.board .thread{fill:none;stroke-linecap:round}
 svg.board .thread.made{stroke:#b3261e;stroke-width:2.5}

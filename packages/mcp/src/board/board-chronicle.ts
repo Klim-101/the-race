@@ -76,7 +76,7 @@ function turnText(turn: TurnView, text: TabText): string {
 }
 
 /** The hours of a window as clock times, from the words of the language. */
-function windowText(
+export function windowText(
   window: { readonly fromMinute: number; readonly untilMinute: number },
   text: TabText['chronicle'],
 ): string {

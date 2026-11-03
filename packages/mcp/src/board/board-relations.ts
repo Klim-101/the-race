@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { DetectiveRunView } from '@the-race/engine';
+import { assertNever, type DetectiveRunView } from '@the-race/engine';
 
 type ShownEffect = DetectiveRunView['history']['shown'][number]['effect'];
 
@@ -39,6 +39,36 @@ function foundAt(view: DetectiveRunView, clueId: string): string | undefined {
   return view.history.finds.find((find) => find.clueId === clueId)?.locationId;
 }
 
+type Lead = DetectiveRunView['leads'][number];
+
+/** What earned a lead, as tokens: the clue, the person, the place of a rumour, or the clues of a conclusion. */
+export function leadSourceTokens(view: DetectiveRunView, lead: Lead): string[] {
+  const { source } = lead;
+  if (source === null) return [];
+  switch (source.kind) {
+    case 'clue':
+    case 'study':
+      return [token('clue', source.clueId)];
+    case 'talk':
+      return [token('suspect', source.suspectId)];
+    case 'lie':
+      return source.suspectId === null ? [] : [token('suspect', source.suspectId)];
+    case 'deduction':
+      return (view.insights.find(({ id }) => id === source.insightId)?.clueIds ?? []).map((id) =>
+        token('clue', id),
+      );
+    case 'locals':
+      return [token('place', source.locationId)];
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever(source);
+  }
+}
+
+/** The leads that something earned: they light with it, and it lights with them. */
+const leadsTying = (view: DetectiveRunView, tied: string): string[] =>
+  view.leads.filter((lead) => leadSourceTokens(view, lead).includes(tied)).map(({ id }) => token('lead', id));
+
 /** What lights a clue: itself, the place it was found at and every person it was shown to. */
 export function clueTokens(view: DetectiveRunView, clueId: string): string[] {
   const place = foundAt(view, clueId) ?? view.clues.find(({ id }) => id === clueId)?.locationId;
@@ -48,6 +78,7 @@ export function clueTokens(view: DetectiveRunView, clueId: string): string[] {
     ...shownPairs(view)
       .filter((pair) => pair.clueId === clueId)
       .map(({ suspectId }) => token('suspect', suspectId)),
+    ...leadsTying(view, token('clue', clueId)),
   ]);
 }
 
@@ -60,6 +91,7 @@ export function suspectTokens(view: DetectiveRunView, suspectId: string): string
     ...shownPairs(view)
       .filter((pair) => pair.suspectId === suspectId)
       .map(({ clueId }) => token('clue', clueId)),
+    ...leadsTying(view, token('suspect', suspectId)),
   ]);
 }
 
@@ -71,19 +103,20 @@ export function placeTokens(view: DetectiveRunView, placeId: string): string[] {
     ...view.leads
       .filter(({ opens }) => opens.some(({ kind, id }) => kind === 'place' && id === placeId))
       .map(({ id }) => token('lead', id)),
+    ...leadsTying(view, token('place', placeId)),
     ...view.clues
       .filter(({ id, locationId }) => (foundAt(view, id) ?? locationId) === placeId)
       .map(({ id }) => token('clue', id)),
   ]);
 }
 
-/** What lights a lead: itself and the places it opens. */
+/** What lights a lead: itself, the places it opens and what earned it. */
 export function leadTokens(view: DetectiveRunView, leadId: string): string[] {
+  const lead = view.leads.find(({ id }) => id === leadId);
   return unique([
     token('lead', leadId),
-    ...(view.leads.find(({ id }) => id === leadId)?.opens ?? [])
-      .filter(({ kind }) => kind === 'place')
-      .map(({ id }) => token('place', id)),
+    ...(lead?.opens ?? []).filter(({ kind }) => kind === 'place').map(({ id }) => token('place', id)),
+    ...(lead === undefined ? [] : leadSourceTokens(view, lead)),
   ]);
 }
 

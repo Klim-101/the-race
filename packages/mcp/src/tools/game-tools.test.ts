@@ -805,4 +805,35 @@ describe('the leads of a turn', () => {
     const view = (await call(runView, {}, context)).body as { leads: { id: string }[] };
     expect(view.leads.map(({ id }) => id)).toContain('boiler-whisper');
   });
+
+  it('pins an earned lead on the board with what earned it, and nothing of a lead not earned or of a false one', async () => {
+    const context = gameContext();
+    await prepareHero(context);
+    const detectiveCase = partedSampleCase();
+    detectiveCase.leads = [
+      ...(detectiveCase.leads ?? []),
+      {
+        id: 'boiler-whisper',
+        reason: 'The note smells of coal smoke.',
+        earnedBy: { kind: 'clue', clueId: 'ransom-note' },
+        isFalse: true,
+      },
+      {
+        id: 'never-earned',
+        reason: 'A wholly unearned whisper about the harbour.',
+        earnedBy: { kind: 'clue', clueId: 'no-such-clue-ever' },
+        isFalse: true,
+      },
+    ];
+    await installCase(context, detectiveCase);
+    await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+    const path = runBoardFile(context.saveDir, await newestRunId(context.saveDir, context.fs));
+    const page = context.fs.files.get(path) ?? '';
+
+    expect(page).toContain('class="lead-pin');
+    expect(page).toContain('The note smells of coal smoke.');
+    expect(page).toMatch(/from clue [A-Z]+-01/);
+    expect(page).not.toContain('A wholly unearned whisper');
+    expect(page).not.toMatch(/isFalse|never-earned/);
+  });
 });
