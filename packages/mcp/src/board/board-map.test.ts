@@ -80,6 +80,7 @@ function viewOf(map: Map, extra: Record<string, unknown> = {}): View {
     clues: [],
     insights: [],
     suspects: [],
+    placeParts: [],
     history: { finds: [], shown: [], links: [] },
     leads: [],
     ...extra,
@@ -245,7 +246,8 @@ describe('the paper map', () => {
   it('draws a building of several rooms as one block with its name and how many rooms it holds', () => {
     expect(html).toContain('2 rooms');
     expect(html).toContain('Larkspur HQ');
-    expect(html).not.toContain('>Records vault<');
+    const drawn = /<svg class="map"[\s\S]*?<\/svg>/.exec(html)?.[0] ?? '';
+    expect(drawn).not.toContain('>Records vault<');
     expect(html).toContain('Larkspur HQ, Records vault');
   });
 

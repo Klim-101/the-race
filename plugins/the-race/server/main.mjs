@@ -36350,6 +36350,21 @@ function sourceOf(run, deed) {
       return assertNever2(deed);
   }
 }
+function viewPlaceParts(run) {
+  return run.case.locations.filter(({ id }) => run.visitedLocationIds.includes(id)).flatMap(({ id: placeId }) => {
+    const parts = partsOfPlace(run, placeId).filter(({ id }) => run.noticedPartIds.includes(id)).map(({ id, name, obstacle }) => {
+      const searched = run.searchedParts.find(({ partId }) => partId === id);
+      return {
+        id,
+        name,
+        obstacle,
+        searched: searched !== void 0,
+        gave: (searched?.foundClueIds ?? []).filter((clueId) => run.foundClueIds.includes(clueId))
+      };
+    });
+    return parts.length === 0 ? [] : [{ placeId, parts }];
+  });
+}
 function viewLeads(run) {
   const { locations } = run.case;
   const leads = run.case.leads ?? [];
@@ -36476,6 +36491,7 @@ function viewRun(run) {
       exits
     },
     map: viewMap(run),
+    placeParts: viewPlaceParts(run),
     leads: viewLeads(run),
     suspects: detectiveCase.suspects.map((suspect) => {
       const placeId = suspectPlace(run, suspect);
@@ -36803,17 +36819,17 @@ function incidentOf(rng) {
   return { kind: "gear", condition: "ill-equipped" };
 }
 function passNight(run, rng, cause, day) {
-  const whole4 = cause !== "collapse";
+  const whole5 = cause !== "collapse";
   const location = run.case.locations.find(({ id }) => id === run.locationId);
   const lodging = location?.lodging ?? DEFAULT_LODGING;
   const healed = sleptOff(run.condition);
-  const restored = whole4 ? nervesRestoredOnNight(day) : (
+  const restored = whole5 ? nervesRestoredOnNight(day) : (
     // A night cut short gives back no more than the floor, and no sleep debt.
     NIGHT_NERVES_FLOOR
   );
   let nerves = Math.min(DETECTIVE_NERVES.max, healed.nerves + restored);
   const nervesRestored = nerves - run.condition.nerves;
-  const sleepDebt = whole4 ? applyMeterRate(DETECTIVE_SLEEP_DEBT, healed.sleepDebt, "drain", "night") : healed.sleepDebt;
+  const sleepDebt = whole5 ? applyMeterRate(DETECTIVE_SLEEP_DEBT, healed.sleepDebt, "drain", "night") : healed.sleepDebt;
   let condition = { ...healed, nerves, sleepDebt };
   const incident = rng.roll(100) <= INCIDENT_CHANCE[lodging] ? incidentOf(rng) : null;
   let minute = DAY_START_MINUTE;
@@ -36838,7 +36854,7 @@ function passNight(run, rng, cause, day) {
     run: { ...settled, rngState: rng.state() },
     report: {
       cause,
-      whole: whole4,
+      whole: whole5,
       day,
       locationId: run.locationId,
       lodging,
@@ -38888,10 +38904,10 @@ function escape2(word) {
 }
 function matcher({ stems, words }) {
   const stem = stems.map(escape2).join("|");
-  const whole4 = words.map(escape2).join("|");
+  const whole5 = words.map(escape2).join("|");
   const stemPart = `(?<![\\p{L}\\p{N}])(?:${stem})[\\p{L}]*`;
-  const wholePart = `(?<![\\p{L}\\p{N}])(?:${whole4})(?![\\p{L}\\p{N}])`;
-  return new RegExp(whole4 === "" ? stemPart : `${stemPart}|${wholePart}`, "iu");
+  const wholePart = `(?<![\\p{L}\\p{N}])(?:${whole5})(?![\\p{L}\\p{N}])`;
+  return new RegExp(whole5 === "" ? stemPart : `${stemPart}|${wholePart}`, "iu");
 }
 var DROP_MATCHERS = TRAGEDY_CATEGORIES.map((category) => ({
   category,
@@ -39334,8 +39350,8 @@ function escape3(word) {
 }
 function findViolence(text, locale) {
   const stems = STEMS[locale].map(escape3).join("|");
-  const whole4 = WHOLE_WORDS[locale].map(escape3).join("|");
-  const pattern = `(?<![\\p{L}])(?:${stems})[\\p{L}]*|(?<![\\p{L}])(?:${whole4})(?![\\p{L}])`;
+  const whole5 = WHOLE_WORDS[locale].map(escape3).join("|");
+  const pattern = `(?<![\\p{L}])(?:${stems})[\\p{L}]*|(?<![\\p{L}])(?:${whole5})(?![\\p{L}])`;
   return new RegExp(pattern, "iu").exec(text)?.[0];
 }
 
@@ -42140,13 +42156,13 @@ var NAMED_ENTITIES = {
   nbsp: " "
 };
 function decodeEntities(text) {
-  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (whole4, body2) => {
+  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (whole5, body2) => {
     if (body2.startsWith("#")) {
       const hex3 = body2[1] === "x" || body2[1] === "X";
       const code = parseInt(body2.slice(hex3 ? 2 : 1), hex3 ? 16 : 10);
       return code > 0 && code <= 1114111 ? String.fromCodePoint(code) : " ";
     }
-    return NAMED_ENTITIES[body2.toLowerCase()] ?? whole4;
+    return NAMED_ENTITIES[body2.toLowerCase()] ?? whole5;
   });
 }
 function cleanText(raw, limit) {
@@ -50584,7 +50600,7 @@ function litRules(selection, match) {
 ${lit} > rect{stroke:var(--accent);stroke-width:3}
 ${lit}:is(path,line){stroke-width:4;outline:0}`;
 }
-var isSafeId = safe;
+var isSafeId = (id) => id !== null && safe(id);
 
 // packages/mcp/src/board/board-new.ts
 var NOTHING_NEW = {
@@ -51211,6 +51227,27 @@ var en_default3 = {
         accuse: "accusation"
       }
     },
+    plan: {
+      title: "Plan of {name}",
+      opensOnto: "Opens onto",
+      closeHint: "Click the building again, or press Esc, to put the plan away.",
+      notEntered: "not entered yet",
+      noParts: "nothing noticed here yet",
+      searched: "searched",
+      gave: "gave",
+      gaveNothing: "found nothing",
+      tool: "tool in the kit: {tool}",
+      noTool: "no tool for it in the kit",
+      doorTo: "door between {a} and {b}",
+      obstacles: {
+        locked: "locked",
+        dark: "dark",
+        soft: "soft cover",
+        trace: "a faint trace",
+        sealed: "sealed",
+        digital: "digital lock"
+      }
+    },
     clueGrid: {
       filters: "Filter the clues",
       place: "Found at",
@@ -51684,6 +51721,27 @@ var ru_default2 = {
         accuse: "\u043E\u0431\u0432\u0438\u043D\u0435\u043D\u0438\u0435"
       }
     },
+    plan: {
+      title: "\u041F\u043B\u0430\u043D: {name}",
+      opensOnto: "\u0412\u044B\u0445\u043E\u0434\u0438\u0442 \u043D\u0430",
+      closeHint: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \u043D\u0430 \u0437\u0434\u0430\u043D\u0438\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437 \u0438\u043B\u0438 Esc, \u0447\u0442\u043E\u0431\u044B \u0443\u0431\u0440\u0430\u0442\u044C \u043F\u043B\u0430\u043D.",
+      notEntered: "\u0435\u0449\u0451 \u043D\u0435 \u0437\u0430\u0445\u043E\u0434\u0438\u043B\u0438",
+      noParts: "\u0437\u0434\u0435\u0441\u044C \u043F\u043E\u043A\u0430 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0437\u0430\u043C\u0435\u0447\u0435\u043D\u043E",
+      searched: "\u043E\u0431\u044B\u0441\u043A\u0430\u043D\u043E",
+      gave: "\u0434\u0430\u043B\u043E",
+      gaveNothing: "\u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043D\u0430\u0448\u043B\u043E\u0441\u044C",
+      tool: "\u0432 \u043D\u0430\u0431\u043E\u0440\u0435 \u0435\u0441\u0442\u044C: {tool}",
+      noTool: "\u0432 \u043D\u0430\u0431\u043E\u0440\u0435 \u043D\u0435\u0442 \u043F\u043E\u0434\u0445\u043E\u0434\u044F\u0449\u0435\u0433\u043E \u0438\u043D\u0441\u0442\u0440\u0443\u043C\u0435\u043D\u0442\u0430",
+      doorTo: "\u0434\u0432\u0435\u0440\u044C \u043C\u0435\u0436\u0434\u0443 \xAB{a}\xBB \u0438 \xAB{b}\xBB",
+      obstacles: {
+        locked: "\u0437\u0430\u043F\u0435\u0440\u0442\u043E",
+        dark: "\u0442\u0435\u043C\u043D\u043E",
+        soft: "\u043C\u044F\u0433\u043A\u043E\u0435 \u043F\u043E\u043A\u0440\u044B\u0442\u0438\u0435",
+        trace: "\u0435\u0434\u0432\u0430 \u0437\u0430\u043C\u0435\u0442\u043D\u044B\u0439 \u0441\u043B\u0435\u0434",
+        sealed: "\u0437\u0430\u043F\u0435\u0447\u0430\u0442\u0430\u043D\u043E",
+        digital: "\u0446\u0438\u0444\u0440\u043E\u0432\u043E\u0439 \u0437\u0430\u043C\u043E\u043A"
+      }
+    },
     clueGrid: {
       filters: "\u041E\u0442\u0431\u043E\u0440 \u0443\u043B\u0438\u043A",
       place: "\u041D\u0430\u0439\u0434\u0435\u043D\u043E \u0432",
@@ -51891,9 +51949,9 @@ function tried(view, text) {
   const number4 = numberOf(view);
   const items = view.history.links.map(({ clueIds, result, turn }) => {
     const names = clueIds.map((id) => `<span class="num">${e(number4(id))}</span>`).join(" + ");
-    const whole4 = clueIds.map((id) => `<p><span class="num">${e(number4(id))}</span> ${e(description.get(id) ?? id)}</p>`).join("");
+    const whole5 = clueIds.map((id) => `<p><span class="num">${e(number4(id))}</span> ${e(description.get(id) ?? id)}</p>`).join("");
     return `<li data-rel="${e(rel(threadTokens(clueIds)))}">${names} <span class="result">${e(text.corkboard.results[result])}</span> <span class="tag">${e(text.corkboard.step.replace("{n}", String(turn)))}</span>
-<details><summary>${e(text.corkboard.fullText)}</summary>${whole4}</details></li>`;
+<details><summary>${e(text.corkboard.fullText)}</summary>${whole5}</details></li>`;
   });
   return `<ul class="tried">${items.join("\n")}</ul>`;
 }
@@ -52278,8 +52336,140 @@ ${traits}
 ${renderClimate(view, board)}`;
 }
 
+// packages/mcp/src/board/board-plan.ts
+var ROOM_W = 252;
+var ROOM_GAP = 72;
+var MARGIN2 = 14;
+var HEAD = 34;
+var ROW = 36;
+var PLAIN_H = 52;
+var NAME_LENGTH = 30;
+var TOOL_LENGTH = 40;
+var OBSTACLE_GLYPH = {
+  locked: "",
+  dark: "\u25D0",
+  soft: "~",
+  trace: "\u2234",
+  sealed: "#",
+  digital: "@"
+};
+var planKey = (head) => `plan-${head}`;
+var planId = (head) => `open-${planKey(head)}`;
+function planRules(view) {
+  return [...new Set(view.map.places.map(({ building }) => building))].filter(isSafeId).map((head) => `main[data-open="${planKey(head)}"] #${planId(head)}{display:block}`).join("\n");
+}
+function layoutRooms(view, rooms, door, partsOf) {
+  const ids = new Set(rooms.map(({ id }) => id));
+  const next = /* @__PURE__ */ new Map();
+  for (const { from, to } of view.map.links) {
+    if (!ids.has(from) || !ids.has(to)) continue;
+    next.set(from, [...next.get(from) ?? [], to]);
+    next.set(to, [...next.get(to) ?? [], from]);
+  }
+  const reached = /* @__PURE__ */ new Set([door.id]);
+  const placed2 = [];
+  const queue4 = [{ place: door, depth: 0, x: 0, y: 0, height: 0 }];
+  for (const room of queue4) {
+    placed2.push(room);
+    for (const other of rooms.filter(({ id }) => (next.get(room.place.id) ?? []).includes(id))) {
+      if (reached.has(other.id)) continue;
+      reached.add(other.id);
+      queue4.push({ place: other, depth: room.depth + 1, x: 0, y: 0, height: 0 });
+    }
+  }
+  const beyond = Math.max(0, ...placed2.map(({ depth }) => depth)) + 1;
+  for (const room of rooms.filter(({ id }) => !reached.has(id))) {
+    placed2.push({ place: room, depth: beyond, x: 0, y: 0, height: 0 });
+  }
+  const columns = Math.max(...placed2.map(({ depth }) => depth)) + 1;
+  let tallest = 0;
+  for (let depth = 0; depth < columns; depth += 1) {
+    let y = MARGIN2;
+    for (const room of placed2.filter((candidate2) => candidate2.depth === depth)) {
+      const parts = partsOf.get(room.place.id) ?? [];
+      room.height = room.place.visited ? HEAD + Math.max(1, parts.length) * ROW + 10 : PLAIN_H;
+      room.x = MARGIN2 + depth * (ROOM_W + ROOM_GAP);
+      room.y = y;
+      y += room.height + 18;
+    }
+    tallest = Math.max(tallest, y);
+  }
+  return {
+    rooms: placed2,
+    width: MARGIN2 * 2 + columns * ROOM_W + (columns - 1) * ROOM_GAP,
+    height: tallest + MARGIN2 - 18
+  };
+}
+var whole3 = (value) => String(Math.round(value));
+function lock(x2, y) {
+  return `<g class="sign locked" transform="translate(${whole3(x2)} ${whole3(y)})"><rect x="-6" y="-2" width="12" height="9" rx="1.5"/><path d="M-4 -2v-3a4 4 0 0 1 8 0v3"/></g>`;
+}
+function obstacleMark(obstacle, searched, x2, y) {
+  if (searched) {
+    return `<g class="mark done" transform="translate(${whole3(x2)} ${whole3(y)})"><circle r="9"/><path d="M-4 0l3 3l5 -6"/></g>`;
+  }
+  if (obstacle === null) {
+    return `<g class="mark open" transform="translate(${whole3(x2)} ${whole3(y)})"><circle r="9"/><circle r="3" class="dot"/></g>`;
+  }
+  return `<g class="mark shut" transform="translate(${whole3(x2)} ${whole3(y)})"><circle r="9"/>${obstacle === "locked" ? lock(0, 1) : `<text y="4" text-anchor="middle">${OBSTACLE_GLYPH[obstacle]}</text>`}</g>`;
+}
+function toolFor(view, obstacle) {
+  return view.kit.find(({ state, removes }) => state === "owned" && removes.includes(obstacle))?.id;
+}
+function roomBox(view, room, parts, text) {
+  const e = escapeHtml;
+  const t = text.plan;
+  const { place } = room;
+  const number4 = numberOf(view);
+  const current = place.id === view.map.current;
+  const classes = ["room", place.visited ? "visited" : "unvisited", current ? "current" : ""].filter((name) => name !== "").join(" ");
+  const rows = parts.map((part, index) => {
+    const top = room.y + HEAD + index * ROW;
+    const tool = part.obstacle === null ? void 0 : toolFor(view, part.obstacle);
+    const status = part.searched ? `${t.searched} \xB7 ${part.gave.length === 0 ? t.gaveNothing : t.gave}` : part.obstacle === null ? "" : `${named(t.obstacles, part.obstacle)} \xB7 ${tool === void 0 ? t.noTool : t.tool.replace("{tool}", named(text.hero.gear, tool))}`;
+    const chips = part.gave.map((clueId, chip2) => {
+      const attrs2 = `data-pick="${e(token("clue", clueId))}" data-rel="${e(rel(clueTokens(view, clueId)))}" tabindex="0" role="button"`;
+      return `<g class="clue-chip" ${attrs2}><text x="${whole3(room.x + 150 + chip2 * 70)}" y="${whole3(top + 29)}">${e(number4(clueId))}</text></g>`;
+    });
+    return `<g class="part${part.searched ? " searched" : ""}${part.obstacle === null ? "" : ` ${part.obstacle}`}"><title>${e(`${part.name}${status === "" ? "" : `: ${status}`}`)}</title>${obstacleMark(part.obstacle, part.searched, room.x + 20, top + 14)}<text class="part-name" x="${whole3(room.x + 38)}" y="${whole3(top + 12)}">${e(truncate(part.name, NAME_LENGTH))}</text><text class="part-state" x="${whole3(room.x + 38)}" y="${whole3(top + 29)}">${e(truncate(status, TOOL_LENGTH))}</text>${chips.join("")}</g>`;
+  });
+  const body2 = !place.visited ? `<text class="part-state" x="${whole3(room.x + 14)}" y="${whole3(room.y + 42)}">${e(place.lead ?? t.notEntered)}</text>` : parts.length === 0 ? `<text class="part-state" x="${whole3(room.x + 14)}" y="${whole3(room.y + HEAD + 20)}">${e(t.noParts)}</text>` : rows.join("");
+  const lead = place.lead === null || place.visited ? "" : `<g class="lead-mark" transform="translate(${whole3(room.x + ROOM_W - 16)} ${whole3(room.y + 16)})"><title>${e(place.lead)}</title><circle r="8"/><text y="4" text-anchor="middle">?</text></g>`;
+  const attrs = `data-rel="${e(rel(placeTokens(view, place.id)))}"`;
+  return `<g class="${classes}" ${attrs}><title>${e(place.name)}</title><rect class="walls" x="${whole3(room.x)}" y="${whole3(room.y)}" width="${String(ROOM_W)}" height="${whole3(room.height)}" rx="4"/><text class="room-name" x="${whole3(room.x + 14)}" y="${whole3(room.y + 22)}">${e(truncate(place.name, NAME_LENGTH))}</text>${current ? `<circle class="here-dot" cx="${whole3(room.x + ROOM_W - 16)}" cy="${whole3(room.y + 16)}" r="5"/>` : ""}${lead}${body2}</g>`;
+}
+function renderPlan(view, rooms, door, head, street, text) {
+  const e = escapeHtml;
+  const t = text.plan;
+  const partsOf = new Map(view.placeParts.map(({ placeId, parts }) => [placeId, parts]));
+  const layout = layoutRooms(view, rooms, door, partsOf);
+  const at3 = new Map(layout.rooms.map((room) => [room.place.id, room]));
+  const doors = view.map.links.flatMap(({ from, to }) => {
+    const a = at3.get(from);
+    const b = at3.get(to);
+    if (a === void 0 || b === void 0) return [];
+    const [left, right] = a.depth <= b.depth ? [a, b] : [b, a];
+    const sideways = left.depth !== right.depth;
+    const x1 = sideways ? left.x + ROOM_W : left.x + ROOM_W / 2;
+    const y1 = sideways ? left.y + left.height / 2 : left.y + left.height;
+    const x2 = sideways ? right.x : right.x + ROOM_W / 2;
+    const y2 = sideways ? right.y + right.height / 2 : right.y;
+    const label = t.doorTo.replace("{a}", a.place.name).replace("{b}", b.place.name);
+    return [
+      `<g class="door-way"><title>${e(label)}</title><line x1="${whole3(x1)}" y1="${whole3(y1)}" x2="${whole3(x2)}" y2="${whole3(y2)}"/><rect x="${whole3((x1 + x2) / 2 - 5)}" y="${whole3((y1 + y2) / 2 - 8)}" width="10" height="16" rx="2"/></g>`
+    ];
+  });
+  const title = t.title.replace("{name}", door.name);
+  const opens = street === null ? "" : ` \xB7 ${t.opensOnto}: ${street}`;
+  return `<div class="plan" id="${e(planId(head))}" role="dialog" aria-label="${e(title)}" tabindex="-1">
+<p class="tag">${e(title)}${e(opens)}</p>
+<div class="graph paper-map"><svg class="plan-svg" viewBox="0 0 ${String(layout.width)} ${String(layout.height)}" role="img" aria-label="${e(title)}" style="min-width:${String(Math.min(layout.width, 520))}px"><g class="doors">${doors.join("")}</g>${layout.rooms.map((room) => roomBox(view, room, partsOf.get(room.place.id) ?? [], text)).join("")}</svg></div>
+<p class="note">${e(t.closeHint)}</p>
+</div>`;
+}
+
 // packages/mcp/src/board/board-map.ts
-var MARGIN2 = 24;
+var MARGIN3 = 24;
 var STREET_W = 176;
 var STREET_H = 30;
 var COLUMN_GAP = 56;
@@ -52369,13 +52559,13 @@ function layoutTown(map2) {
     const into = turn % 2 === 0 ? above : below;
     into.set(street, Math.max(into.get(street) ?? 0, tiers));
   }
-  let top = MARGIN2;
+  let top = MARGIN3;
   for (const row of rows) {
     const high = Math.max(0, ...row.map(({ place }) => above.get(place.id) ?? 0));
     const low = Math.max(0, ...row.map(({ place }) => below.get(place.id) ?? 0));
     const y = top + high * BLOCK_SPAN;
     for (const node2 of row) {
-      node2.x = MARGIN2 + node2.depth * (STREET_W + COLUMN_GAP);
+      node2.x = MARGIN3 + node2.depth * (STREET_W + COLUMN_GAP);
       node2.y = y;
     }
     top = y + STREET_H + low * BLOCK_SPAN + ROW_GAP;
@@ -52398,13 +52588,13 @@ function layoutTown(map2) {
       y: turn % 2 === 0 ? home.y - (tier + 1) * BLOCK_SPAN : home.y + STREET_H + DOOR + tier * BLOCK_SPAN
     });
   }
-  const caption = homeless.length === 0 ? null : { x: MARGIN2, y: top + 6 };
+  const caption = homeless.length === 0 ? null : { x: MARGIN3, y: top + 6 };
   homeless.forEach(({ door, rooms }, index) => {
     blocks.push({
       door,
       rooms,
       street: null,
-      x: MARGIN2 + index % ELSEWHERE_COLUMNS * (BLOCK_W + BLOCK_GAP * 2),
+      x: MARGIN3 + index % ELSEWHERE_COLUMNS * (BLOCK_W + BLOCK_GAP * 2),
       y: top + 16 + Math.floor(index / ELSEWHERE_COLUMNS) * (BLOCK_H + BLOCK_GAP * 2)
     });
   });
@@ -52418,41 +52608,41 @@ function layoutTown(map2) {
     lanes.push({ from: a, to: b, kind: "across" });
   }
   const right = Math.max(
-    MARGIN2,
+    MARGIN3,
     ...nodes.map(({ x: left }) => left + STREET_W),
     ...blocks.map(({ x: left }) => left + BLOCK_W)
   );
   const bottom = Math.max(top - ROW_GAP, ...blocks.map(({ y: lower }) => lower + BLOCK_H));
   return {
-    width: right + MARGIN2,
-    height: bottom + MARGIN2,
+    width: right + MARGIN3,
+    height: bottom + MARGIN3,
     streets: nodes,
     blocks,
     lanes,
     elsewhere: caption
   };
 }
-var whole3 = (value) => String(Math.round(value));
+var whole4 = (value) => String(Math.round(value));
 function stateOf(place, current, text) {
   return current ? text.map.you : place.blocked === "locked" ? text.map.locked : place.blocked === "closed" ? text.map.closed : place.visited ? "" : place.lead === null ? text.map.unvisited : text.map.lead;
 }
 function sign(blocked, x2, y, label) {
   if (blocked === null) return "";
   const e = escapeHtml(label);
-  return blocked === "locked" ? `<g class="sign locked" transform="translate(${whole3(x2)} ${whole3(y)})"><title>${e}</title><rect x="-6" y="-2" width="12" height="9" rx="1.5"/><path d="M-4 -2v-3a4 4 0 0 1 8 0v3"/></g>` : `<g class="sign closed" transform="translate(${whole3(x2)} ${whole3(y)})"><title>${e}</title><circle r="7"/><path d="M-3.5 -3.5l7 7M3.5 -3.5l-7 7"/></g>`;
+  return blocked === "locked" ? `<g class="sign locked" transform="translate(${whole4(x2)} ${whole4(y)})"><title>${e}</title><rect x="-6" y="-2" width="12" height="9" rx="1.5"/><path d="M-4 -2v-3a4 4 0 0 1 8 0v3"/></g>` : `<g class="sign closed" transform="translate(${whole4(x2)} ${whole4(y)})"><title>${e}</title><circle r="7"/><path d="M-3.5 -3.5l7 7M3.5 -3.5l-7 7"/></g>`;
 }
 function pin(x2, y, label) {
-  return `<g class="here" transform="translate(${whole3(x2)} ${whole3(y)})"><title>${escapeHtml(label)}</title><circle r="6"/><circle r="2.2" class="dot"/></g>`;
+  return `<g class="here" transform="translate(${whole4(x2)} ${whole4(y)})"><title>${escapeHtml(label)}</title><circle r="6"/><circle r="2.2" class="dot"/></g>`;
 }
 function leadMark(place, x2, y) {
-  return place.lead === null ? "" : `<g class="lead-mark" transform="translate(${whole3(x2)} ${whole3(y)})"><title>${escapeHtml(place.lead)}</title><circle r="8"/><text y="4" text-anchor="middle">?</text></g>`;
+  return place.lead === null ? "" : `<g class="lead-mark" transform="translate(${whole4(x2)} ${whole4(y)})"><title>${escapeHtml(place.lead)}</title><circle r="8"/><text y="4" text-anchor="middle">?</text></g>`;
 }
 function badge(count, x2, y, label) {
-  return count === 0 ? "" : `<g class="badge-wrap"><circle class="badge" cx="${whole3(x2)}" cy="${whole3(y)}" r="11"><title>${escapeHtml(label)}: ${String(count)}</title></circle><text class="badge-n" x="${whole3(x2)}" y="${whole3(y + 4)}" text-anchor="middle">${String(count)}</text></g>`;
+  return count === 0 ? "" : `<g class="badge-wrap"><circle class="badge" cx="${whole4(x2)}" cy="${whole4(y)}" r="11"><title>${escapeHtml(label)}: ${String(count)}</title></circle><text class="badge-n" x="${whole4(x2)}" y="${whole4(y + 4)}" text-anchor="middle">${String(count)}</text></g>`;
 }
 function compass(width, north) {
   const cx = width - 44;
-  return `<g class="compass" transform="translate(${whole3(cx)} 54)"><circle r="20"/><path class="needle" d="M0 -16l5 16h-10z"/><path d="M0 16l5 -16h-10z" class="south"/><text y="-27" text-anchor="middle">${escapeHtml(north)}</text></g>`;
+  return `<g class="compass" transform="translate(${whole4(cx)} 54)"><circle r="20"/><path class="needle" d="M0 -16l5 16h-10z"/><path d="M0 16l5 -16h-10z" class="south"/><text y="-27" text-anchor="middle">${escapeHtml(north)}</text></g>`;
 }
 function renderMap(view, text) {
   const { map: map2 } = view;
@@ -52464,7 +52654,7 @@ function renderMap(view, text) {
   const lanes = layout.lanes.map(({ from: a, to: b, kind }) => {
     const startY = a.y + STREET_H / 2;
     const endY = b.y + STREET_H / 2;
-    const d = kind === "across" ? `M${whole3(a.x + STREET_W / 2)} ${whole3(startY)} L${whole3(b.x + STREET_W / 2)} ${whole3(endY)}` : `M${whole3(a.x + STREET_W)} ${whole3(startY)} H${whole3(a.x + STREET_W + COLUMN_GAP / 2)} V${whole3(endY)} H${whole3(b.x)}`;
+    const d = kind === "across" ? `M${whole4(a.x + STREET_W / 2)} ${whole4(startY)} L${whole4(b.x + STREET_W / 2)} ${whole4(endY)}` : `M${whole4(a.x + STREET_W)} ${whole4(startY)} H${whole4(a.x + STREET_W + COLUMN_GAP / 2)} V${whole4(endY)} H${whole4(b.x)}`;
     return `<path class="lane ${kind}" d="${d}"/>`;
   });
   const streets = layout.streets.map(({ place, x: left, y: top }) => {
@@ -52478,7 +52668,7 @@ function renderMap(view, text) {
       place.blocked ?? ""
     ].filter((name) => name !== "").join(" ");
     const pick5 = `data-pick="${e(token("place", place.id))}" data-rel="${e(rel(placeTokens(view, place.id)))}" tabindex="0" role="button"`;
-    return `<g class="${classes}" ${pick5}><title>${e(place.name)}${state === "" ? "" : ` (${e(state)})`}${place.lead === null ? "" : `: ${e(place.lead)}`}</title><rect x="${whole3(left)}" y="${whole3(top)}" width="${String(STREET_W)}" height="${String(STREET_H)}" rx="7"/><text class="name" x="${whole3(left + STREET_W / 2)}" y="${whole3(top + STREET_H / 2 + 4)}" text-anchor="middle">${e(truncate(place.name, STREET_LABEL_LENGTH))}</text>${current ? pin(left + 12, top + STREET_H / 2, text.map.you) : ""}${sign(place.blocked, left + STREET_W - 12, top + STREET_H / 2, state)}${leadMark(place, left + 12, top + STREET_H / 2)}${badge(clues, left + STREET_W, top, text.map.cluesHere)}</g>`;
+    return `<g class="${classes}" ${pick5}><title>${e(place.name)}${state === "" ? "" : ` (${e(state)})`}${place.lead === null ? "" : `: ${e(place.lead)}`}</title><rect x="${whole4(left)}" y="${whole4(top)}" width="${String(STREET_W)}" height="${String(STREET_H)}" rx="7"/><text class="name" x="${whole4(left + STREET_W / 2)}" y="${whole4(top + STREET_H / 2 + 4)}" text-anchor="middle">${e(truncate(place.name, STREET_LABEL_LENGTH))}</text>${current ? pin(left + 12, top + STREET_H / 2, text.map.you) : ""}${sign(place.blocked, left + STREET_W - 12, top + STREET_H / 2, state)}${leadMark(place, left + 12, top + STREET_H / 2)}${badge(clues, left + STREET_W, top, text.map.cluesHere)}</g>`;
   });
   const blocks = layout.blocks.map(({ door, rooms, street: home, x: left, y: top }) => {
     const current = rooms.some(({ id }) => id === map2.current);
@@ -52487,20 +52677,26 @@ function renderMap(view, text) {
     const clues = rooms.reduce((sum, room) => sum + (cluesAt.get(room.id) ?? 0), 0);
     const tokens = [...new Set(rooms.flatMap((room) => placeTokens(view, room.id)))];
     const classes = ["block", visited ? "visited" : "unvisited", current ? "current" : "", door.blocked ?? ""].filter((name) => name !== "").join(" ");
-    const pick5 = `data-pick="${e(token("place", door.id))}" data-rel="${e(rel(tokens))}" tabindex="0" role="button"`;
-    const doorLine = home === null ? "" : top < home.y ? `<line class="door" x1="${whole3(left + BLOCK_W / 2)}" y1="${whole3(top + BLOCK_H)}" x2="${whole3(left + BLOCK_W / 2)}" y2="${whole3(top + BLOCK_H + DOOR)}"/>` : `<line class="door" x1="${whole3(left + BLOCK_W / 2)}" y1="${whole3(top - DOOR)}" x2="${whole3(left + BLOCK_W / 2)}" y2="${whole3(top)}"/>`;
+    const opens = isSafeId(door.building) ? door.building : null;
+    const plan = opens === null ? "" : ` data-open="${e(planKey(opens))}" aria-controls="${e(planId(opens))}"`;
+    const pick5 = `data-pick="${e(token("place", door.id))}" data-rel="${e(rel(tokens))}" tabindex="0" role="button"${plan}`;
+    const doorLine = home === null ? "" : top < home.y ? `<line class="door" x1="${whole4(left + BLOCK_W / 2)}" y1="${whole4(top + BLOCK_H)}" x2="${whole4(left + BLOCK_W / 2)}" y2="${whole4(top + BLOCK_H + DOOR)}"/>` : `<line class="door" x1="${whole4(left + BLOCK_W / 2)}" y1="${whole4(top - DOOR)}" x2="${whole4(left + BLOCK_W / 2)}" y2="${whole4(top)}"/>`;
     const names = rooms.map(({ name }) => name).join(", ");
     const label = wrap(door.name, LABEL_LENGTH, 2);
     const rest = rooms.length > 1 ? text.map.rooms.replace("{n}", String(rooms.length)) : "";
-    return `${doorLine}<g class="${classes}" ${pick5}><title>${e(truncate(names, TITLE_LENGTH))}${state === "" ? "" : ` (${e(state)})`}${door.lead === null ? "" : `: ${e(door.lead)}`}</title><rect class="walls" x="${whole3(left)}" y="${whole3(top)}" width="${String(BLOCK_W)}" height="${String(BLOCK_H)}" rx="3"/><path class="roof" d="M${whole3(left)} ${whole3(top + 10)}h${String(BLOCK_W)}"/>${label.map(
-      (line, row) => `<text class="name" x="${whole3(left + BLOCK_W / 2)}" y="${whole3(top + 26 + row * 12)}" text-anchor="middle">${e(line)}</text>`
+    return `${doorLine}<g class="${classes}" ${pick5}><title>${e(truncate(names, TITLE_LENGTH))}${state === "" ? "" : ` (${e(state)})`}${door.lead === null ? "" : `: ${e(door.lead)}`}</title><rect class="walls" x="${whole4(left)}" y="${whole4(top)}" width="${String(BLOCK_W)}" height="${String(BLOCK_H)}" rx="3"/><path class="roof" d="M${whole4(left)} ${whole4(top + 10)}h${String(BLOCK_W)}"/>${label.map(
+      (line, row) => `<text class="name" x="${whole4(left + BLOCK_W / 2)}" y="${whole4(top + 26 + row * 12)}" text-anchor="middle">${e(line)}</text>`
     ).join(
       ""
-    )}<text class="state" x="${whole3(left + BLOCK_W / 2)}" y="${whole3(top + 51)}" text-anchor="middle">${e(rest)}</text>${current ? pin(left + 10, top + BLOCK_H - 10, text.map.you) : ""}${sign(door.blocked, left + BLOCK_W - 10, top + 10, state)}${leadMark(door, left + 10, top + 10)}${badge(clues, left + BLOCK_W, top, text.map.cluesHere)}</g>`;
+    )}<text class="state" x="${whole4(left + BLOCK_W / 2)}" y="${whole4(top + 51)}" text-anchor="middle">${e(rest)}</text>${current ? pin(left + 10, top + BLOCK_H - 10, text.map.you) : ""}${sign(door.blocked, left + BLOCK_W - 10, top + 10, state)}${leadMark(door, left + 10, top + 10)}${badge(clues, left + BLOCK_W, top, text.map.cluesHere)}</g>`;
   });
-  const caption = layout.elsewhere === null ? "" : `<text class="elsewhere" x="${whole3(layout.elsewhere.x)}" y="${whole3(layout.elsewhere.y)}">${e(text.map.elsewhere)}</text>`;
+  const plans = layout.blocks.flatMap(
+    ({ door, rooms, street }) => isSafeId(door.building) ? [renderPlan(view, rooms, door, door.building, street?.place.name ?? null, text)] : []
+  );
+  const caption = layout.elsewhere === null ? "" : `<text class="elsewhere" x="${whole4(layout.elsewhere.x)}" y="${whole4(layout.elsewhere.y)}">${e(text.map.elsewhere)}</text>`;
   return `<div class="graph paper-map"><svg class="map" viewBox="0 0 ${String(layout.width)} ${String(layout.height)}" role="img" aria-label="${e(text.map.title)}" style="min-width:${String(Math.min(layout.width, 720))}px">${compass(layout.width, text.map.north)}<g class="lanes">${lanes.join("")}</g>${streets.join("")}${blocks.join("")}${caption}</svg></div>
-<p class="tag">${e(text.map.legend)}</p>`;
+<p class="tag">${e(text.map.legend)}</p>
+${plans.join("\n")}`;
 }
 
 // packages/mcp/src/board/board-suspects.ts
@@ -52592,8 +52788,8 @@ var SCRIPT = `(function(){var m=document.querySelector('main');if(!m)return;var 
 function shut(restore){if(m.getAttribute('data-open')===null)return;m.removeAttribute('data-open');if(restore&&back&&back.focus)back.focus();back=null}
 function pick(t){if(m.getAttribute('data-sel')===t){m.removeAttribute('data-sel')}else{m.setAttribute('data-sel',t)}}
 function show(el){var id=el.getAttribute('data-open');if(!id){shut(false);return}if(m.getAttribute('data-open')===id){shut(true);return}m.setAttribute('data-open',id);back=el;var card=document.getElementById('open-'+id);if(card&&card.focus)card.focus()}
-function choose(el){pick(el.getAttribute('data-pick'));show(el)}
-document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}if(t.closest&&t.closest('nav.tabs')){shut(false);return}var el=t.closest&&t.closest('[data-pick]');if(el&&t.closest('a')){m.setAttribute('data-sel',el.getAttribute('data-pick'));return}if(el){choose(el)}else if(!(t.closest&&(t.closest('a')||t.closest('.filters')))){m.removeAttribute('data-sel');shut(false)}});
+function choose(el){pick(el.getAttribute('data-pick'));if(el.closest&&el.closest('.plan'))return;show(el)}
+document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}if(t.closest&&t.closest('nav.tabs')){shut(false);return}var el=t.closest&&t.closest('[data-pick]');if(el&&t.closest('a')){m.setAttribute('data-sel',el.getAttribute('data-pick'));return}if(el){choose(el)}else if(!(t.closest&&(t.closest('a')||t.closest('.filters')||t.closest('.plan')))){m.removeAttribute('data-sel');shut(false)}});
 function fit(c,v){var g=function(n){return c.getAttribute('data-'+n)||''};return(!v.p||g('place')===v.p)&&(!v.s||(' '+g('shown')+' ').indexOf(' '+v.s+' ')>=0)&&(!v.g||g('garbled')==='1')&&(!v.u||g('unused')==='1')&&(!v.q||g('number').toLowerCase().indexOf(v.q)>=0)}
 function filter(){var f=function(i){return document.getElementById(i)};if(!f('f-place'))return;var v={p:f('f-place').value,s:f('f-suspect').value,g:f('f-garbled').checked,u:f('f-unused').checked,q:f('f-number').value.trim().toLowerCase()};var cards=document.querySelectorAll('.clue-card'),n=0;for(var i=0;i<cards.length;i++){var ok=fit(cards[i],v);cards[i].hidden=!ok;if(ok)n++}var none=f('clue-none');if(none)none.hidden=n>0}
 document.addEventListener('input',filter);document.addEventListener('change',filter);
@@ -52729,6 +52925,30 @@ ul.tried li{margin:0 0 8px;padding:6px 14px 6px 18px;border-left:3px double var(
 ul.tried .result{font:12px system-ui,sans-serif;color:var(--red);text-transform:uppercase;letter-spacing:.05em}
 ul.tried .tag{color:var(--paper-tag)}
 [hidden]{display:none!important}
+.plan{display:none;margin:12px 0;padding:8px 10px;border:1px solid var(--parch-edge);border-radius:6px;background:var(--card)}
+.plan:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+svg.plan-svg{display:block;width:100%;height:auto;font:12px system-ui,sans-serif}
+svg.plan-svg text{fill:var(--ink)}
+svg.plan-svg .room .walls{fill:var(--roof);stroke:var(--ink);stroke-width:1.8}
+svg.plan-svg .room.unvisited .walls{fill:var(--parch);stroke-dasharray:5 3}
+svg.plan-svg .room.current .walls{stroke:var(--accent);stroke-width:3.5}
+svg.plan-svg .room-name{font-weight:700;font-size:13px}
+svg.plan-svg .part-name{font-weight:600}
+svg.plan-svg .part-state{font-size:11px;fill:var(--muted)}
+svg.plan-svg .door-way line{stroke:var(--ink);stroke-width:2;stroke-dasharray:4 3}
+svg.plan-svg .door-way rect{fill:var(--street);stroke:var(--ink);stroke-width:1.5}
+svg.plan-svg .mark circle{fill:var(--card);stroke:var(--ink);stroke-width:1.5}
+svg.plan-svg .mark.done circle{fill:#2f6a3a;stroke:#2f6a3a}
+svg.plan-svg .mark.done path{fill:none;stroke:#fff;stroke-width:2}
+svg.plan-svg .mark.open .dot{fill:var(--ink);stroke:none}
+svg.plan-svg .mark.shut circle{stroke:var(--warn);stroke-width:2}
+svg.plan-svg .mark text{font-size:11px;fill:var(--ink)}
+svg.plan-svg .sign.locked rect{fill:var(--warn);stroke:var(--ink);stroke-width:1}
+svg.plan-svg .sign.locked path{fill:none;stroke:var(--ink);stroke-width:1.6}
+svg.plan-svg .clue-chip text{font-weight:700;fill:var(--accent);cursor:pointer;text-decoration:underline}
+svg.plan-svg .here-dot{fill:var(--accent)}
+svg.plan-svg .lead-mark circle{fill:var(--card);stroke:var(--accent);stroke-width:1.5}
+svg.plan-svg .lead-mark text{fill:var(--accent);font-weight:700}
 details.day-strip{margin:0 0 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);padding:6px 10px}
 details.day-strip>summary{cursor:pointer;font:600 14px system-ui,sans-serif;color:var(--accent)}
 svg.strip{display:block;width:100%;min-width:720px;height:auto;font:11px system-ui,sans-serif}
@@ -52804,7 +53024,8 @@ function renderEvidenceBoard(view, turns = [], previous, strip = []) {
 ${highlightRules(view)}
 ${openedRules(view)}
 ${cardRules(view)}
-${turnRules(strip)}</style>
+${turnRules(strip)}
+${planRules(view)}</style>
 </head>
 <body>
 <main>

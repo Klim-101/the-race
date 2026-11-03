@@ -166,4 +166,4 @@ ${lit}:is(path,line){stroke-width:4;outline:0}`;
 }
 
 /** Whether an id may be written into a selector: kebab-case only, so none can break out of a rule. */
-export const isSafeId = safe;
+export const isSafeId = (id: string | null): id is string => id !== null && safe(id);
