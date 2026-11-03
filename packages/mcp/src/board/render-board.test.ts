@@ -540,30 +540,30 @@ describe('one look for the whole page', () => {
 });
 
 const TURNS: TurnView[] = [
-  { turn: 9, day: 2, minute: 600, kind: 'accuse' },
-  { turn: 8, day: 2, minute: 590, kind: 'use', item: 'coffee' },
-  { turn: 7, day: 2, minute: 580, kind: 'reread', clue: 'A rusty key under the counter.' },
-  { turn: 6, day: 2, minute: 570, kind: 'deduce', result: 'nothing', insight: null },
-  { turn: 5, day: 2, minute: 560, kind: 'deduce', result: 'already-known', insight: null },
+  { turn: 17, day: 2, minute: 600, kind: 'accuse' },
+  { turn: 16, day: 2, minute: 590, kind: 'use', item: 'coffee' },
+  { turn: 15, day: 2, minute: 580, kind: 'reread', clue: 'A rusty key under the counter.' },
+  { turn: 14, day: 2, minute: 570, kind: 'deduce', result: 'nothing', insight: null },
+  { turn: 13, day: 2, minute: 560, kind: 'deduce', result: 'already-known', insight: null },
   {
-    turn: 4,
+    turn: 12,
     day: 2,
     minute: 550,
     kind: 'deduce',
     result: 'insight',
     insight: 'The baker hid the flour <b>.',
   },
-  { turn: 3, day: 1, minute: 1100, kind: 'interrogate', suspect: 'Anna', approach: 'pressure', showed: 2 },
-  { turn: 2, day: 1, minute: 700, kind: 'search', found: 1 },
-  { turn: 1, day: 1, minute: 500, kind: 'rest' },
-  { turn: 1, day: 1, minute: 495, kind: 'sit', restored: 1 },
-  { turn: 1, day: 1, minute: 493, kind: 'ask', succeeded: true },
-  { turn: 1, day: 1, minute: 492, kind: 'ask', succeeded: false },
-  { turn: 1, day: 1, minute: 491, kind: 'study', clue: 'A <b>stamp</b>', succeeded: true },
-  { turn: 1, day: 1, minute: 490, kind: 'study', clue: 'A stamp', succeeded: false },
-  { turn: 0, day: 1, minute: 490, kind: 'look', found: 3 },
-  { turn: -1, day: 1, minute: 480, kind: 'move', to: 'Stall', entered: true },
-  { turn: -2, day: 1, minute: 470, kind: 'move', to: 'Cellar', entered: false },
+  { turn: 11, day: 1, minute: 1100, kind: 'interrogate', suspect: 'Anna', approach: 'pressure', showed: 2 },
+  { turn: 10, day: 1, minute: 700, kind: 'search', found: 1 },
+  { turn: 9, day: 1, minute: 500, kind: 'rest' },
+  { turn: 8, day: 1, minute: 495, kind: 'sit', restored: 1 },
+  { turn: 7, day: 1, minute: 493, kind: 'ask', succeeded: true },
+  { turn: 6, day: 1, minute: 492, kind: 'ask', succeeded: false },
+  { turn: 5, day: 1, minute: 491, kind: 'study', clue: 'A <b>stamp</b>', succeeded: true },
+  { turn: 4, day: 1, minute: 490, kind: 'study', clue: 'A stamp', succeeded: false },
+  { turn: 3, day: 1, minute: 490, kind: 'look', found: 3 },
+  { turn: 2, day: 1, minute: 480, kind: 'move', to: 'Stall', entered: true },
+  { turn: 1, day: 1, minute: 470, kind: 'move', to: 'Cellar', entered: false },
 ];
 
 describe('the chronicle tab', () => {
@@ -664,7 +664,7 @@ describe('the chronicle tab', () => {
     expect(chronicle).toContain('Every door tried, everyone asked.');
   });
 
-  it("tells each kind of turn in the player's own terms, newest first, with the day and the hour", () => {
+  it("tells each kind of turn in the player's own terms, oldest first on its day, with the hour", () => {
     const chronicle = tab(renderEvidenceBoard(viewOf(), TURNS), 'chronicle');
 
     for (const line of [
@@ -680,11 +680,11 @@ describe('the chronicle tab', () => {
       'Looked around: found 3',
       'Went to Stall',
       'Tried to get into Cellar and could not',
-      'Day 1 · 18:20</span>',
+      '18:20</span>',
     ]) {
       expect(chronicle, line).toContain(line);
     }
-    expect(chronicle.indexOf('Made the accusation')).toBeLessThan(chronicle.indexOf('Went to Stall'));
+    expect(chronicle.indexOf('Went to Stall')).toBeLessThan(chronicle.indexOf('Made the accusation'));
     expect(chronicle).toMatchSnapshot();
   });
 
@@ -1006,7 +1006,8 @@ describe('the leads on the chronicle tab', () => {
     expect(chronicle).toContain('A cat points the way.');
     expect(chronicle).toContain('The archive is watched by day.');
     expect(chronicle).toContain('only from 22:00 to 05:30');
-    expect(chronicle.match(/only from/g)).toHaveLength(1);
+    const listed = /<h3>Leads<\/h3>([\s\S]*?)<h3>Still open/.exec(chronicle)?.[1] ?? '';
+    expect(listed.match(/only from/g)).toHaveLength(1);
   });
 
   it('says so when there are none', () => {

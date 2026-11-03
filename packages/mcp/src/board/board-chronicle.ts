@@ -1,10 +1,11 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { assertNever, type DetectiveRunView, type TurnView } from '@the-race/engine';
+import { assertNever, type DetectiveRunView, type StripTurn, type TurnView } from '@the-race/engine';
 import { escapeHtml, truncate } from './escape-html.js';
 import { clueTokens, leadTokens, placeTokens, rel, suspectTokens, token } from './board-relations.js';
 import { NOTHING_NEW, type Fresh } from './board-new.js';
+import { renderStrips } from './board-strip.js';
 import { named, type TabText } from './tab-text.js';
 
 const REREAD_LENGTH = 70;
@@ -32,7 +33,7 @@ export function duration(minutes: number, text: TabText['chronicle']): string {
 }
 
 /** One turn in the player's own terms, from the words of the language. The text of a conclusion is the player's own. */
-function turnText(turn: TurnView, text: TabText): string {
+export function turnText(turn: TurnView, text: TabText): string {
   const t = text.chronicle.turn;
   const fill = (line: string, values: Readonly<Record<string, string>>): string =>
     Object.entries(values).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, value), line);
@@ -128,6 +129,7 @@ export function renderChronicle(
   turns: readonly TurnView[],
   text: TabText,
   fresh: Fresh = NOTHING_NEW,
+  strip: readonly StripTurn[] = [],
 ): string {
   const t = text.chronicle;
   const e = escapeHtml;
@@ -138,6 +140,8 @@ export function renderChronicle(
     view.weather === null ? '' : `\n<p>${e(t.weatherToday)}: ${e(named(t.weathers, view.weather))}</p>`
   }
 </div>
+<h3>${e(text.strip.title)}</h3>
+${turns.length === 0 ? `<p class="empty">${e(t.noTurns)}</p>` : ''}${renderStrips(view, strip, turns, text)}
 <h3>${e(t.inspired)}</h3>
 ${
   view.inspiration === null
@@ -170,16 +174,5 @@ ${
       )
 }
 <h3>${e(t.open)}</h3>
-${open.length === 0 ? `<p class="empty">${e(t.nothingOpen)}</p>` : list(open)}
-<h3>${e(t.turns)}</h3>
-${
-  turns.length === 0
-    ? `<p class="empty">${e(t.noTurns)}</p>`
-    : list(
-        turns.map(
-          (turn) =>
-            `<span class="tag">${e(t.day)} ${String(turn.day)} · ${clock(turn.minute)}</span> ${e(turnText(turn, text))}`,
-        ),
-      )
-}`;
+${open.length === 0 ? `<p class="empty">${e(t.nothingOpen)}</p>` : list(open)}`;
 }

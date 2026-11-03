@@ -43,6 +43,7 @@ export * from './detective/night.js';
 export * from './detective/signals.js';
 export * from './detective/signal-events.js';
 export * from './detective/event-log.js';
+export * from './detective/day-strip.js';
 export * from './detective/turn-view.js';
 export { sealCase, isCaseSealIntact, assertCaseSealIntact } from './detective/seal.js';
 export * from './world/world.js';
