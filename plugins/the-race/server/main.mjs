@@ -36155,7 +36155,7 @@ function grantLeads(run, deeds) {
   const earned = deeds.flatMap((deed) => leadsEarnedBy(run, deed));
   return [...new Set(earned)].reduce((state, lead) => {
     const parts = state.case.locations.flatMap((location) => location.parts ?? []);
-    const shown = parts.filter(({ requiresLead }) => requiresLead === lead.id).map(({ id }) => id);
+    const shown2 = parts.filter(({ requiresLead }) => requiresLead === lead.id).map(({ id }) => id);
     const given = parts.flatMap(
       (part) => part.fallback?.kind === "lead" && part.fallback.leadId === lead.id && part.holds !== null ? [part.holds] : []
     );
@@ -36163,7 +36163,7 @@ function grantLeads(run, deeds) {
       ...state,
       earnedLeads: [...state.earnedLeads, { leadId: lead.id, turn: state.turn + 1 }]
     };
-    return given.reduce(findClue, noticeParts(withLead, shown));
+    return given.reduce(findClue, noticeParts(withLead, shown2));
   }, run);
 }
 function recordSitting(run, nerves) {
@@ -36185,14 +36185,14 @@ function setSuspectMood(run, mood) {
   const others = run.suspectMoods.filter(({ suspectId }) => suspectId !== mood.suspectId);
   return { ...run, suspectMoods: [...others, mood] };
 }
-function recordShown(run, suspectId, shown) {
+function recordShown(run, suspectId, shown2) {
   return {
     ...run,
     history: {
       ...run.history,
       shown: [
         ...run.history.shown,
-        ...shown.map(({ clueId, effect }) => ({ suspectId, clueId, effect, turn: run.turn + 1 }))
+        ...shown2.map(({ clueId, effect }) => ({ suspectId, clueId, effect, turn: run.turn + 1 }))
       ]
     }
   };
@@ -36292,6 +36292,10 @@ function requireLocation(detectiveCase, id) {
     throw new RangeError(`There is no location "${id}" in this run.`);
   }
   return location;
+}
+function talksAgainOf(run, suspectId) {
+  const { closedUntil } = moodOf(run, suspectId);
+  return closedUntil === null || !isClosed(run, suspectId) ? null : { day: Math.floor(closedUntil / MINUTES_PER_DAY) + 1, minute: closedUntil % MINUTES_PER_DAY };
 }
 function viewChronicle(run) {
   const { worldEvents, days } = run.case.clock;
@@ -36428,6 +36432,7 @@ function viewRun(run) {
         place: place === void 0 ? null : { id: place.id, name: place.name },
         mood: moodWord(moodOf(run, suspect.id).step),
         closed: isClosed(run, suspect.id),
+        talksAgain: talksAgainOf(run, suspect.id),
         statements: run.statements.filter(({ suspectId }) => suspectId === suspect.id).map(({ day, kind, text }) => ({ day, kind, text }))
       };
     }),
@@ -36907,8 +36912,8 @@ function resolveInterrogate(run, intent, rng) {
   if (modern && isClosed(run, suspect.id)) {
     return refuse("suspect-closed", `"${suspect.id}" will not talk for now.`);
   }
-  const shown = [...new Set(intent.clueIds)];
-  if (shown.some((clueId) => !run.foundClueIds.includes(clueId))) {
+  const shown2 = [...new Set(intent.clueIds)];
+  if (shown2.some((clueId) => !run.foundClueIds.includes(clueId))) {
     return refuse("clue-not-found", "The hero can only show clues they have found.");
   }
   const putInsights = [...new Set(intent.insightIds ?? [])];
@@ -36917,7 +36922,7 @@ function resolveInterrogate(run, intent, rng) {
   }
   const rules = APPROACH_RULES[intent.approach];
   const mood = moodOf(run, suspect.id);
-  const breakable = brokenLies(run, suspect, shown, putInsights);
+  const breakable = brokenLies(run, suspect, shown2, putInsights);
   const eased = breakable.reduce(
     (total, { byInsight }) => total + rules.easePerBrokenLie * (byInsight ? INSIGHT_EASE_FACTOR : 1),
     0
@@ -36954,7 +36959,7 @@ function resolveInterrogate(run, intent, rng) {
     implicates,
     modern
   );
-  const presented = shown.map((clueId) => ({
+  const presented = shown2.map((clueId) => ({
     clueId,
     effect: effectOfShown("clue", clueId, isAbout(run.case, clueId, suspect.id))
   }));
@@ -36966,7 +36971,7 @@ function resolveInterrogate(run, intent, rng) {
       run.case.deductions.filter(({ id }) => id === insightId).some(({ clueIds }) => clueIds.some((clueId) => isAbout(run.case, clueId, suspect.id)))
     )
   }));
-  const said = (kind, text) => ({
+  const said2 = (kind, text) => ({
     suspectId: suspect.id,
     day: run.clock.day,
     kind,
@@ -36976,9 +36981,9 @@ function resolveInterrogate(run, intent, rng) {
     ({ suspectId, kind }) => suspectId === suspect.id && kind === "alibi"
   );
   const statements = [
-    ...toldAlibi ? [] : [said("alibi", suspect.alibi)],
-    ...fallen.map(({ statement }) => said("conceded", statement)),
-    ...secret === null ? [] : [said("secret", secret)]
+    ...toldAlibi ? [] : [said2("alibi", suspect.alibi)],
+    ...fallen.map(({ statement }) => said2("conceded", statement)),
+    ...secret === null ? [] : [said2("secret", secret)]
   ];
   const told = result.success ? cluesToldBy(run, run.case, suspect.id) : [];
   const withLies = recordShown(
@@ -37337,16 +37342,16 @@ function hiddenClues(run, locationId) {
   );
 }
 function resolveLookAtParts(run, rng, parts) {
-  const shown = parts.filter(
+  const shown2 = parts.filter(
     ({ inQuickLook, requiresLead }) => inQuickLook && (requiresLead === null || isLeadEarned(run, requiresLead))
   );
   const hidden = hiddenClues(run, run.locationId);
-  const found = shown.flatMap(
+  const found = shown2.flatMap(
     (part) => part.obstacle === null ? hidden.filter((clue) => clue.id === part.holds && clue.discovery === null) : []
   );
   const noticed = noticeParts(
     run,
-    shown.map(({ id }) => id)
+    shown2.map(({ id }) => id)
   );
   const next = found.reduce((state, clue) => findClue(state, clue.id), noticed);
   const settled = settle2(next, rng, PART_LOOK_MINUTES, []);
@@ -37354,7 +37359,7 @@ function resolveLookAtParts(run, rng, parts) {
     kind: "look",
     foundClueIds: found.map(({ id }) => id),
     minutes: PART_LOOK_MINUTES,
-    noticedPartIds: shown.map(({ id }) => id)
+    noticedPartIds: shown2.map(({ id }) => id)
   };
   return { ok: true, run: settled.run, outcome, details: [], revealed: lockOutReveals(run, run.locationId) };
 }
@@ -37635,10 +37640,10 @@ function resolveIntent(run, input2, rng) {
   const resolution = applyFatigue(run, dispatched, rng);
   const slept = sleepIfDue(resolution, run.clock.day, rng);
   const indebted = collectDebt(slept.run, run.clock.day);
-  const shown = applyReveals(indebted.run, [...slept.revealed ?? [], ...indebted.revealed]);
-  const settled = settleClock(drawDayEvents(shown.run, run.clock, rng).run, run.clock.day);
+  const shown2 = applyReveals(indebted.run, [...slept.revealed ?? [], ...indebted.revealed]);
+  const settled = settleClock(drawDayEvents(shown2.run, run.clock, rng).run, run.clock.day);
   const newLeadIds = settled.earnedLeads.slice(run.earnedLeads.length).map(({ leadId }) => leadId);
-  return { ...slept, run: settled, revealed: shown.revealed, newLeadIds };
+  return { ...slept, run: settled, revealed: shown2.revealed, newLeadIds };
 }
 function sleepIfDue(resolution, day, rng) {
   const { run } = resolution;
@@ -39983,8 +39988,8 @@ function replayed(run, log) {
   };
   const played = replay(initial, log);
   if (!played.ok) return void 0;
-  const { finds, shown, links } = run.history;
-  const hasHistory = finds.length + shown.length + links.length > 0;
+  const { finds, shown: shown2, links } = run.history;
+  const hasHistory = finds.length + shown2.length + links.length > 0;
   const expected = hasHistory ? played.run : { ...played.run, history: run.history };
   return canonicalJson(expected) === canonicalJson(run) ? played.run : void 0;
 }
@@ -40008,8 +40013,8 @@ function parsePair(stateText, logText, migrations, runId) {
   if (played === void 0) {
     return { ok: false, reason: "log-mismatch", detail: "The log does not replay to the saved state." };
   }
-  const { finds, shown, links } = state.run.history;
-  const run = finds.length + shown.length + links.length === 0 ? { ...state.run, history: played.history } : state.run;
+  const { finds, shown: shown2, links } = state.run.history;
+  const run = finds.length + shown2.length + links.length === 0 ? { ...state.run, history: played.history } : state.run;
   return { ok: true, run, log: parsed.data };
 }
 async function readPair(fs, statePath, logPath, migrations, runId) {
@@ -50370,14 +50375,17 @@ function clueTokens(view, clueId) {
   ]);
 }
 function suspectTokens(view, suspectId) {
+  const place = view.suspects.find(({ id }) => id === suspectId)?.place;
   return unique([
     token("suspect", suspectId),
+    ...place === null || place === void 0 ? [] : [token("place", place.id)],
     ...shownPairs(view).filter((pair) => pair.suspectId === suspectId).map(({ clueId }) => token("clue", clueId))
   ]);
 }
 function placeTokens(view, placeId) {
   return unique([
     token("place", placeId),
+    ...view.suspects.filter(({ place }) => place?.id === placeId).map(({ id }) => token("suspect", id)),
     ...view.leads.filter(({ opens }) => opens.some(({ kind, id }) => kind === "place" && id === placeId)).map(({ id }) => token("lead", id)),
     ...view.clues.filter(({ id, locationId }) => (foundAt(view, id) ?? locationId) === placeId).map(({ id }) => token("clue", id))
   ]);
@@ -50563,7 +50571,12 @@ var en_default3 = {
     },
     statements: {
       moods: { calm: "calm", shaken: "shaken", cornered: "cornered", broken: "broken" },
-      closed: "will not talk for now",
+      closedUntil: "will not talk until day {day}, {time}",
+      mood: "Mood",
+      lieFell: "a lie that fell",
+      brokenBy: "broken by",
+      shown: "Shown to them",
+      noneShown: "Nothing shown yet.",
       title: "What they said",
       none: "Nothing said yet.",
       day: "day",
@@ -50838,12 +50851,26 @@ var en_default3 = {
         "no-effect": "no effect"
       },
       legend: "Red thread: a link tried. Blue thread: a clue shown to a person.",
-      shownHere: "Clues shown to them",
       drawnFrom: "Drawn from",
       linksOf: "Links it took part in",
       noLinks: "none yet",
       closeHint: "Click again, or press Esc, to put it back.",
       fullText: "Full text"
+    },
+    clueGrid: {
+      filters: "Filter the clues",
+      place: "Found at",
+      suspect: "Shown to",
+      any: "any",
+      garbled: "to be read again",
+      unused: "not yet used in a link",
+      number: "Number",
+      numberHint: "such as {example}",
+      none: "No clue fits.",
+      usedIn: "used in {n} links",
+      notUsed: "not used in any link",
+      toBoard: "On the corkboard",
+      toMap: "On the map"
     }
   }
 };
@@ -50970,7 +50997,12 @@ var ru_default2 = {
     },
     statements: {
       moods: { calm: "\u0441\u043F\u043E\u043A\u043E\u0435\u043D", shaken: "\u0440\u0430\u0441\u0442\u0435\u0440\u044F\u043D", cornered: "\u0437\u0430\u0433\u043D\u0430\u043D \u0432 \u0443\u0433\u043E\u043B", broken: "\u0441\u043B\u043E\u043C\u043B\u0435\u043D" },
-      closed: "\u0441\u0435\u0439\u0447\u0430\u0441 \u043D\u0435 \u0441\u0442\u0430\u043D\u0435\u0442 \u0433\u043E\u0432\u043E\u0440\u0438\u0442\u044C",
+      closedUntil: "\u043D\u0435 \u0437\u0430\u0433\u043E\u0432\u043E\u0440\u0438\u0442 \u0434\u043E {day}-\u0433\u043E \u0434\u043D\u044F, {time}",
+      mood: "\u041D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u0435",
+      lieFell: "\u0440\u0443\u0445\u043D\u0443\u0432\u0448\u0430\u044F \u043B\u043E\u0436\u044C",
+      brokenBy: "\u043E\u043F\u0440\u043E\u0432\u0435\u0440\u0433\u043D\u0443\u0442\u043E",
+      shown: "\u0427\u0442\u043E \u0435\u043C\u0443 \u043F\u043E\u043A\u0430\u0437\u0430\u043B\u0438",
+      noneShown: "\u041F\u043E\u043A\u0430 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u043E.",
       title: "\u0427\u0442\u043E \u043E\u043D\u0438 \u0441\u043A\u0430\u0437\u0430\u043B\u0438",
       none: "\u041F\u043E\u043A\u0430 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0441\u043A\u0430\u0437\u0430\u043D\u043E.",
       day: "\u0434\u0435\u043D\u044C",
@@ -51245,12 +51277,26 @@ var ru_default2 = {
         "no-effect": "\u0431\u0435\u0437 \u044D\u0444\u0444\u0435\u043A\u0442\u0430"
       },
       legend: "\u041A\u0440\u0430\u0441\u043D\u0430\u044F \u043D\u0438\u0442\u043A\u0430: \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043D\u0430\u044F \u0441\u0432\u044F\u0437\u043A\u0430. \u0421\u0438\u043D\u044F\u044F \u043D\u0438\u0442\u043A\u0430: \u0443\u043B\u0438\u043A\u0430, \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u043D\u0430\u044F \u0447\u0435\u043B\u043E\u0432\u0435\u043A\u0443.",
-      shownHere: "\u041F\u043E\u043A\u0430\u0437\u0430\u043D\u043D\u044B\u0435 \u0443\u043B\u0438\u043A\u0438",
       drawnFrom: "\u0412\u044B\u0432\u0435\u0434\u0435\u043D\u043E \u0438\u0437",
       linksOf: "\u0421\u0432\u044F\u0437\u043A\u0438 \u0441 \u043D\u0435\u0439",
       noLinks: "\u043F\u043E\u043A\u0430 \u043D\u0435\u0442",
       closeHint: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437 \u0438\u043B\u0438 Esc, \u0447\u0442\u043E\u0431\u044B \u0443\u0431\u0440\u0430\u0442\u044C.",
       fullText: "\u041F\u043E\u043B\u043D\u044B\u0439 \u0442\u0435\u043A\u0441\u0442"
+    },
+    clueGrid: {
+      filters: "\u041E\u0442\u0431\u043E\u0440 \u0443\u043B\u0438\u043A",
+      place: "\u041D\u0430\u0439\u0434\u0435\u043D\u043E \u0432",
+      suspect: "\u041F\u043E\u043A\u0430\u0437\u0430\u043D\u043E",
+      any: "\u043B\u044E\u0431\u043E\u0435",
+      garbled: "\u043F\u0435\u0440\u0435\u0447\u0438\u0442\u0430\u0442\u044C",
+      unused: "\u0435\u0449\u0451 \u043D\u0435 \u0432 \u0441\u0432\u044F\u0437\u043A\u0430\u0445",
+      number: "\u041D\u043E\u043C\u0435\u0440",
+      numberHint: "\u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440 {example}",
+      none: "\u041D\u0438 \u043E\u0434\u043D\u0430 \u0443\u043B\u0438\u043A\u0430 \u043D\u0435 \u043F\u043E\u0434\u0445\u043E\u0434\u0438\u0442.",
+      usedIn: "\u0432 \u0441\u0432\u044F\u0437\u043A\u0430\u0445: {n}",
+      notUsed: "\u043D\u0438 \u0432 \u043E\u0434\u043D\u043E\u0439 \u0441\u0432\u044F\u0437\u043A\u0435",
+      toBoard: "\u041D\u0430 \u0434\u043E\u0441\u043A\u0435",
+      toMap: "\u041D\u0430 \u043A\u0430\u0440\u0442\u0435"
     }
   }
 };
@@ -51380,6 +51426,25 @@ ${turns.length === 0 ? `<p class="empty">${e(t.noTurns)}</p>` : list(
   )}`;
 }
 
+// packages/mcp/src/board/board-links.ts
+function openLinks(view, text) {
+  const { open: open3, size, group, allDrawn } = text.links;
+  const counts = /* @__PURE__ */ new Map();
+  for (const n of view.openLinks) counts.set(n, (counts.get(n) ?? 0) + 1);
+  const groups = [...counts].map(
+    ([n, count]) => escapeHtml(group.replace("{count}", String(count)).replace("{size}", size.replace("{n}", String(n))))
+  ).join(", ");
+  return `<p class="card"><strong>${escapeHtml(open3)}:</strong> ${view.openLinks.length === 0 ? escapeHtml(allDrawn) : groups}</p>
+`;
+}
+function renderLinks(view, text) {
+  const open3 = openLinks(view, text);
+  if (view.clues.length === 0 && view.insights.length === 0) {
+    return `${open3}<p class="empty">${escapeHtml(text.links.none)}</p>`;
+  }
+  return open3;
+}
+
 // packages/mcp/src/board/board-opened.ts
 var openedId = (clueId) => `open-${clueId}`;
 function numberOf(view) {
@@ -51397,7 +51462,7 @@ function renderOpened(view, board, text) {
     const find = view.history.finds.find(({ clueId }) => clueId === clue.id);
     const place = placeName.get(find?.locationId ?? clue.locationId) ?? clue.locationId;
     const where = `${words.foundAt} ${place}${find === void 0 ? "" : ` \xB7 ${step(find.turn)}`}`;
-    const shown = shownPairs(view).filter(({ clueId }) => clueId === clue.id).map(
+    const shown2 = shownPairs(view).filter(({ clueId }) => clueId === clue.id).map(
       ({ suspectId, effect }) => `${suspectName.get(suspectId) ?? suspectId} (${words.effects[effect]})`
     );
     const links = view.history.links.filter(({ clueIds }) => clueIds.includes(clue.id)).map(
@@ -51410,7 +51475,7 @@ function renderOpened(view, board, text) {
 <p class="whole">${e(clue.description)}</p>${clue.garbled ? `
 <p class="warn">${e(board.garbled)}</p>` : ""}
 <p class="tag">${e(where)}</p>
-<p class="tag">${e(words.shownTo)}: ${e(shown.length === 0 ? words.nobody : shown.join(", "))}</p>
+<p class="tag">${e(words.shownTo)}: ${e(shown2.length === 0 ? words.nobody : shown2.join(", "))}</p>
 <p class="tag">${e(words.linksOf)}:${tried2}
 <p class="note">${e(words.closeHint)}</p>
 </div>`;
@@ -51419,6 +51484,107 @@ function renderOpened(view, board, text) {
 function openedRules(view) {
   const allowed = new Set(pickableTokens(view));
   return view.clues.filter(({ id }) => allowed.has(`clue:${id}`)).map(({ id }) => `main[data-open="${id}"] #${openedId(id)}{display:block}`).join("\n");
+}
+
+// packages/mcp/src/board/board-clues.ts
+function tried(view, text) {
+  const e = escapeHtml;
+  if (view.history.links.length === 0) return `<p class="empty">${e(text.corkboard.noneTried)}</p>`;
+  const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
+  const number4 = numberOf(view);
+  const items = view.history.links.map(({ clueIds, result, turn }) => {
+    const names = clueIds.map((id) => `<span class="num">${e(number4(id))}</span>`).join(" + ");
+    const whole3 = clueIds.map((id) => `<p><span class="num">${e(number4(id))}</span> ${e(description.get(id) ?? id)}</p>`).join("");
+    return `<li data-rel="${e(rel(threadTokens(clueIds)))}">${names} <span class="result">${e(text.corkboard.results[result])}</span> <span class="tag">${e(text.corkboard.step.replace("{n}", String(turn)))}</span>
+<details><summary>${e(text.corkboard.fullText)}</summary>${whole3}</details></li>`;
+  });
+  return `<ul class="tried">${items.join("\n")}</ul>`;
+}
+var cardId = (clueId) => `card-${clueId}`;
+var placeOf = (view, clue) => view.history.finds.find(({ clueId }) => clueId === clue.id)?.locationId ?? clue.locationId;
+var linksOf = (view, clueId) => view.history.links.filter(({ clueIds }) => clueIds.includes(clueId));
+function filters(view, text, example) {
+  const e = escapeHtml;
+  const t = text.clueGrid;
+  const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
+  const places = [...new Set(view.clues.map((clue) => placeOf(view, clue)))];
+  const shownTo = new Set(view.history.shown.map(({ suspectId }) => suspectId));
+  const option = (value, label) => `<option value="${e(value)}">${e(label)}</option>`;
+  const suspects = view.suspects.filter(({ id }) => shownTo.has(id));
+  return `<div class="filters" role="search" aria-label="${e(t.filters)}">
+<label>${e(t.place)} <select id="f-place">${option("", t.any)}${places.map((id) => option(id, placeName.get(id) ?? id)).join("")}</select></label>
+<label>${e(t.suspect)} <select id="f-suspect">${option("", t.any)}${suspects.map(({ id, name }) => option(id, name)).join("")}</select></label>
+<label><input type="checkbox" id="f-garbled"> ${e(t.garbled)}</label>
+<label><input type="checkbox" id="f-unused"> ${e(t.unused)}</label>
+<label>${e(t.number)} <input type="search" id="f-number" placeholder="${e(t.numberHint.replace("{example}", example))}" size="12"></label>
+</div>`;
+}
+function card(view, clue, board, text, fresh) {
+  const e = escapeHtml;
+  const number4 = numberOf(view);
+  const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
+  const suspectName = new Map(view.suspects.map(({ id, name }) => [id, name]));
+  const turn = view.history.finds.find(({ clueId }) => clueId === clue.id)?.turn;
+  const place = placeOf(view, clue);
+  const where = `${text.corkboard.foundAt} ${placeName.get(place) ?? place}${turn === void 0 ? "" : ` \xB7 ${text.corkboard.step.replace("{n}", String(turn))}`}`;
+  const shown2 = shownPairs(view).filter(({ clueId }) => clueId === clue.id);
+  const shownLine = shown2.length === 0 ? text.corkboard.nobody : shown2.map(
+    ({ suspectId, effect }) => `${suspectName.get(suspectId) ?? suspectId} (${text.corkboard.effects[effect]})`
+  ).join(", ");
+  const links = linksOf(view, clue.id);
+  const used = links.length === 0 ? text.clueGrid.notUsed : `${text.clueGrid.usedIn.replace("{n}", String(links.length))}: ${links.map(({ clueIds }) => clueIds.map(number4).join(" + ")).join("; ")}`;
+  const attrs = [
+    `id="${e(cardId(clue.id))}"`,
+    `data-pick="${e(token("clue", clue.id))}"`,
+    `data-rel="${e(rel(clueTokens(view, clue.id)))}"`,
+    `data-place="${e(place)}"`,
+    `data-shown="${e(shown2.map(({ suspectId }) => suspectId).join(" "))}"`,
+    `data-garbled="${clue.garbled ? "1" : "0"}"`,
+    `data-unused="${links.length === 0 ? "1" : "0"}"`,
+    `data-number="${e(clue.number)}"`,
+    'tabindex="0" role="button"'
+  ].join(" ");
+  return `<div class="card clue-card" ${attrs}>
+<span class="tag"><span class="num">${e(clue.number)}</span> \xB7 ${e(where)}</span>${fresh.clueIds.has(clue.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ""}
+<p class="text">${e(clue.description)}</p>${clue.garbled ? `
+<p class="warn">${e(board.garbled)}</p>` : ""}
+<p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
+<p class="tag">${e(used)}</p>
+<p class="tag ways"><a href="#board">${e(text.clueGrid.toBoard)}</a> \xB7 <a href="#map">${e(text.clueGrid.toMap)}</a></p>
+</div>`;
+}
+function cardRules(view) {
+  const allowed = new Set(pickableTokens(view));
+  return view.clues.filter(({ id }) => allowed.has(token("clue", id))).map(
+    ({ id }) => `main[data-sel="${token("clue", id)}"] #${cardId(id)} .text{display:block;overflow:visible}`
+  ).join("\n");
+}
+function renderClues(view, board, text, fresh) {
+  const e = escapeHtml;
+  const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
+  const number4 = numberOf(view);
+  const [first] = view.clues;
+  const clues = first === void 0 ? `<p class="empty">${e(board.noClues)}</p>` : `${filters(view, text, first.number)}
+<div class="grid">${view.clues.map((clue) => card(view, clue, board, text, fresh)).join("\n")}</div>
+<p class="empty" id="clue-none" hidden>${e(text.clueGrid.none)}</p>`;
+  const insights = view.insights.length === 0 ? `<p class="empty">${e(board.noInsights)}</p>` : view.insights.map(({ insight, clueIds }) => {
+    const sources = clueIds.flatMap((id) => {
+      const line = description.get(id);
+      return line === void 0 ? [] : [`<span class="source"><span class="num">${e(number4(id))}</span> ${e(line)}</span>`];
+    });
+    const from = sources.length === 0 ? "" : `
+<p class="tag">${e(text.corkboard.drawnFrom)}:</p>
+${sources.join("\n")}`;
+    return `<div class="card" data-rel="${e(rel(threadTokens(clueIds)))}"><p>${e(insight)}</p>${from}</div>`;
+  }).join("\n");
+  return `<h2>${e(text.links.title)}</h2>
+${renderLinks(view, text)}
+<h2>${e(text.corkboard.tried)}</h2>
+${tried(view, text)}
+<h2>${e(board.clues)} (${String(view.clues.length)})</h2>
+${clues}
+<h2>${e(board.insights)} (${String(view.insights.length)})</h2>
+${insights}`;
 }
 
 // packages/mcp/src/board/board-cork.ts
@@ -51656,25 +51822,6 @@ ${traits}
 ${renderClimate(view, board)}`;
 }
 
-// packages/mcp/src/board/board-links.ts
-function openLinks(view, text) {
-  const { open: open3, size, group, allDrawn } = text.links;
-  const counts = /* @__PURE__ */ new Map();
-  for (const n of view.openLinks) counts.set(n, (counts.get(n) ?? 0) + 1);
-  const groups = [...counts].map(
-    ([n, count]) => escapeHtml(group.replace("{count}", String(count)).replace("{size}", size.replace("{n}", String(n))))
-  ).join(", ");
-  return `<p class="card"><strong>${escapeHtml(open3)}:</strong> ${view.openLinks.length === 0 ? escapeHtml(allDrawn) : groups}</p>
-`;
-}
-function renderLinks(view, text) {
-  const open3 = openLinks(view, text);
-  if (view.clues.length === 0 && view.insights.length === 0) {
-    return `${open3}<p class="empty">${escapeHtml(text.links.none)}</p>`;
-  }
-  return open3;
-}
-
 // packages/mcp/src/board/board-map.ts
 var NODE_WIDTH = 156;
 var NODE_HEIGHT = 56;
@@ -51753,6 +51900,80 @@ function renderMap(view, text) {
 <p class="tag">${escapeHtml(text.map.legend)}</p>`;
 }
 
+// packages/mcp/src/board/board-suspects.ts
+var MOOD_STEPS = ["calm", "shaken", "cornered", "broken"];
+var PORTRAITS = 6;
+function portraitOf(id) {
+  return Array.from(id, (character) => character.charCodeAt(0)).reduce((sum, code) => sum + code, 0) % PORTRAITS;
+}
+function portrait(suspect) {
+  const initial = suspect.name.charAt(0);
+  return `<svg class="portrait p${String(portraitOf(suspect.id))}" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27"/><circle class="head" cx="28" cy="21" r="9"/><path class="body" d="M10 52c1-12 8-18 18-18s17 6 18 18z"/><text x="28" y="25" text-anchor="middle">${escapeHtml(initial.toUpperCase())}</text></svg>`;
+}
+function gauge(suspect, text) {
+  const reached = MOOD_STEPS.indexOf(suspect.mood);
+  const steps = MOOD_STEPS.map((_, index) => `<span class="step${index <= reached ? " on" : ""}"></span>`);
+  return `<span class="gauge mood-${suspect.mood}" role="img" aria-label="${escapeHtml(text.statements.moods[suspect.mood])}">${steps.join("")}</span> <span class="tag">${escapeHtml(text.statements.mood)}: ${escapeHtml(text.statements.moods[suspect.mood])}</span>`;
+}
+function chip(view, clueId, label, effect) {
+  const e = escapeHtml;
+  const number4 = numberOf(view)(clueId);
+  return `<span class="chip fx-${e(effect)}" data-pick="${e(token("clue", clueId))}" data-rel="${e(rel(clueTokens(view, clueId)))}" tabindex="0" role="button"><span class="num">${e(number4)}</span> ${e(label)}</span>`;
+}
+function said(view, suspect, text) {
+  const e = escapeHtml;
+  const t = text.statements;
+  if (suspect.statements.length === 0) return `<p class="empty">${e(t.none)}</p>`;
+  const breakers = [
+    ...new Set(
+      view.history.shown.filter(({ suspectId, effect }) => suspectId === suspect.id && effect === "breaks-lie").map(({ clueId }) => clueId)
+    )
+  ];
+  const days = [...new Set(suspect.statements.map(({ day }) => day))];
+  return days.map((day) => {
+    const lines = suspect.statements.filter((statement) => statement.day === day).map(
+      ({ kind, text: line }) => kind === "conceded" ? `<p class="statement fell"><span class="tag">${e(t.kinds[kind])} \xB7 ${e(t.lieFell)}</span><br><s>${e(line)}</s>${breakers.length === 0 ? "" : `<br><span class="tag">${e(t.brokenBy)}:</span> ${breakers.map((id) => chip(view, id, "", "breaks-lie")).join(" ")}`}</p>` : `<p class="statement"><span class="tag">${e(t.kinds[kind])}</span><br>${e(line)}</p>`
+    );
+    return `<div class="day"><span class="tag">${e(t.day)} ${String(day)}</span>
+${lines.join("\n")}</div>`;
+  }).join("\n");
+}
+function shown(view, suspect, text) {
+  const e = escapeHtml;
+  const entries = view.history.shown.filter(({ suspectId }) => suspectId === suspect.id);
+  if (entries.length === 0) return `<p class="empty">${e(text.statements.noneShown)}</p>`;
+  return `<p class="chips">${entries.map(
+    ({ clueId, effect, turn }) => chip(
+      view,
+      clueId,
+      `${text.corkboard.effects[effect]} \xB7 ${text.corkboard.step.replace("{n}", String(turn))}`,
+      effect
+    )
+  ).join(" ")}</p>`;
+}
+function renderSuspects(view, board, text, fresh) {
+  const e = escapeHtml;
+  return view.suspects.map((suspect) => {
+    const where = suspect.place === null ? board.anywhere : suspect.place.id === view.location.id ? board.here : suspect.place.name;
+    const closed = suspect.talksAgain ? `
+<p class="warn">${e(
+      text.statements.closedUntil.replace("{day}", String(suspect.talksAgain.day)).replace("{time}", clock(suspect.talksAgain.minute))
+    )}</p>` : "";
+    const mark = fresh.moods.has(suspect.id) || fresh.lieSuspectIds.has(suspect.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : "";
+    const attrs = `data-pick="${e(token("suspect", suspect.id))}" data-rel="${e(rel(suspectTokens(view, suspect.id)))}" tabindex="0" role="button"`;
+    return `<div class="card suspect" ${attrs}>
+<div class="who">${portrait(suspect)}<div><strong>${e(suspect.name)}</strong>${mark}
+<p>${e(suspect.persona)}</p>
+<p class="tag">${e(board.whereabouts)}: ${e(where)}</p>
+<p>${gauge(suspect, text)}</p></div></div>${closed}
+<h3>${e(text.statements.title)}</h3>
+${said(view, suspect, text)}
+<h3>${e(text.statements.shown)}</h3>
+${shown(view, suspect, text)}
+</div>`;
+  }).join("\n");
+}
+
 // packages/mcp/src/board/board-text.ts
 var BOARD_TEXT = {
   en: LOCALE_TEXT.en.board,
@@ -51769,7 +51990,10 @@ function shut(restore){if(m.getAttribute('data-open')===null)return;m.removeAttr
 function pick(t){if(m.getAttribute('data-sel')===t){m.removeAttribute('data-sel')}else{m.setAttribute('data-sel',t)}}
 function show(el){var id=el.getAttribute('data-open');if(!id){shut(false);return}if(m.getAttribute('data-open')===id){shut(true);return}m.setAttribute('data-open',id);back=el;var card=document.getElementById('open-'+id);if(card&&card.focus)card.focus()}
 function choose(el){pick(el.getAttribute('data-pick'));show(el)}
-document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}if(t.closest&&t.closest('nav.tabs')){shut(false);return}var el=t.closest&&t.closest('[data-pick]');if(el){choose(el)}else if(!(t.closest&&t.closest('a'))){m.removeAttribute('data-sel');shut(false)}});
+document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}if(t.closest&&t.closest('nav.tabs')){shut(false);return}var el=t.closest&&t.closest('[data-pick]');if(el&&t.closest('a')){m.setAttribute('data-sel',el.getAttribute('data-pick'));return}if(el){choose(el)}else if(!(t.closest&&(t.closest('a')||t.closest('.filters')))){m.removeAttribute('data-sel');shut(false)}});
+function fit(c,v){var g=function(n){return c.getAttribute('data-'+n)||''};return(!v.p||g('place')===v.p)&&(!v.s||(' '+g('shown')+' ').indexOf(' '+v.s+' ')>=0)&&(!v.g||g('garbled')==='1')&&(!v.u||g('unused')==='1')&&(!v.q||g('number').toLowerCase().indexOf(v.q)>=0)}
+function filter(){var f=function(i){return document.getElementById(i)};if(!f('f-place'))return;var v={p:f('f-place').value,s:f('f-suspect').value,g:f('f-garbled').checked,u:f('f-unused').checked,q:f('f-number').value.trim().toLowerCase()};var cards=document.querySelectorAll('.clue-card'),n=0;for(var i=0;i<cards.length;i++){var ok=fit(cards[i],v);cards[i].hidden=!ok;if(ok)n++}var none=f('clue-none');if(none)none.hidden=n>0}
+document.addEventListener('input',filter);document.addEventListener('change',filter);
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){m.removeAttribute('data-sel');shut(true);return}if(e.key==='Enter'||e.key===' '){var el=e.target.closest&&e.target.closest('[data-pick]');if(el){e.preventDefault();choose(el)}}});
 })();`;
 var SCRIPT_HASH = createHash2("sha256").update(SCRIPT).digest("base64");
@@ -51871,94 +52095,37 @@ ul.tried{list-style:none;padding:0;margin:0 0 10px}
 ul.tried li{margin:0 0 8px;padding:6px 14px 6px 18px;border-left:3px double var(--margin);background:var(--paper);color:var(--paper-ink);box-shadow:1px 2px 4px var(--shadow)}
 ul.tried .result{font:12px system-ui,sans-serif;color:var(--red);text-transform:uppercase;letter-spacing:.05em}
 ul.tried .tag{color:var(--paper-tag)}
+[hidden]{display:none!important}
+.suspect .who{display:flex;gap:12px;align-items:center}
+.suspect .who p{margin:0}
+svg.portrait{flex:0 0 56px;width:56px;height:56px;font:700 22px Georgia,serif}
+svg.portrait circle:first-child{fill:var(--tone,#c9b99b)}
+svg.portrait .head,svg.portrait .body{fill:rgba(0,0,0,.28)}
+svg.portrait text{fill:#fffdf4}
+svg.portrait.p0{--tone:#8a3b2a}svg.portrait.p1{--tone:#2b5fa3}svg.portrait.p2{--tone:#5a7a3a}svg.portrait.p3{--tone:#7a5a8a}svg.portrait.p4{--tone:#b26a00}svg.portrait.p5{--tone:#3a7a7a}
+.gauge{display:inline-flex;gap:3px;vertical-align:middle}
+.gauge .step{width:18px;height:8px;border-radius:2px;background:var(--line)}
+.gauge.mood-shaken .on{background:var(--warn)}
+.gauge.mood-cornered .on{background:var(--margin)}
+.gauge.mood-broken .on{background:var(--red)}
+.gauge.mood-calm .on{background:var(--blue)}
+.statement.fell s{color:var(--muted)}
+.day{margin:0 0 6px}
+.chips{margin:0}
+.chip{display:inline-block;margin:2px 4px 2px 0;padding:0 8px;border-radius:999px;border:1px solid currentColor;font:12px/22px system-ui,sans-serif;cursor:pointer}
+.chip.fx-breaks-lie{color:var(--red)}
+.chip.fx-confirms{color:var(--blue)}
+.chip.fx-implicates{color:var(--warn)}
+.chip.fx-no-effect{color:var(--muted)}
+.filters{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:0 0 12px;font:13px system-ui,sans-serif}
+.filters select,.filters input[type=search]{font:inherit}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.grid .card{margin:0}
+.clue-card .text{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ways a{color:var(--accent)}
 @media (max-width:560px){body{padding:16px}h1{font-size:1.5rem}}
 @media print{body{background:#fff;color:#000}.opened{display:none!important}.tab{display:block!important}nav.tabs{display:none}.card,.graph,.cork{break-inside:avoid}}
 `;
-function shownTo(view, suspectId, text) {
-  const e = escapeHtml;
-  const shown = view.history.shown.filter((entry) => entry.suspectId === suspectId);
-  if (shown.length === 0) return "";
-  const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
-  const number4 = numberOf(view);
-  const lines = shown.map(
-    ({ clueId, effect, turn }) => `<p class="shown-line"><span class="tag">${e(text.corkboard.step.replace("{n}", String(turn)))}</span> <span class="num">${e(number4(clueId))}</span> ${e(description.get(clueId) ?? clueId)} <span class="effect">${e(text.corkboard.effects[effect])}</span></p>`
-  );
-  return `<h3>${e(text.corkboard.shownHere)}</h3>
-${lines.join("\n")}
-`;
-}
-function renderSuspects(view, board, text, fresh) {
-  const e = escapeHtml;
-  return view.suspects.map((suspect) => {
-    const where = suspect.place === null ? board.anywhere : suspect.place.id === view.location.id ? board.here : suspect.place.name;
-    const said = suspect.statements.length === 0 ? `<p class="empty">${e(text.statements.none)}</p>` : suspect.statements.map(
-      ({ day, kind, text: line }) => `<p class="statement"><span class="tag">${e(text.statements.day)} ${String(day)} \xB7 ${e(text.statements.kinds[kind])}</span><br>${e(line)}</p>`
-    ).join("\n");
-    const attrs = `data-pick="suspect:${e(suspect.id)}" data-rel="${e(rel(suspectTokens(view, suspect.id)))}" tabindex="0" role="button"`;
-    return `<div class="card" ${attrs}>
-<strong>${e(suspect.name)}</strong>${fresh.moods.has(suspect.id) || fresh.lieSuspectIds.has(suspect.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ""}
-<p>${e(suspect.persona)}</p>
-<p class="tag">${e(text.statements.moods[suspect.mood])}${suspect.closed ? ` \xB7 ${e(text.statements.closed)}` : ""}</p>
-<p class="tag">${e(board.whereabouts)}: ${e(where)}</p>
-<h3>${e(text.statements.title)}</h3>
-${said}
-${shownTo(view, suspect.id, text)}</div>`;
-  }).join("\n");
-}
-function tried(view, text) {
-  const e = escapeHtml;
-  if (view.history.links.length === 0) return `<p class="empty">${e(text.corkboard.noneTried)}</p>`;
-  const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
-  const number4 = numberOf(view);
-  const items = view.history.links.map(({ clueIds, result, turn }) => {
-    const names = clueIds.map((id) => `<span class="num">${e(number4(id))}</span>`).join(" + ");
-    const whole3 = clueIds.map((id) => `<p><span class="num">${e(number4(id))}</span> ${e(description.get(id) ?? id)}</p>`).join("");
-    return `<li data-rel="${e(rel(threadTokens(clueIds)))}">${names} <span class="result">${e(text.corkboard.results[result])}</span> <span class="tag">${e(text.corkboard.step.replace("{n}", String(turn)))}</span>
-<details><summary>${e(text.corkboard.fullText)}</summary>${whole3}</details></li>`;
-  });
-  return `<ul class="tried">${items.join("\n")}</ul>`;
-}
-function renderClues(view, board, text, fresh) {
-  const e = escapeHtml;
-  const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
-  const suspectName = new Map(view.suspects.map(({ id, name }) => [id, name]));
-  const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
-  const number4 = numberOf(view);
-  const clues = view.clues.length === 0 ? `<p class="empty">${e(board.noClues)}</p>` : view.clues.map((clue) => {
-    const attrs = `data-pick="clue:${e(clue.id)}" data-rel="${e(rel(clueTokens(view, clue.id)))}" tabindex="0" role="button"`;
-    const turn = view.history.finds.find(({ clueId }) => clueId === clue.id)?.turn;
-    const place = placeName.get(clue.locationId) ?? clue.locationId;
-    const where = `${text.corkboard.foundAt} ${place}${turn === void 0 ? "" : ` \xB7 ${text.corkboard.step.replace("{n}", String(turn))}`}`;
-    const shown = shownPairs(view).filter(({ clueId }) => clueId === clue.id).map(
-      ({ suspectId, effect }) => `${suspectName.get(suspectId) ?? suspectId} (${text.corkboard.effects[effect]})`
-    );
-    const shownLine = shown.length === 0 ? text.corkboard.nobody : shown.join(", ");
-    return `<div class="card" ${attrs}>
-<span class="tag"><span class="num">${e(clue.number)}</span> \xB7 ${e(where)}</span>${fresh.clueIds.has(clue.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ""}
-<p>${e(clue.description)}</p>${clue.garbled ? `
-<p class="warn">${e(board.garbled)}</p>` : ""}
-<p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
-</div>`;
-  }).join("\n");
-  const insights = view.insights.length === 0 ? `<p class="empty">${e(board.noInsights)}</p>` : view.insights.map(({ insight, clueIds }) => {
-    const sources = clueIds.flatMap((id) => {
-      const line = description.get(id);
-      return line === void 0 ? [] : [`<span class="source"><span class="num">${e(number4(id))}</span> ${e(line)}</span>`];
-    });
-    const from = sources.length === 0 ? "" : `
-<p class="tag">${e(text.corkboard.drawnFrom)}:</p>
-${sources.join("\n")}`;
-    return `<div class="card" data-rel="${e(rel(threadTokens(clueIds)))}"><p>${e(insight)}</p>${from}</div>`;
-  }).join("\n");
-  return `<h2>${e(text.links.title)}</h2>
-${renderLinks(view, text)}
-<h2>${e(text.corkboard.tried)}</h2>
-${tried(view, text)}
-<h2>${e(board.clues)} (${String(view.clues.length)})</h2>
-${clues}
-<h2>${e(board.insights)} (${String(view.insights.length)})</h2>
-${insights}`;
-}
 function renderEvidenceBoard(view, turns = [], previous) {
   const board = BOARD_TEXT[view.locale];
   const text = TAB_TEXT[view.locale];
@@ -51976,7 +52143,8 @@ function renderEvidenceBoard(view, turns = [], previous) {
 <title>${e(board.pageTitle)}: ${e(view.title)}</title>
 <style>${STYLE}
 ${highlightRules(view)}
-${openedRules(view)}</style>
+${openedRules(view)}
+${cardRules(view)}</style>
 </head>
 <body>
 <main>
@@ -52983,14 +53151,14 @@ function clip(text, length) {
   return text.length <= length ? text : `${text.slice(0, length - 1)}\u2026`;
 }
 function compactIssues(issues) {
-  const shown = [...issues].sort((a, b) => priorityOf(a) - priorityOf(b)).slice(0, MAX_ISSUES);
+  const shown2 = [...issues].sort((a, b) => priorityOf(a) - priorityOf(b)).slice(0, MAX_ISSUES);
   return {
-    issues: shown.map(({ code, path, message }) => ({
+    issues: shown2.map(({ code, path, message }) => ({
       code,
       path: clip(path, MAX_PATH_LENGTH),
       message: clip(message, MAX_MESSAGE_LENGTH)
     })),
-    moreIssues: issues.length - shown.length
+    moreIssues: issues.length - shown2.length
   };
 }
 function readCase(input2) {

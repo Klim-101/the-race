@@ -62,6 +62,7 @@ function viewOf(overrides: Partial<View> = {}): View {
         persona: 'Baker',
         mood: 'calm',
         closed: false,
+        talksAgain: null,
         place: { id: 'market', name: 'Market' },
         statements: [],
       },
@@ -71,6 +72,7 @@ function viewOf(overrides: Partial<View> = {}): View {
         persona: 'Rival',
         mood: 'calm',
         closed: false,
+        talksAgain: null,
         place: { id: 'stall', name: 'Stall' },
         statements: [],
       },
@@ -193,6 +195,7 @@ describe('the page', () => {
             persona: evil,
             mood: 'calm',
             closed: false,
+            talksAgain: null,
             place: null,
             statements: [{ day: 1, kind: 'alibi', text: evil }],
           },
@@ -382,6 +385,7 @@ describe('the suspects tab', () => {
               persona: 'Baker',
               mood: 'calm',
               closed: false,
+              talksAgain: null,
               place: { id: 'market', name: 'Market' },
               statements: [
                 { day: 1, kind: 'alibi', text: 'I was at the oven all night.' },
@@ -395,6 +399,7 @@ describe('the suspects tab', () => {
               persona: 'Mayor',
               mood: 'cornered',
               closed: true,
+              talksAgain: { day: 2, minute: 600 },
               place: null,
               statements: [],
             },
@@ -404,6 +409,7 @@ describe('the suspects tab', () => {
               persona: 'Rival',
               mood: 'calm',
               closed: false,
+              talksAgain: null,
               place: { id: 'stall', name: 'Stall' },
               statements: [],
             },
@@ -416,9 +422,13 @@ describe('the suspects tab', () => {
     expect(suspects).toContain('Last seen: right here');
     expect(suspects).toContain('Last seen: Stall');
     expect(suspects).toContain('Last seen: anywhere, apparently');
-    expect(suspects).toContain('day 1 · alibi');
-    expect(suspects).toContain('day 2 · gave ground');
-    expect(suspects).toContain('day 2 · let a secret out');
+    expect(suspects).toContain('<span class="tag">day 1</span>');
+    expect(suspects).toContain('<span class="tag">alibi</span>');
+    // A lie that fell is struck through; the alibi and the secret are not.
+    expect(suspects).toContain('<s>Fine, I left at nine.</s>');
+    expect(suspects).not.toContain('<s>I was at the oven all night.</s>');
+    expect(suspects).toContain('<span class="tag">let a secret out</span>');
+    expect(suspects).toContain('will not talk until day 2, 10:00');
     expect(suspects.indexOf('oven')).toBeLessThan(suspects.indexOf('nine'));
     expect(suspects).toContain('Nothing said yet.');
     expect(suspects).toMatchSnapshot();
@@ -508,10 +518,10 @@ describe('the clues and links tab', () => {
       }),
     );
 
-    for (const id of ['clues', 'suspects']) {
-      expect(tab(page, id)).toContain(long);
-      expect(tab(page, id)).not.toContain('…');
-    }
+    expect(tab(page, 'clues')).toContain(long);
+    // A person's page names the clue by its number; the whole text is a click away, on the clue's own card.
+    expect(tab(page, 'suspects')).toContain('MIRA-04</span> no effect');
+    for (const id of ['clues', 'suspects']) expect(tab(page, id)).not.toContain('…');
   });
 });
 
@@ -633,6 +643,7 @@ describe('the chronicle tab', () => {
       persona: 'x',
       mood: 'calm',
       closed: false,
+      talksAgain: null,
       place: null,
       statements: [{ day: 1, kind: 'alibi', text: 'Here.' }],
     });
@@ -725,6 +736,7 @@ describe('the chronicle tab', () => {
                 persona: 'x',
                 mood: 'calm',
                 closed: false,
+                talksAgain: null,
                 place: null,
                 statements: [
                   { day: 1, kind: 'alibi', text: 'At the oven.' },

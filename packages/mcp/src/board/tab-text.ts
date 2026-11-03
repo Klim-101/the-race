@@ -45,8 +45,6 @@ export interface TabText {
     /** One turn of the run ({n}). */
     readonly step: string;
     readonly shownTo: string;
-    /** The heading, on a person's notebook page, of the clues they were shown. */
-    readonly shownHere: string;
     /** The heading, on a conclusion, of the clues it was drawn from. */
     readonly drawnFrom: string;
     /** On an opened clue card: the heading of the links it took part in, the line when none, how to close it. */
@@ -61,6 +59,24 @@ export interface TabText {
     readonly results: Record<'insight' | 'already-known' | 'nothing', string>;
     readonly effects: Record<'breaks-lie' | 'confirms' | 'implicates' | 'no-effect', string>;
     readonly legend: string;
+  };
+  /** The grid of clue cards: its filters and what a card says about a clue. */
+  readonly clueGrid: {
+    readonly filters: string;
+    readonly place: string;
+    readonly suspect: string;
+    readonly any: string;
+    readonly garbled: string;
+    readonly unused: string;
+    readonly number: string;
+    /** A hint for the number box ({example}). */
+    readonly numberHint: string;
+    readonly none: string;
+    /** A clue used in links ({n}), and one used in none. */
+    readonly usedIn: string;
+    readonly notUsed: string;
+    readonly toBoard: string;
+    readonly toMap: string;
   };
   readonly map: {
     readonly title: string;
@@ -81,7 +97,13 @@ export interface TabText {
     readonly kinds: Record<'alibi' | 'conceded' | 'secret', string>;
     /** How the talks have left a person, and the line for one who will not talk for now. */
     readonly moods: Record<'calm' | 'shaken' | 'cornered' | 'broken', string>;
-    readonly closed: string;
+    /** A closed person: the day ({day}) and the time ({time}) from which they talk again. */
+    readonly closedUntil: string;
+    readonly mood: string;
+    readonly lieFell: string;
+    readonly brokenBy: string;
+    readonly shown: string;
+    readonly noneShown: string;
   };
   readonly links: {
     readonly title: string;

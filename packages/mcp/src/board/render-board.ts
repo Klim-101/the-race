@@ -4,24 +4,18 @@
 import { createHash } from 'node:crypto';
 import type { DetectiveRunView, TurnView } from '@the-race/engine';
 import { renderChronicle } from './board-chronicle.js';
+import { cardRules, renderClues } from './board-clues.js';
 import { renderCork } from './board-cork.js';
 import { renderHeader } from './board-header.js';
-import { freshSince, type Fresh } from './board-new.js';
-import { numberOf, openedRules } from './board-opened.js';
+import { freshSince } from './board-new.js';
+import { openedRules } from './board-opened.js';
 import { renderHero } from './board-hero.js';
-import { renderLinks } from './board-links.js';
 import { renderMap } from './board-map.js';
-import {
-  clueTokens,
-  highlightRules,
-  rel,
-  shownPairs,
-  suspectTokens,
-  threadTokens,
-} from './board-relations.js';
-import { BOARD_TEXT, type BoardText } from './board-text.js';
+import { renderSuspects } from './board-suspects.js';
+import { highlightRules } from './board-relations.js';
+import { BOARD_TEXT } from './board-text.js';
 import { escapeHtml } from './escape-html.js';
-import { TAB_TEXT, type TabText } from './tab-text.js';
+import { TAB_TEXT } from './tab-text.js';
 
 export { escapeHtml } from './escape-html.js';
 
@@ -42,7 +36,10 @@ function shut(restore){if(m.getAttribute('data-open')===null)return;m.removeAttr
 function pick(t){if(m.getAttribute('data-sel')===t){m.removeAttribute('data-sel')}else{m.setAttribute('data-sel',t)}}
 function show(el){var id=el.getAttribute('data-open');if(!id){shut(false);return}if(m.getAttribute('data-open')===id){shut(true);return}m.setAttribute('data-open',id);back=el;var card=document.getElementById('open-'+id);if(card&&card.focus)card.focus()}
 function choose(el){pick(el.getAttribute('data-pick'));show(el)}
-document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}if(t.closest&&t.closest('nav.tabs')){shut(false);return}var el=t.closest&&t.closest('[data-pick]');if(el){choose(el)}else if(!(t.closest&&t.closest('a'))){m.removeAttribute('data-sel');shut(false)}});
+document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}if(t.closest&&t.closest('nav.tabs')){shut(false);return}var el=t.closest&&t.closest('[data-pick]');if(el&&t.closest('a')){m.setAttribute('data-sel',el.getAttribute('data-pick'));return}if(el){choose(el)}else if(!(t.closest&&(t.closest('a')||t.closest('.filters')))){m.removeAttribute('data-sel');shut(false)}});
+function fit(c,v){var g=function(n){return c.getAttribute('data-'+n)||''};return(!v.p||g('place')===v.p)&&(!v.s||(' '+g('shown')+' ').indexOf(' '+v.s+' ')>=0)&&(!v.g||g('garbled')==='1')&&(!v.u||g('unused')==='1')&&(!v.q||g('number').toLowerCase().indexOf(v.q)>=0)}
+function filter(){var f=function(i){return document.getElementById(i)};if(!f('f-place'))return;var v={p:f('f-place').value,s:f('f-suspect').value,g:f('f-garbled').checked,u:f('f-unused').checked,q:f('f-number').value.trim().toLowerCase()};var cards=document.querySelectorAll('.clue-card'),n=0;for(var i=0;i<cards.length;i++){var ok=fit(cards[i],v);cards[i].hidden=!ok;if(ok)n++}var none=f('clue-none');if(none)none.hidden=n>0}
+document.addEventListener('input',filter);document.addEventListener('change',filter);
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){m.removeAttribute('data-sel');shut(true);return}if(e.key==='Enter'||e.key===' '){var el=e.target.closest&&e.target.closest('[data-pick]');if(el){e.preventDefault();choose(el)}}});
 })();`;
 const SCRIPT_HASH = createHash('sha256').update(SCRIPT).digest('base64');
@@ -145,130 +142,37 @@ ul.tried{list-style:none;padding:0;margin:0 0 10px}
 ul.tried li{margin:0 0 8px;padding:6px 14px 6px 18px;border-left:3px double var(--margin);background:var(--paper);color:var(--paper-ink);box-shadow:1px 2px 4px var(--shadow)}
 ul.tried .result{font:12px system-ui,sans-serif;color:var(--red);text-transform:uppercase;letter-spacing:.05em}
 ul.tried .tag{color:var(--paper-tag)}
+[hidden]{display:none!important}
+.suspect .who{display:flex;gap:12px;align-items:center}
+.suspect .who p{margin:0}
+svg.portrait{flex:0 0 56px;width:56px;height:56px;font:700 22px Georgia,serif}
+svg.portrait circle:first-child{fill:var(--tone,#c9b99b)}
+svg.portrait .head,svg.portrait .body{fill:rgba(0,0,0,.28)}
+svg.portrait text{fill:#fffdf4}
+svg.portrait.p0{--tone:#8a3b2a}svg.portrait.p1{--tone:#2b5fa3}svg.portrait.p2{--tone:#5a7a3a}svg.portrait.p3{--tone:#7a5a8a}svg.portrait.p4{--tone:#b26a00}svg.portrait.p5{--tone:#3a7a7a}
+.gauge{display:inline-flex;gap:3px;vertical-align:middle}
+.gauge .step{width:18px;height:8px;border-radius:2px;background:var(--line)}
+.gauge.mood-shaken .on{background:var(--warn)}
+.gauge.mood-cornered .on{background:var(--margin)}
+.gauge.mood-broken .on{background:var(--red)}
+.gauge.mood-calm .on{background:var(--blue)}
+.statement.fell s{color:var(--muted)}
+.day{margin:0 0 6px}
+.chips{margin:0}
+.chip{display:inline-block;margin:2px 4px 2px 0;padding:0 8px;border-radius:999px;border:1px solid currentColor;font:12px/22px system-ui,sans-serif;cursor:pointer}
+.chip.fx-breaks-lie{color:var(--red)}
+.chip.fx-confirms{color:var(--blue)}
+.chip.fx-implicates{color:var(--warn)}
+.chip.fx-no-effect{color:var(--muted)}
+.filters{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:0 0 12px;font:13px system-ui,sans-serif}
+.filters select,.filters input[type=search]{font:inherit}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.grid .card{margin:0}
+.clue-card .text{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ways a{color:var(--accent)}
 @media (max-width:560px){body{padding:16px}h1{font-size:1.5rem}}
 @media print{body{background:#fff;color:#000}.opened{display:none!important}.tab{display:block!important}nav.tabs{display:none}.card,.graph,.cork{break-inside:avoid}}
 `;
-
-/** The clues a person was shown, in the order they were shown, with what each did. */
-function shownTo(view: DetectiveRunView, suspectId: string, text: TabText): string {
-  const e = escapeHtml;
-  const shown = view.history.shown.filter((entry) => entry.suspectId === suspectId);
-  if (shown.length === 0) return '';
-  const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
-  const number = numberOf(view);
-  const lines = shown.map(
-    ({ clueId, effect, turn }) =>
-      `<p class="shown-line"><span class="tag">${e(text.corkboard.step.replace('{n}', String(turn)))}</span> <span class="num">${e(number(clueId))}</span> ${e(description.get(clueId) ?? clueId)} <span class="effect">${e(text.corkboard.effects[effect])}</span></p>`,
-  );
-  return `<h3>${e(text.corkboard.shownHere)}</h3>\n${lines.join('\n')}\n`;
-}
-
-function renderSuspects(view: DetectiveRunView, board: BoardText, text: TabText, fresh: Fresh): string {
-  const e = escapeHtml;
-  return view.suspects
-    .map((suspect) => {
-      const where =
-        suspect.place === null
-          ? board.anywhere
-          : suspect.place.id === view.location.id
-            ? board.here
-            : suspect.place.name;
-      const said =
-        suspect.statements.length === 0
-          ? `<p class="empty">${e(text.statements.none)}</p>`
-          : suspect.statements
-              .map(
-                ({ day, kind, text: line }) =>
-                  `<p class="statement"><span class="tag">${e(text.statements.day)} ${String(day)} · ${e(text.statements.kinds[kind])}</span><br>${e(line)}</p>`,
-              )
-              .join('\n');
-      const attrs = `data-pick="suspect:${e(suspect.id)}" data-rel="${e(rel(suspectTokens(view, suspect.id)))}" tabindex="0" role="button"`;
-      return `<div class="card" ${attrs}>
-<strong>${e(suspect.name)}</strong>${fresh.moods.has(suspect.id) || fresh.lieSuspectIds.has(suspect.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ''}
-<p>${e(suspect.persona)}</p>
-<p class="tag">${e(text.statements.moods[suspect.mood])}${suspect.closed ? ` · ${e(text.statements.closed)}` : ''}</p>
-<p class="tag">${e(board.whereabouts)}: ${e(where)}</p>
-<h3>${e(text.statements.title)}</h3>
-${said}
-${shownTo(view, suspect.id, text)}</div>`;
-    })
-    .join('\n');
-}
-
-/** The links the hero tried, oldest first, with the clues of each and what came of it, and nothing of how close it was. */
-function tried(view: DetectiveRunView, text: TabText): string {
-  const e = escapeHtml;
-  if (view.history.links.length === 0) return `<p class="empty">${e(text.corkboard.noneTried)}</p>`;
-  const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
-  const number = numberOf(view);
-  const items = view.history.links.map(({ clueIds, result, turn }) => {
-    const names = clueIds.map((id) => `<span class="num">${e(number(id))}</span>`).join(' + ');
-    // The numbers are the name of each clue; its whole text is one click away.
-    const whole = clueIds
-      .map((id) => `<p><span class="num">${e(number(id))}</span> ${e(description.get(id) ?? id)}</p>`)
-      .join('');
-    return `<li data-rel="${e(rel(threadTokens(clueIds)))}">${names} <span class="result">${e(text.corkboard.results[result])}</span> <span class="tag">${e(text.corkboard.step.replace('{n}', String(turn)))}</span>
-<details><summary>${e(text.corkboard.fullText)}</summary>${whole}</details></li>`;
-  });
-  return `<ul class="tried">${items.join('\n')}</ul>`;
-}
-
-function renderClues(view: DetectiveRunView, board: BoardText, text: TabText, fresh: Fresh): string {
-  const e = escapeHtml;
-  const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
-  const suspectName = new Map(view.suspects.map(({ id, name }) => [id, name]));
-  const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
-  const number = numberOf(view);
-  const clues =
-    view.clues.length === 0
-      ? `<p class="empty">${e(board.noClues)}</p>`
-      : view.clues
-          .map((clue) => {
-            const attrs = `data-pick="clue:${e(clue.id)}" data-rel="${e(rel(clueTokens(view, clue.id)))}" tabindex="0" role="button"`;
-            const turn = view.history.finds.find(({ clueId }) => clueId === clue.id)?.turn;
-            const place = placeName.get(clue.locationId) ?? clue.locationId;
-            const where = `${text.corkboard.foundAt} ${place}${turn === undefined ? '' : ` · ${text.corkboard.step.replace('{n}', String(turn))}`}`;
-            const shown = shownPairs(view)
-              .filter(({ clueId }) => clueId === clue.id)
-              .map(
-                ({ suspectId, effect }) =>
-                  `${suspectName.get(suspectId) ?? suspectId} (${text.corkboard.effects[effect]})`,
-              );
-            const shownLine = shown.length === 0 ? text.corkboard.nobody : shown.join(', ');
-            return `<div class="card" ${attrs}>
-<span class="tag"><span class="num">${e(clue.number)}</span> · ${e(where)}</span>${fresh.clueIds.has(clue.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ''}
-<p>${e(clue.description)}</p>${clue.garbled ? `\n<p class="warn">${e(board.garbled)}</p>` : ''}
-<p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
-</div>`;
-          })
-          .join('\n');
-  const insights =
-    view.insights.length === 0
-      ? `<p class="empty">${e(board.noInsights)}</p>`
-      : view.insights
-          .map(({ insight, clueIds }) => {
-            const sources = clueIds.flatMap((id) => {
-              const line = description.get(id);
-              return line === undefined
-                ? []
-                : [`<span class="source"><span class="num">${e(number(id))}</span> ${e(line)}</span>`];
-            });
-            const from =
-              sources.length === 0
-                ? ''
-                : `\n<p class="tag">${e(text.corkboard.drawnFrom)}:</p>\n${sources.join('\n')}`;
-            return `<div class="card" data-rel="${e(rel(threadTokens(clueIds)))}"><p>${e(insight)}</p>${from}</div>`;
-          })
-          .join('\n');
-  return `<h2>${e(text.links.title)}</h2>
-${renderLinks(view, text)}
-<h2>${e(text.corkboard.tried)}</h2>
-${tried(view, text)}
-<h2>${e(board.clues)} (${String(view.clues.length)})</h2>
-${clues}
-<h2>${e(board.insights)} (${String(view.insights.length)})</h2>
-${insights}`;
-}
 
 /**
  * The player's evidence board: one self-contained page (no outside resource, and one small script that only
@@ -303,7 +207,8 @@ export function renderEvidenceBoard(
 <title>${e(board.pageTitle)}: ${e(view.title)}</title>
 <style>${STYLE}
 ${highlightRules(view)}
-${openedRules(view)}</style>
+${openedRules(view)}
+${cardRules(view)}</style>
 </head>
 <body>
 <main>

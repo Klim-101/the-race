@@ -115,7 +115,12 @@
     },
     "statements": {
       "moods": { "calm": "calm", "shaken": "shaken", "cornered": "cornered", "broken": "broken" },
-      "closed": "will not talk for now",
+      "closedUntil": "will not talk until day {day}, {time}",
+      "mood": "Mood",
+      "lieFell": "a lie that fell",
+      "brokenBy": "broken by",
+      "shown": "Shown to them",
+      "noneShown": "Nothing shown yet.",
       "title": "What they said",
       "none": "Nothing said yet.",
       "day": "day",
@@ -390,12 +395,26 @@
         "no-effect": "no effect"
       },
       "legend": "Red thread: a link tried. Blue thread: a clue shown to a person.",
-      "shownHere": "Clues shown to them",
       "drawnFrom": "Drawn from",
       "linksOf": "Links it took part in",
       "noLinks": "none yet",
       "closeHint": "Click again, or press Esc, to put it back.",
       "fullText": "Full text"
+    },
+    "clueGrid": {
+      "filters": "Filter the clues",
+      "place": "Found at",
+      "suspect": "Shown to",
+      "any": "any",
+      "garbled": "to be read again",
+      "unused": "not yet used in a link",
+      "number": "Number",
+      "numberHint": "such as {example}",
+      "none": "No clue fits.",
+      "usedIn": "used in {n} links",
+      "notUsed": "not used in any link",
+      "toBoard": "On the corkboard",
+      "toMap": "On the map"
     }
   }
 }
