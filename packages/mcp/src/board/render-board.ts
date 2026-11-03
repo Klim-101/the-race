@@ -12,6 +12,7 @@ import { openedRules } from './board-opened.js';
 import { renderHero } from './board-hero.js';
 import { renderMap } from './board-map.js';
 import { renderSuspects } from './board-suspects.js';
+import { planRules } from './board-plan.js';
 import { turnRules } from './board-strip.js';
 import { highlightRules } from './board-relations.js';
 import { BOARD_TEXT } from './board-text.js';
@@ -36,8 +37,8 @@ export const SCRIPT = `(function(){var m=document.querySelector('main');if(!m)re
 function shut(restore){if(m.getAttribute('data-open')===null)return;m.removeAttribute('data-open');if(restore&&back&&back.focus)back.focus();back=null}
 function pick(t){if(m.getAttribute('data-sel')===t){m.removeAttribute('data-sel')}else{m.setAttribute('data-sel',t)}}
 function show(el){var id=el.getAttribute('data-open');if(!id){shut(false);return}if(m.getAttribute('data-open')===id){shut(true);return}m.setAttribute('data-open',id);back=el;var card=document.getElementById('open-'+id);if(card&&card.focus)card.focus()}
-function choose(el){pick(el.getAttribute('data-pick'));show(el)}
-document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}if(t.closest&&t.closest('nav.tabs')){shut(false);return}var el=t.closest&&t.closest('[data-pick]');if(el&&t.closest('a')){m.setAttribute('data-sel',el.getAttribute('data-pick'));return}if(el){choose(el)}else if(!(t.closest&&(t.closest('a')||t.closest('.filters')))){m.removeAttribute('data-sel');shut(false)}});
+function choose(el){pick(el.getAttribute('data-pick'));if(el.closest&&el.closest('.plan'))return;show(el)}
+document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}if(t.closest&&t.closest('nav.tabs')){shut(false);return}var el=t.closest&&t.closest('[data-pick]');if(el&&t.closest('a')){m.setAttribute('data-sel',el.getAttribute('data-pick'));return}if(el){choose(el)}else if(!(t.closest&&(t.closest('a')||t.closest('.filters')||t.closest('.plan')))){m.removeAttribute('data-sel');shut(false)}});
 function fit(c,v){var g=function(n){return c.getAttribute('data-'+n)||''};return(!v.p||g('place')===v.p)&&(!v.s||(' '+g('shown')+' ').indexOf(' '+v.s+' ')>=0)&&(!v.g||g('garbled')==='1')&&(!v.u||g('unused')==='1')&&(!v.q||g('number').toLowerCase().indexOf(v.q)>=0)}
 function filter(){var f=function(i){return document.getElementById(i)};if(!f('f-place'))return;var v={p:f('f-place').value,s:f('f-suspect').value,g:f('f-garbled').checked,u:f('f-unused').checked,q:f('f-number').value.trim().toLowerCase()};var cards=document.querySelectorAll('.clue-card'),n=0;for(var i=0;i<cards.length;i++){var ok=fit(cards[i],v);cards[i].hidden=!ok;if(ok)n++}var none=f('clue-none');if(none)none.hidden=n>0}
 document.addEventListener('input',filter);document.addEventListener('change',filter);
@@ -174,6 +175,30 @@ ul.tried li{margin:0 0 8px;padding:6px 14px 6px 18px;border-left:3px double var(
 ul.tried .result{font:12px system-ui,sans-serif;color:var(--red);text-transform:uppercase;letter-spacing:.05em}
 ul.tried .tag{color:var(--paper-tag)}
 [hidden]{display:none!important}
+.plan{display:none;margin:12px 0;padding:8px 10px;border:1px solid var(--parch-edge);border-radius:6px;background:var(--card)}
+.plan:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+svg.plan-svg{display:block;width:100%;height:auto;font:12px system-ui,sans-serif}
+svg.plan-svg text{fill:var(--ink)}
+svg.plan-svg .room .walls{fill:var(--roof);stroke:var(--ink);stroke-width:1.8}
+svg.plan-svg .room.unvisited .walls{fill:var(--parch);stroke-dasharray:5 3}
+svg.plan-svg .room.current .walls{stroke:var(--accent);stroke-width:3.5}
+svg.plan-svg .room-name{font-weight:700;font-size:13px}
+svg.plan-svg .part-name{font-weight:600}
+svg.plan-svg .part-state{font-size:11px;fill:var(--muted)}
+svg.plan-svg .door-way line{stroke:var(--ink);stroke-width:2;stroke-dasharray:4 3}
+svg.plan-svg .door-way rect{fill:var(--street);stroke:var(--ink);stroke-width:1.5}
+svg.plan-svg .mark circle{fill:var(--card);stroke:var(--ink);stroke-width:1.5}
+svg.plan-svg .mark.done circle{fill:#2f6a3a;stroke:#2f6a3a}
+svg.plan-svg .mark.done path{fill:none;stroke:#fff;stroke-width:2}
+svg.plan-svg .mark.open .dot{fill:var(--ink);stroke:none}
+svg.plan-svg .mark.shut circle{stroke:var(--warn);stroke-width:2}
+svg.plan-svg .mark text{font-size:11px;fill:var(--ink)}
+svg.plan-svg .sign.locked rect{fill:var(--warn);stroke:var(--ink);stroke-width:1}
+svg.plan-svg .sign.locked path{fill:none;stroke:var(--ink);stroke-width:1.6}
+svg.plan-svg .clue-chip text{font-weight:700;fill:var(--accent);cursor:pointer;text-decoration:underline}
+svg.plan-svg .here-dot{fill:var(--accent)}
+svg.plan-svg .lead-mark circle{fill:var(--card);stroke:var(--accent);stroke-width:1.5}
+svg.plan-svg .lead-mark text{fill:var(--accent);font-weight:700}
 details.day-strip{margin:0 0 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);padding:6px 10px}
 details.day-strip>summary{cursor:pointer;font:600 14px system-ui,sans-serif;color:var(--accent)}
 svg.strip{display:block;width:100%;min-width:720px;height:auto;font:11px system-ui,sans-serif}
@@ -267,7 +292,8 @@ export function renderEvidenceBoard(
 ${highlightRules(view)}
 ${openedRules(view)}
 ${cardRules(view)}
-${turnRules(strip)}</style>
+${turnRules(strip)}
+${planRules(view)}</style>
 </head>
 <body>
 <main>

@@ -783,6 +783,26 @@ describe('the search by part', () => {
   });
 });
 
+describe('the plan of a building', () => {
+  it('holds the noticed parts of the places visited and never a part not noticed or what one holds', async () => {
+    const context = gameContext();
+    await prepareHero(context);
+    await installCase(context, partedSampleCase());
+    await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+
+    const view = (await call(runView, {}, context)).body as {
+      placeParts: { placeId: string; parts: { id: string; searched: boolean; gave: string[] }[] }[];
+    };
+
+    expect(view.placeParts.flatMap(({ parts }) => parts.map(({ id }) => id))).toContain('pedestal-floor');
+    expect(JSON.stringify(view.placeParts)).not.toContain('feather-trail');
+    expect(JSON.stringify(view.placeParts)).not.toContain('ransom-note-copy');
+    const path = runBoardFile(context.saveDir, await newestRunId(context.saveDir, context.fs));
+    const page = context.fs.files.get(path) ?? '';
+    expect(page).not.toContain('feather-trail');
+  });
+});
+
 describe('the leads of a turn', () => {
   it('tells a lead in the turn that earned it, puts the place on the map, and keeps it off until then', async () => {
     const context = gameContext();

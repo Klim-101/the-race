@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { Locale, StripKind } from '@the-race/engine';
+import type { Locale, ObstacleKind, StripKind } from '@the-race/engine';
 import { LOCALE_TEXT } from '../locales/index.js';
 
 /** What the tabs of the evidence board say. The case's own text is never here. */
@@ -89,6 +89,24 @@ export interface TabText {
     readonly leadHours: string;
     readonly world: string;
     readonly kinds: Record<StripKind, string>;
+  };
+  /** The plan of a building: its rooms, the doors between them and the parts noticed in each. */
+  readonly plan: {
+    /** The heading ({name}) and the street the building opens onto. */
+    readonly title: string;
+    readonly opensOnto: string;
+    readonly closeHint: string;
+    readonly notEntered: string;
+    readonly noParts: string;
+    readonly searched: string;
+    readonly gave: string;
+    readonly gaveNothing: string;
+    /** The tool the kit has for an obstacle ({tool}), and the line when it has none. */
+    readonly tool: string;
+    readonly noTool: string;
+    /** A door between two rooms ({a}, {b}). */
+    readonly doorTo: string;
+    readonly obstacles: Record<ObstacleKind, string>;
   };
   /** The grid of clue cards: its filters and what a card says about a clue. */
   readonly clueGrid: {
