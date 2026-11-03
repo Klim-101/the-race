@@ -800,6 +800,13 @@ export interface DetectiveRunView {
       readonly blocked: 'locked' | 'closed' | null;
       /** The reason of the lead that named the place, in one line, as for an exit. */
       readonly lead: string | null;
+      /** Whether the place is inside a building or out of doors: a street, a square or a yard. */
+      readonly exposure: Exposure;
+      /**
+       * For a place inside a building, the id of its first known room, shared by every known room of the same
+       * building (rooms that touch are one building); `null` out of doors.
+       */
+      readonly building: string | null;
     }[];
     /** Each way between two known places once, with `from` before `to` in the order of `places`. */
     readonly links: readonly { readonly from: string; readonly to: string }[];
@@ -983,24 +990,54 @@ function viewLeads(run: DetectiveRunState): DetectiveRunView['leads'] {
   );
 }
 
+/**
+ * The building each known indoor place belongs to: rooms that touch are one building, named by the first of its
+ * rooms in `ids`. The rooms are joined over the whole map, so two known rooms joined through a room the hero does
+ * not know of are still one building. An out-of-doors place belongs to none.
+ */
+function buildingHeads(locations: readonly Location[], ids: readonly string[]): Map<string, string> {
+  const indoor = new Set(locations.filter(({ exposure }) => exposure === 'indoor').map(({ id }) => id));
+  const neighbors = buildNeighbors(locations);
+  const heads = new Map<string, string>();
+  for (const start of ids.filter((id) => indoor.has(id))) {
+    if (heads.has(start)) continue;
+    const queue = [start];
+    heads.set(start, start);
+    for (const id of queue) {
+      for (const next of neighbors.get(id) ?? []) {
+        if (indoor.has(next) && !heads.has(next)) {
+          heads.set(next, start);
+          queue.push(next);
+        }
+      }
+    }
+  }
+  return heads;
+}
+
 function viewMap(run: DetectiveRunState): DetectiveRunView['map'] {
   const { locations } = run.case;
   const neighbors = buildNeighbors(locations);
   const known = new Set(run.visitedLocationIds);
   for (const id of run.visitedLocationIds) for (const next of neighbors.get(id) ?? []) known.add(next);
-  const places = locations
-    .filter((location) => known.has(location.id) && isPlaceKnown(run, location))
-    .map((location) => {
-      const { id, name, access } = location;
-      const visited = run.visitedLocationIds.includes(id);
-      return {
-        id,
-        name,
-        visited,
-        blocked: blockedWay(run, id, access, visited),
-        lead: leadMarker(run, location),
-      };
-    });
+  const shown = locations.filter((location) => known.has(location.id) && isPlaceKnown(run, location));
+  const buildingOf = buildingHeads(
+    locations,
+    shown.map(({ id }) => id),
+  );
+  const places = shown.map((location) => {
+    const { id, name, access } = location;
+    const visited = run.visitedLocationIds.includes(id);
+    return {
+      id,
+      name,
+      visited,
+      blocked: blockedWay(run, id, access, visited),
+      lead: leadMarker(run, location),
+      exposure: location.exposure,
+      building: buildingOf.get(id) ?? null,
+    };
+  });
   const linked = (a: string, b: string): boolean =>
     locations.some(
       ({ id, connections }) => (id === a && connections.includes(b)) || (id === b && connections.includes(a)),

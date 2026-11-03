@@ -30,7 +30,7 @@ export function localeOf(data: Record<string, unknown>): 'ru' | 'en' | undefined
 
 function placeOf(value: unknown): HudPlace | undefined {
   if (!isRecord(value)) return undefined;
-  const { id, name, visited, blocked, lead } = value;
+  const { id, name, visited, blocked, lead, exposure, building } = value;
   if (typeof id !== 'string' || typeof name !== 'string' || typeof visited !== 'boolean') return undefined;
   return {
     id,
@@ -38,6 +38,8 @@ function placeOf(value: unknown): HudPlace | undefined {
     visited,
     blocked: blocked === 'locked' || blocked === 'closed' ? blocked : null,
     lead: typeof lead === 'string' ? lead : null,
+    exposure: exposure === 'indoor' ? 'indoor' : 'outdoor',
+    building: typeof building === 'string' ? building : null,
   };
 }
 

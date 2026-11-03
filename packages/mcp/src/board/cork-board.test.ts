@@ -53,10 +53,42 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
     map: {
       current: 'market',
       places: [
-        { id: 'market', name: 'Market', visited: true, blocked: null, lead: null },
-        { id: 'stall', name: 'Stall', visited: true, blocked: null, lead: null },
-        { id: 'cellar', name: 'Cellar', visited: false, blocked: 'locked', lead: null },
-        { id: 'chapel', name: 'Chapel', visited: false, blocked: 'closed', lead: null },
+        {
+          id: 'market',
+          name: 'Market',
+          visited: true,
+          blocked: null,
+          lead: null,
+          exposure: 'outdoor',
+          building: null,
+        },
+        {
+          id: 'stall',
+          name: 'Stall',
+          visited: true,
+          blocked: null,
+          lead: null,
+          exposure: 'outdoor',
+          building: null,
+        },
+        {
+          id: 'cellar',
+          name: 'Cellar',
+          visited: false,
+          blocked: 'locked',
+          lead: null,
+          exposure: 'outdoor',
+          building: null,
+        },
+        {
+          id: 'chapel',
+          name: 'Chapel',
+          visited: false,
+          blocked: 'closed',
+          lead: null,
+          exposure: 'outdoor',
+          building: null,
+        },
       ],
       links: [
         { from: 'market', to: 'stall' },
@@ -377,7 +409,17 @@ describe('the corkboard tab', () => {
       viewOf({
         map: {
           current: 'x',
-          places: [{ id: 'x', name: place, visited: true, blocked: null, lead: null }],
+          places: [
+            {
+              id: 'x',
+              name: place,
+              visited: true,
+              blocked: null,
+              lead: null,
+              exposure: 'outdoor',
+              building: null,
+            },
+          ],
           links: [],
         },
         clues: [{ id: 'k', locationId: 'x', description: 'A key.', garbled: false, number: 'MIRA-05' }],

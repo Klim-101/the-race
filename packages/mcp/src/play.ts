@@ -55,6 +55,9 @@ export const RunSummarySchema = z.object({
         blocked: z.enum(['locked', 'closed']).nullable(),
         /** The reason of the lead that named the place, until the hero has been there. */
         lead: z.string().nullable(),
+        /** Inside a building or out of doors, and for a room the building it belongs to. */
+        exposure: z.enum(['indoor', 'outdoor']),
+        building: z.string().nullable(),
       }),
     ),
     links: z.array(z.object({ from: z.string(), to: z.string() })),

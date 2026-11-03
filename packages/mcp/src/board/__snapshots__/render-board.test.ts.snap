@@ -100,15 +100,6 @@ exports[`the hero tab > shows the detective, how they hold up and what they carr
 "
 `;
 
-exports[`the map tab > draws the known places, marks where the hero is, and shows shut and unvisited ways 1`] = `
-"
-<h2>Known places</h2>
-<div class="graph"><svg class="map" viewBox="0 0 596 160" role="img" aria-label="Known places" style="min-width:520px"><g class="edges"><line x1="90" y1="80" x2="298" y2="40"/><line x1="90" y1="80" x2="298" y2="120"/><line x1="298" y1="40" x2="506" y2="80"/></g><g class="node visited current" data-pick="place:market" data-rel="place:market suspect:a" tabindex="0" role="button"><title>Market (you are here)</title><rect x="12" y="52" width="156" height="56" rx="8"/><text class="name" x="90" y="76" text-anchor="middle">Market</text><text class="state" x="90" y="95" text-anchor="middle">you are here</text></g><g class="node visited" data-pick="place:stall" data-rel="place:stall suspect:b" tabindex="0" role="button"><title>Stall</title><rect x="220" y="12" width="156" height="56" rx="8"/><text class="name" x="298" y="36" text-anchor="middle">Stall</text><text class="state" x="298" y="55" text-anchor="middle"></text></g><g class="node unvisited locked" data-pick="place:cellar" data-rel="place:cellar" tabindex="0" role="button"><title>Cellar (locked)</title><rect x="220" y="92" width="156" height="56" rx="8"/><text class="name" x="298" y="116" text-anchor="middle">Cellar</text><text class="state" x="298" y="135" text-anchor="middle">locked</text></g><g class="node unvisited closed" data-pick="place:chapel" data-rel="place:chapel" tabindex="0" role="button"><title>Chapel (closed)</title><rect x="428" y="52" width="156" height="56" rx="8"/><text class="name" x="506" y="76" text-anchor="middle">Chapel</text><text class="state" x="506" y="95" text-anchor="middle">closed</text></g></svg></div>
-<p class="tag">Only what the detective has seen is on the map.</p>
-
-"
-`;
-
 exports[`the suspects tab > shows who they are, where they were last seen and what each has said, in order 1`] = `
 "
 <h2>The cast</h2>

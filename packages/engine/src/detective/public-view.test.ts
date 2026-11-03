@@ -55,15 +55,86 @@ describe('the known map', () => {
 
     expect(map.current).toBe('market-square');
     expect(map.places).toEqual([
-      { id: 'market-square', name: 'Market square', visited: true, blocked: null, lead: null },
-      { id: 'cheese-stall', name: 'Cheese stall', visited: false, blocked: null, lead: null },
-      { id: 'storage-cellar', name: 'Storage cellar', visited: false, blocked: 'locked', lead: null },
+      {
+        id: 'market-square',
+        name: 'Market square',
+        visited: true,
+        blocked: null,
+        lead: null,
+        exposure: 'outdoor',
+        building: null,
+      },
+      {
+        id: 'cheese-stall',
+        name: 'Cheese stall',
+        visited: false,
+        blocked: null,
+        lead: null,
+        exposure: 'outdoor',
+        building: null,
+      },
+      {
+        id: 'storage-cellar',
+        name: 'Storage cellar',
+        visited: false,
+        blocked: 'locked',
+        lead: null,
+        exposure: 'outdoor',
+        building: null,
+      },
     ]);
     expect(map.links).toEqual([
       { from: 'market-square', to: 'cheese-stall' },
       { from: 'market-square', to: 'storage-cellar' },
     ]);
     expect(JSON.stringify(map)).not.toMatch(/Mayor office|description|mayor-office/);
+  });
+
+  it('says whether a place is out of doors, and names the building of each room that is indoors', () => {
+    const detectiveCase = DetectiveCaseSchema.parse(buildCheeseCase());
+    for (const place of detectiveCase.locations) {
+      place.exposure = place.id === 'market-square' ? 'outdoor' : 'indoor';
+    }
+    // The stall and the office touch, so they are one building; the cellar is a building of its own.
+    const run = moveTo(runOf(detectiveCase), 'cheese-stall');
+
+    const { places } = viewRun(run).map;
+
+    expect(places.map(({ id, exposure, building }) => [id, exposure, building])).toEqual([
+      ['market-square', 'outdoor', null],
+      ['cheese-stall', 'indoor', 'cheese-stall'],
+      ['storage-cellar', 'indoor', 'storage-cellar'],
+      ['mayor-office', 'indoor', 'cheese-stall'],
+    ]);
+  });
+
+  it('names the building of a room the hero stands in that touches no other', () => {
+    const detectiveCase = DetectiveCaseSchema.parse(buildCheeseCase());
+    detectiveCase.locations.push(
+      DetectiveCaseSchema.shape.locations.element.parse({
+        id: 'shed',
+        name: 'Shed',
+        description: 'A shed.',
+        connections: [],
+        access: { kind: 'open' },
+        exposure: 'indoor',
+      }),
+    );
+    detectiveCase.startLocationId = 'shed';
+
+    const { places } = viewRun(runOf(detectiveCase)).map;
+
+    expect(places).toMatchObject([{ id: 'shed', exposure: 'indoor', building: 'shed' }]);
+  });
+
+  it('makes one building of all the rooms when all of them touch', () => {
+    const detectiveCase = DetectiveCaseSchema.parse(buildCheeseCase());
+    for (const place of detectiveCase.locations) place.exposure = 'indoor';
+    const run = moveTo(runOf(detectiveCase), 'cheese-stall');
+
+    const rooms = viewRun(run).map.places.filter(({ building }) => building !== null);
+
+    expect(new Set(rooms.map(({ building }) => building)).size).toBe(1);
   });
 
   it('grows with each place visited, and lists a way between two unvisited places never', () => {

@@ -46,8 +46,8 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){m.removeAtt
 const SCRIPT_HASH = createHash('sha256').update(SCRIPT).digest('base64');
 
 const STYLE = `
-:root{color-scheme:light dark;--bg:#f4efe6;--card:#fffdf8;--ink:#2a2622;--muted:#7a7066;--line:#ddd3c3;--accent:#8a3b2a;--warn:#b26a00;--soft:#efe6d6;--paper:#fffef6;--paper-ink:#2a2622;--paper-tag:#7a6a58;--paper-rule:rgba(70,110,180,.22);--margin:#c2574a;--red:#b3261e;--blue:#2b5fa3;--shadow:rgba(0,0,0,.18)}
-@media (prefers-color-scheme:dark){:root{--bg:#1b1917;--card:#252220;--ink:#ece4d8;--muted:#a09484;--line:#3a3430;--accent:#e08a70;--warn:#e0a040;--soft:#312c28;--paper:#2a2622;--paper-ink:#ece4d8;--paper-tag:#a8998a;--paper-rule:rgba(140,170,220,.16);--margin:#d9786a;--red:#f08a80;--blue:#8ab4f0;--shadow:rgba(0,0,0,.5)}}
+:root{color-scheme:light dark;--bg:#f4efe6;--card:#fffdf8;--ink:#2a2622;--muted:#7a7066;--line:#ddd3c3;--accent:#8a3b2a;--warn:#b26a00;--soft:#efe6d6;--paper:#fffef6;--paper-ink:#2a2622;--paper-tag:#7a6a58;--paper-rule:rgba(70,110,180,.22);--margin:#c2574a;--red:#b3261e;--blue:#2b5fa3;--shadow:rgba(0,0,0,.18);--parch:#efe3c4;--parch-edge:#b9a678;--street:#f8f1dd;--roof:#d6c298;--hatch:#9c8656}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1917;--card:#252220;--ink:#ece4d8;--muted:#a09484;--line:#3a3430;--accent:#e08a70;--warn:#e0a040;--soft:#312c28;--paper:#2a2622;--paper-ink:#ece4d8;--paper-tag:#a8998a;--paper-rule:rgba(140,170,220,.16);--margin:#d9786a;--red:#f08a80;--blue:#8ab4f0;--shadow:rgba(0,0,0,.5);--parch:#2b2619;--parch-edge:#5a4d33;--street:#3d3524;--roof:#4a3f29;--hatch:#7a6a45}}
 *{box-sizing:border-box}
 body{margin:0;padding:24px 16px 48px;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,'Times New Roman',serif;overflow-wrap:anywhere}
 main{max-width:1040px;margin:0 auto}
@@ -79,13 +79,33 @@ ${tabRules}
 .graph{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--card);padding:6px}
 svg{display:block;width:100%;height:auto;font:13px system-ui,sans-serif}
 svg text{fill:var(--ink)}
-.edges line{stroke:var(--muted);stroke-width:2}
-.edges path{fill:none;stroke-width:1.6}
-.node rect{fill:var(--soft);stroke:var(--line);stroke-width:1.5}
-.node.unvisited rect{fill:var(--card);stroke-dasharray:5 4}
-.node.current rect{stroke:var(--accent);stroke-width:3}
-.node.locked rect,.node.closed rect{stroke:var(--warn)}
-.node .state{font-size:11px;fill:var(--muted)}
+.paper-map{background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--hatch) 22%,transparent) 0 1px,transparent 1px 7px),var(--parch);border-color:var(--parch-edge);box-shadow:inset 0 0 40px rgba(120,90,40,.25)}
+svg.map .lane{fill:none;stroke:var(--street);stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
+svg.map .lane.across{stroke-dasharray:1 10;stroke-width:6}
+svg.map .street rect{fill:var(--street);stroke:var(--ink);stroke-width:1.5}
+svg.map .street.unvisited rect{stroke-dasharray:6 4}
+svg.map .street.current rect{stroke:var(--accent);stroke-width:3}
+svg.map .block .walls{fill:var(--roof);stroke:var(--ink);stroke-width:1.8}
+svg.map .block .roof{fill:none;stroke:var(--ink);stroke-width:1}
+svg.map .block.unvisited .walls{fill:var(--parch);stroke-dasharray:5 3}
+svg.map .block.current .walls{stroke:var(--accent);stroke-width:3.5}
+svg.map .door{stroke:var(--ink);stroke-width:2.5}
+svg.map .name{font-weight:600;font-size:11px}
+svg.map .street .name{font-size:12px}
+svg.map .block .state{font-size:10px;fill:var(--muted)}
+svg.map .here circle{fill:var(--accent);stroke:var(--card);stroke-width:1.5}
+svg.map .here .dot{fill:var(--card);stroke:none}
+svg.map .elsewhere{font:italic 12px Georgia,serif;fill:var(--muted)}
+svg.map .sign.locked rect{fill:var(--warn);stroke:var(--ink);stroke-width:1}
+svg.map .sign.locked path{fill:none;stroke:var(--ink);stroke-width:1.6}
+svg.map .sign.closed circle{fill:var(--red)}
+svg.map .sign.closed path{stroke:#fff;stroke-width:2}
+svg.map .lead-mark circle{fill:var(--card);stroke:var(--accent);stroke-width:1.5}
+svg.map .lead-mark text{fill:var(--accent);font-weight:700}
+svg.map .compass circle{fill:none;stroke:var(--ink);stroke-width:1.5}
+svg.map .compass .needle{fill:var(--ink)}
+svg.map .compass .south{fill:none;stroke:var(--ink);stroke-width:1}
+svg.map .compass text{font:700 12px Georgia,serif}
 .badge{fill:var(--accent)}
 .badge-n{fill:var(--card);font-size:12px;font-weight:700}
 .statement{margin:4px 0}

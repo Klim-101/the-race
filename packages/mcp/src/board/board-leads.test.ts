@@ -52,8 +52,24 @@ const PLAYED = {
   map: {
     current: 'market',
     places: [
-      { id: 'market', name: 'Market', visited: true, blocked: null, lead: null },
-      { id: 'archive', name: 'Archive', visited: false, blocked: null, lead: 'Reason of by-clue.' },
+      {
+        id: 'market',
+        name: 'Market',
+        visited: true,
+        blocked: null,
+        lead: null,
+        exposure: 'outdoor',
+        building: null,
+      },
+      {
+        id: 'archive',
+        name: 'Archive',
+        visited: false,
+        blocked: null,
+        lead: 'Reason of by-clue.',
+        exposure: 'outdoor',
+        building: null,
+      },
     ],
     links: [{ from: 'market', to: 'archive' }],
   },

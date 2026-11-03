@@ -815,6 +815,8 @@ describe('the leads of a turn', () => {
       name: 'Gala courtyard',
       visited: false,
       blocked: null,
+      exposure: expect.any(String) as unknown,
+      building: null,
     });
     const view = (await call(runView, {}, context)).body as { leads: { id: string }[] };
     expect(view.leads.map(({ id }) => id)).toContain('boiler-whisper');
