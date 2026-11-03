@@ -69,6 +69,32 @@ describe('a lead that can be earned', () => {
   });
 });
 
+describe('a rumour and a study', () => {
+  it('can be earned by asking the locals of a place within reach', () => {
+    expect(issueCodes(buildLaneCase({ kind: 'locals', locationId: 'market-square' }))).toEqual([]);
+  });
+
+  it('can be earned by studying a clue within reach, with any tool', () => {
+    expect(issueCodes(buildLaneCase({ kind: 'study', clueId: 'flour-crumbs' }))).toEqual([]);
+  });
+
+  it('cannot be counted on when it wants a tool the generator never sees the kit for', () => {
+    const detectiveCase = buildLaneCase({ kind: 'study', clueId: 'flour-crumbs', tool: 'magnifier' });
+
+    expect(issueCodes(detectiveCase)).toContain('unearnable-lead');
+  });
+
+  it('is not earned in a place, or from a clue, this hero can never reach', () => {
+    const shut = buildLaneCase({ kind: 'locals', locationId: 'mayor-office' });
+    sealOffice(shut);
+    const unreachable = buildLaneCase({ kind: 'study', clueId: 'oven-receipt' });
+    sealOffice(unreachable);
+
+    expect(issueCodes(shut)).toContain('unearnable-lead');
+    expect(issueCodes(unreachable)).toContain('unearnable-lead');
+  });
+});
+
 describe('a lead that can never be earned', () => {
   it('is rejected for a clue out of reach', () => {
     const detectiveCase = buildLaneCase({ kind: 'clue', clueId: 'oven-receipt' });
@@ -256,6 +282,8 @@ describe('references of leads', () => {
       { kind: 'talk', suspectId: 'nobody' },
       { kind: 'lie', lieId: 'no-lie' },
       { kind: 'deduction', deductionId: 'no-deduction' },
+      { kind: 'locals', locationId: 'nowhere' },
+      { kind: 'study', clueId: 'nothing' },
     ]) {
       expect(issueCodes(buildLaneCase(earnedBy))).toEqual(['unknown-reference']);
     }

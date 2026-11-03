@@ -17,6 +17,12 @@
       "reason": "Секретарь финансового директора обмолвилась, что директор сам выносит свою корзину.",
       "earnedBy": { "kind": "talk", "suspectId": "cfo" },
       "isFalse": true
+    },
+    {
+      "id": "booth-gossip",
+      "reason": "Брокер говорит, что трейдер оставляет бумаги в своей кабине.",
+      "earnedBy": { "kind": "locals", "locationId": "exchange-floor" },
+      "isFalse": true
     }
   ],
   "startLocationId": "exchange-floor",
@@ -44,8 +50,8 @@
           "name": "Кабина трейдера",
           "obstacle": "locked",
           "holds": "big-short-slip",
-          "inQuickLook": true,
-          "requiresLead": null,
+          "inQuickLook": false,
+          "requiresLead": "booth-gossip",
           "fallback": { "kind": "ask", "suspectId": "trader" }
         }
       ]

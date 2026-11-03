@@ -46,6 +46,10 @@ export interface ToolRules {
   readonly charges: number;
   /** Whether using it is within the law; what that costs is for the rules of risk. */
   readonly lawful: boolean;
+  /** The check of studying a clue with it for a lead; absent for a piece that is no use for that. */
+  readonly study?: SkillCheck;
+  /** What it adds to a contacts roll when the hero asks the locals, using up a charge; absent for the rest. */
+  readonly askBonus?: number;
 }
 
 export interface GearDefinition {
@@ -67,7 +71,16 @@ export const DETECTIVE_GEAR: Readonly<Record<GearId, GearDefinition>> = {
     effects: [{ skills: ['contacts'], amount: 1 }],
     lostEffects: [{ skills: ['contacts'], amount: -1 }],
     // The torch: light for the dark, with nothing to roll.
-    tool: { removes: ['dark'], check: null, failureMinutes: 0, wear: 'lasting', charges: 0, lawful: true },
+    // A camera as well: with it any clue can be looked at again, though not closely.
+    tool: {
+      removes: ['dark'],
+      check: null,
+      failureMinutes: 0,
+      wear: 'lasting',
+      charges: 0,
+      lawful: true,
+      study: { skill: 'perception', difficulty: 12 },
+    },
   },
   notebook: {
     nameKey: 'gear.notebook',
@@ -111,6 +124,7 @@ export const DETECTIVE_GEAR: Readonly<Record<GearId, GearDefinition>> = {
       wear: 'lasting',
       charges: 0,
       lawful: true,
+      study: { skill: 'perception', difficulty: 7 },
     },
   },
   knife: {
@@ -135,6 +149,7 @@ export const DETECTIVE_GEAR: Readonly<Record<GearId, GearDefinition>> = {
       wear: 'used-up',
       charges: 2,
       lawful: true,
+      study: { skill: 'reasoning', difficulty: 8 },
     },
   },
   'uv-lamp': {
@@ -147,6 +162,7 @@ export const DETECTIVE_GEAR: Readonly<Record<GearId, GearDefinition>> = {
       wear: 'lasting',
       charges: 0,
       lawful: true,
+      study: { skill: 'perception', difficulty: 8 },
     },
   },
   powder: {
@@ -161,7 +177,11 @@ export const DETECTIVE_GEAR: Readonly<Record<GearId, GearDefinition>> = {
       lawful: true,
     },
   },
-  'tape-measure': { nameKey: 'gear.tape-measure', ...NO_EFFECTS, tool: studyOnly('lasting') },
+  'tape-measure': {
+    nameKey: 'gear.tape-measure',
+    ...NO_EFFECTS,
+    tool: { ...studyOnly('lasting'), study: { skill: 'reasoning', difficulty: 8 } },
+  },
   crowbar: {
     nameKey: 'gear.crowbar',
     ...NO_EFFECTS,
@@ -176,7 +196,7 @@ export const DETECTIVE_GEAR: Readonly<Record<GearId, GearDefinition>> = {
   },
   mirror: { nameKey: 'gear.mirror', ...NO_EFFECTS, tool: studyOnly('lasting') },
   binoculars: { nameKey: 'gear.binoculars', ...NO_EFFECTS, tool: studyOnly('lasting') },
-  cash: { nameKey: 'gear.cash', ...NO_EFFECTS, tool: studyOnly('used-up', 2) },
+  cash: { nameKey: 'gear.cash', ...NO_EFFECTS, tool: { ...studyOnly('used-up', 2), askBonus: 3 } },
 };
 
 /** A piece that gets past no obstacle yet: it is for what the hero will do with clues and people. */
@@ -293,6 +313,10 @@ export interface KitView {
   readonly lawful: boolean;
   /** Whether the piece is in the suitcase and takes a slot. */
   readonly suitcase: boolean;
+  /** Whether a clue can be studied with it for a lead. */
+  readonly study: boolean;
+  /** Whether it helps when the hero asks the locals (cash does). */
+  readonly helpsAsking: boolean;
 }
 
 export function viewKit(kit: readonly KitItem[]): KitView[] {
@@ -304,6 +328,8 @@ export function viewKit(kit: readonly KitItem[]): KitView[] {
     charges: chargesLeft(item),
     lawful: DETECTIVE_GEAR[item.id].tool?.lawful ?? true,
     suitcase: item.suitcase === true,
+    study: DETECTIVE_GEAR[item.id].tool?.study !== undefined,
+    helpsAsking: DETECTIVE_GEAR[item.id].tool?.askBonus !== undefined,
   }));
 }
 

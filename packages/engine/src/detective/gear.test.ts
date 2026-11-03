@@ -154,6 +154,8 @@ describe('the kit in the state and the view', () => {
         charges: null,
         lawful: true,
         suitcase: false,
+        study: true,
+        helpsAsking: false,
       },
       {
         id: 'notebook',
@@ -163,6 +165,8 @@ describe('the kit in the state and the view', () => {
         charges: null,
         lawful: true,
         suitcase: false,
+        study: false,
+        helpsAsking: false,
       },
     ]);
     expect(viewKit([])).toEqual([]);

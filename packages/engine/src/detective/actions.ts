@@ -36,6 +36,16 @@ import {
 import { isLeadEarned, isLeadOpen, isPlaceKnown } from './leads.js';
 import { risks, unlawfulRisk, type Risk } from './risk.js';
 import { DETECTIVE_NERVES } from './archetype.js';
+import {
+  ASK_DIFFICULTY,
+  ASK_MINUTES,
+  ASK_RULESET_VERSION,
+  FAILED_ASK_MINUTES,
+  FAILED_STUDY_MINUTES,
+  STUDY_MINUTES,
+  askBonusOf,
+  chooseStudyTool,
+} from './ask.js';
 import { SIT_MINUTES, SIT_NERVES, sitRefusal, sitsLeft } from './venue.js';
 import { chooseTool, partsOfPlace } from './search-parts.js';
 import { GearIdSchema, worn, type GearId } from './gear.js';
@@ -45,6 +55,7 @@ import {
   changeReputation,
   endTurn,
   findClue,
+  grantLeads,
   markSearched,
   moveTo,
   noticeParts,
@@ -85,6 +96,10 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   DeduceIntentSchema,
   /** Stop for the day and sleep where the hero stands: the night passes at once. */
   z.object({ kind: z.literal('rest') }),
+  /** Ask the locals for a rumour: a contacts roll, with the piece of the kit named by `toolId` (cash) to help it. */
+  z.object({ kind: z.literal('ask'), toolId: GearIdSchema.optional() }),
+  /** Study a clue the hero holds with a tool of the kit, for a lead. */
+  z.object({ kind: z.literal('study'), clueId: EntityIdSchema, toolId: GearIdSchema.optional() }),
   /** Sit down at a teahouse or a cafe for a while: a little of the nerves comes back. */
   z.object({ kind: z.literal('sit') }),
   /** The final accusation, which ends the run. */
@@ -122,6 +137,7 @@ export type RefusalCode =
   | 'clue-not-found'
   | 'insight-not-found'
   | 'suspect-closed'
+  | 'not-available'
   | 'no-venue'
   | 'venue-closed'
   | 'venue-unsafe'
@@ -195,6 +211,23 @@ export type Outcome = (
       readonly detainedMinutes?: number;
     }
   | { readonly kind: 'rest' }
+  | {
+      readonly kind: 'ask';
+      readonly minutes: number;
+      /** Whether the locals had anything to say that the roll could get out of them. */
+      readonly succeeded: boolean;
+      readonly consequences: readonly Consequence[];
+      /** The cash that helped, and whether it was the last of it. */
+      readonly tool?: { readonly id: GearId; readonly wear: 'spent' | 'broken' | null };
+    }
+  | {
+      readonly kind: 'study';
+      readonly clueId: string;
+      readonly minutes: number;
+      readonly succeeded: boolean;
+      readonly consequences: readonly Consequence[];
+      readonly tool: { readonly id: GearId; readonly wear: 'spent' | 'broken' | null };
+    }
   | {
       readonly kind: 'sit';
       readonly minutes: number;
@@ -748,6 +781,99 @@ function resolveSit(run: DetectiveRunState, rng: Rng): Resolution {
   };
 }
 
+/**
+ * Asking the locals: a contacts roll in the place. A success gets out of them the rumours the case holds for this
+ * place, a failure only time. A piece named in `toolId` (cash) eases the roll and wears.
+ */
+function resolveAsk(run: DetectiveRunState, rng: Rng, toolId: GearId | undefined): Resolution {
+  if (run.rulesetVersion < ASK_RULESET_VERSION)
+    return refuse('not-available', 'Nobody here has a rumour to tell.');
+  const helper = toolId === undefined ? undefined : askBonusOf(run, toolId);
+  if (toolId !== undefined && helper === undefined) {
+    return refuse('wrong-tool', 'That is not in the kit, or it is no help in asking.');
+  }
+  const location = locationById(run.case, run.locationId);
+  const attempt = roll(
+    run,
+    rng,
+    { skill: 'contacts', difficulty: ASK_DIFFICULTY - (helper?.bonus ?? 0) },
+    location.situations,
+  );
+  const { result } = attempt;
+  const worndown = helper === undefined ? run : wearTool(run, helper.item.id, false);
+  const heard = result.success
+    ? grantLeads(worndown, [{ kind: 'locals', locationId: location.id }])
+    : worndown;
+  const minutes = ASK_MINUTES + (result.success ? 0 : FAILED_ASK_MINUTES);
+  const settled = settle(heard, rng, minutes, [result]);
+  return {
+    ok: true,
+    run: settled.run,
+    outcome: {
+      kind: 'ask',
+      minutes,
+      succeeded: result.success,
+      consequences: [...(result.success ? [] : (['time-lost'] as const)), ...settled.consequences],
+      ...(helper === undefined ? {} : { tool: { id: helper.item.id, wear: worn(helper.item, false).wear } }),
+    },
+    details: [{ subject: { kind: 'location', id: location.id }, result }],
+    felt: distinctFelt([...attempt.felt, ...settled.felt]),
+    revealed: attempt.revealed,
+  };
+}
+
+/**
+ * Studying a clue the hero holds with a tool: a roll of the tool's own skill. A success gets out of the clue the leads
+ * the case holds for that clue and that tool, a failure costs time, and the tool wears either way, a piece that is
+ * used up spending a charge.
+ */
+function resolveStudy(
+  run: DetectiveRunState,
+  rng: Rng,
+  clueId: string,
+  toolId: GearId | undefined,
+): Resolution {
+  if (run.rulesetVersion < ASK_RULESET_VERSION)
+    return refuse('not-available', 'There is nothing to study that with.');
+  // A clue not found and one that does not exist are refused alike.
+  if (!run.foundClueIds.includes(clueId)) {
+    return refuse('clue-not-found', 'The hero can only study a clue they hold.');
+  }
+  const choice = chooseStudyTool(run, toolId);
+  if (choice.kind === 'refused') {
+    return refuse(
+      choice.code,
+      choice.code === 'wrong-tool'
+        ? 'That tool is not in the kit, or it is no use for studying a clue.'
+        : 'The hero has nothing to study a clue with.',
+    );
+  }
+  const { item, rules } = choice;
+  const location = locationById(run.case, run.locationId);
+  const attempt = roll(run, rng, rules.study, location.situations);
+  const { result } = attempt;
+  const used = worn(item, result.critical === 'failure');
+  const worndown = wearTool(run, item.id, result.critical === 'failure');
+  const found = result.success ? grantLeads(worndown, [{ kind: 'study', clueId, tool: item.id }]) : worndown;
+  const minutes = STUDY_MINUTES + (result.success ? 0 : Math.max(rules.failureMinutes, FAILED_STUDY_MINUTES));
+  const settled = settle(found, rng, minutes, [result]);
+  return {
+    ok: true,
+    run: settled.run,
+    outcome: {
+      kind: 'study',
+      clueId,
+      minutes,
+      succeeded: result.success,
+      consequences: [...(result.success ? [] : (['time-lost'] as const)), ...settled.consequences],
+      tool: { id: item.id, wear: used.wear },
+    },
+    details: [{ subject: { kind: 'clue', id: clueId }, result }],
+    felt: distinctFelt([...attempt.felt, ...settled.felt]),
+    revealed: attempt.revealed,
+  };
+}
+
 function dispatchIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resolution {
   const parsed = IntentSchema.safeParse(input);
   if (!parsed.success) {
@@ -768,6 +894,10 @@ function dispatchIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resol
       return resolveRest(run, rng);
     case 'sit':
       return resolveSit(run, rng);
+    case 'ask':
+      return resolveAsk(run, rng, intent.toolId);
+    case 'study':
+      return resolveStudy(run, rng, intent.clueId, intent.toolId);
     case 'interrogate':
       return resolveInterrogate(run, intent, rng);
     case 'deduce': {

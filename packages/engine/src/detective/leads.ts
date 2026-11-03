@@ -41,7 +41,20 @@ export function isLeadOpen(run: DetectiveRunState, leadId: string): boolean {
 export function leadsEarnedBy(run: DetectiveRunState, deed: LeadTrigger): readonly Lead[] {
   if (!leadsApply(run)) return [];
   return (run.case.leads ?? []).filter(
-    (lead) => !isLeadEarned(run, lead.id) && deedKey(lead.earnedBy) === deedKey(deed),
+    (lead) =>
+      !isLeadEarned(run, lead.id) &&
+      deedKey(lead.earnedBy) === deedKey(deed) &&
+      toolFits(lead.earnedBy, deed),
+  );
+}
+
+/** A lead earned by a clue studied with one tool is earned by that tool only; with none named, by any. */
+function toolFits(trigger: LeadTrigger, deed: LeadTrigger): boolean {
+  return (
+    trigger.kind !== 'study' ||
+    deed.kind !== 'study' ||
+    trigger.tool === undefined ||
+    trigger.tool === deed.tool
   );
 }
 
@@ -56,6 +69,10 @@ function deedKey(deed: LeadTrigger): string {
       return `lie:${deed.lieId}`;
     case 'deduction':
       return `deduction:${deed.deductionId}`;
+    case 'locals':
+      return `locals:${deed.locationId}`;
+    case 'study':
+      return `study:${deed.clueId}`;
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
     default:
       return assertNever(deed);

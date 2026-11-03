@@ -17,6 +17,18 @@
       "reason": "The curator keeps glancing at the foot of the pedestal.",
       "earnedBy": { "kind": "talk", "suspectId": "curator" },
       "isFalse": false
+    },
+    {
+      "id": "office-gossip",
+      "reason": "The waitress swears the curator hides things in his office sofa.",
+      "earnedBy": { "kind": "locals", "locationId": "tea-shop" },
+      "isFalse": true
+    },
+    {
+      "id": "index-wear",
+      "reason": "The tag of the key is worn on one side: somebody keeps opening the card index.",
+      "earnedBy": { "kind": "study", "clueId": "archive-key" },
+      "isFalse": false
     }
   ],
   "startLocationId": "museum-hall",
@@ -148,8 +160,8 @@
           "name": "The card index",
           "obstacle": "dark",
           "holds": "ink-smudge",
-          "inQuickLook": true,
-          "requiresLead": null,
+          "inQuickLook": false,
+          "requiresLead": "index-wear",
           "fallback": { "kind": "ask", "suspectId": "curator" }
         }
       ]
@@ -177,8 +189,8 @@
           "name": "The sofa",
           "obstacle": "soft",
           "holds": "gold-cufflink",
-          "inQuickLook": true,
-          "requiresLead": null,
+          "inQuickLook": false,
+          "requiresLead": "office-gossip",
           "fallback": { "kind": "ask", "suspectId": "caterer" }
         }
       ]

@@ -17,6 +17,18 @@
       "reason": "Куратор то и дело поглядывает на основание постамента.",
       "earnedBy": { "kind": "talk", "suspectId": "curator" },
       "isFalse": false
+    },
+    {
+      "id": "office-gossip",
+      "reason": "Официантка клянётся, что куратор прячет вещи в диване своего кабинета.",
+      "earnedBy": { "kind": "locals", "locationId": "tea-shop" },
+      "isFalse": true
+    },
+    {
+      "id": "index-wear",
+      "reason": "Бирка ключа стёрта с одной стороны: кто-то постоянно открывает картотеку.",
+      "earnedBy": { "kind": "study", "clueId": "archive-key" },
+      "isFalse": false
     }
   ],
   "startLocationId": "museum-hall",
@@ -148,8 +160,8 @@
           "name": "Картотека",
           "obstacle": "dark",
           "holds": "ink-smudge",
-          "inQuickLook": true,
-          "requiresLead": null,
+          "inQuickLook": false,
+          "requiresLead": "index-wear",
           "fallback": { "kind": "ask", "suspectId": "curator" }
         }
       ]
@@ -177,8 +189,8 @@
           "name": "Диван",
           "obstacle": "soft",
           "holds": "gold-cufflink",
-          "inQuickLook": true,
-          "requiresLead": null,
+          "inQuickLook": false,
+          "requiresLead": "office-gossip",
           "fallback": { "kind": "ask", "suspectId": "caterer" }
         }
       ]

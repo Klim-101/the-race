@@ -123,6 +123,11 @@ function canEarn(
           reachable(id) &&
           lies.some((lie) => lie.id === earnedBy.lieId && lie.brokenBy.some((clueId) => clueIds.has(clueId))),
       );
+    case 'locals':
+      return locationIds.has(earnedBy.locationId);
+    case 'study':
+      // Any tool will do when none is named, the phone's camera among them; one named is not something every kit has.
+      return earnedBy.tool === undefined && clueIds.has(earnedBy.clueId);
     case 'deduction':
       return detectiveCase.deductions.some(
         ({ id, clueIds: needed }) =>

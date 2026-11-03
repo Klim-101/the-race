@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 17;
+var RULESET_VERSION = 18;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -33126,7 +33126,16 @@ var DETECTIVE_GEAR = {
     effects: [{ skills: ["contacts"], amount: 1 }],
     lostEffects: [{ skills: ["contacts"], amount: -1 }],
     // The torch: light for the dark, with nothing to roll.
-    tool: { removes: ["dark"], check: null, failureMinutes: 0, wear: "lasting", charges: 0, lawful: true }
+    // A camera as well: with it any clue can be looked at again, though not closely.
+    tool: {
+      removes: ["dark"],
+      check: null,
+      failureMinutes: 0,
+      wear: "lasting",
+      charges: 0,
+      lawful: true,
+      study: { skill: "perception", difficulty: 12 }
+    }
   },
   notebook: {
     nameKey: "gear.notebook",
@@ -33169,7 +33178,8 @@ var DETECTIVE_GEAR = {
       failureMinutes: 10,
       wear: "lasting",
       charges: 0,
-      lawful: true
+      lawful: true,
+      study: { skill: "perception", difficulty: 7 }
     }
   },
   knife: {
@@ -33193,7 +33203,8 @@ var DETECTIVE_GEAR = {
       failureMinutes: 15,
       wear: "used-up",
       charges: 2,
-      lawful: true
+      lawful: true,
+      study: { skill: "reasoning", difficulty: 8 }
     }
   },
   "uv-lamp": {
@@ -33205,7 +33216,8 @@ var DETECTIVE_GEAR = {
       failureMinutes: 10,
       wear: "lasting",
       charges: 0,
-      lawful: true
+      lawful: true,
+      study: { skill: "perception", difficulty: 8 }
     }
   },
   powder: {
@@ -33220,7 +33232,11 @@ var DETECTIVE_GEAR = {
       lawful: true
     }
   },
-  "tape-measure": { nameKey: "gear.tape-measure", ...NO_EFFECTS, tool: studyOnly("lasting") },
+  "tape-measure": {
+    nameKey: "gear.tape-measure",
+    ...NO_EFFECTS,
+    tool: { ...studyOnly("lasting"), study: { skill: "reasoning", difficulty: 8 } }
+  },
   crowbar: {
     nameKey: "gear.crowbar",
     ...NO_EFFECTS,
@@ -33235,7 +33251,7 @@ var DETECTIVE_GEAR = {
   },
   mirror: { nameKey: "gear.mirror", ...NO_EFFECTS, tool: studyOnly("lasting") },
   binoculars: { nameKey: "gear.binoculars", ...NO_EFFECTS, tool: studyOnly("lasting") },
-  cash: { nameKey: "gear.cash", ...NO_EFFECTS, tool: studyOnly("used-up", 2) }
+  cash: { nameKey: "gear.cash", ...NO_EFFECTS, tool: { ...studyOnly("used-up", 2), askBonus: 3 } }
 };
 function studyOnly(wear, charges = 0) {
   return {
@@ -33322,7 +33338,9 @@ function viewKit(kit) {
     removes: DETECTIVE_GEAR[item.id].tool?.removes ?? [],
     charges: chargesLeft(item),
     lawful: DETECTIVE_GEAR[item.id].tool?.lawful ?? true,
-    suitcase: item.suitcase === true
+    suitcase: item.suitcase === true,
+    study: DETECTIVE_GEAR[item.id].tool?.study !== void 0,
+    helpsAsking: DETECTIVE_GEAR[item.id].tool?.askBonus !== void 0
   }));
 }
 function chargesLeft(item) {
@@ -34134,7 +34152,15 @@ var LeadTriggerSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("clue"), clueId: EntityIdSchema }),
   external_exports.object({ kind: external_exports.literal("talk"), suspectId: EntityIdSchema }),
   external_exports.object({ kind: external_exports.literal("lie"), lieId: EntityIdSchema }),
-  external_exports.object({ kind: external_exports.literal("deduction"), deductionId: EntityIdSchema })
+  external_exports.object({ kind: external_exports.literal("deduction"), deductionId: EntityIdSchema }),
+  /** A rumour: a contacts roll in that place, asking the locals. It is the one way to open a place with no clue in hand. */
+  external_exports.object({ kind: external_exports.literal("locals"), locationId: EntityIdSchema }),
+  /**
+   * A clue the hero holds, studied with a tool: handwriting under a glass, a stain under a lamp. With no `tool` any
+   * tool will do, the phone's camera included, so every hero can earn it; with one, only that tool (and the case is
+   * not asked to be solvable by it, since the generator never sees the kit).
+   */
+  external_exports.object({ kind: external_exports.literal("study"), clueId: EntityIdSchema, tool: GearIdSchema.optional() })
 ]);
 var LeadWindowSchema = external_exports.object({ fromMinute: external_exports.int().min(0).max(1439), untilMinute: external_exports.int().min(0).max(1439) }).refine(({ fromMinute, untilMinute }) => fromMinute !== untilMinute, "A window of no hours, or of all.");
 var LeadSchema = external_exports.object({
@@ -35423,6 +35449,10 @@ function canEarn(detectiveCase, earnedBy, locationIds, clueIds) {
       return detectiveCase.suspects.some(
         ({ id, lies }) => reachable(id) && lies.some((lie) => lie.id === earnedBy.lieId && lie.brokenBy.some((clueId) => clueIds.has(clueId)))
       );
+    case "locals":
+      return locationIds.has(earnedBy.locationId);
+    case "study":
+      return earnedBy.tool === void 0 && clueIds.has(earnedBy.clueId);
     case "deduction":
       return detectiveCase.deductions.some(
         ({ id, clueIds: needed }) => id === earnedBy.deductionId && needed.every((clueId) => clueIds.has(clueId))
@@ -35714,8 +35744,11 @@ function isLeadOpen(run, leadId) {
 function leadsEarnedBy(run, deed) {
   if (!leadsApply(run)) return [];
   return (run.case.leads ?? []).filter(
-    (lead) => !isLeadEarned(run, lead.id) && deedKey(lead.earnedBy) === deedKey(deed)
+    (lead) => !isLeadEarned(run, lead.id) && deedKey(lead.earnedBy) === deedKey(deed) && toolFits(lead.earnedBy, deed)
   );
+}
+function toolFits(trigger, deed) {
+  return trigger.kind !== "study" || deed.kind !== "study" || trigger.tool === void 0 || trigger.tool === deed.tool;
 }
 function deedKey(deed) {
   switch (deed.kind) {
@@ -35727,6 +35760,10 @@ function deedKey(deed) {
       return `lie:${deed.lieId}`;
     case "deduction":
       return `deduction:${deed.deductionId}`;
+    case "locals":
+      return `locals:${deed.locationId}`;
+    case "study":
+      return `study:${deed.clueId}`;
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
     default:
       return assertNever2(deed);
@@ -37076,6 +37113,34 @@ function unlawfulRisk(run, rng, location) {
   };
 }
 
+// packages/engine/src/detective/ask.ts
+var ASK_RULESET_VERSION = 18;
+var ASK_MINUTES = 30;
+var FAILED_ASK_MINUTES = 10;
+var ASK_DIFFICULTY = 10;
+var STUDY_MINUTES = 30;
+var FAILED_STUDY_MINUTES = 10;
+var WEAR_ORDER2 = ["lasting", "may-break", "used-up"];
+function chooseStudyTool(run, toolId) {
+  const usable = run.kit.flatMap((item) => {
+    const rules = DETECTIVE_GEAR[item.id].tool;
+    return item.state === "owned" && rules?.study !== void 0 ? [{ item, rules: { ...rules, study: rules.study } }] : [];
+  });
+  if (toolId !== void 0) {
+    const named2 = usable.find(({ item }) => item.id === toolId);
+    return named2 === void 0 ? { kind: "refused", code: "wrong-tool" } : { kind: "tool", ...named2 };
+  }
+  const best = [...usable].sort(
+    (a, b) => a.rules.study.difficulty - b.rules.study.difficulty || WEAR_ORDER2.indexOf(a.rules.wear) - WEAR_ORDER2.indexOf(b.rules.wear)
+  )[0];
+  return best === void 0 ? { kind: "refused", code: "needs-tool" } : { kind: "tool", ...best };
+}
+function askBonusOf(run, toolId) {
+  const item = run.kit.find(({ id, state }) => id === toolId && state === "owned");
+  const bonus = item === void 0 ? void 0 : DETECTIVE_GEAR[item.id].tool?.askBonus;
+  return item === void 0 || bonus === void 0 ? void 0 : { item, bonus };
+}
+
 // packages/engine/src/detective/verdict.ts
 var DeduceIntentSchema = external_exports.object({
   kind: external_exports.literal("deduce"),
@@ -37209,6 +37274,10 @@ var IntentSchema = external_exports.discriminatedUnion("kind", [
   DeduceIntentSchema,
   /** Stop for the day and sleep where the hero stands: the night passes at once. */
   external_exports.object({ kind: external_exports.literal("rest") }),
+  /** Ask the locals for a rumour: a contacts roll, with the piece of the kit named by `toolId` (cash) to help it. */
+  external_exports.object({ kind: external_exports.literal("ask"), toolId: GearIdSchema.optional() }),
+  /** Study a clue the hero holds with a tool of the kit, for a lead. */
+  external_exports.object({ kind: external_exports.literal("study"), clueId: EntityIdSchema, toolId: GearIdSchema.optional() }),
   /** Sit down at a teahouse or a cafe for a while: a little of the nerves comes back. */
   external_exports.object({ kind: external_exports.literal("sit") }),
   /** The final accusation, which ends the run. */
@@ -37604,6 +37673,78 @@ function resolveSit(run, rng) {
     details: []
   };
 }
+function resolveAsk(run, rng, toolId) {
+  if (run.rulesetVersion < ASK_RULESET_VERSION)
+    return refuse3("not-available", "Nobody here has a rumour to tell.");
+  const helper = toolId === void 0 ? void 0 : askBonusOf(run, toolId);
+  if (toolId !== void 0 && helper === void 0) {
+    return refuse3("wrong-tool", "That is not in the kit, or it is no help in asking.");
+  }
+  const location = locationById(run.case, run.locationId);
+  const attempt = roll(
+    run,
+    rng,
+    { skill: "contacts", difficulty: ASK_DIFFICULTY - (helper?.bonus ?? 0) },
+    location.situations
+  );
+  const { result } = attempt;
+  const worndown = helper === void 0 ? run : wearTool(run, helper.item.id, false);
+  const heard = result.success ? grantLeads(worndown, [{ kind: "locals", locationId: location.id }]) : worndown;
+  const minutes2 = ASK_MINUTES + (result.success ? 0 : FAILED_ASK_MINUTES);
+  const settled = settle2(heard, rng, minutes2, [result]);
+  return {
+    ok: true,
+    run: settled.run,
+    outcome: {
+      kind: "ask",
+      minutes: minutes2,
+      succeeded: result.success,
+      consequences: [...result.success ? [] : ["time-lost"], ...settled.consequences],
+      ...helper === void 0 ? {} : { tool: { id: helper.item.id, wear: worn(helper.item, false).wear } }
+    },
+    details: [{ subject: { kind: "location", id: location.id }, result }],
+    felt: distinctFelt([...attempt.felt, ...settled.felt]),
+    revealed: attempt.revealed
+  };
+}
+function resolveStudy(run, rng, clueId, toolId) {
+  if (run.rulesetVersion < ASK_RULESET_VERSION)
+    return refuse3("not-available", "There is nothing to study that with.");
+  if (!run.foundClueIds.includes(clueId)) {
+    return refuse3("clue-not-found", "The hero can only study a clue they hold.");
+  }
+  const choice = chooseStudyTool(run, toolId);
+  if (choice.kind === "refused") {
+    return refuse3(
+      choice.code,
+      choice.code === "wrong-tool" ? "That tool is not in the kit, or it is no use for studying a clue." : "The hero has nothing to study a clue with."
+    );
+  }
+  const { item, rules } = choice;
+  const location = locationById(run.case, run.locationId);
+  const attempt = roll(run, rng, rules.study, location.situations);
+  const { result } = attempt;
+  const used = worn(item, result.critical === "failure");
+  const worndown = wearTool(run, item.id, result.critical === "failure");
+  const found = result.success ? grantLeads(worndown, [{ kind: "study", clueId, tool: item.id }]) : worndown;
+  const minutes2 = STUDY_MINUTES + (result.success ? 0 : Math.max(rules.failureMinutes, FAILED_STUDY_MINUTES));
+  const settled = settle2(found, rng, minutes2, [result]);
+  return {
+    ok: true,
+    run: settled.run,
+    outcome: {
+      kind: "study",
+      clueId,
+      minutes: minutes2,
+      succeeded: result.success,
+      consequences: [...result.success ? [] : ["time-lost"], ...settled.consequences],
+      tool: { id: item.id, wear: used.wear }
+    },
+    details: [{ subject: { kind: "clue", id: clueId }, result }],
+    felt: distinctFelt([...attempt.felt, ...settled.felt]),
+    revealed: attempt.revealed
+  };
+}
 function dispatchIntent(run, input2, rng) {
   const parsed = IntentSchema.safeParse(input2);
   if (!parsed.success) {
@@ -37624,6 +37765,10 @@ function dispatchIntent(run, input2, rng) {
       return resolveRest(run, rng);
     case "sit":
       return resolveSit(run, rng);
+    case "ask":
+      return resolveAsk(run, rng, intent.toolId);
+    case "study":
+      return resolveStudy(run, rng, intent.clueId, intent.toolId);
     case "interrogate":
       return resolveInterrogate(run, intent, rng);
     case "deduce": {
@@ -37766,6 +37911,23 @@ var OutcomeSchema = external_exports.union([
     ...fatigue
   }),
   external_exports.object({ kind: external_exports.literal("rest") }),
+  external_exports.object({
+    kind: external_exports.literal("ask"),
+    minutes,
+    succeeded: external_exports.boolean(),
+    consequences: external_exports.array(ConsequenceSchema),
+    tool: external_exports.object({ id: GearIdSchema, wear: external_exports.enum(["spent", "broken"]).nullable() }).optional(),
+    ...fatigue
+  }),
+  external_exports.object({
+    kind: external_exports.literal("study"),
+    clueId: EntityIdSchema,
+    minutes,
+    succeeded: external_exports.boolean(),
+    consequences: external_exports.array(ConsequenceSchema),
+    tool: external_exports.object({ id: GearIdSchema, wear: external_exports.enum(["spent", "broken"]).nullable() }),
+    ...fatigue
+  }),
   external_exports.object({ kind: external_exports.literal("sit"), minutes, nervesRestored: external_exports.int().min(0), sitsLeft: external_exports.int().min(0) }),
   external_exports.object({
     kind: external_exports.literal("interrogate"),
@@ -38039,6 +38201,14 @@ function detailOf(run, entry) {
       return { kind: "rest" };
     case "sit":
       return { kind: "sit", restored: outcome.nervesRestored };
+    case "ask":
+      return { kind: "ask", succeeded: outcome.succeeded };
+    case "study":
+      return {
+        kind: "study",
+        clue: run.case.clues.filter(({ id }) => id === outcome.clueId).map(({ description }) => description).join(""),
+        succeeded: outcome.succeeded
+      };
     case "interrogate":
       return {
         kind: "interrogate",
@@ -39292,6 +39462,12 @@ function checkReferencesResolve(detectiveCase) {
         break;
       case "deduction":
         expect(deductionIds, "deduction", earnedBy.deductionId, `${path}.deductionId`);
+        break;
+      case "locals":
+        expect(locationIds, "location", earnedBy.locationId, `${path}.locationId`);
+        break;
+      case "study":
+        expect(clueIds, "clue", earnedBy.clueId, `${path}.clueId`);
         break;
       /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
       default:
@@ -50355,12 +50531,14 @@ var ActIntentSchema = external_exports.discriminatedUnion("kind", [
   }),
   external_exports.object({ kind: external_exports.literal("rest") }),
   external_exports.object({ kind: external_exports.literal("sit") }),
+  external_exports.object({ kind: external_exports.literal("ask"), toolId: GearIdSchema.optional() }),
+  external_exports.object({ kind: external_exports.literal("study"), clueId: EntityIdSchema, toolId: GearIdSchema.optional() }),
   UseIntentSchema,
   RereadIntentSchema
 ]);
 var act = defineTool({
   name: "act",
-  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
+  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
   inputSchema: external_exports.object({ turn: TurnSchema, intent: ActIntentSchema }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, intent }, context2) => playIntent(context2, turn, intent)
@@ -50549,6 +50727,10 @@ var en_default3 = {
         moveFailed: "Tried to get into {name} and could not",
         search: "Searched the place: found {n}",
         rest: "Rested for the night",
+        gotSomething: "something to go on",
+        gotNothing: "nothing",
+        ask: "Asked the locals: {result}",
+        study: "Studied a clue: {result}",
         sit: "Sat down for a while: nerves back by {n}",
         interrogate: "Questioned {name}, {approach}, showing {n} clues",
         insight: "Concluded: {text}",
@@ -50932,6 +51114,10 @@ var ru_default2 = {
         moveFailed: "\u041F\u044B\u0442\u0430\u043B\u0438\u0441\u044C \u043F\u043E\u043F\u0430\u0441\u0442\u044C \u0432 {name}, \u043D\u043E \u043D\u0435 \u0432\u044B\u0448\u043B\u043E",
         search: "\u041E\u0431\u044B\u0441\u043A\u0430\u043B\u0438 \u043C\u0435\u0441\u0442\u043E: \u043D\u0430\u0439\u0434\u0435\u043D\u043E {n}",
         rest: "\u0417\u0430\u0441\u043D\u0443\u043B\u0438 \u0434\u043E \u0443\u0442\u0440\u0430",
+        gotSomething: "\u0435\u0441\u0442\u044C \u0437\u0430 \u0447\u0442\u043E \u0437\u0430\u0446\u0435\u043F\u0438\u0442\u044C\u0441\u044F",
+        gotNothing: "\u043D\u0438\u0447\u0435\u0433\u043E",
+        ask: "\u0420\u0430\u0441\u0441\u043F\u0440\u043E\u0441\u0438\u043B\u0438 \u043C\u0435\u0441\u0442\u043D\u044B\u0445: {result}",
+        study: "\u0418\u0437\u0443\u0447\u0438\u043B\u0438 \u0443\u043B\u0438\u043A\u0443: {result}",
         sit: "\u041F\u043E\u0441\u0438\u0434\u0435\u043B\u0438, \u043D\u0435\u0440\u0432\u044B \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u043D\u0430 {n}",
         interrogate: "\u041E\u043F\u0440\u043E\u0441\u0438\u043B\u0438: {name}, {approach}, \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u043E \u0443\u043B\u0438\u043A: {n}",
         insight: "\u0421\u0434\u0435\u043B\u0430\u043B\u0438 \u0432\u044B\u0432\u043E\u0434: {text}",
@@ -51191,6 +51377,10 @@ function turnText(turn, text) {
       return t.rest;
     case "sit":
       return fill(t.sit, { n: String(turn.restored) });
+    case "ask":
+      return fill(t.ask, { result: turn.succeeded ? t.gotSomething : t.gotNothing });
+    case "study":
+      return fill(t.study, { result: turn.succeeded ? t.gotSomething : t.gotNothing });
     case "interrogate":
       return fill(t.interrogate, {
         name: turn.suspect,

@@ -36,6 +36,10 @@ function turnText(turn: TurnView, text: TabText): string {
       return t.rest;
     case 'sit':
       return fill(t.sit, { n: String(turn.restored) });
+    case 'ask':
+      return fill(t.ask, { result: turn.succeeded ? t.gotSomething : t.gotNothing });
+    case 'study':
+      return fill(t.study, { result: turn.succeeded ? t.gotSomething : t.gotNothing });
     case 'interrogate':
       return fill(t.interrogate, {
         name: turn.suspect,

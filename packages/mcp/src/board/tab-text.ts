@@ -108,6 +108,11 @@ export interface TabText {
       readonly search: string;
       readonly rest: string;
       readonly sit: string;
+      readonly ask: string;
+      readonly study: string;
+      /** What came of an asking or a studying ({result}): something to go on, or nothing. */
+      readonly gotSomething: string;
+      readonly gotNothing: string;
       readonly interrogate: string;
       readonly insight: string;
       readonly alreadyKnown: string;
