@@ -338,6 +338,81 @@ describe('evidence_board', () => {
     expect(JSON.stringify(result.body)).toContain('Game folder');
   });
 
+  it('is rewritten after every turn that changes the run, so the file is always the current one', async () => {
+    const context = await activeRun();
+    const path = runBoardFile(context.saveDir, await newestRunId(context.saveDir, context.fs));
+    expect(context.fs.files.has(path)).toBe(false);
+
+    await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+    expect(context.fs.files.get(path)).toContain('<meta name="turn" content="1">');
+    expect(context.fs.files.get(path)).toContain('Turn 1');
+
+    await call(act, { turn: 1, intent: { kind: 'rest' } }, context);
+    expect(context.fs.files.get(path)).toContain('<meta name="turn" content="2">');
+  });
+
+  it('is left as it was by a turn that is refused', async () => {
+    const context = await activeRun();
+    await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+    const path = runBoardFile(context.saveDir, await newestRunId(context.saveDir, context.fs));
+    const before = context.fs.files.get(path);
+
+    const stale = await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+
+    expect(errorCode(stale)).toBe('stale-turn');
+    expect(context.fs.files.get(path)).toBe(before);
+  });
+
+  it('never costs the player the turn when the board cannot be written', async () => {
+    const context = await activeRun();
+    const deaf = {
+      ...context,
+      saveFs: {
+        ...context.saveFs,
+        mkdir: (directory: string) =>
+          directory.endsWith('board')
+            ? Promise.reject(new Error('EACCES: permission denied'))
+            : context.saveFs.mkdir(directory),
+      },
+    };
+
+    const turn = await call(act, { turn: 0, intent: { kind: 'look' } }, deaf);
+
+    expect(turn.isError).toBe(false);
+    expect(turn.body.view).toMatchObject({ turn: 1 });
+    const path = runBoardFile(context.saveDir, await newestRunId(context.saveDir, context.fs));
+    expect(context.fs.files.has(path)).toBe(false);
+    // The run is saved, and a later turn writes the board again.
+    const next = await call(act, { turn: 1, intent: { kind: 'look' } }, context);
+    expect(next.isError).toBe(false);
+    expect(context.fs.files.get(path)).toContain('<meta name="turn" content="2">');
+  });
+
+  it('marks what the last turn did, and is not rewritten bare by a call for the link', async () => {
+    const context = await activeRun();
+    const found = await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+    const path = runBoardFile(context.saveDir, await newestRunId(context.saveDir, context.fs));
+    const marked = context.fs.files.get(path) ?? '';
+    expect((found.body.view as { clueCount: number }).clueCount).toBeGreaterThan(0);
+    expect(marked).toContain('New in the last turn');
+
+    await call(evidenceBoard, {}, context);
+
+    expect(context.fs.files.get(path)).toBe(marked);
+  });
+
+  it('is written by a call for the link when no turn has written it yet, and again when the file shows another turn', async () => {
+    const context = await activeRun();
+    const first = (await call(evidenceBoard, {}, context)).body.path as string;
+    expect(context.fs.files.get(first)).toContain('<meta name="turn" content="0">');
+    expect(context.fs.files.get(first)).not.toContain('class="fresh"');
+
+    context.fs.files.set(first, '<meta name="turn" content="9">');
+    await call(evidenceBoard, {}, context);
+
+    expect(context.fs.files.get(first)).toContain('<meta name="turn" content="0">');
+  });
+
   it('keeps one file between calls, so a tab left open follows the run', async () => {
     const context = await activeRun();
 

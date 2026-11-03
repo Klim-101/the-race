@@ -14,6 +14,7 @@ import {
 } from '@the-race/engine';
 import { loadCurrentRun, saveRun, type LoadFailureReason } from '@the-race/saves';
 import { z } from 'zod';
+import { keepBoard } from './board-file.js';
 import type { ServerContext } from './context.js';
 import { keepProfile } from './profile.js';
 import { ToolFailure, refusalToToolError } from './tool-error.js';
@@ -225,7 +226,7 @@ export async function playIntent(
   turn: number,
   intent: unknown,
 ): Promise<z.input<typeof TurnResultSchema>> {
-  const { run, log } = await requireRun(context);
+  const { runId, run, log } = await requireRun(context);
   assertFreshTurn(run, turn);
   const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
   if (!resolution.ok) throw new ToolFailure(refusalToToolError(resolution.refusal));
@@ -233,6 +234,7 @@ export async function playIntent(
   const recorded = recordResolution(log, run, intent, resolution);
   await saveRun(context.saveDir, resolution.run, context.saveFs, recorded);
   await keepProfile(context, resolution.run, recorded);
+  await keepBoard(context, runId, resolution.run, recorded, run);
   return {
     outcome: { ...resolution.outcome },
     events: eventsOfTurn(run, resolution.run),

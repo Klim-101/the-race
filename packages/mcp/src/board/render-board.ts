@@ -5,6 +5,8 @@ import { createHash } from 'node:crypto';
 import type { DetectiveRunView, TurnView } from '@the-race/engine';
 import { renderChronicle } from './board-chronicle.js';
 import { renderCork } from './board-cork.js';
+import { renderHeader } from './board-header.js';
+import { freshSince, type Fresh } from './board-new.js';
 import { numberOf, openedRules } from './board-opened.js';
 import { renderHero } from './board-hero.js';
 import { renderLinks } from './board-links.js';
@@ -40,7 +42,7 @@ function shut(restore){if(m.getAttribute('data-open')===null)return;m.removeAttr
 function pick(t){if(m.getAttribute('data-sel')===t){m.removeAttribute('data-sel')}else{m.setAttribute('data-sel',t)}}
 function show(el){var id=el.getAttribute('data-open');if(!id){shut(false);return}if(m.getAttribute('data-open')===id){shut(true);return}m.setAttribute('data-open',id);back=el;var card=document.getElementById('open-'+id);if(card&&card.focus)card.focus()}
 function choose(el){pick(el.getAttribute('data-pick'));show(el)}
-document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}var el=t.closest&&t.closest('[data-pick]');if(el){choose(el)}else if(!(t.closest&&t.closest('a'))){m.removeAttribute('data-sel');shut(false)}});
+document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}if(t.closest&&t.closest('nav.tabs')){shut(false);return}var el=t.closest&&t.closest('[data-pick]');if(el){choose(el)}else if(!(t.closest&&t.closest('a'))){m.removeAttribute('data-sel');shut(false)}});
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){m.removeAttribute('data-sel');shut(true);return}if(e.key==='Enter'||e.key===' '){var el=e.target.closest&&e.target.closest('[data-pick]');if(el){e.preventDefault();choose(el)}}});
 })();`;
 const SCRIPT_HASH = createHash('sha256').update(SCRIPT).digest('base64');
@@ -52,6 +54,11 @@ const STYLE = `
 body{margin:0;padding:24px 16px 48px;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,'Times New Roman',serif;overflow-wrap:anywhere}
 main{max-width:1040px;margin:0 auto}
 h1{margin:0 0 4px;font-size:1.8rem}
+.head{border-bottom:2px solid var(--line);margin:0 0 12px;padding:0 0 8px}
+.head .meta{margin:0 0 4px}
+.fresh{margin:6px 0 0;padding:6px 12px;background:var(--paper);color:var(--paper-ink);border-left:3px double var(--margin);box-shadow:1px 2px 4px var(--shadow);font-family:'Segoe Print','Bradley Hand',Georgia,serif}
+.fresh ul{margin:2px 0 0}
+.new{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;background:var(--margin);color:var(--card);font:700 11px/1.6 system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;vertical-align:middle}
 h2{margin:28px 0 12px;font-size:1.1rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
 h3{margin:22px 0 8px;font-size:1rem;color:var(--accent)}
 .meta{color:var(--muted);margin:0 0 16px}
@@ -156,7 +163,7 @@ function shownTo(view: DetectiveRunView, suspectId: string, text: TabText): stri
   return `<h3>${e(text.corkboard.shownHere)}</h3>\n${lines.join('\n')}\n`;
 }
 
-function renderSuspects(view: DetectiveRunView, board: BoardText, text: TabText): string {
+function renderSuspects(view: DetectiveRunView, board: BoardText, text: TabText, fresh: Fresh): string {
   const e = escapeHtml;
   return view.suspects
     .map((suspect) => {
@@ -177,7 +184,7 @@ function renderSuspects(view: DetectiveRunView, board: BoardText, text: TabText)
               .join('\n');
       const attrs = `data-pick="suspect:${e(suspect.id)}" data-rel="${e(rel(suspectTokens(view, suspect.id)))}" tabindex="0" role="button"`;
       return `<div class="card" ${attrs}>
-<strong>${e(suspect.name)}</strong>
+<strong>${e(suspect.name)}</strong>${fresh.moods.has(suspect.id) || fresh.lieSuspectIds.has(suspect.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ''}
 <p>${e(suspect.persona)}</p>
 <p class="tag">${e(text.statements.moods[suspect.mood])}${suspect.closed ? ` · ${e(text.statements.closed)}` : ''}</p>
 <p class="tag">${e(board.whereabouts)}: ${e(where)}</p>
@@ -206,7 +213,7 @@ function tried(view: DetectiveRunView, text: TabText): string {
   return `<ul class="tried">${items.join('\n')}</ul>`;
 }
 
-function renderClues(view: DetectiveRunView, board: BoardText, text: TabText): string {
+function renderClues(view: DetectiveRunView, board: BoardText, text: TabText, fresh: Fresh): string {
   const e = escapeHtml;
   const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
   const suspectName = new Map(view.suspects.map(({ id, name }) => [id, name]));
@@ -229,7 +236,7 @@ function renderClues(view: DetectiveRunView, board: BoardText, text: TabText): s
               );
             const shownLine = shown.length === 0 ? text.corkboard.nobody : shown.join(', ');
             return `<div class="card" ${attrs}>
-<span class="tag"><span class="num">${e(clue.number)}</span> · ${e(where)}</span>
+<span class="tag"><span class="num">${e(clue.number)}</span> · ${e(where)}</span>${fresh.clueIds.has(clue.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ''}
 <p>${e(clue.description)}</p>${clue.garbled ? `\n<p class="warn">${e(board.garbled)}</p>` : ''}
 <p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
 </div>`;
@@ -250,7 +257,7 @@ function renderClues(view: DetectiveRunView, board: BoardText, text: TabText): s
               sources.length === 0
                 ? ''
                 : `\n<p class="tag">${e(text.corkboard.drawnFrom)}:</p>\n${sources.join('\n')}`;
-            return `<div class="card"><p>${e(insight)}</p>${from}</div>`;
+            return `<div class="card" data-rel="${e(rel(threadTokens(clueIds)))}"><p>${e(insight)}</p>${from}</div>`;
           })
           .join('\n');
   return `<h2>${e(text.links.title)}</h2>
@@ -268,14 +275,18 @@ ${insights}`;
  * picks) made from the public view of the run and the turns the player took, so it can hold nothing the
  * narrator may not know. Six tabs switched by the address alone: the corkboard (the people and the clues,
  * with thread for the links tried and the clues shown), the suspects and the clues as notebooks, the known
- * map, the chronicle, and the hero. Picking a clue, a person or a place lights what ties to it.
+ * map, the chronicle, and the hero, under one header. Picking a clue, a person, a place or a lead lights what
+ * ties to it on any tab. Given the view before the last turn, it marks what that turn changed.
  */
-export function renderEvidenceBoard(view: DetectiveRunView, turns: readonly TurnView[] = []): string {
+export function renderEvidenceBoard(
+  view: DetectiveRunView,
+  turns: readonly TurnView[] = [],
+  previous?: DetectiveRunView,
+): string {
   const board = BOARD_TEXT[view.locale];
   const text = TAB_TEXT[view.locale];
   const e = escapeHtml;
-  const hour = String(Math.floor(view.clock.minute / 60)).padStart(2, '0');
-  const minute = String(view.clock.minute % 60).padStart(2, '0');
+  const fresh = freshSince(view, previous);
 
   const news =
     view.news.length === 0
@@ -286,6 +297,7 @@ export function renderEvidenceBoard(view: DetectiveRunView, turns: readonly Turn
 <html lang="${view.locale}">
 <head>
 <meta charset="utf-8">
+<meta name="turn" content="${String(view.turn)}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-${SCRIPT_HASH}'">
 <title>${e(board.pageTitle)}: ${e(view.title)}</title>
@@ -295,8 +307,7 @@ ${openedRules(view)}</style>
 </head>
 <body>
 <main>
-<h1>${e(view.title)}</h1>
-<p class="meta">${e(board.day)} ${String(view.clock.day)} ${e(board.of)} ${String(view.clock.totalDays)}, ${hour}:${minute} · ${e(board.status[view.status])} · ${e(board.detective)}: ${e(view.hero.name)}</p>
+${renderHeader(view, board, text, fresh)}
 <p class="premise">${e(view.premise)}</p>
 <p class="meta">${e(board.nowAt)}: <strong>${e(view.location.name)}</strong></p>
 <nav class="tabs" aria-label="${e(text.nav)}">${TAB_IDS.map((id) => `<a href="#${id}">${e(text.tabs[id])}</a>`).join('')}</nav>
@@ -306,10 +317,10 @@ ${renderCork(view, board, text)}
 </section>
 <section class="tab notebook" id="suspects">
 <h2>${e(board.suspects)}</h2>
-${renderSuspects(view, board, text)}
+${renderSuspects(view, board, text, fresh)}
 </section>
 <section class="tab notebook" id="clues">
-${renderClues(view, board, text)}
+${renderClues(view, board, text, fresh)}
 </section>
 <section class="tab" id="map">
 <h2>${e(text.map.title)}</h2>
@@ -318,11 +329,11 @@ ${news}
 </section>
 <section class="tab" id="chronicle">
 <h2>${e(text.tabs.chronicle)}</h2>
-${renderChronicle(view, turns, text)}
+${renderChronicle(view, turns, text, fresh)}
 </section>
 <section class="tab" id="hero">
 <h2>${e(text.tabs.hero)}</h2>
-${renderHero(view, board, text)}
+${renderHero(view, board, text, fresh)}
 </section>
 </main>
 <script>${SCRIPT}</script>
