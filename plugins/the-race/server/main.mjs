@@ -35994,6 +35994,42 @@ function recordSightings(run, witness, sightings) {
 function sightingClueId(witnessId, suspectId) {
   return `seen-${witnessId}-${suspectId}`;
 }
+function deriveSightingClues(detectiveCase, describe3) {
+  const known = new Set(detectiveCase.clues.map(({ id }) => id));
+  const derived2 = (detectiveCase.witnesses ?? []).flatMap((witness) => {
+    const place = detectiveCase.locations.find(({ id }) => id === witness.locationId);
+    const seen = sightingsOf(detectiveCase, witness);
+    return detectiveCase.suspects.flatMap((suspect) => {
+      const minutes2 = [
+        ...new Set(
+          seen.filter(({ suspectId }) => suspectId === suspect.id).map(({ minuteOfDay }) => minuteOfDay)
+        )
+      ].toSorted((a, b) => a - b);
+      const id = sightingClueId(witness.id, suspect.id);
+      if (minutes2.length === 0 || known.has(id) || place === void 0) return [];
+      return [
+        {
+          id,
+          locationId: witness.locationId,
+          description: describe3({
+            witnessName: witness.name,
+            suspectName: suspect.name,
+            placeName: place.name,
+            minutesOfDay: minutes2
+          }),
+          discovery: null,
+          situations: [],
+          source: null,
+          pointsTo: [],
+          about: [suspect.id],
+          sightingOf: { witnessId: witness.id, suspectId: suspect.id },
+          isRedHerring: false
+        }
+      ];
+    });
+  });
+  return derived2.length === 0 ? detectiveCase : { ...detectiveCase, clues: [...detectiveCase.clues, ...derived2] };
+}
 
 // packages/engine/src/detective/run-state.ts
 var DrawnEventSchema = external_exports.object({
@@ -51912,6 +51948,10 @@ var en_default3 = {
       toBoard: "On the corkboard",
       toMap: "On the map"
     }
+  },
+  sighting: {
+    clue: "{witness} saw {suspect} at {place} around {times}.",
+    and: "and"
   }
 };
 
@@ -52423,6 +52463,10 @@ var ru_default2 = {
       toBoard: "\u041D\u0430 \u0434\u043E\u0441\u043A\u0435",
       toMap: "\u041D\u0430 \u043A\u0430\u0440\u0442\u0435"
     }
+  },
+  sighting: {
+    clue: "\u0421\u0432\u0438\u0434\u0435\u0442\u0435\u043B\u044C {witness}: {suspect} \u2014 {place}, \u043E\u043A\u043E\u043B\u043E {times}.",
+    and: "\u0438"
   }
 };
 
@@ -54685,6 +54729,19 @@ var runView = defineTool({
   }
 });
 
+// packages/mcp/src/sighting-text.ts
+function clockTime(minuteOfDay) {
+  return `${String(Math.floor(minuteOfDay / 60)).padStart(2, "0")}:${String(minuteOfDay % 60).padStart(2, "0")}`;
+}
+function timesIn(minutesOfDay, and) {
+  const times = minutesOfDay.map(clockTime);
+  return times.length <= 1 ? times.join("") : `${times.slice(0, -1).join(", ")} ${and} ${times.slice(-1).join("")}`;
+}
+function describeSighting(locale) {
+  const text = LOCALE_TEXT[locale].sighting;
+  return ({ witnessName, suspectName, placeName, minutesOfDay }) => text.clue.replace("{witness}", witnessName).replace("{suspect}", suspectName).replace("{place}", placeName).replace("{times}", timesIn(minutesOfDay, text.and));
+}
+
 // packages/mcp/src/tools/scenario-submit.ts
 var MAX_ISSUES = 8;
 var MAX_MESSAGE_LENGTH = 240;
@@ -54803,7 +54860,10 @@ var scenarioSubmit = defineTool({
       return { accepted: false, attemptsLeft: 0, final: true, reason: FINAL_REASON };
     }
     const world = await requireWorld(context2);
-    const result = validateCase(readCase(input2.case), {
+    const submitted = readCase(input2.case);
+    const parsed = DetectiveCaseSchema.safeParse(submitted);
+    const candidate2 = parsed.success ? deriveSightingClues(parsed.data, describeSighting(parsed.data.locale)) : submitted;
+    const result = validateCase(candidate2, {
       hero,
       traits: pending.traits,
       locale: pending.locale,

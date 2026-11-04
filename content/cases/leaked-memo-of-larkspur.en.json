@@ -358,6 +358,51 @@
       "discovery": null,
       "pointsTo": ["journalist"],
       "isRedHerring": true
+    },
+    {
+      "id": "seen-alley-newsboy-investor-relations",
+      "locationId": "ink-alley",
+      "description": "Bram Oddlow saw Ottoline Vance at Ink Alley around 06:30.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["investor-relations"],
+      "sightingOf": {
+        "witnessId": "alley-newsboy",
+        "suspectId": "investor-relations"
+      },
+      "isRedHerring": false
+    },
+    {
+      "id": "seen-fishmonger-investor-relations",
+      "locationId": "harbour-street",
+      "description": "Dora Venn saw Ottoline Vance at Harbour Street around 08:00.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["investor-relations"],
+      "sightingOf": {
+        "witnessId": "fishmonger",
+        "suspectId": "investor-relations"
+      },
+      "isRedHerring": false
+    },
+    {
+      "id": "seen-plaza-guard-cfo",
+      "locationId": "larkspur-plaza",
+      "description": "Jorun Hale saw Barnaby Fitch at Larkspur Plaza around 06:45.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["cfo"],
+      "sightingOf": {
+        "witnessId": "plaza-guard",
+        "suspectId": "cfo"
+      },
+      "isRedHerring": false
     }
   ],
   "suspects": [

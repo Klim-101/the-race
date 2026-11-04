@@ -501,5 +501,9 @@
       "toBoard": "On the corkboard",
       "toMap": "On the map"
     }
+  },
+  "sighting": {
+    "clue": "{witness} saw {suspect} at {place} around {times}.",
+    "and": "and"
   }
 }

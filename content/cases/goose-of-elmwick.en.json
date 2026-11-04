@@ -348,6 +348,36 @@
       "discovery": null,
       "pointsTo": ["curator"],
       "isRedHerring": true
+    },
+    {
+      "id": "seen-street-sweeper-postmaster",
+      "locationId": "elm-street",
+      "description": "Mabel Quince saw Wilhelmina Tuck at Elm Street around 02:30.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["postmaster"],
+      "sightingOf": {
+        "witnessId": "street-sweeper",
+        "suspectId": "postmaster"
+      },
+      "isRedHerring": false
+    },
+    {
+      "id": "seen-clock-tender-postmaster",
+      "locationId": "bell-square",
+      "description": "Hob Tarrow saw Wilhelmina Tuck at Bell Square around 02:40.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["postmaster"],
+      "sightingOf": {
+        "witnessId": "clock-tender",
+        "suspectId": "postmaster"
+      },
+      "isRedHerring": false
     }
   ],
   "suspects": [
@@ -367,7 +397,7 @@
           "id": "postmaster-parcels",
           "statement": "I was sorting parcels at the post office all night, and the pigeonholes will tell you so.",
           "admission": "Very well, I stepped out of the post office after one in the morning. An old woman may take the air if she likes, and that is all it was.",
-          "brokenBy": ["door-log", "hatbox-witness"]
+          "brokenBy": ["door-log", "hatbox-witness", "seen-street-sweeper-postmaster"]
         }
       ],
       "reactions": [
