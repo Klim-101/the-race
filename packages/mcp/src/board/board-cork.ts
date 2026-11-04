@@ -111,7 +111,7 @@ export function renderCork(view: DetectiveRunView, board: BoardText, text: TabTe
       .join('');
     const initial = Array.from(suspect.name).slice(0, 1).join('').toUpperCase();
     const attrs = `data-pick="suspect:${e(suspect.id)}" data-rel="${e(rel(suspectTokens(view, suspect.id)))}" tabindex="0" role="button" aria-label="${e(suspect.name)}"`;
-    return `<g class="photo" ${attrs}><title>${e(suspect.name)}</title><rect class="paper" x="${whole(x)}" y="${whole(photoTop)}" width="${String(PHOTO_W)}" height="${String(PHOTO_H)}" rx="3"/><rect class="print" x="${whole(x + 8)}" y="${whole(photoTop + 8)}" width="${String(PHOTO_W - 16)}" height="${String(PHOTO_H - 16)}" rx="2"/><text class="initial" x="${whole(x + PHOTO_W / 2)}" y="${whole(photoTop + 8 + (PHOTO_H - 16) / 2 + 14)}" text-anchor="middle">${e(initial)}</text>${caption}<circle class="pin" cx="${whole(x + PHOTO_W / 2)}" cy="${whole(photoTop)}" r="6"/></g>`;
+    return `<g class="photo${suspect.cleared ? ' cleared' : ''}" ${attrs}><title>${e(suspect.name)}</title><rect class="paper" x="${whole(x)}" y="${whole(photoTop)}" width="${String(PHOTO_W)}" height="${String(PHOTO_H)}" rx="3"/><rect class="print" x="${whole(x + 8)}" y="${whole(photoTop + 8)}" width="${String(PHOTO_W - 16)}" height="${String(PHOTO_H - 16)}" rx="2"/><text class="initial" x="${whole(x + PHOTO_W / 2)}" y="${whole(photoTop + 8 + (PHOTO_H - 16) / 2 + 14)}" text-anchor="middle">${e(initial)}</text>${caption}<circle class="pin" cx="${whole(x + PHOTO_W / 2)}" cy="${whole(photoTop)}" r="6"/></g>`;
   });
 
   // The clues as cards below them.

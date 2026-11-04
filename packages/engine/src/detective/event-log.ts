@@ -150,6 +150,7 @@ const OutcomeSchema = z.union([
     kind: z.literal('deduce'),
     result: z.enum(['insight', 'already-known']),
     deductionId: EntityIdSchema,
+    clears: EntityIdSchema.optional(),
     minutes,
     ...fatigue,
   }),

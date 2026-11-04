@@ -429,6 +429,24 @@
       "id": "desk-and-teahouse",
       "clueIds": ["memo-metadata", "clerk-confession"],
       "insight": "The memo was written at the desk of the head of investor relations, and a teahouse cashier signed papers for the family business without reading them: the memo and the shell company share one hand."
+    },
+    {
+      "id": "cleared-trader",
+      "clueIds": ["big-short-slip", "deleted-draft"],
+      "insight": "The trader's enormous order was placed on Friday, and the draft of the memo was saved on Sunday at midnight: he bet before the memo could have existed, so the order cannot have come from it.",
+      "clears": "trader"
+    },
+    {
+      "id": "cleared-cfo",
+      "clueIds": ["pigeon-receipt", "memo-metadata"],
+      "insight": "The finance director's secret is a wager on a racing pigeon, placed at the hour of the board dinner; the memo itself was written at the desk of investor relations, not at his.",
+      "clears": "cfo"
+    },
+    {
+      "id": "cleared-journalist",
+      "clueIds": ["champagne-bill", "journalist-source"],
+      "insight": "The reporter paid for champagne to mark her own bonus, and she was handed the memo by a rehearsed voice that pressed her to publish: she was used by the leak, she did not plan it.",
+      "clears": "journalist"
     }
   ],
   "truth": {

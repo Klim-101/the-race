@@ -119,6 +119,7 @@
     "statements": {
       "moods": { "calm": "calm", "shaken": "shaken", "cornered": "cornered", "broken": "broken" },
       "closedUntil": "will not talk until day {day}, {time}",
+      "cleared": "Cleared: could not have done it",
       "mood": "Mood",
       "lieFell": "a lie that fell",
       "brokenBy": "broken by",

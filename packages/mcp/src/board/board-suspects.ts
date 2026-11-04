@@ -118,10 +118,12 @@ export function renderSuspects(
           ? ` <span class="new">${e(text.fresh.mark)}</span>`
           : '';
       const attrs = `data-pick="${e(token('suspect', suspect.id))}" data-rel="${e(rel(suspectTokens(view, suspect.id)))}" tabindex="0" role="button"`;
-      return `<div class="card suspect" ${attrs}>
+      return `<div class="card suspect${suspect.cleared ? ' cleared' : ''}" ${attrs}>
 <div class="who">${portrait(suspect)}<div><strong>${e(suspect.name)}</strong>${mark}
 <p>${e(suspect.persona)}</p>
-<p class="tag">${e(board.whereabouts)}: ${e(where)}</p>
+<p class="tag">${e(board.whereabouts)}: ${e(where)}</p>${
+        suspect.cleared ? `\n<p class="tag cleared-tag">${e(text.statements.cleared)}</p>` : ''
+      }
 <p>${gauge(suspect, text)}</p></div></div>${closed}
 <h3>${e(text.statements.title)}</h3>
 ${said(view, suspect, text)}
