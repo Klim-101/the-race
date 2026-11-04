@@ -149,6 +149,8 @@ export const RunHistorySchema = z.object({
       suspectId: EntityIdSchema,
       clueId: EntityIdSchema,
       effect: z.enum(SHOWN_EFFECTS),
+      /** What the suspect said about the clue, when the case gives them a line for it. */
+      reaction: z.string().min(1).optional(),
       turn: z.int().min(1),
     }),
   ),
@@ -553,7 +555,7 @@ export function setSuspectMood(run: DetectiveRunState, mood: SuspectMood): Detec
 export function recordShown(
   run: DetectiveRunState,
   suspectId: string,
-  shown: readonly { readonly clueId: string; readonly effect: ShownEffect }[],
+  shown: readonly { readonly clueId: string; readonly effect: ShownEffect; readonly reaction?: string }[],
 ): DetectiveRunState {
   return {
     ...run,
@@ -561,7 +563,13 @@ export function recordShown(
       ...run.history,
       shown: [
         ...run.history.shown,
-        ...shown.map(({ clueId, effect }) => ({ suspectId, clueId, effect, turn: run.turn + 1 })),
+        ...shown.map(({ clueId, effect, reaction }) => ({
+          suspectId,
+          clueId,
+          effect,
+          ...(reaction === undefined ? {} : { reaction }),
+          turn: run.turn + 1,
+        })),
       ],
     },
   };

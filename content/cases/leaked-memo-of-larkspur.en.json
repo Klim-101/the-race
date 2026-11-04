@@ -353,6 +353,17 @@
           "brokenBy": ["memo-metadata", "paper-stock", "deleted-draft"],
           "brokenByInsights": ["memo-origin"]
         }
+      ],
+      "reactions": [
+        {
+          "clueId": "trade-ledger",
+          "text": "Half the city has an aunt with a teahouse. Do not read a family into a signature."
+        },
+
+        {
+          "clueId": "paper-stock",
+          "text": "Anyone can take a sheet from the stationery cupboard. I do not lock it."
+        }
       ]
     },
     {

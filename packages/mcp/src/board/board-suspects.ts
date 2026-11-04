@@ -79,13 +79,14 @@ function shown(view: DetectiveRunView, suspect: Suspect, text: TabText): string 
   const entries = view.history.shown.filter(({ suspectId }) => suspectId === suspect.id);
   if (entries.length === 0) return `<p class="empty">${e(text.statements.noneShown)}</p>`;
   return `<p class="chips">${entries
-    .map(({ clueId, effect, turn }) =>
-      chip(
-        view,
-        clueId,
-        `${text.corkboard.effects[effect]} · ${text.corkboard.step.replace('{n}', String(turn))}`,
-        effect,
-      ),
+    .map(
+      ({ clueId, effect, turn, reaction }) =>
+        chip(
+          view,
+          clueId,
+          `${text.corkboard.effects[effect]} · ${text.corkboard.step.replace('{n}', String(turn))}`,
+          effect,
+        ) + (reaction === undefined ? '' : ` <span class="reaction">${e(reaction)}</span>`),
     )
     .join(' ')}</p>`;
 }

@@ -116,6 +116,14 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
     if (suspect.locationId !== undefined) {
       expect(locationIds, 'location', suspect.locationId, `suspects[${String(suspectIndex)}].locationId`);
     }
+    (suspect.reactions ?? []).forEach((reaction, reactionIndex) => {
+      expect(
+        clueIds,
+        'clue',
+        reaction.clueId,
+        `suspects[${String(suspectIndex)}].reactions[${String(reactionIndex)}].clueId`,
+      );
+    });
     suspect.lies.forEach((lie, lieIndex) => {
       lie.brokenBy.forEach((id, clueIndex) => {
         const path = `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}].brokenBy[${String(clueIndex)}]`;

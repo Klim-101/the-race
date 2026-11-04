@@ -10,6 +10,7 @@ import { checkFleeDeadline } from './checks/flee-deadline.js';
 import { checkLies } from './checks/lies.js';
 import { checkClearing } from './checks/clearing.js';
 import { checkLinkable } from './checks/links.js';
+import { checkReactions } from './checks/reactions.js';
 import { checkWitnesses } from './checks/witnesses.js';
 import { checkMapShape, type MapRules } from './checks/map-shape.js';
 import { checkLeads } from './checks/leads.js';
@@ -102,6 +103,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...checkWitnesses(detectiveCase),
     ...(context.requireLinkable ? checkLinkable(detectiveCase) : []),
     ...checkClearing(detectiveCase, obtainable, context.requireClearing ?? false),
+    ...checkReactions(detectiveCase, context.traits),
     ...checkWorldEvents(detectiveCase, context.hero, context.traits),
     ...checkRandomEvents(
       detectiveCase,

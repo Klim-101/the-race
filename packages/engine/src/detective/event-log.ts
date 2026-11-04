@@ -131,7 +131,9 @@ const OutcomeSchema = z.union([
     succeeded: z.boolean(),
     stance: z.enum(['holds', 'gives-ground']),
     alibi: z.string(),
-    presented: z.array(z.object({ clueId: EntityIdSchema, effect: z.enum(SHOWN_EFFECTS) })),
+    presented: z.array(
+      z.object({ clueId: EntityIdSchema, effect: z.enum(SHOWN_EFFECTS), reaction: z.string().optional() }),
+    ),
     presentedInsights: z
       .array(z.object({ insightId: EntityIdSchema, effect: z.enum(SHOWN_EFFECTS) }))
       .optional(),
