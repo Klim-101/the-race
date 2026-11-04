@@ -37,6 +37,7 @@ export type CaseIssueCode =
   | 'lie-without-admission'
   | 'lie-chain-broken'
   | 'witness-saw-the-crime'
+  | 'chain-without-deduction'
   | 'hidden-start'
   | 'unused-lead'
   | 'unearnable-lead'

@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 19;
+var RULESET_VERSION = 20;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -37354,6 +37354,8 @@ var AccuseIntentSchema = external_exports.object({
   evidenceClueIds: external_exports.array(EntityIdSchema)
 });
 var DEDUCE_MINUTES = 10;
+var EXTRA_CLUES_FORGIVEN = 1;
+var LENIENT_LINKS_RULESET_VERSION = 20;
 var FAILED_DEDUCTION_MINUTES = 20;
 var VERDICTS = ["proven", "unproven", "wrong"];
 function refuse2(code, message) {
@@ -37375,12 +37377,19 @@ function deduce(run, input2, rng) {
     return refuse2("not-found", "A link needs two different clues the hero has found.");
   }
   if (anyGarbled(run, [...link])) return refuse2("garbled-clue", GARBLED_REFUSAL_MESSAGE);
-  const match = run.case.deductions.find(
-    (deduction) => new Set(deduction.clueIds).size === link.size && deduction.clueIds.every((id) => link.has(id))
+  const forgiven = run.rulesetVersion >= LENIENT_LINKS_RULESET_VERSION ? EXTRA_CLUES_FORGIVEN : 0;
+  const held = run.case.deductions.filter((deduction) => {
+    const needed = new Set(deduction.clueIds);
+    return needed.size + forgiven >= link.size && [...needed].every((id) => link.has(id));
+  }).toSorted(
+    (a, b) => Number(run.insightIds.includes(a.id)) - Number(run.insightIds.includes(b.id)) || Math.abs(new Set(a.clueIds).size - link.size) - Math.abs(new Set(b.clueIds).size - link.size)
   );
+  const match = held[0];
   if (!match) {
     const sizes = [...new Set(openLinkSizes(run))];
-    if (!sizes.includes(link.size)) return refuse2("wrong-link-size", wrongSizeMessage(sizes));
+    if (!sizes.some((size) => link.size >= size && link.size <= size + forgiven)) {
+      return refuse2("wrong-link-size", wrongSizeMessage(sizes));
+    }
     const linked2 = recordLink(run, [...link], "nothing");
     const frayed = strainByAction(linked2);
     const strained = frayed.condition.nerves < linked2.condition.nerves;
@@ -39309,6 +39318,24 @@ function checkAdmissions(detectiveCase) {
   );
 }
 
+// packages/engine/src/detective/checks/links.ts
+function checkLinkable(detectiveCase) {
+  return detectiveCase.solution.evidenceChains.flatMap((chain, index) => {
+    const held = new Set(chain);
+    const linkable = detectiveCase.deductions.some(({ clueIds }) => {
+      const inChain = new Set(clueIds.filter((id) => held.has(id)));
+      return inChain.size >= 2;
+    });
+    return held.size < 2 || linkable ? [] : [
+      {
+        code: "chain-without-deduction",
+        path: `solution.evidenceChains[${String(index)}]`,
+        message: `The clues of evidence chain ${String(index + 1)} can never be linked: add a deduction that takes at least two of them.`
+      }
+    ];
+  });
+}
+
 // packages/engine/src/detective/checks/witnesses.ts
 var MINUTES_IN_DAY2 = 1440;
 function checkWitnesses(detectiveCase) {
@@ -40285,6 +40312,7 @@ function validateCase(input2, context2) {
     ...checkLies(detectiveCase, obtainable, context2.requireTies ?? false, context2.requireAdmissions ?? false),
     ...checkTimeline(detectiveCase),
     ...checkWitnesses(detectiveCase),
+    ...context2.requireLinkable ? checkLinkable(detectiveCase) : [],
     ...checkWorldEvents(detectiveCase, context2.hero, context2.traits),
     ...checkRandomEvents(
       detectiveCase,
@@ -53549,7 +53577,7 @@ var act = defineTool({
 // packages/mcp/src/tools/deduce.ts
 var deduce2 = defineTool({
   name: "deduce",
-  description: 'Links two or more clues the hero has found into an insight. `clueIds` are ids of found clues from run_view (none may be garbled: reread them first). The size of a link is public: `openLinks` of run_view lists how many clues each conclusion still to be made takes, and a set of any other size is refused with "wrong-link-size" before any time is spent, so only try sizes it lists. Takes game time, more when the link leads nowhere. Call it when the player connects clues, while the run is active. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes. The `outcome.result` is "insight" (new: its text is in run_view), "already-known" or "nothing" (the link leads nowhere; say so without hinting how close it was). Do not use it to accuse and do not guess clue ids the player never found.',
+  description: 'Links two or more clues the hero has found into an insight. `clueIds` are ids of found clues from run_view (none may be garbled: reread them first). The size of a link is public: `openLinks` of run_view lists how many clues each conclusion still to be made takes, and a set of any other size is refused with "wrong-link-size" before any time is spent, so only try sizes it lists (a link may hold one clue more than its conclusion needs and still give it). Takes game time, more when the link leads nowhere. Call it when the player connects clues, while the run is active. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes. The `outcome.result` is "insight" (new: its text is in run_view), "already-known" or "nothing" (the link leads nowhere; say so without hinting how close it was). Do not use it to accuse and do not guess clue ids the player never found.',
   inputSchema: external_exports.object({ turn: TurnSchema, clueIds: external_exports.array(EntityIdSchema).min(2) }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, clueIds }, context2) => playIntent(context2, turn, { kind: "deduce", clueIds })
@@ -54239,6 +54267,7 @@ var ISSUE_PRIORITY = {
   "lie-without-admission": 9.06,
   "lie-chain-broken": 9.07,
   "witness-saw-the-crime": 18.5,
+  "chain-without-deduction": 17.5,
   "unearnable-lead": 9.1,
   "unused-lead": 9.1,
   "false-lead-holds-clue": 9.1,
@@ -54326,6 +54355,7 @@ var scenarioSubmit = defineTool({
       requireParts: true,
       requireTies: true,
       requireAdmissions: true,
+      requireLinkable: true,
       // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
       realNames: [
         .../* @__PURE__ */ new Set([...worldRealNames(world), ...(await seedsOfRun(context2))?.realNames ?? []])

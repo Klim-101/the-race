@@ -414,6 +414,21 @@
       "id": "memo-origin",
       "clueIds": ["memo-metadata", "paper-stock"],
       "insight": "The memo was written at desk IR-04 and printed on letterhead that only investor relations still owns. The leak came from inside the company, not from a whistleblower."
+    },
+    {
+      "id": "paper-and-shares",
+      "clueIds": ["paper-stock", "trade-ledger"],
+      "insight": "The memo was printed on paper that only investor relations still holds, and the shares that profited from it were bought in a forged name: the one who wrote it is the one who bought."
+    },
+    {
+      "id": "rehearsed-voice",
+      "clueIds": ["journalist-source", "broker-gossip"],
+      "insight": "The woman who handed the reporter the memo and the voice that telephoned the Fennel Gate orders are the same rehearsed, apologetic voice that reads the company's announcements."
+    },
+    {
+      "id": "desk-and-teahouse",
+      "clueIds": ["memo-metadata", "clerk-confession"],
+      "insight": "The memo was written at the desk of the head of investor relations, and a teahouse cashier signed papers for the family business without reading them: the memo and the shell company share one hand."
     }
   ],
   "truth": {

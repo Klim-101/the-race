@@ -689,7 +689,10 @@ describe('the size of a link', () => {
       openLinks: number[];
       clock: { minute: number };
     };
-    const wrong = [2, 3, 4, 5, 6].find((size) => !before.openLinks.includes(size)) ?? 6;
+    // A link may hold one clue more than a conclusion needs, so a size one above an open one is not wrong.
+    const wrong =
+      [2, 3, 4, 5, 6].find((size) => !before.openLinks.some((open) => size === open || size === open + 1)) ??
+      6;
 
     const refused = await call(deduce, { turn: before.turn, clueIds: clues.slice(0, wrong) }, context);
 

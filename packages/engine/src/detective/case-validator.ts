@@ -8,6 +8,7 @@ import type { CaseIssue } from './case-issue.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { checkFleeDeadline } from './checks/flee-deadline.js';
 import { checkLies } from './checks/lies.js';
+import { checkLinkable } from './checks/links.js';
 import { checkWitnesses } from './checks/witnesses.js';
 import { checkMapShape, type MapRules } from './checks/map-shape.js';
 import { checkLeads } from './checks/leads.js';
@@ -54,6 +55,8 @@ export interface CaseValidationContext {
   readonly requireTies?: boolean;
   /** Whether every lie must say what the suspect admits once it is caught (a generated case must). */
   readonly requireAdmissions?: boolean;
+  /** Whether every evidence chain of two clues or more must have a conclusion that takes some two of them (a generated case must). */
+  readonly requireLinkable?: boolean;
 }
 
 export type CaseValidationResult =
@@ -94,6 +97,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...checkLies(detectiveCase, obtainable, context.requireTies ?? false, context.requireAdmissions ?? false),
     ...checkTimeline(detectiveCase),
     ...checkWitnesses(detectiveCase),
+    ...(context.requireLinkable ? checkLinkable(detectiveCase) : []),
     ...checkWorldEvents(detectiveCase, context.hero, context.traits),
     ...checkRandomEvents(
       detectiveCase,
