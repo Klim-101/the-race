@@ -262,7 +262,7 @@
     {
       "id": "vault-pass",
       "locationId": "larkspur-hq",
-      "description": "A plastic pass marked 'Records, temporary' hangs on the receptionist's hook, apparently there for anyone who asks politely.",
+      "description": "A plastic pass marked 'Records, temporary' hangs on the receptionist's hook, and the sign-out sheet beside it is blank.",
       "discovery": null,
       "pointsTo": [],
       "isRedHerring": false
@@ -303,7 +303,7 @@
     {
       "id": "memo-metadata",
       "locationId": "press-room",
-      "description": "The leaked memo's hidden file properties name the machine it was written on: 'IR-04'. A little checking at reception shows that is the desk of the head of investor relations.",
+      "description": "The leaked memo's hidden file properties name the machine it was written on: 'IR-04'. At reception, the register lists that machine against the desk of the head of investor relations.",
       "discovery": { "skill": "tech", "difficulty": 11 },
       "situations": ["digital-evidence"],
       "pointsTo": ["investor-relations"],

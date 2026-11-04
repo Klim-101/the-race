@@ -260,7 +260,7 @@
     {
       "id": "feather-trail",
       "locationId": "museum-hall",
-      "description": "A trail of small grey feathers runs from the plinth to the service door, as if the goose had left in a hurry or been carried by someone who sheds.",
+      "description": "A trail of small grey feathers runs from the plinth to the service door, thick by the plinth and thinning towards the door.",
       "discovery": { "skill": "perception", "difficulty": 9 },
       "pointsTo": ["postmaster"],
       "isRedHerring": false

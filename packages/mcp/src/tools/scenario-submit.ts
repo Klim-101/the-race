@@ -90,6 +90,7 @@ const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
   'too-few-random-events': 27,
   'random-events-miss-a-day': 27.5,
   'solution-after-culprit-flees': 28,
+  'clue-draws-conclusion': 29,
 };
 
 function priorityOf(issue: CaseIssue): number {
@@ -181,6 +182,7 @@ export const scenarioSubmit = defineTool({
         requireClearing: true,
         requireClaims: true,
         requirePublicLife: true,
+        requireObservations: true,
         // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
         realNames: [
           ...new Set([...worldRealNames(world), ...((await seedsOfRun(context))?.realNames ?? [])]),
