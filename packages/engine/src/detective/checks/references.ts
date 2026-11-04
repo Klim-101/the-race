@@ -68,8 +68,14 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
   const lieIds = new Set(detectiveCase.suspects.flatMap(({ lies }) => lies.map(({ id }) => id)));
   const issues: CaseIssue[] = [];
   const expect = (knownIds: ReadonlySet<string>, kind: string, id: string, path: string): void => {
-    if (!knownIds.has(id))
-      issues.push({ code: 'unknown-reference', path, message: `Unknown ${kind} "${id}".` });
+    if (!knownIds.has(id)) {
+      // A clue a witness tells exists only for a suspect whom the timeline puts in the witness's place and hours.
+      const hint =
+        kind === 'clue' && id.startsWith('seen-')
+          ? ' A "seen-" clue exists only for a witness whom the timeline puts in front of that suspect, in the place and hours of the witness: check "witnesses" and "truth.timeline".'
+          : '';
+      issues.push({ code: 'unknown-reference', path, message: `Unknown ${kind} "${id}".${hint}` });
+    }
   };
 
   expect(locationIds, 'location', detectiveCase.startLocationId, 'startLocationId');
@@ -103,8 +109,23 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
   (detectiveCase.witnesses ?? []).forEach((witness, index) => {
     expect(locationIds, 'location', witness.locationId, `witnesses[${String(index)}].locationId`);
   });
+  const witnessIds = new Set((detectiveCase.witnesses ?? []).map((witness) => witness.id));
   detectiveCase.clues.forEach((clue, index) => {
     expect(locationIds, 'location', clue.locationId, `clues[${String(index)}].locationId`);
+    if (clue.sightingOf !== undefined) {
+      expect(
+        witnessIds,
+        'witness',
+        clue.sightingOf.witnessId,
+        `clues[${String(index)}].sightingOf.witnessId`,
+      );
+      expect(
+        suspectIds,
+        'suspect',
+        clue.sightingOf.suspectId,
+        `clues[${String(index)}].sightingOf.suspectId`,
+      );
+    }
     (clue.about ?? []).forEach((id, aboutIndex) => {
       expect(suspectIds, 'suspect', id, `clues[${String(index)}].about[${String(aboutIndex)}]`);
     });

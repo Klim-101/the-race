@@ -178,6 +178,12 @@ export const ClueSchema = z.object({
   source: InformationSourceSchema.nullable().default(null),
   pointsTo: z.array(EntityIdSchema),
   /**
+   * Set on a clue that a witness gives: the witness who tells it and the suspect they saw. It is made from the
+   * timeline when the case is accepted (see `deriveSightingClues`), lies in no part and is found by asking the witness
+   * and in no other way.
+   */
+  sightingOf: z.object({ witnessId: EntityIdSchema, suspectId: EntityIdSchema }).optional(),
+  /**
    * The people the clue bears on directly, whether or not it points at them: a motive, an alibi, a thing that was
    * theirs. A suspect shown a clue about them reacts to it, even when it breaks none of their lies. Optional for
    * the cases of before it, which keep their seal; a clue that points at a suspect is about them as well.
