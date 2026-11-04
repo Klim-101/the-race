@@ -232,6 +232,22 @@
       "exposure": "outdoor"
     }
   ],
+  "witnesses": [
+    {
+      "id": "street-sweeper",
+      "locationId": "elm-street",
+      "name": "Мейбл Куинс",
+      "persona": "Дворничиха, которая метёт с полуночи до полудня и имеет мнение о мусоре каждого.",
+      "hours": { "fromMinute": 0, "untilMinute": 720 }
+    },
+    {
+      "id": "clock-tender",
+      "locationId": "bell-square",
+      "name": "Хоб Тэрроу",
+      "persona": "Человек, который заводит часы на площади; они спешат на четыре минуты, и он об этом непременно скажет.",
+      "hours": { "fromMinute": 0, "untilMinute": 720 }
+    }
+  ],
   "clues": [
     {
       "id": "archive-key",
@@ -509,6 +525,18 @@
         "actorId": "postmaster",
         "locationId": "post-office",
         "action": "Прячет коробку под стойкой для марок и наконец перечитывает письма."
+      },
+      {
+        "atMinute": 150,
+        "actorId": "postmaster",
+        "locationId": "elm-street",
+        "action": "Спешит по Вязовой улице с тихо гогочущей шляпной коробкой."
+      },
+      {
+        "atMinute": 160,
+        "actorId": "postmaster",
+        "locationId": "bell-square",
+        "action": "Пересекает Колокольную площадь под часами, которые спешат на четыре минуты."
       }
     ]
   },

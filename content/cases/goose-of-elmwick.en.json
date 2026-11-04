@@ -232,6 +232,22 @@
       "exposure": "outdoor"
     }
   ],
+  "witnesses": [
+    {
+      "id": "street-sweeper",
+      "locationId": "elm-street",
+      "name": "Mabel Quince",
+      "persona": "A street sweeper who works from midnight to noon and has opinions about everyone's litter.",
+      "hours": { "fromMinute": 0, "untilMinute": 720 }
+    },
+    {
+      "id": "clock-tender",
+      "locationId": "bell-square",
+      "name": "Hob Tarrow",
+      "persona": "The man who winds the square's clock, which runs four minutes fast, and will tell you so.",
+      "hours": { "fromMinute": 0, "untilMinute": 720 }
+    }
+  ],
   "clues": [
     {
       "id": "archive-key",
@@ -512,6 +528,18 @@
         "actorId": "postmaster",
         "locationId": "post-office",
         "action": "Hides the hatbox under the stamp counter and finally reads the letters."
+      },
+      {
+        "atMinute": 150,
+        "actorId": "postmaster",
+        "locationId": "elm-street",
+        "action": "Hurries up Elm Street with a hatbox that honks softly."
+      },
+      {
+        "atMinute": 160,
+        "actorId": "postmaster",
+        "locationId": "bell-square",
+        "action": "Crosses Bell Square under the clock that runs four minutes fast."
       }
     ]
   },

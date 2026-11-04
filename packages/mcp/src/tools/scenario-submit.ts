@@ -45,6 +45,7 @@ const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
   'single-building': 6.6,
   'hidden-start': 6.7,
   'suspect-in-hidden-place': 6.7,
+  'empty-public-place': 6.9,
   'parts-missing': 6.8,
   'part-in-wrong-place': 6.8,
   'clue-in-two-parts': 6.8,
@@ -179,6 +180,7 @@ export const scenarioSubmit = defineTool({
         requireLinkable: true,
         requireClearing: true,
         requireClaims: true,
+        requirePublicLife: true,
         // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
         realNames: [
           ...new Set([...worldRealNames(world), ...((await seedsOfRun(context))?.realNames ?? [])]),

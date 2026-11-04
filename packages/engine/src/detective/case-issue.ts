@@ -39,6 +39,7 @@ export type CaseIssueCode =
   | 'witness-saw-the-crime'
   | 'chain-without-deduction'
   | 'culprit-cleared'
+  | 'empty-public-place'
   | 'suspect-without-true-claim'
   | 'reaction-not-tied'
   | 'reaction-names-trait'

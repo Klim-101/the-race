@@ -39572,6 +39572,25 @@ function checkReactions(detectiveCase, traits) {
   );
 }
 
+// packages/engine/src/detective/checks/public-places.ts
+function checkPublicPlaces(detectiveCase) {
+  const witnessed = new Set((detectiveCase.witnesses ?? []).map(({ locationId }) => locationId));
+  const rumoured = new Set(
+    (detectiveCase.leads ?? []).flatMap(
+      ({ earnedBy }) => earnedBy.kind === "locals" ? [earnedBy.locationId] : []
+    )
+  );
+  return detectiveCase.locations.flatMap(
+    (location, index) => (location.exposure === "outdoor" || location.venue !== void 0) && (location.parts ?? []).length === 0 && !witnessed.has(location.id) && !rumoured.has(location.id) ? [
+      {
+        code: "empty-public-place",
+        path: `locations[${String(index)}]`,
+        message: `"${location.id}" is a public place with nothing in it: give it a part to search, a witness (in "witnesses") or a "locals" lead.`
+      }
+    ] : []
+  );
+}
+
 // packages/engine/src/detective/checks/witnesses.ts
 var MINUTES_IN_DAY2 = 1440;
 function checkWitnesses(detectiveCase) {
@@ -40571,6 +40590,7 @@ function validateCase(input2, context2) {
     ),
     ...checkTimeline(detectiveCase),
     ...checkWitnesses(detectiveCase),
+    ...context2.requirePublicLife ? checkPublicPlaces(detectiveCase) : [],
     ...context2.requireLinkable ? checkLinkable(detectiveCase) : [],
     ...checkClearing(detectiveCase, obtainable, context2.requireClearing ?? false),
     ...checkReactions(detectiveCase, context2.traits),
@@ -54589,6 +54609,7 @@ var ISSUE_PRIORITY = {
   "single-building": 6.6,
   "hidden-start": 6.7,
   "suspect-in-hidden-place": 6.7,
+  "empty-public-place": 6.9,
   "parts-missing": 6.8,
   "part-in-wrong-place": 6.8,
   "clue-in-two-parts": 6.8,
@@ -54698,6 +54719,7 @@ var scenarioSubmit = defineTool({
       requireLinkable: true,
       requireClearing: true,
       requireClaims: true,
+      requirePublicLife: true,
       // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
       realNames: [
         .../* @__PURE__ */ new Set([...worldRealNames(world), ...(await seedsOfRun(context2))?.realNames ?? []])
