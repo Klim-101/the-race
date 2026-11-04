@@ -18,7 +18,12 @@ import {
   walk,
 } from './road.js';
 import { createDetectiveRun, viewRun, type DetectiveRunState } from './run-state.js';
-import { ROAD_RULESET_VERSION, WEATHER_MINUTES, weatherOfDay } from './weather.js';
+import {
+  EVENT_WEATHER_RULESET_VERSION,
+  ROAD_RULESET_VERSION,
+  WEATHER_MINUTES,
+  weatherOfDay,
+} from './weather.js';
 
 const SETTING: Setting = {
   id: 'valdmark',
@@ -83,6 +88,40 @@ describe('the weather of a day', () => {
 
     // The continental profile has snow, cold rain and warm weather; mild is the drawn-in fair day.
     expect([...seen].sort()).toEqual(['cold-rain', 'mild', 'snow', 'warm']);
+  });
+
+  describe('and a world event that names it', () => {
+    const snowOnDay2 = (detectiveCase: DetectiveCase): void => {
+      detectiveCase.clock.worldEvents = [
+        { day: 2, description: 'Snow comes down thick on the square.', weather: 'snow' },
+        { day: 3, description: 'A rumour goes round the market.' },
+      ];
+    };
+
+    it('decides the weather of its day, whatever the season drew', () => {
+      for (let index = 0; index < 40; index += 1) {
+        const run = runOf({ seed: `event-${String(index)}`, edit: snowOnDay2 });
+
+        expect(weatherOfDay(run, 2)).toBe('snow');
+        expect(viewRun({ ...run, clock: { ...run.clock, day: 2 } }).weather).toBe('snow');
+      }
+    });
+
+    it('leaves the other days and an event with no weather to the season', () => {
+      const plain = runOf({ seed: 'event-0' });
+      const run = runOf({ seed: 'event-0', edit: snowOnDay2 });
+
+      expect(weatherOfDay(run, 1)).toBe(weatherOfDay(plain, 1));
+      expect(weatherOfDay(run, 3)).toBe(weatherOfDay(plain, 3));
+    });
+
+    it('does not touch a run of the ruleset before it, nor a case set nowhere', () => {
+      const old = { ...runOf({ edit: snowOnDay2 }), rulesetVersion: EVENT_WEATHER_RULESET_VERSION - 1 };
+      const plain = { ...runOf(), rulesetVersion: EVENT_WEATHER_RULESET_VERSION - 1 };
+
+      expect(weatherOfDay(old, 2)).toBe(weatherOfDay(plain, 2));
+      expect(weatherOfDay(runOf({ setting: null, edit: snowOnDay2 }), 2)).toBeUndefined();
+    });
   });
 
   it('differs between days and between runs', () => {

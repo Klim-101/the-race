@@ -28,6 +28,9 @@ export const WEATHER_MINUTES: Readonly<Record<Weather, number>> = {
   storms: 15,
 };
 
+/** From this version a world event can set the weather of its day. */
+export const EVENT_WEATHER_RULESET_VERSION = 23;
+
 export const isActive = (run: Pick<DetectiveRunState, 'rulesetVersion'>): boolean =>
   run.rulesetVersion >= ROAD_RULESET_VERSION;
 
@@ -40,10 +43,17 @@ export function at<T>(items: readonly T[], index: number): T {
 /**
  * The weather of a day of the run: mostly that of the season the run is in (drawn once on the run's seed from the
  * seasons of the country's climate), now and then a mild day or a day from another season, drawn on dice of the
- * day, so a run always has the same days. None for a run of an older ruleset and for a case set nowhere.
+ * day, so a run always has the same days. A world event of the day that names the weather decides it, so that the news
+ * of a snowfall is not told on a day of rain. None for a run of an older ruleset and for a case set nowhere.
  */
 export function weatherOfDay(run: DetectiveRunState, day: number): Weather | undefined {
   if (!isActive(run) || run.setting === null) return undefined;
+  if (run.rulesetVersion >= EVENT_WEATHER_RULESET_VERSION) {
+    const named = run.case.clock.worldEvents.find(
+      (event) => event.day === day && event.weather !== undefined,
+    );
+    if (named?.weather !== undefined) return named.weather;
+  }
   const { seasons } = run.setting.climate;
   const index = createRng(`${run.seed}:season`).roll(seasons.length) - 1;
   const roll = createRng(`${run.seed}:weather:${String(day)}`).roll(10);
