@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 21;
+var RULESET_VERSION = 22;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -34207,6 +34207,12 @@ var ClueSchema = external_exports.object({
   /** Where the information comes from, if it comes from a source that can be closed to the hero. */
   source: InformationSourceSchema.nullable().default(null),
   pointsTo: external_exports.array(EntityIdSchema),
+  /**
+   * Set on a clue that a witness gives: the witness who tells it and the suspect they saw. It is made from the
+   * timeline when the case is accepted (see `deriveSightingClues`), lies in no part and is found by asking the witness
+   * and in no other way.
+   */
+  sightingOf: external_exports.object({ witnessId: EntityIdSchema, suspectId: EntityIdSchema }).optional(),
   /**
    * The people the clue bears on directly, whether or not it points at them: a motive, an alibi, a thing that was
    * theirs. A suspect shown a clue about them reacts to it, even when it breaks none of their lies. Optional for
@@ -35941,6 +35947,7 @@ function viewClaims(run, detectiveCase, suspectId) {
 
 // packages/engine/src/detective/witnesses.ts
 var WITNESS_RULESET_VERSION = 19;
+var SIGHTING_CLUES_RULESET_VERSION = 22;
 var MINUTES_IN_DAY = 1440;
 var WITNESS_NAMED_EASE = 2;
 function requireWitness(detectiveCase, witnessId) {
@@ -35967,9 +35974,9 @@ function holdsClueAbout(run, suspectId) {
 }
 function recordSightings(run, witness, sightings) {
   const fresh = sightings.filter(
-    ({ suspectId, minuteOfDay }) => !run.sightings.some(
+    ({ suspectId, minuteOfDay }, index) => !run.sightings.some(
       (known) => known.witnessId === witness.id && known.suspectId === suspectId && known.minuteOfDay === minuteOfDay
-    )
+    ) && sightings.findIndex((other) => other.suspectId === suspectId && other.minuteOfDay === minuteOfDay) === index
   );
   return {
     ...run,
@@ -35983,6 +35990,9 @@ function recordSightings(run, witness, sightings) {
       }))
     ]
   };
+}
+function sightingClueId(witnessId, suspectId) {
+  return `seen-${witnessId}-${suspectId}`;
 }
 
 // packages/engine/src/detective/run-state.ts
@@ -37684,7 +37694,8 @@ function locationById(detectiveCase, id) {
 function hiddenClues(run, locationId) {
   const closed = closedSourcesOf(run);
   return run.case.clues.filter(
-    (clue) => clue.locationId === locationId && !run.foundClueIds.includes(clue.id) && (clue.source === null || !closed.has(clue.source))
+    (clue) => clue.locationId === locationId && // What a witness tells is found by asking them and by nothing else.
+    clue.sightingOf === void 0 && !run.foundClueIds.includes(clue.id) && (clue.source === null || !closed.has(clue.source))
   );
 }
 function resolveLookAtParts(run, rng, parts) {
@@ -38057,7 +38068,10 @@ function resolveAsk(run, rng, intent) {
   const { result } = attempt;
   const worndown = helper === void 0 ? run : wearTool(run, helper.item.id, false);
   const sightings = witness !== void 0 && result.success ? sightingsOf(run.case, witness, aboutSuspectId) : [];
-  const heard = witness !== void 0 ? recordSightings(worndown, witness, sightings) : result.success ? grantLeads(worndown, [{ kind: "locals", locationId: location.id }]) : worndown;
+  const told = run.rulesetVersion < SIGHTING_CLUES_RULESET_VERSION || witness === void 0 ? [] : [...new Set(sightings.map(({ suspectId }) => sightingClueId(witness.id, suspectId)))].filter(
+    (clueId) => run.case.clues.some(({ id }) => id === clueId) && !run.foundClueIds.includes(clueId)
+  );
+  const heard = witness !== void 0 ? told.reduce(findClue, recordSightings(worndown, witness, sightings)) : result.success ? grantLeads(worndown, [{ kind: "locals", locationId: location.id }]) : worndown;
   const minutes2 = ASK_MINUTES + (result.success ? 0 : FAILED_ASK_MINUTES);
   const settled = settle2(heard, rng, minutes2, [result]);
   return {
@@ -38069,7 +38083,7 @@ function resolveAsk(run, rng, intent) {
       succeeded: result.success,
       consequences: [...result.success ? [] : ["time-lost"], ...settled.consequences],
       ...helper === void 0 ? {} : { tool: { id: helper.item.id, wear: worn(helper.item, false).wear } },
-      ...witness === void 0 ? {} : { witness: { id: witness.id, sightings } }
+      ...witness === void 0 ? {} : { witness: { id: witness.id, sightings, ...told.length === 0 ? {} : { clueIds: told } } }
     },
     details: [{ subject: { kind: "location", id: location.id }, result }],
     felt: distinctFelt([...attempt.felt, ...settled.felt]),
@@ -38288,7 +38302,8 @@ var OutcomeSchema = external_exports.union([
     tool: external_exports.object({ id: GearIdSchema, wear: external_exports.enum(["spent", "broken"]).nullable() }).optional(),
     witness: external_exports.object({
       id: EntityIdSchema,
-      sightings: external_exports.array(external_exports.object({ suspectId: EntityIdSchema, minuteOfDay: external_exports.int().min(0).max(1439) }))
+      sightings: external_exports.array(external_exports.object({ suspectId: EntityIdSchema, minuteOfDay: external_exports.int().min(0).max(1439) })),
+      clueIds: external_exports.array(EntityIdSchema).optional()
     }).optional(),
     ...fatigue
   }),
@@ -39750,11 +39765,13 @@ function checkParts(detectiveCase, obtainable, requireParts) {
   const suspectsById = new Map(detectiveCase.suspects.map((suspect) => [suspect.id, suspect]));
   const cluesById = new Map(detectiveCase.clues.map((clue) => [clue.id, clue]));
   const holdingPart = /* @__PURE__ */ new Map();
-  const testimony = new Set(
-    detectiveCase.suspects.flatMap(
+  const testimony = /* @__PURE__ */ new Set([
+    ...detectiveCase.suspects.flatMap(
       ({ lies }) => lies.flatMap(({ gives }) => gives === void 0 ? [] : [gives])
-    )
-  );
+    ),
+    // What a witness tells lies in no part either.
+    ...detectiveCase.clues.flatMap(({ id, sightingOf }) => sightingOf === void 0 ? [] : [id])
+  ]);
   detectiveCase.locations.forEach((location, locationIndex) => {
     const parts = location.parts ?? [];
     const placeHoldsClue = detectiveCase.clues.some(
@@ -40100,8 +40117,10 @@ function checkReferencesResolve(detectiveCase) {
   const lieIds = new Set(detectiveCase.suspects.flatMap(({ lies }) => lies.map(({ id }) => id)));
   const issues = [];
   const expect = (knownIds, kind, id, path) => {
-    if (!knownIds.has(id))
-      issues.push({ code: "unknown-reference", path, message: `Unknown ${kind} "${id}".` });
+    if (!knownIds.has(id)) {
+      const hint = kind === "clue" && id.startsWith("seen-") ? ' A "seen-" clue exists only for a witness whom the timeline puts in front of that suspect, in the place and hours of the witness: check "witnesses" and "truth.timeline".' : "";
+      issues.push({ code: "unknown-reference", path, message: `Unknown ${kind} "${id}".${hint}` });
+    }
   };
   expect(locationIds, "location", detectiveCase.startLocationId, "startLocationId");
   detectiveCase.locations.forEach((location, index) => {
@@ -40134,8 +40153,23 @@ function checkReferencesResolve(detectiveCase) {
   (detectiveCase.witnesses ?? []).forEach((witness, index) => {
     expect(locationIds, "location", witness.locationId, `witnesses[${String(index)}].locationId`);
   });
+  const witnessIds = new Set((detectiveCase.witnesses ?? []).map((witness) => witness.id));
   detectiveCase.clues.forEach((clue, index) => {
     expect(locationIds, "location", clue.locationId, `clues[${String(index)}].locationId`);
+    if (clue.sightingOf !== void 0) {
+      expect(
+        witnessIds,
+        "witness",
+        clue.sightingOf.witnessId,
+        `clues[${String(index)}].sightingOf.witnessId`
+      );
+      expect(
+        suspectIds,
+        "suspect",
+        clue.sightingOf.suspectId,
+        `clues[${String(index)}].sightingOf.suspectId`
+      );
+    }
     (clue.about ?? []).forEach((id, aboutIndex) => {
       expect(suspectIds, "suspect", id, `clues[${String(index)}].about[${String(aboutIndex)}]`);
     });

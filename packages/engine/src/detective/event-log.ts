@@ -109,6 +109,7 @@ const OutcomeSchema = z.union([
       .object({
         id: EntityIdSchema,
         sightings: z.array(z.object({ suspectId: EntityIdSchema, minuteOfDay: z.int().min(0).max(1439) })),
+        clueIds: z.array(EntityIdSchema).optional(),
       })
       .optional(),
     ...fatigue,

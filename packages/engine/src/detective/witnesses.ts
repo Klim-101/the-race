@@ -7,6 +7,8 @@ import type { DetectiveRunState } from './run-state.js';
 
 /** The first ruleset in which the hero can ask the people of a place what they saw. */
 export const WITNESS_RULESET_VERSION = 19;
+/** The first ruleset in which what a witness tells is a clue the hero holds. */
+export const SIGHTING_CLUES_RULESET_VERSION = 22;
 
 /** Minutes in a day: the timeline counts from the start of the crime day, and a witness keeps the hours of a day. */
 const MINUTES_IN_DAY = 1440;
@@ -72,14 +74,17 @@ export function recordSightings(
   witness: Witness,
   sightings: readonly Sighting[],
 ): DetectiveRunState {
+  // Written once: not again if the hero was told before, nor twice if the timeline has the same moment twice.
   const fresh = sightings.filter(
-    ({ suspectId, minuteOfDay }) =>
+    ({ suspectId, minuteOfDay }, index) =>
       !run.sightings.some(
         (known) =>
           known.witnessId === witness.id &&
           known.suspectId === suspectId &&
           known.minuteOfDay === minuteOfDay,
-      ),
+      ) &&
+      sightings.findIndex((other) => other.suspectId === suspectId && other.minuteOfDay === minuteOfDay) ===
+        index,
   );
   return {
     ...run,
@@ -93,4 +98,66 @@ export function recordSightings(
       })),
     ],
   };
+}
+
+/** The id of the clue in which a witness tells that they saw a suspect. Kebab-case, so a case can name it. */
+export function sightingClueId(witnessId: string, suspectId: string): string {
+  return `seen-${witnessId}-${suspectId}`;
+}
+
+/** What a describer is told to write a sighting in words: who saw whom, where, and at which times of the day. */
+export interface SightingDescription {
+  readonly witnessName: string;
+  readonly suspectName: string;
+  readonly placeName: string;
+  /** Minutes into the day, smallest first, without repeats. */
+  readonly minutesOfDay: readonly number[];
+}
+
+/**
+ * Makes a clue of every sighting the timeline gives a witness: one for each witness and suspect, whatever the number of
+ * times, set at the witness's place and about the suspect. The words come from the caller, since the engine holds no
+ * text for the player; a case that names such a clue, in a lie, a conclusion or a chain, names it by `sightingClueId`.
+ * A clue the case already has under that id is left as it is, so the case can be derived again and stay the same.
+ */
+export function deriveSightingClues(
+  detectiveCase: DetectiveCase,
+  describe: (description: SightingDescription) => string,
+): DetectiveCase {
+  const known = new Set(detectiveCase.clues.map(({ id }) => id));
+  const derived = (detectiveCase.witnesses ?? []).flatMap((witness) => {
+    const place = detectiveCase.locations.find(({ id }) => id === witness.locationId);
+    const seen = sightingsOf(detectiveCase, witness);
+    return detectiveCase.suspects.flatMap((suspect) => {
+      const minutes = [
+        ...new Set(
+          seen.filter(({ suspectId }) => suspectId === suspect.id).map(({ minuteOfDay }) => minuteOfDay),
+        ),
+      ].toSorted((a, b) => a - b);
+      const id = sightingClueId(witness.id, suspect.id);
+      if (minutes.length === 0 || known.has(id) || place === undefined) return [];
+      return [
+        {
+          id,
+          locationId: witness.locationId,
+          description: describe({
+            witnessName: witness.name,
+            suspectName: suspect.name,
+            placeName: place.name,
+            minutesOfDay: minutes,
+          }),
+          discovery: null,
+          situations: [],
+          source: null,
+          pointsTo: [],
+          about: [suspect.id],
+          sightingOf: { witnessId: witness.id, suspectId: suspect.id },
+          isRedHerring: false,
+        },
+      ];
+    });
+  });
+  return derived.length === 0
+    ? detectiveCase
+    : { ...detectiveCase, clues: [...detectiveCase.clues, ...derived] };
 }

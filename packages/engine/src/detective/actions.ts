@@ -48,10 +48,12 @@ import {
   chooseStudyTool,
 } from './ask.js';
 import {
+  SIGHTING_CLUES_RULESET_VERSION,
   WITNESS_NAMED_EASE,
   WITNESS_RULESET_VERSION,
   holdsClueAbout,
   recordSightings,
+  sightingClueId,
   sightingsOf,
   type Sighting,
   witnessesHere,
@@ -240,7 +242,12 @@ export type Outcome = (
       /** The cash that helped, and whether it was the last of it. */
       readonly tool?: { readonly id: GearId; readonly wear: 'spent' | 'broken' | null };
       /** Only when the question was put to a witness: who, and what they saw (nothing, on a success that saw nothing). */
-      readonly witness?: { readonly id: string; readonly sightings: readonly Sighting[] };
+      readonly witness?: {
+        readonly id: string;
+        readonly sightings: readonly Sighting[];
+        /** The clues the hero now holds because of what the witness told, when the case makes sightings clues. */
+        readonly clueIds?: readonly string[];
+      };
     }
   | {
       readonly kind: 'study';
@@ -346,6 +353,8 @@ function hiddenClues(run: DetectiveRunState, locationId: string): Clue[] {
   return run.case.clues.filter(
     (clue) =>
       clue.locationId === locationId &&
+      // What a witness tells is found by asking them and by nothing else.
+      clue.sightingOf === undefined &&
       !run.foundClueIds.includes(clue.id) &&
       (clue.source === null || !closed.has(clue.source)),
   );
@@ -842,9 +851,16 @@ function resolveAsk(run: DetectiveRunState, rng: Rng, intent: Extract<Intent, { 
   const worndown = helper === undefined ? run : wearTool(run, helper.item.id, false);
   const sightings =
     witness !== undefined && result.success ? sightingsOf(run.case, witness, aboutSuspectId) : [];
+  // From the ruleset of sighting clues, what the witness tells is a clue the hero now holds, when the case has made one.
+  const told =
+    run.rulesetVersion < SIGHTING_CLUES_RULESET_VERSION || witness === undefined
+      ? []
+      : [...new Set(sightings.map(({ suspectId }) => sightingClueId(witness.id, suspectId)))].filter(
+          (clueId) => run.case.clues.some(({ id }) => id === clueId) && !run.foundClueIds.includes(clueId),
+        );
   const heard =
     witness !== undefined
-      ? recordSightings(worndown, witness, sightings)
+      ? told.reduce(findClue, recordSightings(worndown, witness, sightings))
       : result.success
         ? grantLeads(worndown, [{ kind: 'locals', locationId: location.id }])
         : worndown;
@@ -859,7 +875,9 @@ function resolveAsk(run: DetectiveRunState, rng: Rng, intent: Extract<Intent, { 
       succeeded: result.success,
       consequences: [...(result.success ? [] : (['time-lost'] as const)), ...settled.consequences],
       ...(helper === undefined ? {} : { tool: { id: helper.item.id, wear: worn(helper.item, false).wear } }),
-      ...(witness === undefined ? {} : { witness: { id: witness.id, sightings } }),
+      ...(witness === undefined
+        ? {}
+        : { witness: { id: witness.id, sightings, ...(told.length === 0 ? {} : { clueIds: told }) } }),
     },
     details: [{ subject: { kind: 'location', id: location.id }, result }],
     felt: distinctFelt([...attempt.felt, ...settled.felt]),
