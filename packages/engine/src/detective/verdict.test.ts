@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { createRng } from '../dice.js';
 import { DAY_START_MINUTE } from '../run.js';
-import { DetectiveCaseSchema } from './case-schema.js';
+import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { createDetectiveRun, endRun, viewRun, type DetectiveRunState } from './run-state.js';
 import {
   DEDUCE_MINUTES,
@@ -20,11 +20,15 @@ import {
 
 const ALL_CLUES = ['cellar-key', 'flour-crumbs', 'cart-tracks', 'oven-receipt', 'debt-ledger', 'blue-glove'];
 
-function newRun(found: readonly string[] = ALL_CLUES, insights: readonly string[] = []): DetectiveRunState {
+function newRun(
+  found: readonly string[] = ALL_CLUES,
+  insights: readonly string[] = [],
+  detectiveCase: DetectiveCase = DetectiveCaseSchema.parse(buildCheeseCase()),
+): DetectiveRunState {
   const run = createDetectiveRun({
     hero: buildHero(),
     traits: [],
-    case: DetectiveCaseSchema.parse(buildCheeseCase()),
+    case: detectiveCase,
     seed: 'verdict',
     rngState: 1,
     locale: 'en',
@@ -373,6 +377,122 @@ describe('accuse', () => {
     const run = newRun();
     const tampered = { ...run, case: { ...run.case, truth: { ...run.case.truth, culpritId: 'rival' } } };
     expect(() => accuse(tampered, accusation('rival', null, []), createRng(1))).toThrow(/seal/);
+  });
+});
+
+describe('what an unproven accusation lacked', () => {
+  const unproven = (run: DetectiveRunState, motive: string | null, evidence: string[]) => {
+    const { outcome } = okAccuse(
+      accuse(
+        run,
+        { kind: 'accuse', culpritId: 'baker', motiveInsightId: motive, evidenceClueIds: evidence },
+        createRng(1),
+      ),
+    );
+    return outcome;
+  };
+
+  it('names the chain nearest to whole and where each clue of it stood', () => {
+    // The first chain is flour-crumbs and cart-tracks; only the second is half laid out, with a clue never found.
+    const outcome = unproven(newRun(['flour-crumbs', 'oven-receipt']), null, ['oven-receipt']);
+
+    expect(outcome.verdict).toBe('unproven');
+    expect(outcome.shortfall?.evidence).toMatchObject({
+      held: false,
+      clues: [
+        { clueId: 'oven-receipt', state: 'laid-out' },
+        { clueId: 'debt-ledger', state: 'never-found', number: null },
+      ],
+    });
+    expect(outcome.shortfall?.evidence.clues[0]?.number).toMatch(/-\d\d$/);
+    expect(outcome.shortfall?.evidence.clues[1]?.description).toContain('ledger');
+  });
+
+  it('tells a clue found and left out from one laid out', () => {
+    const outcome = unproven(newRun(['flour-crumbs', 'cart-tracks']), null, ['cart-tracks']);
+
+    expect(outcome.shortfall?.evidence.clues.map(({ clueId, state }) => [clueId, state])).toEqual([
+      ['flour-crumbs', 'found'],
+      ['cart-tracks', 'laid-out'],
+    ]);
+  });
+
+  it('says whether a motive was put forward, and whether the right conclusion was ever drawn', () => {
+    const chain = ['oven-receipt', 'debt-ledger'];
+
+    expect(unproven(newRun(ALL_CLUES, ['motive-debt']), null, chain).shortfall?.motive).toEqual({
+      held: false,
+      offered: false,
+      drawn: true,
+    });
+    expect(unproven(newRun(ALL_CLUES), null, chain).shortfall?.motive).toEqual({
+      held: false,
+      offered: false,
+      drawn: false,
+    });
+  });
+
+  it('says the motive held when it did and the evidence fell short', () => {
+    const outcome = unproven(newRun(ALL_CLUES, ['motive-debt']), 'motive-debt', ['oven-receipt']);
+
+    expect(outcome.shortfall).toMatchObject({ motive: { held: true, offered: true, drawn: true } });
+    expect(outcome.shortfall?.evidence.held).toBe(false);
+  });
+
+  it('says the evidence held when only the motive was missing', () => {
+    const outcome = unproven(newRun(ALL_CLUES), null, ['oven-receipt', 'debt-ledger']);
+
+    expect(outcome.shortfall).toMatchObject({ evidence: { held: true }, motive: { held: false } });
+  });
+
+  it('says another conclusion was put as the motive', () => {
+    const detectiveCase = DetectiveCaseSchema.parse(buildCheeseCase());
+    detectiveCase.deductions.push({
+      id: 'other',
+      clueIds: ['flour-crumbs', 'cart-tracks'],
+      insight: 'Flour.',
+    });
+    const withOther = newRun(ALL_CLUES, ['other'], detectiveCase);
+
+    expect(unproven(withOther, 'other', ['oven-receipt']).shortfall?.motive).toEqual({
+      held: false,
+      offered: true,
+      drawn: false,
+    });
+  });
+
+  it('comes near no chain in a case that has none, and names no clue', () => {
+    const bare = DetectiveCaseSchema.parse(buildCheeseCase());
+    bare.solution.evidenceChains = [];
+
+    const outcome = unproven(newRun(ALL_CLUES, [], bare), null, []);
+
+    expect(outcome.shortfall?.evidence).toEqual({ held: false, clues: [] });
+  });
+
+  it('says nothing of what was lacking when the case was proven or the person was wrong', () => {
+    const proven = okAccuse(
+      accuse(
+        newRun(ALL_CLUES, ['motive-debt']),
+        {
+          kind: 'accuse',
+          culpritId: 'baker',
+          motiveInsightId: 'motive-debt',
+          evidenceClueIds: ['oven-receipt', 'debt-ledger'],
+        },
+        createRng(1),
+      ),
+    );
+    const wrong = okAccuse(
+      accuse(
+        newRun(),
+        { kind: 'accuse', culpritId: 'rival', motiveInsightId: null, evidenceClueIds: [] },
+        createRng(1),
+      ),
+    );
+
+    expect(proven.outcome.shortfall).toBeUndefined();
+    expect(wrong.outcome.shortfall).toBeUndefined();
   });
 });
 

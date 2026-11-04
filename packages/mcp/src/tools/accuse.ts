@@ -18,7 +18,8 @@ export const accuse = defineTool({
     'number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with ' +
     '"stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ' +
     '("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, ' +
-    'place): the run is over, so this is the only place the truth is ever shown. Tell it as the closing ' +
+    'place): the run is over, so this is the only place the truth is ever shown. For "unproven" it also has a ' +
+    '`shortfall`: what the motive and the evidence lacked, clue by clue. Tell it as the closing ' +
     'scene and add nothing the outcome does not contain.',
   inputSchema: z.object({
     turn: TurnSchema,

@@ -12,16 +12,16 @@ For `accuse` the verdict word and the truth come first, as the skill says; the s
 
 ## What each reason means
 
-| `endReason`       | What happened                                               | How the hero leaves                                                             |
-| ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `proven`          | The right person, the right motive, proof on the table.     | With credit, a quiet word from someone who matters, and a closed file.          |
-| `unproven`        | The right person, but the proof fell short.                 | The file is closed without a verdict; the hero knows, and nobody else will act. |
-| `wrong`           | Someone else did it.                                        | An embarrassed exit; the office finds a polite reason to let the hero go.       |
-| `time-ran-out`    | The days of the case are spent.                             | Taken off the case; the trail goes cold and the hero goes home.                 |
-| `culprit-fled`    | The culprit left before the hero was ready.                 | An empty street, a train that has gone, and a case that is somebody else's now. |
-| `reputation-zero` | Nobody will take the hero's calls any more.                 | Let go: a door that does not open and a number that does not answer.            |
-| `breakdown`       | The nerves gave out with little reputation to fall back on. | Burnt out, and kindly: a long leave, a bench, a cup of tea; never mocked.       |
-| `gave-up`         | The player chose to stop.                                   | The hero sets the case down on the table and walks away, with no hard feelings. |
+| `endReason`       | What happened                                                 | How the hero leaves                                                             |
+| ----------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `proven`          | The right person, the right motive, proof on the table.       | With credit, a quiet word from someone who matters, and a closed file.          |
+| `unproven`        | The right person, but the proof fell short (see `shortfall`). | The file is closed without a verdict; the hero knows, and nobody else will act. |
+| `wrong`           | Someone else did it.                                          | An embarrassed exit; the office finds a polite reason to let the hero go.       |
+| `time-ran-out`    | The days of the case are spent.                               | Taken off the case; the trail goes cold and the hero goes home.                 |
+| `culprit-fled`    | The culprit left before the hero was ready.                   | An empty street, a train that has gone, and a case that is somebody else's now. |
+| `reputation-zero` | Nobody will take the hero's calls any more.                   | Let go: a door that does not open and a number that does not answer.            |
+| `breakdown`       | The nerves gave out with little reputation to fall back on.   | Burnt out, and kindly: a long leave, a bench, a cup of tea; never mocked.       |
+| `gave-up`         | The player chose to stop.                                     | The hero sets the case down on the table and walks away, with no hard feelings. |
 
 ## What not to do
 

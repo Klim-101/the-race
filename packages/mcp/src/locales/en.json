@@ -172,6 +172,21 @@
       "unquestioned": "Not yet questioned",
       "reread": "To be read again",
       "noTurns": "No turns yet.",
+      "shortfall": {
+        "title": "How the proof fell short",
+        "motiveHeld": "The motive held.",
+        "motiveNoneDrawn": "No motive was put forward, though the conclusion that explains it had been drawn.",
+        "motiveNoneUndrawn": "No motive was put forward, and the conclusion that explains it was never drawn.",
+        "motiveWrongDrawn": "Another conclusion was put forward as the motive; the right one had been drawn.",
+        "motiveWrongUndrawn": "Another conclusion was put forward as the motive; the right one was never drawn.",
+        "evidenceHeld": "The evidence held.",
+        "evidenceNearest": "The chain of proof that came nearest, clue by clue:",
+        "states": {
+          "laid-out": "laid out",
+          "found": "found, but left out",
+          "never-found": "never found"
+        }
+      },
       "turn": {
         "look": "Looked around: found {n}",
         "move": "Went to {name}",

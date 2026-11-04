@@ -37358,6 +37358,7 @@ var EXTRA_CLUES_FORGIVEN = 1;
 var LENIENT_LINKS_RULESET_VERSION = 20;
 var FAILED_DEDUCTION_MINUTES = 20;
 var VERDICTS = ["proven", "unproven", "wrong"];
+var SHORTFALL_CLUE_STATES = ["laid-out", "found", "never-found"];
 function refuse2(code, message) {
   return { ok: false, refusal: { code, message } };
 }
@@ -37418,6 +37419,30 @@ function deduce(run, input2, rng) {
     }
   };
 }
+function shortfallOf(run, proof) {
+  const { solution } = run.case;
+  const missing = (chain) => chain.filter((id) => !proof.laidOut.has(id)).length;
+  const [nearest = []] = solution.evidenceChains.toSorted((a, b) => missing(a) - missing(b));
+  return {
+    motive: {
+      held: proof.motiveRight,
+      offered: proof.motiveInsightId !== null,
+      drawn: run.insightIds.includes(solution.motiveDeductionId)
+    },
+    evidence: {
+      held: proof.evidenceComplete,
+      clues: run.case.clues.filter(({ id }) => nearest.includes(id)).map(({ id, description }) => {
+        const found = run.foundClueIds.includes(id);
+        return {
+          clueId: id,
+          state: proof.laidOut.has(id) ? "laid-out" : found ? "found" : "never-found",
+          description,
+          number: found ? clueNumber(run.hero.name, run.foundClueIds.indexOf(id)) : null
+        };
+      })
+    }
+  };
+}
 function accuse(run, input2, rng) {
   const parsed = AccuseIntentSchema.safeParse(input2);
   if (!parsed.success) {
@@ -37444,6 +37469,7 @@ function accuse(run, input2, rng) {
   const laidOut = new Set(evidenceClueIds);
   const evidenceComplete = solution.evidenceChains.some((chain) => chain.every((id) => laidOut.has(id)));
   const verdict = !culpritRight ? "wrong" : motiveRight && evidenceComplete ? "proven" : "unproven";
+  const shortfall = verdict === "unproven" ? shortfallOf(run, { motiveRight, motiveInsightId, evidenceComplete, laidOut }) : void 0;
   return {
     ok: true,
     run: endRun(endTurn(run, rng), statusOfEndReason(verdict), verdict),
@@ -37453,6 +37479,7 @@ function accuse(run, input2, rng) {
       culpritRight,
       motiveRight,
       evidenceComplete,
+      ...shortfall === void 0 ? {} : { shortfall },
       truth: {
         culpritId: truth.culpritId,
         motive: truth.motive,
@@ -38216,6 +38243,20 @@ var OutcomeSchema = external_exports.union([
     culpritRight: external_exports.boolean(),
     motiveRight: external_exports.boolean(),
     evidenceComplete: external_exports.boolean(),
+    shortfall: external_exports.object({
+      motive: external_exports.object({ held: external_exports.boolean(), offered: external_exports.boolean(), drawn: external_exports.boolean() }),
+      evidence: external_exports.object({
+        held: external_exports.boolean(),
+        clues: external_exports.array(
+          external_exports.object({
+            clueId: EntityIdSchema,
+            state: external_exports.enum(SHORTFALL_CLUE_STATES),
+            description: external_exports.string(),
+            number: external_exports.string().nullable()
+          })
+        )
+      })
+    }).optional(),
     truth: external_exports.object({
       culpritId: EntityIdSchema,
       motive: external_exports.string(),
@@ -38551,7 +38592,7 @@ function detailOf(run, entry) {
     case "use":
       return { kind: "use", item: outcome.itemId };
     case "accuse":
-      return { kind: "accuse" };
+      return { kind: "accuse", shortfall: outcome.shortfall ?? null };
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
     default:
       return assertNever2(outcome);
@@ -51207,6 +51248,21 @@ var en_default3 = {
       unquestioned: "Not yet questioned",
       reread: "To be read again",
       noTurns: "No turns yet.",
+      shortfall: {
+        title: "How the proof fell short",
+        motiveHeld: "The motive held.",
+        motiveNoneDrawn: "No motive was put forward, though the conclusion that explains it had been drawn.",
+        motiveNoneUndrawn: "No motive was put forward, and the conclusion that explains it was never drawn.",
+        motiveWrongDrawn: "Another conclusion was put forward as the motive; the right one had been drawn.",
+        motiveWrongUndrawn: "Another conclusion was put forward as the motive; the right one was never drawn.",
+        evidenceHeld: "The evidence held.",
+        evidenceNearest: "The chain of proof that came nearest, clue by clue:",
+        states: {
+          "laid-out": "laid out",
+          found: "found, but left out",
+          "never-found": "never found"
+        }
+      },
       turn: {
         look: "Looked around: found {n}",
         move: "Went to {name}",
@@ -51701,6 +51757,21 @@ var ru_default2 = {
       unquestioned: "\u0415\u0449\u0451 \u043D\u0435 \u043E\u043F\u0440\u043E\u0448\u0435\u043D\u044B",
       reread: "\u041F\u0435\u0440\u0435\u0447\u0438\u0442\u0430\u0442\u044C",
       noTurns: "\u0425\u043E\u0434\u043E\u0432 \u043F\u043E\u043A\u0430 \u043D\u0435 \u0431\u044B\u043B\u043E.",
+      shortfall: {
+        title: "\u0427\u0435\u0433\u043E \u043D\u0435 \u0445\u0432\u0430\u0442\u0438\u043B\u043E \u0434\u043E\u043A\u0430\u0437\u0430\u0442\u0435\u043B\u044C\u0441\u0442\u0432\u0430\u043C",
+        motiveHeld: "\u041C\u043E\u0442\u0438\u0432 \u0432\u044B\u0434\u0435\u0440\u0436\u0430\u043B.",
+        motiveNoneDrawn: "\u041C\u043E\u0442\u0438\u0432 \u043D\u0435 \u043D\u0430\u0437\u0432\u0430\u043B\u0438, \u0445\u043E\u0442\u044F \u0432\u044B\u0432\u043E\u0434, \u043A\u043E\u0442\u043E\u0440\u044B\u0439 \u0435\u0433\u043E \u043E\u0431\u044A\u044F\u0441\u043D\u044F\u0435\u0442, \u0443\u0436\u0435 \u0431\u044B\u043B \u0441\u0434\u0435\u043B\u0430\u043D.",
+        motiveNoneUndrawn: "\u041C\u043E\u0442\u0438\u0432 \u043D\u0435 \u043D\u0430\u0437\u0432\u0430\u043B\u0438, \u0430 \u0432\u044B\u0432\u043E\u0434, \u043A\u043E\u0442\u043E\u0440\u044B\u0439 \u0435\u0433\u043E \u043E\u0431\u044A\u044F\u0441\u043D\u044F\u0435\u0442, \u0442\u0430\u043A \u0438 \u043D\u0435 \u0431\u044B\u043B \u0441\u0434\u0435\u043B\u0430\u043D.",
+        motiveWrongDrawn: "\u0412 \u043A\u0430\u0447\u0435\u0441\u0442\u0432\u0435 \u043C\u043E\u0442\u0438\u0432\u0430 \u043D\u0430\u0437\u0432\u0430\u043B\u0438 \u0434\u0440\u0443\u0433\u043E\u0439 \u0432\u044B\u0432\u043E\u0434; \u043D\u0443\u0436\u043D\u044B\u0439 \u0443\u0436\u0435 \u0431\u044B\u043B \u0441\u0434\u0435\u043B\u0430\u043D.",
+        motiveWrongUndrawn: "\u0412 \u043A\u0430\u0447\u0435\u0441\u0442\u0432\u0435 \u043C\u043E\u0442\u0438\u0432\u0430 \u043D\u0430\u0437\u0432\u0430\u043B\u0438 \u0434\u0440\u0443\u0433\u043E\u0439 \u0432\u044B\u0432\u043E\u0434; \u043D\u0443\u0436\u043D\u044B\u0439 \u0442\u0430\u043A \u0438 \u043D\u0435 \u0431\u044B\u043B \u0441\u0434\u0435\u043B\u0430\u043D.",
+        evidenceHeld: "\u0423\u043B\u0438\u043A \u0445\u0432\u0430\u0442\u0438\u043B\u043E.",
+        evidenceNearest: "\u0426\u0435\u043F\u043E\u0447\u043A\u0430 \u0434\u043E\u043A\u0430\u0437\u0430\u0442\u0435\u043B\u044C\u0441\u0442\u0432, \u043A \u043A\u043E\u0442\u043E\u0440\u043E\u0439 \u043F\u043E\u0434\u043E\u0448\u043B\u0438 \u0431\u043B\u0438\u0436\u0435 \u0432\u0441\u0435\u0433\u043E, \u043F\u043E \u0443\u043B\u0438\u043A\u0430\u043C:",
+        states: {
+          "laid-out": "\u0432\u044B\u043B\u043E\u0436\u0435\u043D\u0430",
+          found: "\u043D\u0430\u0439\u0434\u0435\u043D\u0430, \u043D\u043E \u043D\u0435 \u0432\u044B\u043B\u043E\u0436\u0435\u043D\u0430",
+          "never-found": "\u0442\u0430\u043A \u0438 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u0430"
+        }
+      },
       turn: {
         look: "\u041E\u0441\u043C\u043E\u0442\u0440\u0435\u043B\u0438\u0441\u044C: \u043D\u0430\u0439\u0434\u0435\u043D\u043E {n}",
         move: "\u041F\u043E\u0448\u043B\u0438 \u0432 {name}",
@@ -52103,16 +52174,36 @@ function openQuestions(view, text) {
     )
   ];
 }
+function renderShortfall(shortfall, t) {
+  const e = escapeHtml;
+  const { motive, evidence } = shortfall;
+  const motiveLine = motive.held ? t.motiveHeld : motive.offered ? motive.drawn ? t.motiveWrongDrawn : t.motiveWrongUndrawn : motive.drawn ? t.motiveNoneDrawn : t.motiveNoneUndrawn;
+  return `<div class="card">
+<h3>${e(t.title)}</h3>
+<p>${e(motiveLine)}</p>${evidence.held ? `
+<p>${e(t.evidenceHeld)}</p>` : `
+<p>${e(t.evidenceNearest)}</p>
+${list(
+    evidence.clues.map(
+      ({ state, description, number: number4 }) => `<span class="tag">${e(named(t.states, state))}</span> ${number4 === null ? "" : `${e(number4)}: `}${e(description)}`
+    )
+  )}`}
+</div>
+`;
+}
 function renderChronicle(view, turns, text, fresh = NOTHING_NEW, strip = []) {
   const t = text.chronicle;
   const e = escapeHtml;
   const open3 = openQuestions(view, t);
+  const shortfall = turns.flatMap(
+    (turn) => turn.kind === "accuse" && turn.shortfall ? [turn.shortfall] : []
+  )[0];
   return `<div class="card">
 <p>${e(t.now)}: ${e(t.day)} ${String(view.clock.day)} / ${String(view.clock.totalDays)}, ${clock(view.clock.minute)}</p>
 <p>${e(t.left)}: <strong>${e(duration3(view.chronicle.activeMinutesLeft, t))}</strong></p>${view.weather === null ? "" : `
 <p>${e(t.weatherToday)}: ${e(named(t.weathers, view.weather))}</p>`}
 </div>
-<h3>${e(text.strip.title)}</h3>
+${shortfall === void 0 ? "" : renderShortfall(shortfall, t.shortfall)}<h3>${e(text.strip.title)}</h3>
 ${turns.length === 0 ? `<p class="empty">${e(t.noTurns)}</p>` : ""}${renderStrips(view, strip, turns, text)}
 <h3>${e(t.inspired)}</h3>
 ${view.inspiration === null ? `<p class="empty">${e(t.inspiredNone)}</p>` : `<p><span class="tag">${e(named(t.seedKinds, view.inspiration.kind))}</span> ${e(view.inspiration.premise)}</p>`}
@@ -53534,7 +53625,7 @@ async function playIntent(context2, turn, intent) {
 // packages/mcp/src/tools/accuse.ts
 var accuse2 = defineTool({
   name: "accuse",
-  description: 'The final accusation, and it ends the run for good: it cannot be undone. `culpritId` is a suspect from run_view, `motiveInsightId` the id of an insight the hero has made as the motive (or null for none) and `evidenceClueIds` the found clues laid out as proof. Call it only after the player has confirmed these three choices; never to test a theory. The fields are exactly `turn`, `culpritId`, `motiveInsightId` and `evidenceClueIds`, and they are easy to confuse with the neighbouring tools: `culpritId` is not `suspectId`, `motiveInsightId` is not `insightId`, `evidenceClueIds` is not `clueIds`; `turn` is a number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with "stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, place): the run is over, so this is the only place the truth is ever shown. Tell it as the closing scene and add nothing the outcome does not contain.',
+  description: 'The final accusation, and it ends the run for good: it cannot be undone. `culpritId` is a suspect from run_view, `motiveInsightId` the id of an insight the hero has made as the motive (or null for none) and `evidenceClueIds` the found clues laid out as proof. Call it only after the player has confirmed these three choices; never to test a theory. The fields are exactly `turn`, `culpritId`, `motiveInsightId` and `evidenceClueIds`, and they are easy to confuse with the neighbouring tools: `culpritId` is not `suspectId`, `motiveInsightId` is not `insightId`, `evidenceClueIds` is not `clueIds`; `turn` is a number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with "stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, place): the run is over, so this is the only place the truth is ever shown. For "unproven" it also has a `shortfall`: what the motive and the evidence lacked, clue by clue. Tell it as the closing scene and add nothing the outcome does not contain.',
   inputSchema: external_exports.object({
     turn: TurnSchema,
     culpritId: EntityIdSchema,

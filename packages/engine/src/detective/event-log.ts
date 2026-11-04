@@ -24,7 +24,7 @@ import { ConsumableIdSchema, PendingEffectSchema, SuppliesSchema } from './consu
 import { NightReportSchema } from './night.js';
 import { DrawnEventSchema, SHOWN_EFFECTS, type DetectiveRunState } from './run-state.js';
 import { SUSPECT_MOODS } from './suspect-mood.js';
-import { VERDICTS, type Verdict } from './verdict.js';
+import { SHORTFALL_CLUE_STATES, VERDICTS, type Verdict } from './verdict.js';
 
 // The run log is ENGINE-SIDE ONLY. Its entries hold the full details of every check, which name the clues
 // that were rolled for whether or not the hero found them, and an accusation's entry holds the truth. It
@@ -174,6 +174,22 @@ const OutcomeSchema = z.union([
     culpritRight: z.boolean(),
     motiveRight: z.boolean(),
     evidenceComplete: z.boolean(),
+    shortfall: z
+      .object({
+        motive: z.object({ held: z.boolean(), offered: z.boolean(), drawn: z.boolean() }),
+        evidence: z.object({
+          held: z.boolean(),
+          clues: z.array(
+            z.object({
+              clueId: EntityIdSchema,
+              state: z.enum(SHORTFALL_CLUE_STATES),
+              description: z.string(),
+              number: z.string().nullable(),
+            }),
+          ),
+        }),
+      })
+      .optional(),
     truth: z.object({
       culpritId: EntityIdSchema,
       motive: z.string(),

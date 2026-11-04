@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import type { Rng } from '../dice.js';
 import { statusOfEndReason } from '../run.js';
+import { clueNumber } from './clue-number.js';
 import { EntityIdSchema, type Truth } from './case-schema.js';
 import { GARBLED_REFUSAL_MESSAGE, anyGarbled } from './fatigue.js';
 import {
@@ -88,6 +89,29 @@ export type DeduceResolution =
 export const VERDICTS = ['proven', 'unproven', 'wrong'] as const;
 export type Verdict = (typeof VERDICTS)[number];
 
+/** Where a clue of the chain stood when the hero accused: laid out, found and left out, or never found. */
+export const SHORTFALL_CLUE_STATES = ['laid-out', 'found', 'never-found'] as const;
+export type ShortfallClueState = (typeof SHORTFALL_CLUE_STATES)[number];
+
+/**
+ * What an accusation of the right culprit lacked, told once the run is over (so it may name what the hero never
+ * found). The motive: whether the hero offered a conclusion, and whether the conclusion of the case's motive had been
+ * drawn at all. The evidence: the clues of the chain the hero came nearest to, and where each stood.
+ */
+export interface Shortfall {
+  readonly motive: { readonly held: boolean; readonly offered: boolean; readonly drawn: boolean };
+  readonly evidence: {
+    readonly held: boolean;
+    readonly clues: readonly {
+      readonly clueId: string;
+      readonly state: ShortfallClueState;
+      readonly description: string;
+      /** The number the hero knows the clue by, or `null` for one never found. */
+      readonly number: string | null;
+    }[];
+  };
+}
+
 /** What the accusation turned out to be. Only built once the run is over, so it may show the truth. */
 export interface AccusationOutcome {
   readonly kind: 'accuse';
@@ -95,6 +119,8 @@ export interface AccusationOutcome {
   readonly culpritRight: boolean;
   readonly motiveRight: boolean;
   readonly evidenceComplete: boolean;
+  /** Only for `unproven`: what the proof lacked. */
+  readonly shortfall?: Shortfall;
   readonly truth: Pick<Truth, 'culpritId' | 'motive' | 'method' | 'crimeLocationId'>;
 }
 
@@ -187,6 +213,47 @@ export function deduce(run: DetectiveRunState, input: unknown, rng: Rng): Deduce
   };
 }
 
+/** What an unproven accusation lacked: see `Shortfall`. The chain nearest to whole is the one told, the first on a tie. */
+function shortfallOf(
+  run: DetectiveRunState,
+  proof: {
+    readonly motiveRight: boolean;
+    readonly motiveInsightId: string | null;
+    readonly evidenceComplete: boolean;
+    readonly laidOut: ReadonlySet<string>;
+  },
+): Shortfall {
+  const { solution } = run.case;
+  const missing = (chain: readonly string[]): number => chain.filter((id) => !proof.laidOut.has(id)).length;
+  // A case with no chain has nothing to come near; the validator wants two, so this is only a fallback.
+  const [nearest = []] = solution.evidenceChains.toSorted((a, b) => missing(a) - missing(b));
+  return {
+    motive: {
+      held: proof.motiveRight,
+      offered: proof.motiveInsightId !== null,
+      drawn: run.insightIds.includes(solution.motiveDeductionId),
+    },
+    evidence: {
+      held: proof.evidenceComplete,
+      clues: run.case.clues
+        .filter(({ id }) => nearest.includes(id))
+        .map(({ id, description }) => {
+          const found = run.foundClueIds.includes(id);
+          return {
+            clueId: id,
+            state: proof.laidOut.has(id)
+              ? ('laid-out' as const)
+              : found
+                ? ('found' as const)
+                : ('never-found' as const),
+            description,
+            number: found ? clueNumber(run.hero.name, run.foundClueIds.indexOf(id)) : null,
+          };
+        }),
+    },
+  };
+}
+
 /**
  * The final accusation: who did it, why (an insight the hero has made) and the clues that prove it.
  * - `proven`: the culprit is right, the motive is the one in the solution and the evidence holds a whole
@@ -223,6 +290,10 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
   const laidOut = new Set(evidenceClueIds);
   const evidenceComplete = solution.evidenceChains.some((chain) => chain.every((id) => laidOut.has(id)));
   const verdict: Verdict = !culpritRight ? 'wrong' : motiveRight && evidenceComplete ? 'proven' : 'unproven';
+  const shortfall =
+    verdict === 'unproven'
+      ? shortfallOf(run, { motiveRight, motiveInsightId, evidenceComplete, laidOut })
+      : undefined;
 
   return {
     ok: true,
@@ -233,6 +304,7 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
       culpritRight,
       motiveRight,
       evidenceComplete,
+      ...(shortfall === undefined ? {} : { shortfall }),
       truth: {
         culpritId: truth.culpritId,
         motive: truth.motive,
