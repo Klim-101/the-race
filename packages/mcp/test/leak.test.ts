@@ -105,8 +105,9 @@ describe('the game tools over the server', () => {
       const keys: string[] = [];
       scan(result, strings, keys);
       const text = JSON.stringify(result);
+      // The accusation ends the run and then tells what the proof lacked, clues never found among it.
       for (const clueId of caseClueIds) {
-        if (!run.foundClueIds.includes(clueId)) expect(text).not.toContain(`"${clueId}"`);
+        if (!mayShowTruth && !run.foundClueIds.includes(clueId)) expect(text).not.toContain(`"${clueId}"`);
       }
       for (const trait of run.traits) {
         if (!run.revealedTraitIds.includes(trait.id)) expect(text).not.toContain(trait.id);

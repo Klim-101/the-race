@@ -194,6 +194,20 @@ export interface TabText {
     readonly unquestioned: string;
     readonly reread: string;
     readonly noTurns: string;
+    /** After an accusation of the right person whose proof fell short: what it lacked. */
+    readonly shortfall: {
+      readonly title: string;
+      readonly motiveHeld: string;
+      /** The motive that was not put forward or was the wrong conclusion, with the right one drawn or never drawn. */
+      readonly motiveNoneDrawn: string;
+      readonly motiveNoneUndrawn: string;
+      readonly motiveWrongDrawn: string;
+      readonly motiveWrongUndrawn: string;
+      readonly evidenceHeld: string;
+      readonly evidenceNearest: string;
+      /** Where a clue of that chain stood: laid out, found and left out, never found. */
+      readonly states: Readonly<Record<string, string>>;
+    };
     /** One line for each kind of turn; {name}, {n}, {approach} and {text} are filled in. */
     readonly turn: {
       readonly look: string;

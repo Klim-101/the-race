@@ -432,7 +432,7 @@ describe('one look for the whole page', () => {
 });
 
 const TURNS: TurnView[] = [
-  { turn: 17, day: 2, minute: 600, kind: 'accuse' },
+  { turn: 17, day: 2, minute: 600, kind: 'accuse', shortfall: null },
   { turn: 16, day: 2, minute: 590, kind: 'use', item: 'coffee' },
   { turn: 15, day: 2, minute: 580, kind: 'reread', clue: 'A rusty key under the counter.' },
   { turn: 14, day: 2, minute: 570, kind: 'deduce', result: 'nothing', insight: null },

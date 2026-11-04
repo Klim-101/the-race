@@ -6,6 +6,7 @@ import type { ConsumableId } from './consumables.js';
 import type { LogEntry, RunLog } from './event-log.js';
 import type { INTERROGATION_APPROACHES } from './interrogation.js';
 import type { DetectiveRunState } from './run-state.js';
+import type { Shortfall } from './verdict.js';
 
 // The run log is engine-side only: its entries hold every check, the clues rolled for and, for an accusation,
 // the truth. A turn is shown to the player as what they asked for and what they were told, nothing more, so the
@@ -35,7 +36,11 @@ export type TurnDetail =
     }
   | { readonly kind: 'reread'; readonly clue: string }
   | { readonly kind: 'use'; readonly item: ConsumableId }
-  | { readonly kind: 'accuse' };
+  | {
+      readonly kind: 'accuse';
+      /** What the proof lacked, when the right person was named and the proof fell short: told once the run is over. */
+      readonly shortfall: Shortfall | null;
+    };
 
 /** One turn the player took, in the order of play, with the day and the hour it ended at. */
 export type TurnView = { readonly turn: number; readonly day: number; readonly minute: number } & TurnDetail;
@@ -89,7 +94,7 @@ function detailOf(run: DetectiveRunState, entry: LogEntry): TurnDetail {
     case 'use':
       return { kind: 'use', item: outcome.itemId };
     case 'accuse':
-      return { kind: 'accuse' };
+      return { kind: 'accuse', shortfall: outcome.shortfall ?? null };
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
     default:
       return assertNever(outcome);
@@ -98,8 +103,9 @@ function detailOf(run: DetectiveRunState, entry: LogEntry): TurnDetail {
 
 /**
  * The last turns the player took, newest first, as the player knows them. A deduction that reached nothing
- * says so; a conclusion is named only when it was drawn. The accusation says that it was made and not what
- * came of it: the run's end already tells that.
+ * says so; a conclusion is named only when it was drawn. The accusation says that it was made and, when the
+ * right person was named and the proof fell short, what it lacked: the run is over by then, and the truth has
+ * been told. The verdict itself is the run's end.
  */
 export function viewTurns(
   run: DetectiveRunState,

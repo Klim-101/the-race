@@ -1,7 +1,13 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { assertNever, type DetectiveRunView, type StripTurn, type TurnView } from '@the-race/engine';
+import {
+  assertNever,
+  type DetectiveRunView,
+  type Shortfall,
+  type StripTurn,
+  type TurnView,
+} from '@the-race/engine';
 import { escapeHtml, truncate } from './escape-html.js';
 import { clueTokens, leadTokens, placeTokens, rel, suspectTokens, token } from './board-relations.js';
 import { NOTHING_NEW, type Fresh } from './board-new.js';
@@ -119,6 +125,38 @@ function openQuestions(view: DetectiveRunView, text: TabText['chronicle']): stri
   ];
 }
 
+/** What the proof of a right accusation lacked, from the words of the language; the run is over, so nothing is spared. */
+function renderShortfall(shortfall: Shortfall, t: TabText['chronicle']['shortfall']): string {
+  const e = escapeHtml;
+  const { motive, evidence } = shortfall;
+  const motiveLine = motive.held
+    ? t.motiveHeld
+    : motive.offered
+      ? motive.drawn
+        ? t.motiveWrongDrawn
+        : t.motiveWrongUndrawn
+      : motive.drawn
+        ? t.motiveNoneDrawn
+        : t.motiveNoneUndrawn;
+  return `<div class="card">
+<h3>${e(t.title)}</h3>
+<p>${e(motiveLine)}</p>${
+    evidence.held
+      ? `
+<p>${e(t.evidenceHeld)}</p>`
+      : `
+<p>${e(t.evidenceNearest)}</p>
+${list(
+  evidence.clues.map(
+    ({ state, description, number }) =>
+      `<span class="tag">${e(named(t.states, state))}</span> ${number === null ? '' : `${e(number)}: `}${e(description)}`,
+  ),
+)}`
+  }
+</div>
+`;
+}
+
 /**
  * The chronicle: the day and the working time left, what the world has done, what is still open and the last
  * turns the player took. Nothing in it says which statement is false or which suspect is guilty: the open
@@ -134,13 +172,16 @@ export function renderChronicle(
   const t = text.chronicle;
   const e = escapeHtml;
   const open = openQuestions(view, t);
+  const shortfall = turns.flatMap((turn) =>
+    turn.kind === 'accuse' && turn.shortfall ? [turn.shortfall] : [],
+  )[0];
   return `<div class="card">
 <p>${e(t.now)}: ${e(t.day)} ${String(view.clock.day)} / ${String(view.clock.totalDays)}, ${clock(view.clock.minute)}</p>
 <p>${e(t.left)}: <strong>${e(duration(view.chronicle.activeMinutesLeft, t))}</strong></p>${
     view.weather === null ? '' : `\n<p>${e(t.weatherToday)}: ${e(named(t.weathers, view.weather))}</p>`
   }
 </div>
-<h3>${e(text.strip.title)}</h3>
+${shortfall === undefined ? '' : renderShortfall(shortfall, t.shortfall)}<h3>${e(text.strip.title)}</h3>
 ${turns.length === 0 ? `<p class="empty">${e(t.noTurns)}</p>` : ''}${renderStrips(view, strip, turns, text)}
 <h3>${e(t.inspired)}</h3>
 ${

@@ -269,7 +269,7 @@ describe('the turns of a run', () => {
     }
   });
 
-  it('show an unrecorded accusation as made, and not what came of it', () => {
+  it('show an accusation as made and, for the right person with weak proof, what it lacked', () => {
     const detectiveCase = cheeseCase();
     let run = startRun(detectiveCase, 'accuse');
     let log: RunLog = [];
@@ -286,8 +286,29 @@ describe('the turns of a run', () => {
 
     const [turn] = viewTurns(run, log);
 
-    expect(turn).toMatchObject({ kind: 'accuse' });
-    expect(Object.keys(turn ?? {}).sort()).toEqual(['day', 'kind', 'minute', 'turn']);
+    expect(turn).toMatchObject({
+      kind: 'accuse',
+      shortfall: { motive: { held: false, offered: false, drawn: false }, evidence: { held: false } },
+    });
+    expect(Object.keys(turn ?? {}).sort()).toEqual(['day', 'kind', 'minute', 'shortfall', 'turn']);
+  });
+
+  it('show an accusation of the wrong person as made, and nothing of what it lacked', () => {
+    const detectiveCase = cheeseCase();
+    let run = startRun(detectiveCase, 'accuse-wrong');
+    let log: RunLog = [];
+    const intent: Intent = {
+      kind: 'accuse',
+      culpritId: 'rival',
+      motiveInsightId: null,
+      evidenceClueIds: [],
+    };
+    const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
+    if (!resolution.ok) throw new Error(`Refused: ${resolution.refusal.code}`);
+    log = recordResolution(log, run, intent, resolution);
+    run = resolution.run;
+
+    expect(viewTurns(run, log)[0]).toMatchObject({ kind: 'accuse', shortfall: null });
   });
 });
 
