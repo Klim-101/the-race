@@ -36359,6 +36359,12 @@ function wearTool(run, gearId, blundered) {
   return { ...run, kit: run.kit.map((piece) => piece.id === gearId ? next : piece) };
 }
 function findClue(run, clueId) {
+  return takeClue(run, clueId, void 0);
+}
+function findToldClue(run, clueId) {
+  return takeClue(run, clueId, run.locationId);
+}
+function takeClue(run, clueId, heardAt) {
   assertActive(run);
   requireId(
     "clue",
@@ -36367,7 +36373,7 @@ function findClue(run, clueId) {
   );
   if (run.foundClueIds.includes(clueId)) return run;
   const found = run.case.clues.flatMap(
-    ({ id, locationId }) => id === clueId ? [{ clueId, locationId, turn: run.turn + 1 }] : []
+    ({ id, locationId }) => id === clueId ? [{ clueId, locationId: heardAt ?? locationId, turn: run.turn + 1 }] : []
   );
   const withClue = {
     ...run,
@@ -37326,7 +37332,7 @@ function resolveInterrogate(run, intent, rng) {
   ].filter((clueId) => !run.foundClueIds.includes(clueId));
   const withLies = recordShown(
     {
-      ...told.reduce(findClue, run),
+      ...told.reduce(findToldClue, run),
       concededLieIds: [...run.concededLieIds, ...fallen.map(({ id }) => id)],
       claims: [
         ...run.claims,
@@ -38108,7 +38114,7 @@ function resolveAsk(run, rng, intent) {
   const told = run.rulesetVersion < SIGHTING_CLUES_RULESET_VERSION || witness === void 0 ? [] : [...new Set(sightings.map(({ suspectId }) => sightingClueId(witness.id, suspectId)))].filter(
     (clueId) => run.case.clues.some(({ id }) => id === clueId) && !run.foundClueIds.includes(clueId)
   );
-  const heard = witness !== void 0 ? told.reduce(findClue, recordSightings(worndown, witness, sightings)) : result.success ? grantLeads(worndown, [{ kind: "locals", locationId: location.id }]) : worndown;
+  const heard = witness !== void 0 ? told.reduce(findToldClue, recordSightings(worndown, witness, sightings)) : result.success ? grantLeads(worndown, [{ kind: "locals", locationId: location.id }]) : worndown;
   const minutes2 = ASK_MINUTES + (result.success ? 0 : FAILED_ASK_MINUTES);
   const settled = settle2(heard, rng, minutes2, [result]);
   return {

@@ -67,6 +67,7 @@ import {
   changeReputation,
   endTurn,
   findClue,
+  findToldClue,
   grantLeads,
   markSearched,
   moveTo,
@@ -860,7 +861,7 @@ function resolveAsk(run: DetectiveRunState, rng: Rng, intent: Extract<Intent, { 
         );
   const heard =
     witness !== undefined
-      ? told.reduce(findClue, recordSightings(worndown, witness, sightings))
+      ? told.reduce(findToldClue, recordSightings(worndown, witness, sightings))
       : result.success
         ? grantLeads(worndown, [{ kind: 'locals', locationId: location.id }])
         : worndown;
