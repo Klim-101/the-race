@@ -491,6 +491,7 @@
       }
     },
     "clueGrid": {
+      "heardFrom": "Со слов свидетеля: {name}",
       "filters": "Отбор улик",
       "place": "Найдено в",
       "suspect": "Показано",

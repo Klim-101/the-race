@@ -958,6 +958,8 @@ export interface DetectiveRunView {
     readonly garbled: boolean;
     /** The name the player can say for it: the hero's surname and the order of finding, such as `KESVIK-03`. */
     readonly number: string;
+    /** The name of the witness who told it, for a clue that is what a witness saw; `null` for any other. */
+    readonly witness: string | null;
   }[];
   /**
    * How many clues each conclusion still to be made takes, smallest first: a number for each, so the player
@@ -1282,10 +1284,11 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     }),
     clues: detectiveCase.clues
       .filter(({ id }) => run.foundClueIds.includes(id))
-      .map(({ id, locationId, description }) => ({
+      .map(({ id, locationId, description, sightingOf }) => ({
         id,
         locationId,
         description,
+        witness: sightingOf === undefined ? null : requireWitness(detectiveCase, sightingOf.witnessId).name,
         garbled: run.garbledClueIds.includes(id),
         // The order of finding, which `foundClueIds` keeps from the first turn, whatever the history holds.
         number: clueNumber(run.hero.name, run.foundClueIds.indexOf(id)),

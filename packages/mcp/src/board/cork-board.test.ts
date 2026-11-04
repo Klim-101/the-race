@@ -151,6 +151,7 @@ const PLAYED = {
       locationId: 'stall',
       description: 'A rusty key under the counter.',
       garbled: false,
+      witness: null,
       number: 'MIRA-01',
     },
     {
@@ -158,6 +159,7 @@ const PLAYED = {
       locationId: 'market',
       description: 'Flour on the cellar steps.',
       garbled: false,
+      witness: null,
       number: 'MIRA-02',
     },
     {
@@ -165,6 +167,7 @@ const PLAYED = {
       locationId: 'market',
       description: 'A blue glove by the till.',
       garbled: true,
+      witness: null,
       number: 'MIRA-03',
     },
   ],
@@ -241,6 +244,7 @@ describe('what lights up when something is picked', () => {
           locationId: 'stall',
           description: 'x',
           garbled: false,
+          witness: null,
           number: 'MIRA-04',
         },
       ],
@@ -325,6 +329,7 @@ describe('the corkboard tab', () => {
       locationId: 'market',
       description: `Clue ${String(index)}`,
       garbled: false,
+      witness: null,
       number: 'MIRA-99',
     }));
 
@@ -417,7 +422,14 @@ describe('the corkboard tab', () => {
   });
 
   it('writes no rule for a clue whose id could break out of a selector', () => {
-    const odd = { id: 'a"]{x', locationId: 'market', description: 'Odd.', garbled: false, number: 'MIRA-01' };
+    const odd = {
+      id: 'a"]{x',
+      locationId: 'market',
+      description: 'Odd.',
+      garbled: false,
+      witness: null,
+      number: 'MIRA-01',
+    };
     const page = renderEvidenceBoard(viewOf({ clues: [odd] }));
 
     expect(page).not.toContain('data-open="a"]');
@@ -442,7 +454,16 @@ describe('the corkboard tab', () => {
           ],
           links: [],
         },
-        clues: [{ id: 'k', locationId: 'x', description: 'A key.', garbled: false, number: 'MIRA-05' }],
+        clues: [
+          {
+            id: 'k',
+            locationId: 'x',
+            description: 'A key.',
+            garbled: false,
+            witness: null,
+            number: 'MIRA-05',
+          },
+        ],
         history: { finds: [{ clueId: 'k', locationId: 'x', turn: 3 }], shown: [], links: [] },
       }),
     );

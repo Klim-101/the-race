@@ -145,6 +145,7 @@ const FOUND = {
       locationId: 'stall',
       description: 'A rusty key under the counter.',
       garbled: true,
+      witness: null,
       number: 'MIRA-01',
     },
     {
@@ -152,6 +153,7 @@ const FOUND = {
       locationId: 'market',
       description: 'Flour on the cellar steps.',
       garbled: false,
+      witness: null,
       number: 'MIRA-02',
     },
   ],
@@ -232,7 +234,16 @@ describe('the page', () => {
         title: evil,
         premise: evil,
         news: ['<img src=x onerror=alert(1)>'],
-        clues: [{ id: 'k', locationId: 'stall', description: evil, garbled: false, number: 'MIRA-03' }],
+        clues: [
+          {
+            id: 'k',
+            locationId: 'stall',
+            description: evil,
+            garbled: false,
+            witness: null,
+            number: 'MIRA-03',
+          },
+        ],
         insights: [{ id: 'i', insight: evil, clueIds: ['k'] }],
         suspects: [
           {
@@ -385,7 +396,16 @@ describe('the clues and links tab', () => {
     const clues = tab(
       renderEvidenceBoard(
         viewOf({
-          clues: [{ id: 'k', locationId: 'gone', description: 'Flour.', garbled: false, number: 'MIRA-03' }],
+          clues: [
+            {
+              id: 'k',
+              locationId: 'gone',
+              description: 'Flour.',
+              garbled: false,
+              witness: null,
+              number: 'MIRA-03',
+            },
+          ],
           insights: [
             { id: 'i', insight: 'Odd.', clueIds: ['k', 'missing'], clears: null },
             { id: 'j', insight: 'Odder.', clueIds: ['missing'], clears: null },
@@ -415,12 +435,20 @@ describe('the clues and links tab', () => {
     const page = renderEvidenceBoard(
       viewOf({
         clues: [
-          { id: 'ledger', locationId: 'stall', description: long, garbled: false, number: 'MIRA-04' },
+          {
+            id: 'ledger',
+            locationId: 'stall',
+            description: long,
+            garbled: false,
+            witness: null,
+            number: 'MIRA-04',
+          },
           {
             id: 'envelope',
             locationId: 'market',
             description: `${long} Second.`,
             garbled: false,
+            witness: null,
             number: 'MIRA-05',
           },
         ],
@@ -562,8 +590,22 @@ describe('the chronicle tab', () => {
             links: [],
           },
           clues: [
-            { id: 'k', locationId: 'market', description: 'A rusty key.', garbled: true, number: 'MIRA-03' },
-            { id: 'f', locationId: 'market', description: 'Flour.', garbled: false, number: 'MIRA-06' },
+            {
+              id: 'k',
+              locationId: 'market',
+              description: 'A rusty key.',
+              garbled: true,
+              witness: null,
+              number: 'MIRA-03',
+            },
+            {
+              id: 'f',
+              locationId: 'market',
+              description: 'Flour.',
+              garbled: false,
+              witness: null,
+              number: 'MIRA-06',
+            },
           ],
         }),
       ),

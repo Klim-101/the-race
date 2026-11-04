@@ -36754,10 +36754,11 @@ function viewRun(run) {
         statements: run.statements.filter(({ suspectId }) => suspectId === suspect.id).map(({ day, kind, text }) => ({ day, kind, text }))
       };
     }),
-    clues: detectiveCase.clues.filter(({ id }) => run.foundClueIds.includes(id)).map(({ id, locationId, description }) => ({
+    clues: detectiveCase.clues.filter(({ id }) => run.foundClueIds.includes(id)).map(({ id, locationId, description, sightingOf }) => ({
       id,
       locationId,
       description,
+      witness: sightingOf === void 0 ? null : requireWitness(detectiveCase, sightingOf.witnessId).name,
       garbled: run.garbledClueIds.includes(id),
       // The order of finding, which `foundClueIds` keeps from the first turn, whatever the history holds.
       number: clueNumber(run.hero.name, run.foundClueIds.indexOf(id))
@@ -51934,6 +51935,7 @@ var en_default3 = {
       }
     },
     clueGrid: {
+      heardFrom: "Told by {name}",
       filters: "Filter the clues",
       place: "Found at",
       suspect: "Shown to",
@@ -52449,6 +52451,7 @@ var ru_default2 = {
       }
     },
     clueGrid: {
+      heardFrom: "\u0421\u043E \u0441\u043B\u043E\u0432 \u0441\u0432\u0438\u0434\u0435\u0442\u0435\u043B\u044F: {name}",
       filters: "\u041E\u0442\u0431\u043E\u0440 \u0443\u043B\u0438\u043A",
       place: "\u041D\u0430\u0439\u0434\u0435\u043D\u043E \u0432",
       suspect: "\u041F\u043E\u043A\u0430\u0437\u0430\u043D\u043E",
@@ -52729,9 +52732,10 @@ function card(view, clue, board, text, fresh) {
     `data-number="${e(clue.number)}"`,
     'tabindex="0" role="button"'
   ].join(" ");
-  return `<div class="card clue-card" ${attrs}>
+  return `<div class="card clue-card${clue.witness === null ? "" : " sighting"}" ${attrs}>
 <span class="tag"><span class="num">${e(clue.number)}</span> \xB7 ${e(where)}</span>${fresh.clueIds.has(clue.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ""}
-<p class="text">${e(clue.description)}</p>${clue.garbled ? `
+<p class="text">${e(clue.description)}</p>${clue.witness === null ? "" : `
+<p class="tag witness-tag">${e(text.clueGrid.heardFrom.replace("{name}", clue.witness))}</p>`}${clue.garbled ? `
 <p class="warn">${e(board.garbled)}</p>` : ""}
 <p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
 <p class="tag">${e(used)}</p>
@@ -52857,7 +52861,7 @@ function renderCork(view, board, text) {
     const attrs = `data-pick="clue:${e(clue.id)}" data-rel="${e(rel(clueTokens(view, clue.id)))}" tabindex="0" role="button" aria-controls="${e(openedId(clue.id))}" data-open="${e(clue.id)}" aria-label="${e(`${clue.number}: ${truncate(clue.description, 90)}`)}"`;
     const placeAttrs = `data-pick="place:${e(clue.locationId)}" data-rel="${e(rel(placeTokens(view, clue.locationId)))}"`;
     const turned = `rotate(${tilt(index).toFixed(1)} ${whole2(x2 + CARD_W / 2)} ${whole2(y + CARD_H / 2)})`;
-    return `<g class="card-pin${clue.garbled ? " garbled" : ""}" transform="${turned}" ${attrs}><title>${e(clue.description)}</title><rect class="paper" x="${whole2(x2)}" y="${whole2(y)}" width="${String(CARD_W)}" height="${String(CARD_H)}" rx="3"/><text class="num" x="${whole2(x2 + 12)}" y="${whole2(y + 26)}">${e(clue.number)}</text>${lines}<g class="where" ${placeAttrs}>${whereLines}</g><circle class="pin" cx="${whole2(x2 + CARD_W / 2)}" cy="${whole2(y)}" r="6"/></g>`;
+    return `<g class="card-pin${clue.garbled ? " garbled" : ""}${clue.witness === null ? "" : " sighting"}" transform="${turned}" ${attrs}><title>${e(clue.description)}</title><rect class="paper" x="${whole2(x2)}" y="${whole2(y)}" width="${String(CARD_W)}" height="${String(CARD_H)}" rx="3"/><text class="num" x="${whole2(x2 + 12)}" y="${whole2(y + 26)}">${e(clue.number)}</text>${lines}<g class="where" ${placeAttrs}>${whereLines}</g><circle class="pin" cx="${whole2(x2 + CARD_W / 2)}" cy="${whole2(y)}" r="6"/></g>`;
   });
   const suspectName = new Map(view.suspects.map(({ id, name }) => [id, name]));
   const clueNumber2 = new Map(view.clues.map(({ id, number: number4 }) => [id, number4]));
@@ -53608,6 +53612,9 @@ meter{width:9em;vertical-align:middle}
 svg.board{display:block;width:100%;min-width:640px;height:auto;font:13px 'Segoe Print','Bradley Hand','Comic Sans MS',cursive,system-ui}
 svg.board .paper{fill:#fffdf4;stroke:#d6c9a8;stroke-width:1;filter:drop-shadow(2px 3px 2px rgba(0,0,0,.35))}
 svg.board .print{fill:#cfc6b2}
+svg.board .card-pin.sighting .paper{fill:#dfe8ea;stroke:#7a8a90;stroke-dasharray:5 3}
+.card.sighting{border-left:4px solid #7a8a90}
+.witness-tag{font-style:italic}
 svg.board .photo.cleared .paper,svg.board .photo.cleared .print{opacity:.55}
 svg.board .photo.cleared .initial{opacity:.4}
 .reaction{font-style:italic;color:#4a4338}

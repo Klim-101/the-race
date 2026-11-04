@@ -13,6 +13,7 @@ const clue = (id: string, number: string, locationId: string, garbled = false) =
   locationId,
   description: `Text of ${id}.`,
   garbled,
+  witness: null,
   number,
 });
 

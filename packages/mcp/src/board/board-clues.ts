@@ -93,9 +93,9 @@ function card(view: DetectiveRunView, clue: Clue, board: BoardText, text: TabTex
     `data-number="${e(clue.number)}"`,
     'tabindex="0" role="button"',
   ].join(' ');
-  return `<div class="card clue-card" ${attrs}>
+  return `<div class="card clue-card${clue.witness === null ? '' : ' sighting'}" ${attrs}>
 <span class="tag"><span class="num">${e(clue.number)}</span> · ${e(where)}</span>${fresh.clueIds.has(clue.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ''}
-<p class="text">${e(clue.description)}</p>${clue.garbled ? `\n<p class="warn">${e(board.garbled)}</p>` : ''}
+<p class="text">${e(clue.description)}</p>${clue.witness === null ? '' : `\n<p class="tag witness-tag">${e(text.clueGrid.heardFrom.replace('{name}', clue.witness))}</p>`}${clue.garbled ? `\n<p class="warn">${e(board.garbled)}</p>` : ''}
 <p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
 <p class="tag">${e(used)}</p>
 <p class="tag ways"><a href="#board">${e(text.clueGrid.toBoard)}</a> · <a href="#map">${e(text.clueGrid.toMap)}</a></p>

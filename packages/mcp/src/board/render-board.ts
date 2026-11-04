@@ -116,6 +116,9 @@ meter{width:9em;vertical-align:middle}
 svg.board{display:block;width:100%;min-width:640px;height:auto;font:13px 'Segoe Print','Bradley Hand','Comic Sans MS',cursive,system-ui}
 svg.board .paper{fill:#fffdf4;stroke:#d6c9a8;stroke-width:1;filter:drop-shadow(2px 3px 2px rgba(0,0,0,.35))}
 svg.board .print{fill:#cfc6b2}
+svg.board .card-pin.sighting .paper{fill:#dfe8ea;stroke:#7a8a90;stroke-dasharray:5 3}
+.card.sighting{border-left:4px solid #7a8a90}
+.witness-tag{font-style:italic}
 svg.board .photo.cleared .paper,svg.board .photo.cleared .print{opacity:.55}
 svg.board .photo.cleared .initial{opacity:.4}
 .reaction{font-style:italic;color:#4a4338}
