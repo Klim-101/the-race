@@ -118,6 +118,9 @@ svg.board .paper{fill:#fffdf4;stroke:#d6c9a8;stroke-width:1;filter:drop-shadow(2
 svg.board .print{fill:#cfc6b2}
 svg.board .photo.cleared .paper,svg.board .photo.cleared .print{opacity:.55}
 svg.board .photo.cleared .initial{opacity:.4}
+.reaction{font-style:italic;color:#4a4338}
+.reaction::before{content:"“"}
+.reaction::after{content:"”"}
 .cleared-tag{color:#2f6a3a;font-weight:700}
 .card.suspect.cleared{opacity:.85}
 svg.board .initial{font:700 44px Georgia,serif;fill:#6b6354}

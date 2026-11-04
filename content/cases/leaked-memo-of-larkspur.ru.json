@@ -353,6 +353,17 @@
           "brokenBy": ["memo-metadata", "paper-stock", "deleted-draft"],
           "brokenByInsights": ["memo-origin"]
         }
+      ],
+      "reactions": [
+        {
+          "clueId": "trade-ledger",
+          "text": "У половины города есть тётя с чайной. Не стоит вычитывать семью из подписи."
+        },
+
+        {
+          "clueId": "paper-stock",
+          "text": "Лист из шкафа с канцелярией может взять кто угодно. Я его не запираю."
+        }
       ]
     },
     {

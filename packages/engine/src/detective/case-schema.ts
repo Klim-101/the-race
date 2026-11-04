@@ -208,6 +208,17 @@ export const LieSchema = z.object({
 });
 export type Lie = z.infer<typeof LieSchema>;
 
+/**
+ * What a suspect says when shown a clue that bears on them, in their own voice: a deflection, a half-truth, an
+ * indignant denial. It names no hidden trait and tells nothing the suspect would not say aloud; it is a line to play,
+ * not a fact.
+ */
+export const ReactionSchema = z.object({
+  clueId: EntityIdSchema,
+  text: NarrativeTextSchema,
+});
+export type Reaction = z.infer<typeof ReactionSchema>;
+
 export const SuspectSchema = z.object({
   id: EntityIdSchema,
   /** Where the suspect can be found. Public, unlike the timeline; without it they can be questioned anywhere. */
@@ -217,6 +228,8 @@ export const SuspectSchema = z.object({
   secret: NarrativeTextSchema,
   alibi: NarrativeTextSchema,
   lies: z.array(LieSchema),
+  /** Optional, so that the cases of before it keep their seal; a clue with no reaction keeps the generic line. */
+  reactions: z.array(ReactionSchema).optional(),
 });
 export type Suspect = z.infer<typeof SuspectSchema>;
 

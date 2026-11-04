@@ -349,6 +349,17 @@
           "admission": "Very well, I stepped out of the post office after one in the morning. An old woman may take the air if she likes, and that is all it was.",
           "brokenBy": ["door-log", "hatbox-witness"]
         }
+      ],
+      "reactions": [
+        {
+          "clueId": "feather-trail",
+          "text": "Feathers? In Elmwick in autumn, dear, every coat sheds."
+        },
+
+        {
+          "clueId": "stand-hollow",
+          "text": "I have never looked inside that stand, and I will not start at my age."
+        }
       ]
     },
     {

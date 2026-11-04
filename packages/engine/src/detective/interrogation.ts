@@ -102,7 +102,12 @@ export interface InterrogationOutcome {
   /** `gives-ground`: a lie fell this turn. `holds`: the suspect kept to their story. */
   readonly stance: 'holds' | 'gives-ground';
   readonly alibi: string;
-  readonly presented: readonly { readonly clueId: string; readonly effect: ClueEffect }[];
+  readonly presented: readonly {
+    readonly clueId: string;
+    readonly effect: ClueEffect;
+    /** What the suspect says about the clue, in their own voice, when the case gives them a line for it. */
+    readonly reaction?: string;
+  }[];
   /** The conclusions put to the suspect, with what each did; absent when none was. */
   readonly presentedInsights?: readonly { readonly insightId: string; readonly effect: ClueEffect }[];
   /** How the talks have left the suspect, from the ruleset of talks on. */
@@ -281,10 +286,13 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
       implicates,
       modern,
     );
-  const presented = shown.map((clueId) => ({
-    clueId,
-    effect: effectOfShown('clue', clueId, isAbout(run.case, clueId, suspect.id)),
-  }));
+  // A clue that is not about the suspect gets no line from them, so a reaction never tells that it was about them.
+  const presented = shown.map((clueId) => {
+    const effect = effectOfShown('clue', clueId, isAbout(run.case, clueId, suspect.id));
+    const reaction =
+      effect === 'no-effect' ? undefined : suspect.reactions?.find((line) => line.clueId === clueId)?.text;
+    return { clueId, effect, ...(reaction === undefined ? {} : { reaction }) };
+  });
   const presentedInsights = putInsights.map((insightId) => ({
     insightId,
     effect: effectOfShown(

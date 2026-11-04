@@ -59,6 +59,8 @@ const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
   'witness-saw-the-crime': 18.5,
   'chain-without-deduction': 17.5,
   'culprit-cleared': 17.6,
+  'reaction-not-tied': 17.65,
+  'reaction-names-trait': 17.66,
   'suspect-cannot-be-cleared': 17.7,
   'red-herring-unexplained': 17.8,
   'unearnable-lead': 9.1,

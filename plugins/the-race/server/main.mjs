@@ -34234,6 +34234,10 @@ var LieSchema = external_exports.object({
   /** A clue the suspect hands over, as testimony, when this lie falls. */
   gives: EntityIdSchema.optional()
 });
+var ReactionSchema = external_exports.object({
+  clueId: EntityIdSchema,
+  text: NarrativeTextSchema
+});
 var SuspectSchema = external_exports.object({
   id: EntityIdSchema,
   /** Where the suspect can be found. Public, unlike the timeline; without it they can be questioned anywhere. */
@@ -34242,7 +34246,9 @@ var SuspectSchema = external_exports.object({
   persona: NarrativeTextSchema,
   secret: NarrativeTextSchema,
   alibi: NarrativeTextSchema,
-  lies: external_exports.array(LieSchema)
+  lies: external_exports.array(LieSchema),
+  /** Optional, so that the cases of before it keep their seal; a clue with no reaction keeps the generic line. */
+  reactions: external_exports.array(ReactionSchema).optional()
 });
 var WitnessSchema = external_exports.object({
   id: EntityIdSchema,
@@ -35962,6 +35968,8 @@ var RunHistorySchema = external_exports.object({
       suspectId: EntityIdSchema,
       clueId: EntityIdSchema,
       effect: external_exports.enum(SHOWN_EFFECTS),
+      /** What the suspect said about the clue, when the case gives them a line for it. */
+      reaction: external_exports.string().min(1).optional(),
       turn: external_exports.int().min(1)
     })
   ),
@@ -36302,7 +36310,13 @@ function recordShown(run, suspectId, shown2) {
       ...run.history,
       shown: [
         ...run.history.shown,
-        ...shown2.map(({ clueId, effect }) => ({ suspectId, clueId, effect, turn: run.turn + 1 }))
+        ...shown2.map(({ clueId, effect, reaction }) => ({
+          suspectId,
+          clueId,
+          effect,
+          ...reaction === void 0 ? {} : { reaction },
+          turn: run.turn + 1
+        }))
       ]
     }
   };
@@ -37155,10 +37169,11 @@ function resolveInterrogate(run, intent, rng) {
     implicates,
     modern
   );
-  const presented = shown2.map((clueId) => ({
-    clueId,
-    effect: effectOfShown("clue", clueId, isAbout(run.case, clueId, suspect.id))
-  }));
+  const presented = shown2.map((clueId) => {
+    const effect = effectOfShown("clue", clueId, isAbout(run.case, clueId, suspect.id));
+    const reaction = effect === "no-effect" ? void 0 : suspect.reactions?.find((line) => line.clueId === clueId)?.text;
+    return { clueId, effect, ...reaction === void 0 ? {} : { reaction } };
+  });
   const presentedInsights = putInsights.map((insightId) => ({
     insightId,
     effect: effectOfShown(
@@ -38213,7 +38228,9 @@ var OutcomeSchema = external_exports.union([
     succeeded: external_exports.boolean(),
     stance: external_exports.enum(["holds", "gives-ground"]),
     alibi: external_exports.string(),
-    presented: external_exports.array(external_exports.object({ clueId: EntityIdSchema, effect: external_exports.enum(SHOWN_EFFECTS) })),
+    presented: external_exports.array(
+      external_exports.object({ clueId: EntityIdSchema, effect: external_exports.enum(SHOWN_EFFECTS), reaction: external_exports.string().optional() })
+    ),
     presentedInsights: external_exports.array(external_exports.object({ insightId: EntityIdSchema, effect: external_exports.enum(SHOWN_EFFECTS) })).optional(),
     mood: external_exports.enum(SUSPECT_MOODS).optional(),
     closed: external_exports.literal(true).optional(),
@@ -39433,6 +39450,36 @@ function checkLinkable(detectiveCase) {
   });
 }
 
+// packages/engine/src/detective/checks/reactions.ts
+function checkReactions(detectiveCase, traits) {
+  const cluesById = new Map(detectiveCase.clues.map((clue) => [clue.id, clue]));
+  return detectiveCase.suspects.flatMap(
+    (suspect, suspectIndex) => (suspect.reactions ?? []).flatMap((reaction, reactionIndex) => {
+      const path = `suspects[${String(suspectIndex)}].reactions[${String(reactionIndex)}]`;
+      const clue = cluesById.get(reaction.clueId);
+      const tied = clue !== void 0 && [...clue.about ?? [], ...clue.pointsTo].includes(suspect.id);
+      const text = reaction.text.toLowerCase();
+      const named2 = traits.find(({ id }) => text.includes(id.toLowerCase()));
+      return [
+        ...tied ? [] : [
+          {
+            code: "reaction-not-tied",
+            path,
+            message: `Clue "${reaction.clueId}" is not about "${suspect.id}", so they have no line for it: list them in the clue's "about", or drop the reaction.`
+          }
+        ],
+        ...named2 === void 0 ? [] : [
+          {
+            code: "reaction-names-trait",
+            path: `${path}.text`,
+            message: "A reaction may not name a trait of the hero; write what the suspect says and nothing about the hero."
+          }
+        ]
+      ];
+    })
+  );
+}
+
 // packages/engine/src/detective/checks/witnesses.ts
 var MINUTES_IN_DAY2 = 1440;
 function checkWitnesses(detectiveCase) {
@@ -39929,6 +39976,14 @@ function checkReferencesResolve(detectiveCase) {
     if (suspect.locationId !== void 0) {
       expect(locationIds, "location", suspect.locationId, `suspects[${String(suspectIndex)}].locationId`);
     }
+    (suspect.reactions ?? []).forEach((reaction, reactionIndex) => {
+      expect(
+        clueIds,
+        "clue",
+        reaction.clueId,
+        `suspects[${String(suspectIndex)}].reactions[${String(reactionIndex)}].clueId`
+      );
+    });
     suspect.lies.forEach((lie, lieIndex) => {
       lie.brokenBy.forEach((id, clueIndex) => {
         const path = `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}].brokenBy[${String(clueIndex)}]`;
@@ -40279,6 +40334,9 @@ function collectNarrativeTexts(detectiveCase) {
       ...suspect.lies.map(
         (lie, lieIndex) => at3(`suspects[${String(index)}].lies[${String(lieIndex)}].statement`, lie.statement)
       ),
+      ...(suspect.reactions ?? []).map(
+        (reaction, reactionIndex) => at3(`suspects[${String(index)}].reactions[${String(reactionIndex)}].text`, reaction.text)
+      ),
       ...suspect.lies.flatMap(
         (lie, lieIndex) => lie.admission === void 0 ? [] : [at3(`suspects[${String(index)}].lies[${String(lieIndex)}].admission`, lie.admission)]
       )
@@ -40414,6 +40472,7 @@ function validateCase(input2, context2) {
     ...checkWitnesses(detectiveCase),
     ...context2.requireLinkable ? checkLinkable(detectiveCase) : [],
     ...checkClearing(detectiveCase, obtainable, context2.requireClearing ?? false),
+    ...checkReactions(detectiveCase, context2.traits),
     ...checkWorldEvents(detectiveCase, context2.hero, context2.traits),
     ...checkRandomEvents(
       detectiveCase,
@@ -53151,12 +53210,12 @@ function shown(view, suspect, text) {
   const entries = view.history.shown.filter(({ suspectId }) => suspectId === suspect.id);
   if (entries.length === 0) return `<p class="empty">${e(text.statements.noneShown)}</p>`;
   return `<p class="chips">${entries.map(
-    ({ clueId, effect, turn }) => chip(
+    ({ clueId, effect, turn, reaction }) => chip(
       view,
       clueId,
       `${text.corkboard.effects[effect]} \xB7 ${text.corkboard.step.replace("{n}", String(turn))}`,
       effect
-    )
+    ) + (reaction === void 0 ? "" : ` <span class="reaction">${e(reaction)}</span>`)
   ).join(" ")}</p>`;
 }
 function renderSuspects(view, board, text, fresh) {
@@ -53278,6 +53337,9 @@ svg.board .paper{fill:#fffdf4;stroke:#d6c9a8;stroke-width:1;filter:drop-shadow(2
 svg.board .print{fill:#cfc6b2}
 svg.board .photo.cleared .paper,svg.board .photo.cleared .print{opacity:.55}
 svg.board .photo.cleared .initial{opacity:.4}
+.reaction{font-style:italic;color:#4a4338}
+.reaction::before{content:"\u201C"}
+.reaction::after{content:"\u201D"}
 .cleared-tag{color:#2f6a3a;font-weight:700}
 .card.suspect.cleared{opacity:.85}
 svg.board .initial{font:700 44px Georgia,serif;fill:#6b6354}
@@ -54427,6 +54489,8 @@ var ISSUE_PRIORITY = {
   "witness-saw-the-crime": 18.5,
   "chain-without-deduction": 17.5,
   "culprit-cleared": 17.6,
+  "reaction-not-tied": 17.65,
+  "reaction-names-trait": 17.66,
   "suspect-cannot-be-cleared": 17.7,
   "red-herring-unexplained": 17.8,
   "unearnable-lead": 9.1,
