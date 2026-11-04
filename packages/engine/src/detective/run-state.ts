@@ -504,7 +504,21 @@ export function wearTool(run: DetectiveRunState, gearId: GearId, blundered: bool
   return { ...run, kit: run.kit.map((piece) => (piece.id === gearId ? next : piece)) };
 }
 
+/** Puts a clue in the hero's hands, found in the place it lies in. */
 export function findClue(run: DetectiveRunState, clueId: string): DetectiveRunState {
+  return takeClue(run, clueId, undefined);
+}
+
+/**
+ * Puts a clue in the hero's hands that a suspect or a witness told. It lies where the thing is, which the hero may not
+ * have seen, but it was found where the talk was held. A separate function, because `findClue` is passed to `reduce`,
+ * which would hand it an index as the place.
+ */
+export function findToldClue(run: DetectiveRunState, clueId: string): DetectiveRunState {
+  return takeClue(run, clueId, run.locationId);
+}
+
+function takeClue(run: DetectiveRunState, clueId: string, heardAt: string | undefined): DetectiveRunState {
   assertActive(run);
   requireId(
     'clue',
@@ -512,9 +526,10 @@ export function findClue(run: DetectiveRunState, clueId: string): DetectiveRunSt
     run.case.clues.map(({ id }) => id),
   );
   if (run.foundClueIds.includes(clueId)) return run;
-  // The place is the clue's own, public once the clue is found; `requireId` has proved there is one such clue.
+  // The place is the clue's own, public once the clue is found, unless it was told; `requireId` has proved there is
+  // one such clue.
   const found = run.case.clues.flatMap(({ id, locationId }) =>
-    id === clueId ? [{ clueId, locationId, turn: run.turn + 1 }] : [],
+    id === clueId ? [{ clueId, locationId: heardAt ?? locationId, turn: run.turn + 1 }] : [],
   );
   const withClue: DetectiveRunState = {
     ...run,

@@ -3,7 +3,7 @@
 
 import { SEARCH_BY_PART_RULESET_VERSION } from './search-parts.js';
 import { CLAIMS_RULESET_VERSION, followUpClaims, openingClaims } from './claims.js';
-import { findClue, grantLeads, recordShown, setSuspectMood, type ShownEffect } from './run-state.js';
+import { findToldClue, grantLeads, recordShown, setSuspectMood, type ShownEffect } from './run-state.js';
 import {
   HOSTILE_MINUTES,
   MAX_MOOD_STEP,
@@ -343,7 +343,7 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
   ].filter((clueId) => !run.foundClueIds.includes(clueId));
   const withLies: DetectiveRunState = recordShown(
     {
-      ...told.reduce(findClue, run),
+      ...told.reduce(findToldClue, run),
       concededLieIds: [...run.concededLieIds, ...fallen.map(({ id }) => id)],
       claims: [
         ...run.claims,
