@@ -124,6 +124,21 @@ describe('a lie that follows another', () => {
     expect(second.run.foundClueIds).toContain('oven-receipt');
   });
 
+  it('records the clue as found where the talk was held, not where the thing lies', () => {
+    const first = talk(atBaker(buildAdmissionCase()), ['cart-tracks'], dice(15));
+    const second = talk(first.run, ['flour-crumbs'], dice(15));
+
+    const clue = second.run.case.clues.find(({ id }) => id === 'oven-receipt');
+    expect(clue?.locationId).toBe('mayor-office');
+    expect(second.run.history.finds.find(({ clueId }) => clueId === 'oven-receipt')).toMatchObject({
+      locationId: 'cheese-stall',
+    });
+    // A clue found on the spot is still recorded in its own place.
+    expect(second.run.history.finds.find(({ clueId }) => clueId === 'cart-tracks')?.locationId).toBe(
+      second.run.case.clues.find(({ id }) => id === 'cart-tracks')?.locationId,
+    );
+  });
+
   it('hands its testimony over even when the roll fails and only this lie falls', () => {
     const first = talk(atBaker(buildAdmissionCase()), ['cart-tracks'], dice(15));
 
