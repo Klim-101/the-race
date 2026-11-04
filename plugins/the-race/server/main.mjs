@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 22;
+var RULESET_VERSION = 23;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -34097,6 +34097,236 @@ function migrateRun(raw, registry2 = RUN_MIGRATIONS, currentVersion = RUN_SCHEMA
   return data;
 }
 
+// packages/engine/src/world/climate.ts
+var CLIMATE_ZONES = [
+  "polar",
+  "subarctic",
+  "oceanic",
+  "continental",
+  "mediterranean",
+  "subtropical",
+  "tropical-wet",
+  "tropical-dry",
+  "arid",
+  "highland"
+];
+var ClimateZoneSchema = external_exports.enum(CLIMATE_ZONES);
+var SEASONS = ["winter", "spring", "summer", "autumn", "dry-season", "wet-season"];
+var SeasonSchema = external_exports.enum(SEASONS);
+var WEATHERS = [
+  "frost",
+  "snow",
+  "cold-rain",
+  "mild",
+  "warm",
+  "hot",
+  "humid",
+  "storms",
+  "dry-heat",
+  "windy",
+  "fog"
+];
+var WeatherSchema = external_exports.enum(WEATHERS);
+var HAZARDS = [
+  "blizzard",
+  "ice",
+  "heavy-rain",
+  "heatwave",
+  "drought",
+  "gale",
+  "fog",
+  "dust-wind"
+];
+var HazardSchema = external_exports.enum(HAZARDS);
+var uniqueBy = (items, key) => new Set(items.map(key)).size === items.length;
+var ClimateProfileSchema = external_exports.strictObject({
+  zone: ClimateZoneSchema,
+  seasons: external_exports.array(external_exports.strictObject({ id: SeasonSchema, weather: WeatherSchema })).min(2).max(4),
+  hazards: external_exports.array(HazardSchema).max(3)
+}).refine(({ seasons }) => uniqueBy(seasons, ({ id }) => id), { message: "A season is listed once." }).refine(({ hazards }) => uniqueBy(hazards, (hazard) => hazard), { message: "A hazard is listed once." });
+var season = (id, weather) => ({ id, weather });
+var ZONE_PROFILES = {
+  polar: {
+    zone: "polar",
+    seasons: [season("winter", "frost"), season("summer", "cold-rain")],
+    hazards: ["blizzard", "ice", "gale"]
+  },
+  subarctic: {
+    zone: "subarctic",
+    seasons: [season("winter", "snow"), season("spring", "cold-rain"), season("summer", "mild")],
+    hazards: ["blizzard", "ice"]
+  },
+  oceanic: {
+    zone: "oceanic",
+    seasons: [season("winter", "cold-rain"), season("summer", "mild"), season("autumn", "windy")],
+    hazards: ["gale", "fog"]
+  },
+  continental: {
+    zone: "continental",
+    seasons: [season("winter", "snow"), season("spring", "cold-rain"), season("summer", "warm")],
+    hazards: ["blizzard", "ice", "heatwave"]
+  },
+  mediterranean: {
+    zone: "mediterranean",
+    seasons: [season("winter", "cold-rain"), season("summer", "dry-heat")],
+    hazards: ["heatwave", "drought"]
+  },
+  subtropical: {
+    zone: "subtropical",
+    seasons: [season("winter", "mild"), season("summer", "humid"), season("autumn", "storms")],
+    hazards: ["heavy-rain", "heatwave"]
+  },
+  "tropical-wet": {
+    zone: "tropical-wet",
+    seasons: [season("wet-season", "storms"), season("dry-season", "humid")],
+    hazards: ["heavy-rain", "gale"]
+  },
+  "tropical-dry": {
+    zone: "tropical-dry",
+    seasons: [season("dry-season", "hot"), season("wet-season", "storms")],
+    hazards: ["drought", "heavy-rain"]
+  },
+  arid: {
+    zone: "arid",
+    seasons: [season("winter", "mild"), season("summer", "dry-heat")],
+    hazards: ["heatwave", "dust-wind", "drought"]
+  },
+  highland: {
+    zone: "highland",
+    seasons: [season("winter", "snow"), season("summer", "mild"), season("autumn", "fog")],
+    hazards: ["ice", "fog"]
+  }
+};
+var COUNTRY_ZONES = [
+  {
+    zone: "polar",
+    names: [
+      ["Greenland", "\u0413\u0440\u0435\u043D\u043B\u0430\u043D\u0434\u0438\u044F"],
+      ["Antarctica", "\u0410\u043D\u0442\u0430\u0440\u043A\u0442\u0438\u0434\u0430"]
+    ]
+  },
+  {
+    zone: "subarctic",
+    names: [
+      ["Norway", "\u041D\u043E\u0440\u0432\u0435\u0433\u0438\u044F"],
+      ["Sweden", "\u0428\u0432\u0435\u0446\u0438\u044F"],
+      ["Finland", "\u0424\u0438\u043D\u043B\u044F\u043D\u0434\u0438\u044F"],
+      ["Iceland", "\u0418\u0441\u043B\u0430\u043D\u0434\u0438\u044F"],
+      ["Canada", "\u041A\u0430\u043D\u0430\u0434\u0430"]
+    ]
+  },
+  {
+    zone: "oceanic",
+    names: [
+      ["Germany", "\u0413\u0435\u0440\u043C\u0430\u043D\u0438\u044F"],
+      ["France", "\u0424\u0440\u0430\u043D\u0446\u0438\u044F"],
+      ["United Kingdom", "UK", "Britain", "\u0412\u0435\u043B\u0438\u043A\u043E\u0431\u0440\u0438\u0442\u0430\u043D\u0438\u044F"],
+      ["Ireland", "\u0418\u0440\u043B\u0430\u043D\u0434\u0438\u044F"],
+      ["Netherlands", "\u041D\u0438\u0434\u0435\u0440\u043B\u0430\u043D\u0434\u044B", "\u0413\u043E\u043B\u043B\u0430\u043D\u0434\u0438\u044F"],
+      ["Belgium", "\u0411\u0435\u043B\u044C\u0433\u0438\u044F"],
+      ["Denmark", "\u0414\u0430\u043D\u0438\u044F"],
+      ["New Zealand", "\u041D\u043E\u0432\u0430\u044F \u0417\u0435\u043B\u0430\u043D\u0434\u0438\u044F"],
+      ["Argentina", "\u0410\u0440\u0433\u0435\u043D\u0442\u0438\u043D\u0430"],
+      ["Japan", "\u042F\u043F\u043E\u043D\u0438\u044F"]
+    ]
+  },
+  {
+    zone: "continental",
+    names: [
+      ["Russia", "\u0420\u043E\u0441\u0441\u0438\u044F", "\u0420\u0424"],
+      ["Ukraine", "\u0423\u043A\u0440\u0430\u0438\u043D\u0430"],
+      ["Belarus", "\u0411\u0435\u043B\u0430\u0440\u0443\u0441\u044C", "\u0411\u0435\u043B\u043E\u0440\u0443\u0441\u0441\u0438\u044F"],
+      ["Poland", "\u041F\u043E\u043B\u044C\u0448\u0430"],
+      ["United States", "USA", "US", "\u0421\u0428\u0410", "\u0421\u043E\u0435\u0434\u0438\u043D\u0451\u043D\u043D\u044B\u0435 \u0428\u0442\u0430\u0442\u044B"],
+      ["China", "\u041A\u0438\u0442\u0430\u0439"],
+      ["South Korea", "\u042E\u0436\u043D\u0430\u044F \u041A\u043E\u0440\u0435\u044F"],
+      ["Kazakhstan", "\u041A\u0430\u0437\u0430\u0445\u0441\u0442\u0430\u043D"],
+      ["Mongolia", "\u041C\u043E\u043D\u0433\u043E\u043B\u0438\u044F"],
+      ["Czechia", "Czech Republic", "\u0427\u0435\u0445\u0438\u044F"]
+    ]
+  },
+  {
+    zone: "mediterranean",
+    names: [
+      ["Spain", "\u0418\u0441\u043F\u0430\u043D\u0438\u044F"],
+      ["Italy", "\u0418\u0442\u0430\u043B\u0438\u044F"],
+      ["Greece", "\u0413\u0440\u0435\u0446\u0438\u044F"],
+      ["Portugal", "\u041F\u043E\u0440\u0442\u0443\u0433\u0430\u043B\u0438\u044F"],
+      ["Turkey", "\u0422\u0443\u0440\u0446\u0438\u044F"],
+      ["Israel", "\u0418\u0437\u0440\u0430\u0438\u043B\u044C"],
+      ["Chile", "\u0427\u0438\u043B\u0438"],
+      ["Morocco", "\u041C\u0430\u0440\u043E\u043A\u043A\u043E"]
+    ]
+  },
+  {
+    zone: "subtropical",
+    names: [
+      ["India", "\u0418\u043D\u0434\u0438\u044F"],
+      ["South Africa", "\u042E\u0410\u0420", "\u042E\u0436\u043D\u0430\u044F \u0410\u0444\u0440\u0438\u043A\u0430"],
+      ["Taiwan", "\u0422\u0430\u0439\u0432\u0430\u043D\u044C"]
+    ]
+  },
+  {
+    zone: "tropical-wet",
+    names: [
+      ["Brazil", "\u0411\u0440\u0430\u0437\u0438\u043B\u0438\u044F"],
+      ["Colombia", "\u041A\u043E\u043B\u0443\u043C\u0431\u0438\u044F"],
+      ["Indonesia", "\u0418\u043D\u0434\u043E\u043D\u0435\u0437\u0438\u044F"],
+      ["Philippines", "\u0424\u0438\u043B\u0438\u043F\u043F\u0438\u043D\u044B"],
+      ["Thailand", "\u0422\u0430\u0438\u043B\u0430\u043D\u0434"],
+      ["Vietnam", "\u0412\u044C\u0435\u0442\u043D\u0430\u043C"],
+      ["Nigeria", "\u041D\u0438\u0433\u0435\u0440\u0438\u044F"]
+    ]
+  },
+  {
+    zone: "tropical-dry",
+    names: [
+      ["Mexico", "\u041C\u0435\u043A\u0441\u0438\u043A\u0430"],
+      ["Venezuela", "\u0412\u0435\u043D\u0435\u0441\u0443\u044D\u043B\u0430"]
+    ]
+  },
+  {
+    zone: "arid",
+    names: [
+      ["Egypt", "\u0415\u0433\u0438\u043F\u0435\u0442"],
+      ["Saudi Arabia", "\u0421\u0430\u0443\u0434\u043E\u0432\u0441\u043A\u0430\u044F \u0410\u0440\u0430\u0432\u0438\u044F"],
+      ["Iran", "\u0418\u0440\u0430\u043D"],
+      ["Iraq", "\u0418\u0440\u0430\u043A"],
+      ["Algeria", "\u0410\u043B\u0436\u0438\u0440"],
+      ["Australia", "\u0410\u0432\u0441\u0442\u0440\u0430\u043B\u0438\u044F"]
+    ]
+  },
+  {
+    zone: "highland",
+    names: [
+      ["Switzerland", "\u0428\u0432\u0435\u0439\u0446\u0430\u0440\u0438\u044F"],
+      ["Austria", "\u0410\u0432\u0441\u0442\u0440\u0438\u044F"],
+      ["Nepal", "\u041D\u0435\u043F\u0430\u043B"],
+      ["Peru", "\u041F\u0435\u0440\u0443"],
+      ["Kenya", "\u041A\u0435\u043D\u0438\u044F"],
+      ["Ethiopia", "\u042D\u0444\u0438\u043E\u043F\u0438\u044F"],
+      ["Georgia", "\u0413\u0440\u0443\u0437\u0438\u044F"],
+      ["Armenia", "\u0410\u0440\u043C\u0435\u043D\u0438\u044F"]
+    ]
+  }
+];
+var REGION_ZONES = {
+  neutral: "oceanic",
+  north: "subarctic",
+  south: "mediterranean",
+  east: "continental",
+  west: "oceanic",
+  island: "tropical-wet"
+};
+var fold = (name) => name.normalize("NFKC").toLowerCase().replaceAll("\u0451", "\u0435").trim();
+function climateFor(real, region) {
+  const wanted = new Set(real.map(fold));
+  const found = COUNTRY_ZONES.find(
+    ({ names }) => names.some((aliases) => aliases.some((n) => wanted.has(fold(n))))
+  );
+  return ClimateProfileSchema.parse(ZONE_PROFILES[found?.zone ?? REGION_ZONES[region]]);
+}
+
 // packages/engine/src/detective/case-schema.ts
 var CASE_SCHEMA_VERSION = 1;
 var CRIME_TYPES = [
@@ -34308,7 +34538,12 @@ var WorldEventSchema = external_exports.object({
   /** What the player is told; it must not give away the truth. */
   description: NarrativeTextSchema,
   /** Absent for an event that is only news. */
-  effect: WorldEventEffectSchema.optional()
+  effect: WorldEventEffectSchema.optional(),
+  /**
+   * The weather of that day, when the event is about it: a snowfall or an ice storm is the weather the hero walks in,
+   * not only a line of news. Absent for an event that says nothing of the weather.
+   */
+  weather: WeatherSchema.optional()
 });
 var RANDOM_EVENT_CONDITIONS = ["shaken", "exhausted"];
 var MAX_RANDOM_EVENT_MINUTES = 120;
@@ -34884,12 +35119,19 @@ var WEATHER_MINUTES = {
   frost: 10,
   storms: 15
 };
+var EVENT_WEATHER_RULESET_VERSION = 23;
 var isActive = (run) => run.rulesetVersion >= ROAD_RULESET_VERSION;
 function at2(items, index) {
   return items[index];
 }
 function weatherOfDay(run, day) {
   if (!isActive(run) || run.setting === null) return void 0;
+  if (run.rulesetVersion >= EVENT_WEATHER_RULESET_VERSION) {
+    const named2 = run.case.clock.worldEvents.find(
+      (event) => event.day === day && event.weather !== void 0
+    );
+    if (named2?.weather !== void 0) return named2.weather;
+  }
   const { seasons } = run.setting.climate;
   const index = createRng(`${run.seed}:season`).roll(seasons.length) - 1;
   const roll2 = createRng(`${run.seed}:weather:${String(day)}`).roll(10);
@@ -34975,236 +35217,6 @@ function validateSeeds(seeds, context2) {
     }
     return issues;
   });
-}
-
-// packages/engine/src/world/climate.ts
-var CLIMATE_ZONES = [
-  "polar",
-  "subarctic",
-  "oceanic",
-  "continental",
-  "mediterranean",
-  "subtropical",
-  "tropical-wet",
-  "tropical-dry",
-  "arid",
-  "highland"
-];
-var ClimateZoneSchema = external_exports.enum(CLIMATE_ZONES);
-var SEASONS = ["winter", "spring", "summer", "autumn", "dry-season", "wet-season"];
-var SeasonSchema = external_exports.enum(SEASONS);
-var WEATHERS = [
-  "frost",
-  "snow",
-  "cold-rain",
-  "mild",
-  "warm",
-  "hot",
-  "humid",
-  "storms",
-  "dry-heat",
-  "windy",
-  "fog"
-];
-var WeatherSchema = external_exports.enum(WEATHERS);
-var HAZARDS = [
-  "blizzard",
-  "ice",
-  "heavy-rain",
-  "heatwave",
-  "drought",
-  "gale",
-  "fog",
-  "dust-wind"
-];
-var HazardSchema = external_exports.enum(HAZARDS);
-var uniqueBy = (items, key) => new Set(items.map(key)).size === items.length;
-var ClimateProfileSchema = external_exports.strictObject({
-  zone: ClimateZoneSchema,
-  seasons: external_exports.array(external_exports.strictObject({ id: SeasonSchema, weather: WeatherSchema })).min(2).max(4),
-  hazards: external_exports.array(HazardSchema).max(3)
-}).refine(({ seasons }) => uniqueBy(seasons, ({ id }) => id), { message: "A season is listed once." }).refine(({ hazards }) => uniqueBy(hazards, (hazard) => hazard), { message: "A hazard is listed once." });
-var season = (id, weather) => ({ id, weather });
-var ZONE_PROFILES = {
-  polar: {
-    zone: "polar",
-    seasons: [season("winter", "frost"), season("summer", "cold-rain")],
-    hazards: ["blizzard", "ice", "gale"]
-  },
-  subarctic: {
-    zone: "subarctic",
-    seasons: [season("winter", "snow"), season("spring", "cold-rain"), season("summer", "mild")],
-    hazards: ["blizzard", "ice"]
-  },
-  oceanic: {
-    zone: "oceanic",
-    seasons: [season("winter", "cold-rain"), season("summer", "mild"), season("autumn", "windy")],
-    hazards: ["gale", "fog"]
-  },
-  continental: {
-    zone: "continental",
-    seasons: [season("winter", "snow"), season("spring", "cold-rain"), season("summer", "warm")],
-    hazards: ["blizzard", "ice", "heatwave"]
-  },
-  mediterranean: {
-    zone: "mediterranean",
-    seasons: [season("winter", "cold-rain"), season("summer", "dry-heat")],
-    hazards: ["heatwave", "drought"]
-  },
-  subtropical: {
-    zone: "subtropical",
-    seasons: [season("winter", "mild"), season("summer", "humid"), season("autumn", "storms")],
-    hazards: ["heavy-rain", "heatwave"]
-  },
-  "tropical-wet": {
-    zone: "tropical-wet",
-    seasons: [season("wet-season", "storms"), season("dry-season", "humid")],
-    hazards: ["heavy-rain", "gale"]
-  },
-  "tropical-dry": {
-    zone: "tropical-dry",
-    seasons: [season("dry-season", "hot"), season("wet-season", "storms")],
-    hazards: ["drought", "heavy-rain"]
-  },
-  arid: {
-    zone: "arid",
-    seasons: [season("winter", "mild"), season("summer", "dry-heat")],
-    hazards: ["heatwave", "dust-wind", "drought"]
-  },
-  highland: {
-    zone: "highland",
-    seasons: [season("winter", "snow"), season("summer", "mild"), season("autumn", "fog")],
-    hazards: ["ice", "fog"]
-  }
-};
-var COUNTRY_ZONES = [
-  {
-    zone: "polar",
-    names: [
-      ["Greenland", "\u0413\u0440\u0435\u043D\u043B\u0430\u043D\u0434\u0438\u044F"],
-      ["Antarctica", "\u0410\u043D\u0442\u0430\u0440\u043A\u0442\u0438\u0434\u0430"]
-    ]
-  },
-  {
-    zone: "subarctic",
-    names: [
-      ["Norway", "\u041D\u043E\u0440\u0432\u0435\u0433\u0438\u044F"],
-      ["Sweden", "\u0428\u0432\u0435\u0446\u0438\u044F"],
-      ["Finland", "\u0424\u0438\u043D\u043B\u044F\u043D\u0434\u0438\u044F"],
-      ["Iceland", "\u0418\u0441\u043B\u0430\u043D\u0434\u0438\u044F"],
-      ["Canada", "\u041A\u0430\u043D\u0430\u0434\u0430"]
-    ]
-  },
-  {
-    zone: "oceanic",
-    names: [
-      ["Germany", "\u0413\u0435\u0440\u043C\u0430\u043D\u0438\u044F"],
-      ["France", "\u0424\u0440\u0430\u043D\u0446\u0438\u044F"],
-      ["United Kingdom", "UK", "Britain", "\u0412\u0435\u043B\u0438\u043A\u043E\u0431\u0440\u0438\u0442\u0430\u043D\u0438\u044F"],
-      ["Ireland", "\u0418\u0440\u043B\u0430\u043D\u0434\u0438\u044F"],
-      ["Netherlands", "\u041D\u0438\u0434\u0435\u0440\u043B\u0430\u043D\u0434\u044B", "\u0413\u043E\u043B\u043B\u0430\u043D\u0434\u0438\u044F"],
-      ["Belgium", "\u0411\u0435\u043B\u044C\u0433\u0438\u044F"],
-      ["Denmark", "\u0414\u0430\u043D\u0438\u044F"],
-      ["New Zealand", "\u041D\u043E\u0432\u0430\u044F \u0417\u0435\u043B\u0430\u043D\u0434\u0438\u044F"],
-      ["Argentina", "\u0410\u0440\u0433\u0435\u043D\u0442\u0438\u043D\u0430"],
-      ["Japan", "\u042F\u043F\u043E\u043D\u0438\u044F"]
-    ]
-  },
-  {
-    zone: "continental",
-    names: [
-      ["Russia", "\u0420\u043E\u0441\u0441\u0438\u044F", "\u0420\u0424"],
-      ["Ukraine", "\u0423\u043A\u0440\u0430\u0438\u043D\u0430"],
-      ["Belarus", "\u0411\u0435\u043B\u0430\u0440\u0443\u0441\u044C", "\u0411\u0435\u043B\u043E\u0440\u0443\u0441\u0441\u0438\u044F"],
-      ["Poland", "\u041F\u043E\u043B\u044C\u0448\u0430"],
-      ["United States", "USA", "US", "\u0421\u0428\u0410", "\u0421\u043E\u0435\u0434\u0438\u043D\u0451\u043D\u043D\u044B\u0435 \u0428\u0442\u0430\u0442\u044B"],
-      ["China", "\u041A\u0438\u0442\u0430\u0439"],
-      ["South Korea", "\u042E\u0436\u043D\u0430\u044F \u041A\u043E\u0440\u0435\u044F"],
-      ["Kazakhstan", "\u041A\u0430\u0437\u0430\u0445\u0441\u0442\u0430\u043D"],
-      ["Mongolia", "\u041C\u043E\u043D\u0433\u043E\u043B\u0438\u044F"],
-      ["Czechia", "Czech Republic", "\u0427\u0435\u0445\u0438\u044F"]
-    ]
-  },
-  {
-    zone: "mediterranean",
-    names: [
-      ["Spain", "\u0418\u0441\u043F\u0430\u043D\u0438\u044F"],
-      ["Italy", "\u0418\u0442\u0430\u043B\u0438\u044F"],
-      ["Greece", "\u0413\u0440\u0435\u0446\u0438\u044F"],
-      ["Portugal", "\u041F\u043E\u0440\u0442\u0443\u0433\u0430\u043B\u0438\u044F"],
-      ["Turkey", "\u0422\u0443\u0440\u0446\u0438\u044F"],
-      ["Israel", "\u0418\u0437\u0440\u0430\u0438\u043B\u044C"],
-      ["Chile", "\u0427\u0438\u043B\u0438"],
-      ["Morocco", "\u041C\u0430\u0440\u043E\u043A\u043A\u043E"]
-    ]
-  },
-  {
-    zone: "subtropical",
-    names: [
-      ["India", "\u0418\u043D\u0434\u0438\u044F"],
-      ["South Africa", "\u042E\u0410\u0420", "\u042E\u0436\u043D\u0430\u044F \u0410\u0444\u0440\u0438\u043A\u0430"],
-      ["Taiwan", "\u0422\u0430\u0439\u0432\u0430\u043D\u044C"]
-    ]
-  },
-  {
-    zone: "tropical-wet",
-    names: [
-      ["Brazil", "\u0411\u0440\u0430\u0437\u0438\u043B\u0438\u044F"],
-      ["Colombia", "\u041A\u043E\u043B\u0443\u043C\u0431\u0438\u044F"],
-      ["Indonesia", "\u0418\u043D\u0434\u043E\u043D\u0435\u0437\u0438\u044F"],
-      ["Philippines", "\u0424\u0438\u043B\u0438\u043F\u043F\u0438\u043D\u044B"],
-      ["Thailand", "\u0422\u0430\u0438\u043B\u0430\u043D\u0434"],
-      ["Vietnam", "\u0412\u044C\u0435\u0442\u043D\u0430\u043C"],
-      ["Nigeria", "\u041D\u0438\u0433\u0435\u0440\u0438\u044F"]
-    ]
-  },
-  {
-    zone: "tropical-dry",
-    names: [
-      ["Mexico", "\u041C\u0435\u043A\u0441\u0438\u043A\u0430"],
-      ["Venezuela", "\u0412\u0435\u043D\u0435\u0441\u0443\u044D\u043B\u0430"]
-    ]
-  },
-  {
-    zone: "arid",
-    names: [
-      ["Egypt", "\u0415\u0433\u0438\u043F\u0435\u0442"],
-      ["Saudi Arabia", "\u0421\u0430\u0443\u0434\u043E\u0432\u0441\u043A\u0430\u044F \u0410\u0440\u0430\u0432\u0438\u044F"],
-      ["Iran", "\u0418\u0440\u0430\u043D"],
-      ["Iraq", "\u0418\u0440\u0430\u043A"],
-      ["Algeria", "\u0410\u043B\u0436\u0438\u0440"],
-      ["Australia", "\u0410\u0432\u0441\u0442\u0440\u0430\u043B\u0438\u044F"]
-    ]
-  },
-  {
-    zone: "highland",
-    names: [
-      ["Switzerland", "\u0428\u0432\u0435\u0439\u0446\u0430\u0440\u0438\u044F"],
-      ["Austria", "\u0410\u0432\u0441\u0442\u0440\u0438\u044F"],
-      ["Nepal", "\u041D\u0435\u043F\u0430\u043B"],
-      ["Peru", "\u041F\u0435\u0440\u0443"],
-      ["Kenya", "\u041A\u0435\u043D\u0438\u044F"],
-      ["Ethiopia", "\u042D\u0444\u0438\u043E\u043F\u0438\u044F"],
-      ["Georgia", "\u0413\u0440\u0443\u0437\u0438\u044F"],
-      ["Armenia", "\u0410\u0440\u043C\u0435\u043D\u0438\u044F"]
-    ]
-  }
-];
-var REGION_ZONES = {
-  neutral: "oceanic",
-  north: "subarctic",
-  south: "mediterranean",
-  east: "continental",
-  west: "oceanic",
-  island: "tropical-wet"
-};
-var fold = (name) => name.normalize("NFKC").toLowerCase().replaceAll("\u0451", "\u0435").trim();
-function climateFor(real, region) {
-  const wanted = new Set(real.map(fold));
-  const found = COUNTRY_ZONES.find(
-    ({ names }) => names.some((aliases) => aliases.some((n) => wanted.has(fold(n))))
-  );
-  return ClimateProfileSchema.parse(ZONE_PROFILES[found?.zone ?? REGION_ZONES[region]]);
 }
 
 // packages/engine/src/text/script.ts

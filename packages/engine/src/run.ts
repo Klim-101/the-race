@@ -27,8 +27,9 @@ export const RUN_SCHEMA_VERSION = 2;
  * 20: a link may hold one clue more than its conclusion needs and still give it (see `verdict.ts`).
  * 21: a suspect makes claims at the first talk that the hero can see, and later ones as lies fall (see `claims.ts`).
  * 22: what a witness tells is a clue the hero holds, to show, link and lay out as proof (see `witnesses.ts`).
+ * 23: a world event can set the weather of its day, so the news and the road agree (see `weather.ts`).
  */
-export const RULESET_VERSION = 22;
+export const RULESET_VERSION = 23;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;

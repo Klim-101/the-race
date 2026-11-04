@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import { LocaleSchema } from '../locale.js';
 import { InformationSourceSchema, TraitTriggerSchema } from '../traits.js';
+import { WeatherSchema } from '../world/climate.js';
 import { DetectiveSkillSchema } from './archetype.js';
 import { GearIdSchema } from './gear.js';
 
@@ -316,6 +317,11 @@ export const WorldEventSchema = z.object({
   description: NarrativeTextSchema,
   /** Absent for an event that is only news. */
   effect: WorldEventEffectSchema.optional(),
+  /**
+   * The weather of that day, when the event is about it: a snowfall or an ice storm is the weather the hero walks in,
+   * not only a line of news. Absent for an event that says nothing of the weather.
+   */
+  weather: WeatherSchema.optional(),
 });
 export type WorldEvent = z.infer<typeof WorldEventSchema>;
 
