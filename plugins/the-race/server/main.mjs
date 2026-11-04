@@ -34220,7 +34220,19 @@ var LieSchema = external_exports.object({
   statement: NarrativeTextSchema,
   brokenBy: external_exports.array(EntityIdSchema).min(1),
   /** Conclusions that break it too, put to the suspect as a question; a lie may be broken by these alone. */
-  brokenByInsights: external_exports.array(EntityIdSchema).optional()
+  brokenByInsights: external_exports.array(EntityIdSchema).optional(),
+  /**
+   * What the suspect says once the lie has fallen: where they really were, what they really did, as far as they
+   * would admit it. Optional, so that the cases of before it keep their seal; without it the statement is all there is.
+   */
+  admission: NarrativeTextSchema.optional(),
+  /**
+   * The lie of the same suspect that must fall before this one is told: an admission that is itself a lie, so a
+   * talk is a chain of one caught after another. Until then the lie does not stand and cannot be broken.
+   */
+  after: EntityIdSchema.optional(),
+  /** A clue the suspect hands over, as testimony, when this lie falls. */
+  gives: EntityIdSchema.optional()
 });
 var SuspectSchema = external_exports.object({
   id: EntityIdSchema,
@@ -35402,6 +35414,7 @@ function computeObtainable(detectiveCase, canPass, closed = /* @__PURE__ */ new 
   const locationIds = /* @__PURE__ */ new Set([detectiveCase.startLocationId]);
   const clueIds = /* @__PURE__ */ new Set();
   const leadIds = /* @__PURE__ */ new Set();
+  const fallenLieIds = /* @__PURE__ */ new Set();
   let hasChanged = true;
   while (hasChanged) {
     hasChanged = false;
@@ -35424,6 +35437,16 @@ function computeObtainable(detectiveCase, canPass, closed = /* @__PURE__ */ new 
           clueIds.add(clue.id);
           hasChanged = true;
         }
+      }
+    }
+    for (const suspect of detectiveCase.suspects) {
+      if (suspect.locationId !== void 0 && !locationIds.has(suspect.locationId)) continue;
+      for (const lie of suspect.lies) {
+        const told = lie.after === void 0 || fallenLieIds.has(lie.after);
+        if (fallenLieIds.has(lie.id) || !told || !canBreakLie(detectiveCase, lie, clueIds)) continue;
+        fallenLieIds.add(lie.id);
+        hasChanged = true;
+        if (lie.gives !== void 0 && !clueIds.has(lie.gives)) clueIds.add(lie.gives);
       }
     }
     for (const lead of detectiveCase.leads ?? []) {
@@ -36947,8 +36970,13 @@ var APPROACH_RULES = {
 function refuse(code, message) {
   return { ok: false, refusal: { code, message } };
 }
+function standingLies(run, suspect) {
+  return suspect.lies.filter(
+    (lie) => !run.concededLieIds.includes(lie.id) && (lie.after === void 0 || run.concededLieIds.includes(lie.after))
+  );
+}
 function brokenLies(run, suspect, clueIds, insightIds) {
-  return suspect.lies.filter((lie) => !run.concededLieIds.includes(lie.id)).flatMap((lie) => {
+  return standingLies(run, suspect).flatMap((lie) => {
     const byInsight = (lie.brokenByInsights ?? []).some((id) => insightIds.includes(id));
     return byInsight || lie.brokenBy.some((clueId) => clueIds.includes(clueId)) ? [{ lie, byInsight }] : [];
   });
@@ -37053,10 +37081,13 @@ function resolveInterrogate(run, intent, rng) {
   );
   const statements = [
     ...toldAlibi ? [] : [said2("alibi", suspect.alibi)],
-    ...fallen.map(({ statement }) => said2("conceded", statement)),
+    ...fallen.map(({ statement, admission }) => said2("conceded", admission ?? statement)),
     ...secret === null ? [] : [said2("secret", secret)]
   ];
-  const told = result.success ? cluesToldBy(run, run.case, suspect.id) : [];
+  const given = fallen.flatMap(({ gives }) => gives === void 0 ? [] : [gives]);
+  const told = [
+    .../* @__PURE__ */ new Set([...result.success ? cluesToldBy(run, run.case, suspect.id) : [], ...given])
+  ].filter((clueId) => !run.foundClueIds.includes(clueId));
   const withLies = recordShown(
     {
       ...told.reduce(findClue, run),
@@ -37066,7 +37097,7 @@ function resolveInterrogate(run, intent, rng) {
     suspect.id,
     presented
   );
-  const slipped = modern && mood.step >= 2 && result.success ? suspect.lies.filter((lie) => !run.concededLieIds.includes(lie.id) && !fallen.includes(lie)) : [];
+  const slipped = modern && mood.step >= 2 && result.success ? standingLies(run, suspect).filter((lie) => !fallen.includes(lie)) : [];
   const granted = grantLeads(withLies, [
     ...result.success ? [{ kind: "talk", suspectId: suspect.id }] : [],
     ...[...fallen, ...slipped].map(({ id }) => ({ kind: "lie", lieId: id }))
@@ -37104,7 +37135,11 @@ function resolveInterrogate(run, intent, rng) {
       alibi: suspect.alibi,
       presented,
       ...putInsights.length === 0 ? {} : { presentedInsights },
-      conceded: fallen.map(({ id, statement }) => ({ lieId: id, statement })),
+      conceded: fallen.map(({ id, statement, admission }) => ({
+        lieId: id,
+        statement,
+        ...admission === void 0 ? {} : { admission }
+      })),
       secret,
       ...told.length === 0 ? {} : { told },
       ...modern ? { mood: moodWord(step) } : {},
@@ -38017,7 +38052,9 @@ var OutcomeSchema = external_exports.union([
     presentedInsights: external_exports.array(external_exports.object({ insightId: EntityIdSchema, effect: external_exports.enum(SHOWN_EFFECTS) })).optional(),
     mood: external_exports.enum(SUSPECT_MOODS).optional(),
     closed: external_exports.literal(true).optional(),
-    conceded: external_exports.array(external_exports.object({ lieId: EntityIdSchema, statement: external_exports.string() })),
+    conceded: external_exports.array(
+      external_exports.object({ lieId: EntityIdSchema, statement: external_exports.string(), admission: external_exports.string().optional() })
+    ),
     secret: external_exports.string().nullable(),
     told: idList.optional(),
     reputationChange: external_exports.int(),
@@ -39092,7 +39129,7 @@ function minutesToGather(detectiveCase, targetClueIds, { canPass, closed, closur
 }
 
 // packages/engine/src/detective/checks/lies.ts
-function checkLies(detectiveCase, obtainable, requireTies = false) {
+function checkLies(detectiveCase, obtainable, requireTies = false, requireAdmissions = false) {
   const unbreakable = detectiveCase.suspects.flatMap(
     (suspect, suspectIndex) => suspect.lies.map((lie, lieIndex) => ({ lie, path: `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}]` })).filter(({ lie }) => !canBreakLie(detectiveCase, lie, obtainable.clueIds)).map(({ lie, path }) => ({
       code: "unbreakable-lie",
@@ -39100,7 +39137,12 @@ function checkLies(detectiveCase, obtainable, requireTies = false) {
       message: `Lie "${lie.id}" of "${suspect.id}" is broken only by clues this hero can never find.`
     }))
   );
-  return [...unbreakable, ...requireTies ? checkTies(detectiveCase) : []];
+  return [
+    ...unbreakable,
+    ...checkChains(detectiveCase),
+    ...requireTies ? checkTies(detectiveCase) : [],
+    ...requireAdmissions ? checkAdmissions(detectiveCase) : []
+  ];
 }
 function checkTies(detectiveCase) {
   const cluesById = new Map(detectiveCase.clues.map((clue) => [clue.id, clue]));
@@ -39117,6 +39159,34 @@ function checkTies(detectiveCase) {
           }
         ];
       })
+    )
+  );
+}
+function checkChains(detectiveCase) {
+  return detectiveCase.suspects.flatMap(
+    (suspect, suspectIndex) => suspect.lies.flatMap((lie, lieIndex) => {
+      if (lie.after === void 0) return [];
+      const before = suspect.lies.findIndex(({ id }) => id === lie.after);
+      return before >= 0 && before < lieIndex ? [] : [
+        {
+          code: "lie-chain-broken",
+          path: `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}].after`,
+          message: `Lie "${lie.id}" follows "${lie.after}", which must be an earlier lie of "${suspect.id}".`
+        }
+      ];
+    })
+  );
+}
+function checkAdmissions(detectiveCase) {
+  return detectiveCase.suspects.flatMap(
+    (suspect, suspectIndex) => suspect.lies.flatMap(
+      (lie, lieIndex) => lie.admission === void 0 ? [
+        {
+          code: "lie-without-admission",
+          path: `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}].admission`,
+          message: `Lie "${lie.id}" of "${suspect.id}" needs an "admission": what they say once it is caught.`
+        }
+      ] : []
     )
   );
 }
@@ -39205,9 +39275,16 @@ function checkParts(detectiveCase, obtainable, requireParts) {
   const suspectsById = new Map(detectiveCase.suspects.map((suspect) => [suspect.id, suspect]));
   const cluesById = new Map(detectiveCase.clues.map((clue) => [clue.id, clue]));
   const holdingPart = /* @__PURE__ */ new Map();
+  const testimony = new Set(
+    detectiveCase.suspects.flatMap(
+      ({ lies }) => lies.flatMap(({ gives }) => gives === void 0 ? [] : [gives])
+    )
+  );
   detectiveCase.locations.forEach((location, locationIndex) => {
     const parts = location.parts ?? [];
-    const placeHoldsClue = detectiveCase.clues.some((clue) => clue.locationId === location.id);
+    const placeHoldsClue = detectiveCase.clues.some(
+      (clue) => clue.locationId === location.id && !testimony.has(clue.id)
+    );
     if (requireParts && parts.length === 0 && placeHoldsClue) {
       issues.push({
         code: "parts-missing",
@@ -39264,7 +39341,7 @@ function checkParts(detectiveCase, obtainable, requireParts) {
   });
   detectiveCase.clues.forEach((clue, clueIndex) => {
     const location = detectiveCase.locations.find(({ id }) => id === clue.locationId);
-    if ((location?.parts?.length ?? 0) > 0 && !holdingPart.has(clue.id)) {
+    if ((location?.parts?.length ?? 0) > 0 && !holdingPart.has(clue.id) && !testimony.has(clue.id)) {
       issues.push({
         code: "clue-without-part",
         path: `clues[${String(clueIndex)}]`,
@@ -39597,6 +39674,9 @@ function checkReferencesResolve(detectiveCase) {
         const path = `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}].brokenByInsights[${String(insightIndex)}]`;
         expect(deductionIds, "deduction", id, path);
       });
+      const liePath = `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}]`;
+      if (lie.after !== void 0) expect(lieIds, "lie", lie.after, `${liePath}.after`);
+      if (lie.gives !== void 0) expect(clueIds, "clue", lie.gives, `${liePath}.gives`);
     });
   });
   detectiveCase.deductions.forEach((deduction, index) => {
@@ -39927,6 +40007,9 @@ function collectNarrativeTexts(detectiveCase) {
       at3(`suspects[${String(index)}].alibi`, suspect.alibi),
       ...suspect.lies.map(
         (lie, lieIndex) => at3(`suspects[${String(index)}].lies[${String(lieIndex)}].statement`, lie.statement)
+      ),
+      ...suspect.lies.flatMap(
+        (lie, lieIndex) => lie.admission === void 0 ? [] : [at3(`suspects[${String(index)}].lies[${String(lieIndex)}].admission`, lie.admission)]
       )
     ]),
     ...detectiveCase.deductions.map(
@@ -40055,7 +40138,7 @@ function validateCase(input2, context2) {
     ...checkParts(detectiveCase, obtainable, context2.requireParts ?? false),
     ...checkSolution(detectiveCase, context2.hero, context2.traits, obtainable),
     ...checkSolveChance(detectiveCase, context2.hero, context2.traits, obtainable),
-    ...checkLies(detectiveCase, obtainable, context2.requireTies ?? false),
+    ...checkLies(detectiveCase, obtainable, context2.requireTies ?? false, context2.requireAdmissions ?? false),
     ...checkTimeline(detectiveCase),
     ...checkWorldEvents(detectiveCase, context2.hero, context2.traits),
     ...checkRandomEvents(
@@ -54003,6 +54086,8 @@ var ISSUE_PRIORITY = {
   "unobtainable-clue": 8,
   "unreachable-suspect": 9,
   "clue-not-tied": 9.05,
+  "lie-without-admission": 9.06,
+  "lie-chain-broken": 9.07,
   "unearnable-lead": 9.1,
   "unused-lead": 9.1,
   "false-lead-holds-clue": 9.1,
@@ -54089,6 +54174,7 @@ var scenarioSubmit = defineTool({
       map: GENERATED_MAP,
       requireParts: true,
       requireTies: true,
+      requireAdmissions: true,
       // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
       realNames: [
         .../* @__PURE__ */ new Set([...worldRealNames(world), ...(await seedsOfRun(context2))?.realNames ?? []])

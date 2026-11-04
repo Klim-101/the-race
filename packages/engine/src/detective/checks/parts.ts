@@ -22,10 +22,18 @@ export function checkParts(
   const suspectsById = new Map(detectiveCase.suspects.map((suspect) => [suspect.id, suspect]));
   const cluesById = new Map(detectiveCase.clues.map((clue) => [clue.id, clue]));
   const holdingPart = new Map<string, string>();
+  // Testimony is handed over by a suspect when a lie falls: it lies in no part and needs none.
+  const testimony = new Set(
+    detectiveCase.suspects.flatMap(({ lies }) =>
+      lies.flatMap(({ gives }) => (gives === undefined ? [] : [gives])),
+    ),
+  );
 
   detectiveCase.locations.forEach((location, locationIndex) => {
     const parts = location.parts ?? [];
-    const placeHoldsClue = detectiveCase.clues.some((clue) => clue.locationId === location.id);
+    const placeHoldsClue = detectiveCase.clues.some(
+      (clue) => clue.locationId === location.id && !testimony.has(clue.id),
+    );
     if (requireParts && parts.length === 0 && placeHoldsClue) {
       issues.push({
         code: 'parts-missing',
@@ -86,7 +94,7 @@ export function checkParts(
 
   detectiveCase.clues.forEach((clue, clueIndex) => {
     const location = detectiveCase.locations.find(({ id }) => id === clue.locationId);
-    if ((location?.parts?.length ?? 0) > 0 && !holdingPart.has(clue.id)) {
+    if ((location?.parts?.length ?? 0) > 0 && !holdingPart.has(clue.id) && !testimony.has(clue.id)) {
       issues.push({
         code: 'clue-without-part',
         path: `clues[${String(clueIndex)}]`,

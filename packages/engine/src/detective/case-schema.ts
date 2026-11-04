@@ -193,6 +193,18 @@ export const LieSchema = z.object({
   brokenBy: z.array(EntityIdSchema).min(1),
   /** Conclusions that break it too, put to the suspect as a question; a lie may be broken by these alone. */
   brokenByInsights: z.array(EntityIdSchema).optional(),
+  /**
+   * What the suspect says once the lie has fallen: where they really were, what they really did, as far as they
+   * would admit it. Optional, so that the cases of before it keep their seal; without it the statement is all there is.
+   */
+  admission: NarrativeTextSchema.optional(),
+  /**
+   * The lie of the same suspect that must fall before this one is told: an admission that is itself a lie, so a
+   * talk is a chain of one caught after another. Until then the lie does not stand and cannot be broken.
+   */
+  after: EntityIdSchema.optional(),
+  /** A clue the suspect hands over, as testimony, when this lie falls. */
+  gives: EntityIdSchema.optional(),
 });
 export type Lie = z.infer<typeof LieSchema>;
 

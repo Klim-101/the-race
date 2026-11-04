@@ -110,7 +110,12 @@ export interface InterrogationOutcome {
   /** Set when a pressure with nothing to stand on has closed the suspect for a while. */
   readonly closed?: true;
   /** Lies that fell in this talk, as the suspect told them. */
-  readonly conceded: readonly { readonly lieId: string; readonly statement: string }[];
+  readonly conceded: readonly {
+    readonly lieId: string;
+    readonly statement: string;
+    /** What the suspect says instead, when the case gives it. */
+    readonly admission?: string;
+  }[];
   /** Only on a natural 20, and only when a lie fell with it. */
   readonly secret: string | null;
   /**
@@ -135,6 +140,18 @@ interface Breakable {
   readonly byInsight: boolean;
 }
 
+/**
+ * The lies the suspect still tells: those not fallen, and, for a lie that follows another, only once that one has
+ * fallen. A lie that has not been told yet cannot be broken, nor slip out.
+ */
+function standingLies(run: DetectiveRunState, suspect: Suspect): Lie[] {
+  return suspect.lies.filter(
+    (lie) =>
+      !run.concededLieIds.includes(lie.id) &&
+      (lie.after === undefined || run.concededLieIds.includes(lie.after)),
+  );
+}
+
 /** The suspect's standing lies that one of the shown clues, or one of the conclusions put to them, breaks. */
 function brokenLies(
   run: DetectiveRunState,
@@ -142,12 +159,10 @@ function brokenLies(
   clueIds: readonly string[],
   insightIds: readonly string[],
 ): Breakable[] {
-  return suspect.lies
-    .filter((lie) => !run.concededLieIds.includes(lie.id))
-    .flatMap((lie) => {
-      const byInsight = (lie.brokenByInsights ?? []).some((id) => insightIds.includes(id));
-      return byInsight || lie.brokenBy.some((clueId) => clueIds.includes(clueId)) ? [{ lie, byInsight }] : [];
-    });
+  return standingLies(run, suspect).flatMap((lie) => {
+    const byInsight = (lie.brokenByInsights ?? []).some((id) => insightIds.includes(id));
+    return byInsight || lie.brokenBy.some((clueId) => clueIds.includes(clueId)) ? [{ lie, byInsight }] : [];
+  });
 }
 
 /** Whether a clue bears on a suspect: it points at them, or the case says it is about them. */
@@ -294,10 +309,14 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
   );
   const statements = [
     ...(toldAlibi ? [] : [said('alibi', suspect.alibi)]),
-    ...fallen.map(({ statement }) => said('conceded', statement)),
+    ...fallen.map(({ statement, admission }) => said('conceded', admission ?? statement)),
     ...(secret === null ? [] : [said('secret', secret)]),
   ];
-  const told = result.success ? cluesToldBy(run, run.case, suspect.id) : [];
+  // A lie that falls can hand over testimony, success or not; a part that falls back on asking needs a success.
+  const given = fallen.flatMap(({ gives }) => (gives === undefined ? [] : [gives]));
+  const told = [
+    ...new Set([...(result.success ? cluesToldBy(run, run.case, suspect.id) : []), ...given]),
+  ].filter((clueId) => !run.foundClueIds.includes(clueId));
   const withLies: DetectiveRunState = recordShown(
     {
       ...told.reduce(findClue, run),
@@ -311,7 +330,7 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
   // cornered lets slip, to any success, the leads their other lies hold.
   const slipped =
     modern && mood.step >= 2 && result.success
-      ? suspect.lies.filter((lie) => !run.concededLieIds.includes(lie.id) && !fallen.includes(lie))
+      ? standingLies(run, suspect).filter((lie) => !fallen.includes(lie))
       : [];
   const granted = grantLeads(withLies, [
     ...(result.success ? [{ kind: 'talk' as const, suspectId: suspect.id }] : []),
@@ -366,7 +385,11 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
       alibi: suspect.alibi,
       presented,
       ...(putInsights.length === 0 ? {} : { presentedInsights }),
-      conceded: fallen.map(({ id, statement }) => ({ lieId: id, statement })),
+      conceded: fallen.map(({ id, statement, admission }) => ({
+        lieId: id,
+        statement,
+        ...(admission === undefined ? {} : { admission }),
+      })),
       secret,
       ...(told.length === 0 ? {} : { told }),
       ...(modern ? { mood: moodWord(step) } : {}),

@@ -10,6 +10,7 @@ export function checkLies(
   detectiveCase: DetectiveCase,
   obtainable: Obtainable,
   requireTies = false,
+  requireAdmissions = false,
 ): CaseIssue[] {
   const unbreakable = detectiveCase.suspects.flatMap((suspect, suspectIndex) =>
     suspect.lies
@@ -21,7 +22,12 @@ export function checkLies(
         message: `Lie "${lie.id}" of "${suspect.id}" is broken only by clues this hero can never find.`,
       })),
   );
-  return [...unbreakable, ...(requireTies ? checkTies(detectiveCase) : [])];
+  return [
+    ...unbreakable,
+    ...checkChains(detectiveCase),
+    ...(requireTies ? checkTies(detectiveCase) : []),
+    ...(requireAdmissions ? checkAdmissions(detectiveCase) : []),
+  ];
 }
 
 /**
@@ -45,6 +51,45 @@ function checkTies(detectiveCase: DetectiveCase): CaseIssue[] {
               },
             ];
       }),
+    ),
+  );
+}
+
+/**
+ * A lie that follows another is told only after it, so it must come later in the same suspect's list: that is
+ * what keeps a chain from looping back on itself.
+ */
+function checkChains(detectiveCase: DetectiveCase): CaseIssue[] {
+  return detectiveCase.suspects.flatMap((suspect, suspectIndex) =>
+    suspect.lies.flatMap((lie, lieIndex) => {
+      if (lie.after === undefined) return [];
+      const before = suspect.lies.findIndex(({ id }) => id === lie.after);
+      return before >= 0 && before < lieIndex
+        ? []
+        : [
+            {
+              code: 'lie-chain-broken' as const,
+              path: `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}].after`,
+              message: `Lie "${lie.id}" follows "${lie.after}", which must be an earlier lie of "${suspect.id}".`,
+            },
+          ];
+    }),
+  );
+}
+
+/** A lie that falls gives the suspect something to say; without it the scene repeats the lie. */
+function checkAdmissions(detectiveCase: DetectiveCase): CaseIssue[] {
+  return detectiveCase.suspects.flatMap((suspect, suspectIndex) =>
+    suspect.lies.flatMap((lie, lieIndex) =>
+      lie.admission === undefined
+        ? [
+            {
+              code: 'lie-without-admission' as const,
+              path: `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}].admission`,
+              message: `Lie "${lie.id}" of "${suspect.id}" needs an "admission": what they say once it is caught.`,
+            },
+          ]
+        : [],
     ),
   );
 }

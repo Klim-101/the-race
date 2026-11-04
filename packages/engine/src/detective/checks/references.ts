@@ -118,6 +118,9 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
         const path = `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}].brokenByInsights[${String(insightIndex)}]`;
         expect(deductionIds, 'deduction', id, path);
       });
+      const liePath = `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}]`;
+      if (lie.after !== undefined) expect(lieIds, 'lie', lie.after, `${liePath}.after`);
+      if (lie.gives !== undefined) expect(clueIds, 'clue', lie.gives, `${liePath}.gives`);
     });
   });
   detectiveCase.deductions.forEach((deduction, index) => {
