@@ -235,6 +235,29 @@
       "exposure": "outdoor"
     }
   ],
+  "witnesses": [
+    {
+      "id": "alley-newsboy",
+      "locationId": "ink-alley",
+      "name": "Bram Oddlow",
+      "persona": "A newsboy who sells the morning papers at the mouth of the alley and counts everyone who passes.",
+      "hours": { "fromMinute": 300, "untilMinute": 600 }
+    },
+    {
+      "id": "fishmonger",
+      "locationId": "harbour-street",
+      "name": "Dora Venn",
+      "persona": "A fishmonger with a stall on the quay, up before the gulls.",
+      "hours": { "fromMinute": 300, "untilMinute": 900 }
+    },
+    {
+      "id": "plaza-guard",
+      "locationId": "larkspur-plaza",
+      "name": "Jorun Hale",
+      "persona": "A security guard in a long coat who watches the plaza's flagpoles and the people under them.",
+      "hours": { "fromMinute": 360, "untilMinute": 1080 }
+    }
+  ],
   "clues": [
     {
       "id": "vault-pass",
@@ -515,6 +538,24 @@
         "actorId": "investor-relations",
         "locationId": "teahouse",
         "action": "Phones in a very large buying order for the shell company from the back table."
+      },
+      {
+        "atMinute": 390,
+        "actorId": "investor-relations",
+        "locationId": "ink-alley",
+        "action": "Slips through Ink Alley with a folded page under her arm."
+      },
+      {
+        "atMinute": 405,
+        "actorId": "cfo",
+        "locationId": "larkspur-plaza",
+        "action": "Hurries across the plaza, late as ever, a pigeon feather on his sleeve."
+      },
+      {
+        "atMinute": 480,
+        "actorId": "investor-relations",
+        "locationId": "harbour-street",
+        "action": "Walks down Harbour Street, humming, in no hurry at all."
       }
     ]
   },

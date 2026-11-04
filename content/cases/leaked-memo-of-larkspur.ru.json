@@ -235,6 +235,29 @@
       "exposure": "outdoor"
     }
   ],
+  "witnesses": [
+    {
+      "id": "alley-newsboy",
+      "locationId": "ink-alley",
+      "name": "Брам Оддлоу",
+      "persona": "Разносчик газет, который продаёт утренние выпуски у входа в переулок и пересчитывает всех прохожих.",
+      "hours": { "fromMinute": 300, "untilMinute": 600 }
+    },
+    {
+      "id": "fishmonger",
+      "locationId": "harbour-street",
+      "name": "Дора Венн",
+      "persona": "Торговка рыбой с лотком на набережной, встающая раньше чайек.",
+      "hours": { "fromMinute": 300, "untilMinute": 900 }
+    },
+    {
+      "id": "plaza-guard",
+      "locationId": "larkspur-plaza",
+      "name": "Йорун Хейл",
+      "persona": "Охранник в длинном пальто, который следит за флагштоками площади и за теми, кто проходит под ними.",
+      "hours": { "fromMinute": 360, "untilMinute": 1080 }
+    }
+  ],
   "clues": [
     {
       "id": "vault-pass",
@@ -518,6 +541,24 @@
         "actorId": "investor-relations",
         "locationId": "teahouse",
         "action": "С дальнего столика по телефону диктует очень крупную заявку на покупку для подставной фирмы."
+      },
+      {
+        "atMinute": 390,
+        "actorId": "investor-relations",
+        "locationId": "ink-alley",
+        "action": "Проходит Чернильным переулком со сложенным листом под мышкой."
+      },
+      {
+        "atMinute": 405,
+        "actorId": "cfo",
+        "locationId": "larkspur-plaza",
+        "action": "Спешит через площадь, как всегда опаздывая, с голубиным пером на рукаве."
+      },
+      {
+        "atMinute": 480,
+        "actorId": "investor-relations",
+        "locationId": "harbour-street",
+        "action": "Идёт по Портовой улице, напевая, никуда не торопясь."
       }
     ]
   },

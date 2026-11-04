@@ -11,6 +11,7 @@ import { checkLies } from './checks/lies.js';
 import { checkClearing } from './checks/clearing.js';
 import { checkLinkable } from './checks/links.js';
 import { checkReactions } from './checks/reactions.js';
+import { checkPublicPlaces } from './checks/public-places.js';
 import { checkWitnesses } from './checks/witnesses.js';
 import { checkMapShape, type MapRules } from './checks/map-shape.js';
 import { checkLeads } from './checks/leads.js';
@@ -63,6 +64,8 @@ export interface CaseValidationContext {
   readonly requireClearing?: boolean;
   /** Whether every suspect who lies must also have a true claim to say beside it (a generated case must). */
   readonly requireClaims?: boolean;
+  /** Whether every public place must have something in it: a part, a witness or a rumour (a generated case must). */
+  readonly requirePublicLife?: boolean;
 }
 
 export type CaseValidationResult =
@@ -109,6 +112,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ),
     ...checkTimeline(detectiveCase),
     ...checkWitnesses(detectiveCase),
+    ...(context.requirePublicLife ? checkPublicPlaces(detectiveCase) : []),
     ...(context.requireLinkable ? checkLinkable(detectiveCase) : []),
     ...checkClearing(detectiveCase, obtainable, context.requireClearing ?? false),
     ...checkReactions(detectiveCase, context.traits),
