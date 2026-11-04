@@ -84,6 +84,7 @@ import { clueNumber } from './clue-number.js';
 import { buildNeighbors } from './obtainability.js';
 import { isLocationClosed, suspectPlace } from './random-events.js';
 import { CASE_SEAL_PATTERN, isCaseSealIntact, sealCase } from './seal.js';
+import { requireWitness, witnessesHere } from './witnesses.js';
 
 /** A random event that has happened, and the day it happened on. */
 export const DrawnEventSchema = z.object({
@@ -111,6 +112,16 @@ export const StatementSchema = z.strictObject({
   text: z.string().min(1),
 });
 export type Statement = z.infer<typeof StatementSchema>;
+
+/** Something a witness told the hero: that a suspect was at the witness's place at a time of the day. */
+export const SightingRecordSchema = z.strictObject({
+  witnessId: EntityIdSchema,
+  suspectId: EntityIdSchema,
+  minuteOfDay: z.int().min(0).max(1439),
+  /** The day of the run it was told on. */
+  day: z.int().min(1),
+});
+export type SightingRecord = z.infer<typeof SightingRecordSchema>;
 
 /**
  * What the case grew from: the kind of trouble a seed of the day names, and the sentence the seed extractor
@@ -230,6 +241,8 @@ export const DetectiveRunStateSchema = z
     setting: SettingSchema.nullable().default(null),
     /** What suspects have said at questioning, in the order they said it. Old saves have none. */
     statements: z.array(StatementSchema).default([]),
+    /** What witnesses have told the hero they saw, in the order it was told. Old saves have none. */
+    sightings: z.array(SightingRecordSchema).default([]),
     /** What the hero has done with the clues, for the board: where each was found, to whom it was shown, the links tried. */
     history: RunHistorySchema.default(() => emptyHistory()),
     /** The pattern of news the case grew from, when it grew from one. Old saves have none. */
@@ -287,6 +300,16 @@ export const DetectiveRunStateSchema = z
       'searchedParts',
       run.searchedParts.map(({ partId }) => partId),
       partIds,
+    );
+    known(
+      'sightings',
+      run.sightings.map(({ witnessId }) => witnessId),
+      new Set((run.case.witnesses ?? []).map(({ id }) => id)),
+    );
+    known(
+      'sighted',
+      run.sightings.map(({ suspectId }) => suspectId),
+      new Set(run.case.suspects.map(({ id }) => id)),
     );
     known(
       'statements',
@@ -374,6 +397,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     pendingEffects: [],
     setting: input.setting ?? null,
     statements: [],
+    sightings: [],
     history: emptyHistory(),
     inspiration: input.inspiration ?? null,
   });
@@ -846,6 +870,17 @@ export interface DetectiveRunView {
       readonly text: string;
     }[];
   }[];
+  /** The people here whom the hero can ask what they saw: those of the place who are there at this hour. */
+  readonly witnesses: readonly { readonly id: string; readonly name: string; readonly persona: string }[];
+  /** What witnesses have told the hero, in the order it was told: who was seen at which place, and when in the day. */
+  readonly sightings: readonly {
+    readonly witnessId: string;
+    readonly witnessName: string;
+    readonly place: { readonly id: string; readonly name: string };
+    readonly suspectId: string;
+    readonly minuteOfDay: number;
+    readonly day: number;
+  }[];
   /**
    * The leads the hero has earned, in the order they came: what made the hero look, in the hero's own words, and
    * what each opens. Never whether a lead is false, and never what is true.
@@ -1158,6 +1193,18 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     map: viewMap(run),
     placeParts: viewPlaceParts(run),
     leads: viewLeads(run),
+    witnesses: witnessesHere(run).map(({ id, name, persona }) => ({ id, name, persona })),
+    sightings: run.sightings.map(({ witnessId, suspectId, minuteOfDay, day }) => {
+      const witness = requireWitness(detectiveCase, witnessId);
+      return {
+        witnessId,
+        witnessName: witness.name,
+        place: { id: witness.locationId, name: requireLocation(detectiveCase, witness.locationId).name },
+        suspectId,
+        minuteOfDay,
+        day,
+      };
+    }),
     suspects: detectiveCase.suspects.map((suspect) => {
       const placeId = suspectPlace(run, suspect);
       const place = placeId === undefined ? undefined : requireLocation(detectiveCase, placeId);

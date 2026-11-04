@@ -16,6 +16,7 @@ import {
   type DetectiveCase,
   type Location,
   type SkillCheck,
+  type Witness,
 } from './case-schema.js';
 import { meterReadings, modifierSources } from './condition.js';
 import { RereadIntentSchema, applyFatigue, resolveReread, type Fatigue } from './fatigue.js';
@@ -46,6 +47,15 @@ import {
   askBonusOf,
   chooseStudyTool,
 } from './ask.js';
+import {
+  WITNESS_NAMED_EASE,
+  WITNESS_RULESET_VERSION,
+  holdsClueAbout,
+  recordSightings,
+  sightingsOf,
+  type Sighting,
+  witnessesHere,
+} from './witnesses.js';
 import { SIT_MINUTES, SIT_NERVES, sitRefusal, sitsLeft } from './venue.js';
 import { chooseTool, partsOfPlace } from './search-parts.js';
 import { GearIdSchema, worn, type GearId } from './gear.js';
@@ -96,8 +106,17 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   DeduceIntentSchema,
   /** Stop for the day and sleep where the hero stands: the night passes at once. */
   z.object({ kind: z.literal('rest') }),
-  /** Ask the locals for a rumour: a contacts roll, with the piece of the kit named by `toolId` (cash) to help it. */
-  z.object({ kind: z.literal('ask'), toolId: GearIdSchema.optional() }),
+  /**
+   * Ask the locals for a rumour: a contacts roll, with the piece of the kit named by `toolId` (cash) to help it. With
+   * `witnessId` (from the ruleset of witnesses on) it is a question to one witness of the place about what they saw,
+   * and `aboutSuspectId` narrows it to one suspect.
+   */
+  z.object({
+    kind: z.literal('ask'),
+    toolId: GearIdSchema.optional(),
+    witnessId: EntityIdSchema.optional(),
+    aboutSuspectId: EntityIdSchema.optional(),
+  }),
   /** Study a clue the hero holds with a tool of the kit, for a lead. */
   z.object({ kind: z.literal('study'), clueId: EntityIdSchema, toolId: GearIdSchema.optional() }),
   /** Sit down at a teahouse or a cafe for a while: a little of the nerves comes back. */
@@ -133,6 +152,7 @@ export type RefusalCode =
   | 'locked'
   | 'location-closed'
   | 'unknown-suspect'
+  | 'no-witness'
   | 'suspect-elsewhere'
   | 'clue-not-found'
   | 'insight-not-found'
@@ -219,6 +239,8 @@ export type Outcome = (
       readonly consequences: readonly Consequence[];
       /** The cash that helped, and whether it was the last of it. */
       readonly tool?: { readonly id: GearId; readonly wear: 'spent' | 'broken' | null };
+      /** Only when the question was put to a witness: who, and what they saw (nothing, on a success that saw nothing). */
+      readonly witness?: { readonly id: string; readonly sightings: readonly Sighting[] };
     }
   | {
       readonly kind: 'study';
@@ -785,25 +807,47 @@ function resolveSit(run: DetectiveRunState, rng: Rng): Resolution {
  * Asking the locals: a contacts roll in the place. A success gets out of them the rumours the case holds for this
  * place, a failure only time. A piece named in `toolId` (cash) eases the roll and wears.
  */
-function resolveAsk(run: DetectiveRunState, rng: Rng, toolId: GearId | undefined): Resolution {
+function resolveAsk(run: DetectiveRunState, rng: Rng, intent: Extract<Intent, { kind: 'ask' }>): Resolution {
+  const { toolId, witnessId, aboutSuspectId } = intent;
   if (run.rulesetVersion < ASK_RULESET_VERSION)
     return refuse('not-available', 'Nobody here has a rumour to tell.');
+  // A question to a witness: one who is not here now, one of another place and one that does not exist are refused alike.
+  let witness: Witness | undefined;
+  if (witnessId !== undefined || aboutSuspectId !== undefined) {
+    if (run.rulesetVersion < WITNESS_RULESET_VERSION)
+      return refuse('not-available', 'Nobody here has seen anything.');
+    if (witnessId === undefined) return refuse('invalid-intent', 'Name the witness to ask.');
+    witness = witnessesHere(run).find(({ id }) => id === witnessId);
+    if (witness === undefined) return refuse('no-witness', 'There is nobody here to ask that.');
+    if (aboutSuspectId !== undefined && !run.case.suspects.some(({ id }) => id === aboutSuspectId)) {
+      return refuse('unknown-suspect', `There is no suspect "${aboutSuspectId}".`);
+    }
+  }
   const helper = toolId === undefined ? undefined : askBonusOf(run, toolId);
   if (toolId !== undefined && helper === undefined) {
     return refuse('wrong-tool', 'That is not in the kit, or it is no help in asking.');
   }
   const location = locationById(run.case, run.locationId);
+  const named = aboutSuspectId !== undefined && holdsClueAbout(run, aboutSuspectId);
   const attempt = roll(
     run,
     rng,
-    { skill: 'contacts', difficulty: ASK_DIFFICULTY - (helper?.bonus ?? 0) },
+    {
+      skill: 'contacts',
+      difficulty: ASK_DIFFICULTY - (helper?.bonus ?? 0) - (named ? WITNESS_NAMED_EASE : 0),
+    },
     location.situations,
   );
   const { result } = attempt;
   const worndown = helper === undefined ? run : wearTool(run, helper.item.id, false);
-  const heard = result.success
-    ? grantLeads(worndown, [{ kind: 'locals', locationId: location.id }])
-    : worndown;
+  const sightings =
+    witness !== undefined && result.success ? sightingsOf(run.case, witness, aboutSuspectId) : [];
+  const heard =
+    witness !== undefined
+      ? recordSightings(worndown, witness, sightings)
+      : result.success
+        ? grantLeads(worndown, [{ kind: 'locals', locationId: location.id }])
+        : worndown;
   const minutes = ASK_MINUTES + (result.success ? 0 : FAILED_ASK_MINUTES);
   const settled = settle(heard, rng, minutes, [result]);
   return {
@@ -815,6 +859,7 @@ function resolveAsk(run: DetectiveRunState, rng: Rng, toolId: GearId | undefined
       succeeded: result.success,
       consequences: [...(result.success ? [] : (['time-lost'] as const)), ...settled.consequences],
       ...(helper === undefined ? {} : { tool: { id: helper.item.id, wear: worn(helper.item, false).wear } }),
+      ...(witness === undefined ? {} : { witness: { id: witness.id, sightings } }),
     },
     details: [{ subject: { kind: 'location', id: location.id }, result }],
     felt: distinctFelt([...attempt.felt, ...settled.felt]),
@@ -895,7 +940,7 @@ function dispatchIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resol
     case 'sit':
       return resolveSit(run, rng);
     case 'ask':
-      return resolveAsk(run, rng, intent.toolId);
+      return resolveAsk(run, rng, intent);
     case 'study':
       return resolveStudy(run, rng, intent.clueId, intent.toolId);
     case 'interrogate':

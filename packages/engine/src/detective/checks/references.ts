@@ -31,6 +31,10 @@ function checkUniqueIds(detectiveCase: DetectiveCase): CaseIssue[] {
       id: lead.id,
       path: `leads[${String(index)}].id`,
     })),
+    ...(detectiveCase.witnesses ?? []).map((witness, index) => ({
+      id: witness.id,
+      path: `witnesses[${String(index)}].id`,
+    })),
     ...detectiveCase.clues.map((clue, index) => ({ id: clue.id, path: `clues[${String(index)}].id` })),
     ...detectiveCase.suspects.flatMap((suspect, suspectIndex) => [
       { id: suspect.id, path: `suspects[${String(suspectIndex)}].id` },
@@ -95,6 +99,9 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
         expect(leadIds, 'lead', part.fallback.leadId, `${path}.fallback.leadId`);
       }
     });
+  });
+  (detectiveCase.witnesses ?? []).forEach((witness, index) => {
+    expect(locationIds, 'location', witness.locationId, `witnesses[${String(index)}].locationId`);
   });
   detectiveCase.clues.forEach((clue, index) => {
     expect(locationIds, 'location', clue.locationId, `clues[${String(index)}].locationId`);

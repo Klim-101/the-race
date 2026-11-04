@@ -56,6 +56,7 @@ const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
   'clue-not-tied': 9.05,
   'lie-without-admission': 9.06,
   'lie-chain-broken': 9.07,
+  'witness-saw-the-crime': 18.5,
   'unearnable-lead': 9.1,
   'unused-lead': 9.1,
   'false-lead-holds-clue': 9.1,

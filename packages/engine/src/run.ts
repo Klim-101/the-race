@@ -23,8 +23,9 @@ export const RUN_SCHEMA_VERSION = 2;
  * 16: using a tool that is not lawful risks being seen, and the police may detain the hero (see `risk.ts`).
  * 17: the hero can sit down at a teahouse or a cafe to win back a point of nerves, twice a day (see `venue.ts`).
  * 18: the hero can ask the locals for a rumour and study a clue with a tool, and either can earn a lead (see `ask.ts`).
+ * 19: the hero can ask a witness of a place what they saw, in general or about one suspect (see `witnesses.ts`).
  */
-export const RULESET_VERSION = 18;
+export const RULESET_VERSION = 19;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;
