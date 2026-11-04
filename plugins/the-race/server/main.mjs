@@ -27284,17 +27284,17 @@ function generateDiscriminatedUnionCheck(doc, ctx, def, accessor) {
   doc.write(`const ${discVar} = ${accessor}?.[${esc(def.discriminator)}];`);
   doc.write(`let ${outputVar};`);
   let firstBranch = true;
-  const claimed = /* @__PURE__ */ new Set();
+  const claimed2 = /* @__PURE__ */ new Set();
   for (const option of def.options) {
     const values = option._zod.propValues?.[def.discriminator];
     if (!values || values.size === 0) {
       throw new ZodCompileUnsupportedError("discriminated union option without static discriminator values");
     }
     for (const value of values) {
-      if (claimed.has(value)) {
+      if (claimed2.has(value)) {
         throw new ZodCompileUnsupportedError(`duplicate discriminator value ${String(value)}`);
       }
-      claimed.add(value);
+      claimed2.add(value);
     }
     const conditions = Array.from(values, (value) => literalEquality(ctx, discVar, value));
     const prefix = firstBranch ? "if" : "else if";
@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 20;
+var RULESET_VERSION = 21;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -34248,7 +34248,12 @@ var SuspectSchema = external_exports.object({
   alibi: NarrativeTextSchema,
   lies: external_exports.array(LieSchema),
   /** Optional, so that the cases of before it keep their seal; a clue with no reaction keeps the generic line. */
-  reactions: external_exports.array(ReactionSchema).optional()
+  reactions: external_exports.array(ReactionSchema).optional(),
+  /**
+   * True things the suspect says at the first talk, beside the statements of their lies: a claim the hero hears is
+   * either one of these or a lie's `statement`, and nothing tells which until a lie falls. Optional for the same reason.
+   */
+  claims: external_exports.array(NarrativeTextSchema).optional()
 });
 var WitnessSchema = external_exports.object({
   id: EntityIdSchema,
@@ -35888,6 +35893,52 @@ function assertCaseSealIntact(run) {
   }
 }
 
+// packages/engine/src/detective/claims.ts
+var CLAIMS_RULESET_VERSION = 21;
+function orderOf(suspectId, text) {
+  let hash2 = 2166136261;
+  const words = `${suspectId}:${text}`;
+  for (let index = 0; index < words.length; index += 1) {
+    hash2 = Math.imul(hash2 ^ words.charCodeAt(index), 16777619) >>> 0;
+  }
+  return hash2;
+}
+function scrambled(suspectId, texts) {
+  return [...new Set(texts)].toSorted((a, b) => orderOf(suspectId, a) - orderOf(suspectId, b));
+}
+function openingClaims(suspect) {
+  return scrambled(suspect.id, [
+    ...suspect.claims ?? [],
+    ...suspect.lies.filter(({ after }) => after === void 0).map(({ statement }) => statement)
+  ]);
+}
+function followUpClaims(suspect, fallenLieIds) {
+  return scrambled(
+    suspect.id,
+    suspect.lies.filter(({ after }) => after !== void 0 && fallenLieIds.includes(after)).map(({ statement }) => statement)
+  );
+}
+function viewClaims(run, detectiveCase, suspectId) {
+  const suspect = detectiveCase.suspects.find(({ id }) => id === suspectId);
+  return run.claims.filter((claim2) => claim2.suspectId === suspectId).map(({ day, text }) => {
+    const lie = suspect?.lies.find(({ statement }) => statement === text);
+    const fell = lie !== void 0 && run.concededLieIds.includes(lie.id);
+    return {
+      day,
+      text,
+      broken: fell ? {
+        clueIds: [
+          ...new Set(
+            run.history.shown.filter(
+              (shown2) => shown2.suspectId === suspectId && shown2.effect === "breaks-lie" && lie.brokenBy.includes(shown2.clueId)
+            ).map(({ clueId }) => clueId)
+          )
+        ]
+      } : null
+    };
+  });
+}
+
 // packages/engine/src/detective/witnesses.ts
 var WITNESS_RULESET_VERSION = 19;
 var MINUTES_IN_DAY = 1440;
@@ -35946,6 +35997,11 @@ var StatementSchema = external_exports.strictObject({
   suspectId: EntityIdSchema,
   day: external_exports.int().min(1),
   kind: external_exports.enum(STATEMENT_KINDS),
+  text: external_exports.string().min(1)
+});
+var ClaimRecordSchema = external_exports.strictObject({
+  suspectId: EntityIdSchema,
+  day: external_exports.int().min(1),
   text: external_exports.string().min(1)
 });
 var SightingRecordSchema = external_exports.strictObject({
@@ -36050,6 +36106,8 @@ var DetectiveRunStateSchema = external_exports.object({
   setting: SettingSchema.nullable().default(null),
   /** What suspects have said at questioning, in the order they said it. Old saves have none. */
   statements: external_exports.array(StatementSchema).default([]),
+  /** What suspects have claimed to the hero, in the order they said it. Old saves have none. */
+  claims: external_exports.array(ClaimRecordSchema).default([]),
   /** What witnesses have told the hero they saw, in the order it was told. Old saves have none. */
   sightings: external_exports.array(SightingRecordSchema).default([]),
   /** What the hero has done with the clues, for the board: where each was found, to whom it was shown, the links tried. */
@@ -36107,6 +36165,11 @@ var DetectiveRunStateSchema = external_exports.object({
     "searchedParts",
     run.searchedParts.map(({ partId }) => partId),
     partIds
+  );
+  known(
+    "claims",
+    run.claims.map(({ suspectId }) => suspectId),
+    new Set(run.case.suspects.map(({ id }) => id))
   );
   known(
     "sightings",
@@ -36184,6 +36247,7 @@ function createDetectiveRun(input2) {
     pendingEffects: [],
     setting: input2.setting ?? null,
     statements: [],
+    claims: [],
     sightings: [],
     history: emptyHistory(),
     inspiration: input2.inspiration ?? null
@@ -36637,6 +36701,7 @@ function viewRun(run) {
         closed: isClosed(run, suspect.id),
         talksAgain: talksAgainOf(run, suspect.id),
         cleared: isCleared(run, suspect.id),
+        claims: viewClaims(run, detectiveCase, suspect.id),
         statements: run.statements.filter(({ suspectId }) => suspectId === suspect.id).map(({ day, kind, text }) => ({ day, kind, text }))
       };
     }),
@@ -37191,6 +37256,15 @@ function resolveInterrogate(run, intent, rng) {
   const toldAlibi = run.statements.some(
     ({ suspectId, kind }) => suspectId === suspect.id && kind === "alibi"
   );
+  const claimed2 = run.rulesetVersion < CLAIMS_RULESET_VERSION ? [] : [
+    ...toldAlibi ? [] : openingClaims(suspect),
+    ...followUpClaims(
+      suspect,
+      fallen.map(({ id }) => id)
+    )
+  ].filter(
+    (text) => !run.claims.some((known) => known.suspectId === suspect.id && known.text === text)
+  );
   const statements = [
     ...toldAlibi ? [] : [said2("alibi", suspect.alibi)],
     ...fallen.map(({ statement, admission }) => said2("conceded", admission ?? statement)),
@@ -37204,6 +37278,10 @@ function resolveInterrogate(run, intent, rng) {
     {
       ...told.reduce(findClue, run),
       concededLieIds: [...run.concededLieIds, ...fallen.map(({ id }) => id)],
+      claims: [
+        ...run.claims,
+        ...claimed2.map((text) => ({ suspectId: suspect.id, day: run.clock.day, text }))
+      ],
       statements: [...run.statements, ...statements]
     },
     suspect.id,
@@ -37247,6 +37325,7 @@ function resolveInterrogate(run, intent, rng) {
       alibi: suspect.alibi,
       presented,
       ...putInsights.length === 0 ? {} : { presentedInsights },
+      ...claimed2.length === 0 ? {} : { claimed: claimed2 },
       conceded: fallen.map(({ id, statement, admission }) => ({
         lieId: id,
         statement,
@@ -38234,6 +38313,7 @@ var OutcomeSchema = external_exports.union([
     presentedInsights: external_exports.array(external_exports.object({ insightId: EntityIdSchema, effect: external_exports.enum(SHOWN_EFFECTS) })).optional(),
     mood: external_exports.enum(SUSPECT_MOODS).optional(),
     closed: external_exports.literal(true).optional(),
+    claimed: external_exports.array(external_exports.string()).optional(),
     conceded: external_exports.array(
       external_exports.object({ lieId: EntityIdSchema, statement: external_exports.string(), admission: external_exports.string().optional() })
     ),
@@ -39326,7 +39406,7 @@ function minutesToGather(detectiveCase, targetClueIds, { canPass, closed, closur
 }
 
 // packages/engine/src/detective/checks/lies.ts
-function checkLies(detectiveCase, obtainable, requireTies = false, requireAdmissions = false) {
+function checkLies(detectiveCase, obtainable, requireTies = false, requireAdmissions = false, requireClaims = false) {
   const unbreakable = detectiveCase.suspects.flatMap(
     (suspect, suspectIndex) => suspect.lies.map((lie, lieIndex) => ({ lie, path: `suspects[${String(suspectIndex)}].lies[${String(lieIndex)}]` })).filter(({ lie }) => !canBreakLie(detectiveCase, lie, obtainable.clueIds)).map(({ lie, path }) => ({
       code: "unbreakable-lie",
@@ -39338,7 +39418,8 @@ function checkLies(detectiveCase, obtainable, requireTies = false, requireAdmiss
     ...unbreakable,
     ...checkChains(detectiveCase),
     ...requireTies ? checkTies(detectiveCase) : [],
-    ...requireAdmissions ? checkAdmissions(detectiveCase) : []
+    ...requireAdmissions ? checkAdmissions(detectiveCase) : [],
+    ...requireClaims ? checkTrueClaims(detectiveCase) : []
   ];
 }
 function checkTies(detectiveCase) {
@@ -39385,6 +39466,17 @@ function checkAdmissions(detectiveCase) {
         }
       ] : []
     )
+  );
+}
+function checkTrueClaims(detectiveCase) {
+  return detectiveCase.suspects.flatMap(
+    (suspect, suspectIndex) => suspect.lies.length === 0 || (suspect.claims ?? []).length > 0 ? [] : [
+      {
+        code: "suspect-without-true-claim",
+        path: `suspects[${String(suspectIndex)}].claims`,
+        message: `"${suspect.id}" lies, so they need at least one true "claims" line, or everything they say would be a lie.`
+      }
+    ]
   );
 }
 
@@ -40334,6 +40426,9 @@ function collectNarrativeTexts(detectiveCase) {
       ...suspect.lies.map(
         (lie, lieIndex) => at3(`suspects[${String(index)}].lies[${String(lieIndex)}].statement`, lie.statement)
       ),
+      ...(suspect.claims ?? []).map(
+        (claim2, claimIndex) => at3(`suspects[${String(index)}].claims[${String(claimIndex)}]`, claim2)
+      ),
       ...(suspect.reactions ?? []).map(
         (reaction, reactionIndex) => at3(`suspects[${String(index)}].reactions[${String(reactionIndex)}].text`, reaction.text)
       ),
@@ -40467,7 +40562,13 @@ function validateCase(input2, context2) {
     ...checkParts(detectiveCase, obtainable, context2.requireParts ?? false),
     ...checkSolution(detectiveCase, context2.hero, context2.traits, obtainable),
     ...checkSolveChance(detectiveCase, context2.hero, context2.traits, obtainable),
-    ...checkLies(detectiveCase, obtainable, context2.requireTies ?? false, context2.requireAdmissions ?? false),
+    ...checkLies(
+      detectiveCase,
+      obtainable,
+      context2.requireTies ?? false,
+      context2.requireAdmissions ?? false,
+      context2.requireClaims ?? false
+    ),
     ...checkTimeline(detectiveCase),
     ...checkWitnesses(detectiveCase),
     ...context2.requireLinkable ? checkLinkable(detectiveCase) : [],
@@ -51315,6 +51416,7 @@ var en_default3 = {
       moods: { calm: "calm", shaken: "shaken", cornered: "cornered", broken: "broken" },
       closedUntil: "will not talk until day {day}, {time}",
       cleared: "Cleared: could not have done it",
+      claims: "What they claim",
       mood: "Mood",
       lieFell: "a lie that fell",
       brokenBy: "broken by",
@@ -51825,6 +51927,7 @@ var ru_default2 = {
       moods: { calm: "\u0441\u043F\u043E\u043A\u043E\u0435\u043D", shaken: "\u0440\u0430\u0441\u0442\u0435\u0440\u044F\u043D", cornered: "\u0437\u0430\u0433\u043D\u0430\u043D \u0432 \u0443\u0433\u043E\u043B", broken: "\u0441\u043B\u043E\u043C\u043B\u0435\u043D" },
       closedUntil: "\u043D\u0435 \u0437\u0430\u0433\u043E\u0432\u043E\u0440\u0438\u0442 \u0434\u043E {day}-\u0433\u043E \u0434\u043D\u044F, {time}",
       cleared: "\u0418\u0441\u043A\u043B\u044E\u0447\u0451\u043D: \u043D\u0435 \u043C\u043E\u0433 \u044D\u0442\u043E\u0433\u043E \u0441\u0434\u0435\u043B\u0430\u0442\u044C",
+      claims: "\u0427\u0442\u043E \u043E\u043D\u0438 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0430\u044E\u0442",
       mood: "\u041D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u0435",
       lieFell: "\u0440\u0443\u0445\u043D\u0443\u0432\u0448\u0430\u044F \u043B\u043E\u0436\u044C",
       brokenBy: "\u043E\u043F\u0440\u043E\u0432\u0435\u0440\u0433\u043D\u0443\u0442\u043E",
@@ -53187,6 +53290,17 @@ function chip(view, clueId, label, effect) {
   const number4 = numberOf(view)(clueId);
   return `<span class="chip fx-${e(effect)}" data-pick="${e(token("clue", clueId))}" data-rel="${e(rel(clueTokens(view, clueId)))}" tabindex="0" role="button"><span class="num">${e(number4)}</span> ${e(label)}</span>`;
 }
+function claimed(view, suspect, text) {
+  if (suspect.claims.length === 0) return "";
+  const e = escapeHtml;
+  const t = text.statements;
+  const lines = suspect.claims.map(
+    ({ day, text: line, broken }) => broken === null ? `<p class="claim"><span class="tag">${e(t.day)} ${String(day)}</span> ${e(line)}</p>` : `<p class="claim fell"><span class="tag">${e(t.day)} ${String(day)} \xB7 ${e(t.lieFell)}</span><br><s>${e(line)}</s>${broken.clueIds.length === 0 ? "" : `<br><span class="tag">${e(t.brokenBy)}:</span> ${broken.clueIds.map((id) => chip(view, id, "", "breaks-lie")).join(" ")}`}</p>`
+  );
+  return `<h3>${e(t.claims)}</h3>
+${lines.join("\n")}
+`;
+}
 function said(view, suspect, text) {
   const e = escapeHtml;
   const t = text.statements;
@@ -53199,7 +53313,7 @@ function said(view, suspect, text) {
   const days = [...new Set(suspect.statements.map(({ day }) => day))];
   return days.map((day) => {
     const lines = suspect.statements.filter((statement) => statement.day === day).map(
-      ({ kind, text: line }) => kind === "conceded" ? `<p class="statement fell"><span class="tag">${e(t.kinds[kind])} \xB7 ${e(t.lieFell)}</span><br><s>${e(line)}</s>${breakers.length === 0 ? "" : `<br><span class="tag">${e(t.brokenBy)}:</span> ${breakers.map((id) => chip(view, id, "", "breaks-lie")).join(" ")}`}</p>` : `<p class="statement"><span class="tag">${e(t.kinds[kind])}</span><br>${e(line)}</p>`
+      ({ kind, text: line }) => kind === "conceded" && suspect.claims.length > 0 ? `<p class="statement"><span class="tag">${e(t.kinds[kind])} \xB7 ${e(t.lieFell)}</span><br>${e(line)}</p>` : kind === "conceded" ? `<p class="statement fell"><span class="tag">${e(t.kinds[kind])} \xB7 ${e(t.lieFell)}</span><br><s>${e(line)}</s>${breakers.length === 0 ? "" : `<br><span class="tag">${e(t.brokenBy)}:</span> ${breakers.map((id) => chip(view, id, "", "breaks-lie")).join(" ")}`}</p>` : `<p class="statement"><span class="tag">${e(t.kinds[kind])}</span><br>${e(line)}</p>`
     );
     return `<div class="day"><span class="tag">${e(t.day)} ${String(day)}</span>
 ${lines.join("\n")}</div>`;
@@ -53234,7 +53348,7 @@ function renderSuspects(view, board, text, fresh) {
 <p class="tag">${e(board.whereabouts)}: ${e(where)}</p>${suspect.cleared ? `
 <p class="tag cleared-tag">${e(text.statements.cleared)}</p>` : ""}
 <p>${gauge(suspect, text)}</p></div></div>${closed}
-<h3>${e(text.statements.title)}</h3>
+${claimed(view, suspect, text)}<h3>${e(text.statements.title)}</h3>
 ${said(view, suspect, text)}
 <h3>${e(text.statements.shown)}</h3>
 ${shown(view, suspect, text)}
@@ -54489,6 +54603,7 @@ var ISSUE_PRIORITY = {
   "witness-saw-the-crime": 18.5,
   "chain-without-deduction": 17.5,
   "culprit-cleared": 17.6,
+  "suspect-without-true-claim": 17.62,
   "reaction-not-tied": 17.65,
   "reaction-names-trait": 17.66,
   "suspect-cannot-be-cleared": 17.7,
@@ -54582,6 +54697,7 @@ var scenarioSubmit = defineTool({
       requireAdmissions: true,
       requireLinkable: true,
       requireClearing: true,
+      requireClaims: true,
       // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
       realNames: [
         .../* @__PURE__ */ new Set([...worldRealNames(world), ...(await seedsOfRun(context2))?.realNames ?? []])

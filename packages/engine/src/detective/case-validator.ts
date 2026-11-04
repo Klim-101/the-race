@@ -61,6 +61,8 @@ export interface CaseValidationContext {
   readonly requireLinkable?: boolean;
   /** Whether every innocent suspect must be clearable, and every red herring explained (a generated case must). */
   readonly requireClearing?: boolean;
+  /** Whether every suspect who lies must also have a true claim to say beside it (a generated case must). */
+  readonly requireClaims?: boolean;
 }
 
 export type CaseValidationResult =
@@ -98,7 +100,13 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...checkParts(detectiveCase, obtainable, context.requireParts ?? false),
     ...checkSolution(detectiveCase, context.hero, context.traits, obtainable),
     ...checkSolveChance(detectiveCase, context.hero, context.traits, obtainable),
-    ...checkLies(detectiveCase, obtainable, context.requireTies ?? false, context.requireAdmissions ?? false),
+    ...checkLies(
+      detectiveCase,
+      obtainable,
+      context.requireTies ?? false,
+      context.requireAdmissions ?? false,
+      context.requireClaims ?? false,
+    ),
     ...checkTimeline(detectiveCase),
     ...checkWitnesses(detectiveCase),
     ...(context.requireLinkable ? checkLinkable(detectiveCase) : []),

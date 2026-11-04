@@ -214,10 +214,11 @@ describe('the statements of the suspects', () => {
 
   it('never write down a lie that still holds or a secret that was not won', () => {
     const held = talk(atBaker(), 'baker', [], dice(1));
-    const text = JSON.stringify(baker(held));
+    const statements = JSON.stringify(baker(held)?.statements);
 
-    expect(text).not.toContain('I never left my house');
-    expect(text).not.toContain('oven she cannot pay');
+    // The lie is claimed aloud, and is among the claims; it is no statement until it falls.
+    expect(statements).not.toContain('I never left my house');
+    expect(JSON.stringify(baker(held))).not.toContain('oven she cannot pay');
   });
 
   it('are kept apart per suspect and carry the day they were said on', () => {
@@ -342,9 +343,16 @@ describe('what the view leaks', () => {
   for (const detectiveCase of CASES) {
     it(`holds nothing of the truth, a false clue or a hidden trait: ${detectiveCase.title}`, () => {
       const { truth } = detectiveCase;
+      // A lie is in the view once the suspect has claimed it aloud, and not before.
       const stillHolding = (run: DetectiveRunState): string[] =>
-        detectiveCase.suspects.flatMap(({ lies }) =>
-          lies.filter(({ id }) => !run.concededLieIds.includes(id)).map(({ statement }) => statement),
+        detectiveCase.suspects.flatMap(({ id: suspectId, lies }) =>
+          lies
+            .filter(
+              ({ id, statement }) =>
+                !run.concededLieIds.includes(id) &&
+                !run.claims.some((claim) => claim.suspectId === suspectId && claim.text === statement),
+            )
+            .map(({ statement }) => statement),
         );
 
       for (let seed = 0; seed < 30; seed += 1) {

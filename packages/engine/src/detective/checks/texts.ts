@@ -76,6 +76,9 @@ function collectNarrativeTexts(detectiveCase: DetectiveCase): NarrativeText[] {
       ...suspect.lies.map((lie, lieIndex) =>
         at(`suspects[${String(index)}].lies[${String(lieIndex)}].statement`, lie.statement),
       ),
+      ...(suspect.claims ?? []).map((claim, claimIndex) =>
+        at(`suspects[${String(index)}].claims[${String(claimIndex)}]`, claim),
+      ),
       ...(suspect.reactions ?? []).map((reaction, reactionIndex) =>
         at(`suspects[${String(index)}].reactions[${String(reactionIndex)}].text`, reaction.text),
       ),

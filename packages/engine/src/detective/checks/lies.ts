@@ -11,6 +11,7 @@ export function checkLies(
   obtainable: Obtainable,
   requireTies = false,
   requireAdmissions = false,
+  requireClaims = false,
 ): CaseIssue[] {
   const unbreakable = detectiveCase.suspects.flatMap((suspect, suspectIndex) =>
     suspect.lies
@@ -27,6 +28,7 @@ export function checkLies(
     ...checkChains(detectiveCase),
     ...(requireTies ? checkTies(detectiveCase) : []),
     ...(requireAdmissions ? checkAdmissions(detectiveCase) : []),
+    ...(requireClaims ? checkTrueClaims(detectiveCase) : []),
   ];
 }
 
@@ -91,5 +93,24 @@ function checkAdmissions(detectiveCase: DetectiveCase): CaseIssue[] {
           ]
         : [],
     ),
+  );
+}
+
+/**
+ * What a suspect claims at the first talk is their lies' statements and these true claims, and the hero is not told
+ * which are which. A suspect whose every claim is a lie would give themselves away by speaking, so one who lies needs
+ * a true claim beside it.
+ */
+function checkTrueClaims(detectiveCase: DetectiveCase): CaseIssue[] {
+  return detectiveCase.suspects.flatMap((suspect, suspectIndex) =>
+    suspect.lies.length === 0 || (suspect.claims ?? []).length > 0
+      ? []
+      : [
+          {
+            code: 'suspect-without-true-claim' as const,
+            path: `suspects[${String(suspectIndex)}].claims`,
+            message: `"${suspect.id}" lies, so they need at least one true "claims" line, or everything they say would be a lie.`,
+          },
+        ],
   );
 }

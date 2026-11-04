@@ -24,6 +24,7 @@ const suspect = (id: string, name: string, extra: Record<string, unknown> = {}) 
   closed: false,
   talksAgain: null,
   place: null,
+  claims: [],
   statements: [],
   ...extra,
 });
@@ -100,6 +101,7 @@ const PLAYED = viewOf({
       closed: true,
       talksAgain: { day: 3, minute: 125 },
       place: { id: 'market', name: 'Market' },
+      claims: [],
       statements: [
         { day: 1, kind: 'alibi', text: 'I never left the oven.' },
         { day: 2, kind: 'conceded', text: 'I left at nine.' },

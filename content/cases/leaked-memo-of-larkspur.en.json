@@ -345,6 +345,10 @@
       "persona": "The head of investor relations at Larkspur: a polished, soft-spoken woman who can say 'no comment' in forty-two flattering ways and apologises to machines.",
       "secret": "Her family's teahouse is a week from foreclosure. She forged the memo, bought the shares cheap through a shell company in her aunt's name, and planned to sell as the price recovered.",
       "alibi": "Says she was at home on Sunday night and learned of the memo from the morning papers like everyone else.",
+      "claims": [
+        "I answer every shareholder question the company allows me to answer.",
+        "I work long hours, and Larkspur knows it."
+      ],
       "lies": [
         {
           "id": "ir-never-saw",
@@ -373,6 +377,10 @@
       "persona": "The finance director of Larkspur: a rumpled man who talks about quarterly figures the way other men talk about the weather, and who is permanently late.",
       "secret": "He gambles on racing pigeons and spent the board dinner in the cloakroom, anxiously phoning a pigeon loft.",
       "alibi": "Insists he sat through the whole board dinner without leaving his chair.",
+      "claims": [
+        "I signed off the quarterly figures last month.",
+        "I am late for most things, dinner included."
+      ],
       "lies": [
         {
           "id": "cfo-dinner",
@@ -389,6 +397,7 @@
       "persona": "The financial reporter who printed the memo first: sharp, quick and proud of never having needed to correct a story, which she regards as a medical condition.",
       "secret": "She celebrated a bonus with a small party the morning of the leak, which has nothing to do with the memo and everything to do with her editor.",
       "alibi": "Says she found the memo under her door at a quarter to eight and rushed it to press.",
+      "claims": ["I printed the memo within the hour of getting it.", "I have never had to correct a story."],
       "lies": [
         {
           "id": "journalist-no-pay",
@@ -405,6 +414,10 @@
       "persona": "A floor trader with bright braces and a laugh that carries across the exchange; he believes every rumour for exactly one hour.",
       "secret": "The enormous short order was placed for a client who has begged for anonymity, and he is sworn to keep it: a hedge, not a plot.",
       "alibi": "Says he was on the floor all morning, with a hundred witnesses.",
+      "claims": [
+        "I am a floor trader and I take orders from clients all day.",
+        "I believe most rumours for about an hour."
+      ],
       "lies": [
         {
           "id": "trader-own-idea",

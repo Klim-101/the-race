@@ -25,8 +25,9 @@ export const RUN_SCHEMA_VERSION = 2;
  * 18: the hero can ask the locals for a rumour and study a clue with a tool, and either can earn a lead (see `ask.ts`).
  * 19: the hero can ask a witness of a place what they saw, in general or about one suspect (see `witnesses.ts`).
  * 20: a link may hold one clue more than its conclusion needs and still give it (see `verdict.ts`).
+ * 21: a suspect makes claims at the first talk that the hero can see, and later ones as lies fall (see `claims.ts`).
  */
-export const RULESET_VERSION = 20;
+export const RULESET_VERSION = 21;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;

@@ -153,6 +153,8 @@ export interface TabText {
     readonly closedUntil: string;
     /** A person the hero has cleared with a conclusion: they could not have done it. */
     readonly cleared: string;
+    /** The heading of what the person claims. */
+    readonly claims: string;
     readonly mood: string;
     readonly lieFell: string;
     readonly brokenBy: string;

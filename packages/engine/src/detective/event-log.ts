@@ -139,6 +139,7 @@ const OutcomeSchema = z.union([
       .optional(),
     mood: z.enum(SUSPECT_MOODS).optional(),
     closed: z.literal(true).optional(),
+    claimed: z.array(z.string()).optional(),
     conceded: z.array(
       z.object({ lieId: EntityIdSchema, statement: z.string(), admission: z.string().optional() }),
     ),
