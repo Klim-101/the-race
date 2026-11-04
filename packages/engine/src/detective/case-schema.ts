@@ -220,6 +220,21 @@ export const SuspectSchema = z.object({
 });
 export type Suspect = z.infer<typeof SuspectSchema>;
 
+/**
+ * A person of a place who is not a suspect: a waiter, a guard, a passer-by. They stood in the place during
+ * `hours` (minutes of the day, which may wrap midnight) on the evening of the crime and again whenever the hero meets
+ * them, so what they saw is whatever the sealed timeline puts at their place in those hours. The generator writes no
+ * testimony; the engine derives it, so it cannot say more than a passer-by could have seen.
+ */
+export const WitnessSchema = z.object({
+  id: EntityIdSchema,
+  locationId: EntityIdSchema,
+  name: NarrativeTextSchema,
+  persona: NarrativeTextSchema,
+  hours: LeadWindowSchema,
+});
+export type Witness = z.infer<typeof WitnessSchema>;
+
 export const DeductionSchema = z.object({
   id: EntityIdSchema,
   clueIds: z.array(EntityIdSchema).min(2),
@@ -388,5 +403,7 @@ export const DetectiveCaseSchema = z.object({
   randomEvents: z.array(RandomEventSchema).max(MAX_RANDOM_EVENTS).optional(),
   /** Optional for the same reason: the cases of before the leads have none, and keep their seal. */
   leads: z.array(LeadSchema).optional(),
+  /** Optional for the same reason: the cases of before the witnesses have none, and keep their seal. */
+  witnesses: z.array(WitnessSchema).optional(),
 });
 export type DetectiveCase = z.infer<typeof DetectiveCaseSchema>;

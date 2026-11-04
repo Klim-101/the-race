@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 18;
+var RULESET_VERSION = 19;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -34244,6 +34244,13 @@ var SuspectSchema = external_exports.object({
   alibi: NarrativeTextSchema,
   lies: external_exports.array(LieSchema)
 });
+var WitnessSchema = external_exports.object({
+  id: EntityIdSchema,
+  locationId: EntityIdSchema,
+  name: NarrativeTextSchema,
+  persona: NarrativeTextSchema,
+  hours: LeadWindowSchema
+});
 var DeductionSchema = external_exports.object({
   id: EntityIdSchema,
   clueIds: external_exports.array(EntityIdSchema).min(2),
@@ -34359,7 +34366,9 @@ var DetectiveCaseSchema = external_exports.object({
    */
   randomEvents: external_exports.array(RandomEventSchema).max(MAX_RANDOM_EVENTS).optional(),
   /** Optional for the same reason: the cases of before the leads have none, and keep their seal. */
-  leads: external_exports.array(LeadSchema).optional()
+  leads: external_exports.array(LeadSchema).optional(),
+  /** Optional for the same reason: the cases of before the witnesses have none, and keep their seal. */
+  witnesses: external_exports.array(WitnessSchema).optional()
 });
 
 // packages/engine/src/detective/condition.ts
@@ -35868,6 +35877,52 @@ function assertCaseSealIntact(run) {
   }
 }
 
+// packages/engine/src/detective/witnesses.ts
+var WITNESS_RULESET_VERSION = 19;
+var MINUTES_IN_DAY = 1440;
+var WITNESS_NAMED_EASE = 2;
+function requireWitness(detectiveCase, witnessId) {
+  const found = (detectiveCase.witnesses ?? []).find(({ id }) => id === witnessId);
+  if (found === void 0) throw new Error(`The case has no witness "${witnessId}".`);
+  return found;
+}
+function witnessesHere(run) {
+  if (run.rulesetVersion < WITNESS_RULESET_VERSION) return [];
+  return (run.case.witnesses ?? []).filter(
+    ({ locationId, hours }) => locationId === run.locationId && inWindow(hours, run.clock.minute)
+  );
+}
+function sightingsOf(detectiveCase, witness, aboutSuspectId) {
+  const suspectIds = new Set(detectiveCase.suspects.map(({ id }) => id));
+  return detectiveCase.truth.timeline.filter(
+    ({ actorId, locationId, atMinute }) => locationId === witness.locationId && suspectIds.has(actorId) && (aboutSuspectId === void 0 || actorId === aboutSuspectId) && inWindow(witness.hours, atMinute % MINUTES_IN_DAY)
+  ).map(({ actorId, atMinute }) => ({ suspectId: actorId, minuteOfDay: atMinute % MINUTES_IN_DAY }));
+}
+function holdsClueAbout(run, suspectId) {
+  return run.case.clues.some(
+    (clue) => run.foundClueIds.includes(clue.id) && [...clue.about ?? [], ...clue.pointsTo].includes(suspectId)
+  );
+}
+function recordSightings(run, witness, sightings) {
+  const fresh = sightings.filter(
+    ({ suspectId, minuteOfDay }) => !run.sightings.some(
+      (known) => known.witnessId === witness.id && known.suspectId === suspectId && known.minuteOfDay === minuteOfDay
+    )
+  );
+  return {
+    ...run,
+    sightings: [
+      ...run.sightings,
+      ...fresh.map(({ suspectId, minuteOfDay }) => ({
+        witnessId: witness.id,
+        suspectId,
+        minuteOfDay,
+        day: run.clock.day
+      }))
+    ]
+  };
+}
+
 // packages/engine/src/detective/run-state.ts
 var DrawnEventSchema = external_exports.object({
   eventId: EntityIdSchema,
@@ -35881,6 +35936,13 @@ var StatementSchema = external_exports.strictObject({
   day: external_exports.int().min(1),
   kind: external_exports.enum(STATEMENT_KINDS),
   text: external_exports.string().min(1)
+});
+var SightingRecordSchema = external_exports.strictObject({
+  witnessId: EntityIdSchema,
+  suspectId: EntityIdSchema,
+  minuteOfDay: external_exports.int().min(0).max(1439),
+  /** The day of the run it was told on. */
+  day: external_exports.int().min(1)
 });
 var InspirationSchema = external_exports.strictObject({
   kind: SeedKindSchema,
@@ -35975,6 +36037,8 @@ var DetectiveRunStateSchema = external_exports.object({
   setting: SettingSchema.nullable().default(null),
   /** What suspects have said at questioning, in the order they said it. Old saves have none. */
   statements: external_exports.array(StatementSchema).default([]),
+  /** What witnesses have told the hero they saw, in the order it was told. Old saves have none. */
+  sightings: external_exports.array(SightingRecordSchema).default([]),
   /** What the hero has done with the clues, for the board: where each was found, to whom it was shown, the links tried. */
   history: RunHistorySchema.default(() => emptyHistory()),
   /** The pattern of news the case grew from, when it grew from one. Old saves have none. */
@@ -36030,6 +36094,16 @@ var DetectiveRunStateSchema = external_exports.object({
     "searchedParts",
     run.searchedParts.map(({ partId }) => partId),
     partIds
+  );
+  known(
+    "sightings",
+    run.sightings.map(({ witnessId }) => witnessId),
+    new Set((run.case.witnesses ?? []).map(({ id }) => id))
+  );
+  known(
+    "sighted",
+    run.sightings.map(({ suspectId }) => suspectId),
+    new Set(run.case.suspects.map(({ id }) => id))
   );
   known(
     "statements",
@@ -36097,6 +36171,7 @@ function createDetectiveRun(input2) {
     pendingEffects: [],
     setting: input2.setting ?? null,
     statements: [],
+    sightings: [],
     history: emptyHistory(),
     inspiration: input2.inspiration ?? null
   });
@@ -36516,6 +36591,18 @@ function viewRun(run) {
     map: viewMap(run),
     placeParts: viewPlaceParts(run),
     leads: viewLeads(run),
+    witnesses: witnessesHere(run).map(({ id, name, persona }) => ({ id, name, persona })),
+    sightings: run.sightings.map(({ witnessId, suspectId, minuteOfDay, day }) => {
+      const witness = requireWitness(detectiveCase, witnessId);
+      return {
+        witnessId,
+        witnessName: witness.name,
+        place: { id: witness.locationId, name: requireLocation(detectiveCase, witness.locationId).name },
+        suspectId,
+        minuteOfDay,
+        day
+      };
+    }),
     suspects: detectiveCase.suspects.map((suspect) => {
       const placeId = suspectPlace(run, suspect);
       const place = placeId === void 0 ? void 0 : requireLocation(detectiveCase, placeId);
@@ -37385,8 +37472,17 @@ var IntentSchema = external_exports.discriminatedUnion("kind", [
   DeduceIntentSchema,
   /** Stop for the day and sleep where the hero stands: the night passes at once. */
   external_exports.object({ kind: external_exports.literal("rest") }),
-  /** Ask the locals for a rumour: a contacts roll, with the piece of the kit named by `toolId` (cash) to help it. */
-  external_exports.object({ kind: external_exports.literal("ask"), toolId: GearIdSchema.optional() }),
+  /**
+   * Ask the locals for a rumour: a contacts roll, with the piece of the kit named by `toolId` (cash) to help it. With
+   * `witnessId` (from the ruleset of witnesses on) it is a question to one witness of the place about what they saw,
+   * and `aboutSuspectId` narrows it to one suspect.
+   */
+  external_exports.object({
+    kind: external_exports.literal("ask"),
+    toolId: GearIdSchema.optional(),
+    witnessId: EntityIdSchema.optional(),
+    aboutSuspectId: EntityIdSchema.optional()
+  }),
   /** Study a clue the hero holds with a tool of the kit, for a lead. */
   external_exports.object({ kind: external_exports.literal("study"), clueId: EntityIdSchema, toolId: GearIdSchema.optional() }),
   /** Sit down at a teahouse or a cafe for a while: a little of the nerves comes back. */
@@ -37784,23 +37880,40 @@ function resolveSit(run, rng) {
     details: []
   };
 }
-function resolveAsk(run, rng, toolId) {
+function resolveAsk(run, rng, intent) {
+  const { toolId, witnessId, aboutSuspectId } = intent;
   if (run.rulesetVersion < ASK_RULESET_VERSION)
     return refuse3("not-available", "Nobody here has a rumour to tell.");
+  let witness;
+  if (witnessId !== void 0 || aboutSuspectId !== void 0) {
+    if (run.rulesetVersion < WITNESS_RULESET_VERSION)
+      return refuse3("not-available", "Nobody here has seen anything.");
+    if (witnessId === void 0) return refuse3("invalid-intent", "Name the witness to ask.");
+    witness = witnessesHere(run).find(({ id }) => id === witnessId);
+    if (witness === void 0) return refuse3("no-witness", "There is nobody here to ask that.");
+    if (aboutSuspectId !== void 0 && !run.case.suspects.some(({ id }) => id === aboutSuspectId)) {
+      return refuse3("unknown-suspect", `There is no suspect "${aboutSuspectId}".`);
+    }
+  }
   const helper = toolId === void 0 ? void 0 : askBonusOf(run, toolId);
   if (toolId !== void 0 && helper === void 0) {
     return refuse3("wrong-tool", "That is not in the kit, or it is no help in asking.");
   }
   const location = locationById(run.case, run.locationId);
+  const named2 = aboutSuspectId !== void 0 && holdsClueAbout(run, aboutSuspectId);
   const attempt = roll(
     run,
     rng,
-    { skill: "contacts", difficulty: ASK_DIFFICULTY - (helper?.bonus ?? 0) },
+    {
+      skill: "contacts",
+      difficulty: ASK_DIFFICULTY - (helper?.bonus ?? 0) - (named2 ? WITNESS_NAMED_EASE : 0)
+    },
     location.situations
   );
   const { result } = attempt;
   const worndown = helper === void 0 ? run : wearTool(run, helper.item.id, false);
-  const heard = result.success ? grantLeads(worndown, [{ kind: "locals", locationId: location.id }]) : worndown;
+  const sightings = witness !== void 0 && result.success ? sightingsOf(run.case, witness, aboutSuspectId) : [];
+  const heard = witness !== void 0 ? recordSightings(worndown, witness, sightings) : result.success ? grantLeads(worndown, [{ kind: "locals", locationId: location.id }]) : worndown;
   const minutes2 = ASK_MINUTES + (result.success ? 0 : FAILED_ASK_MINUTES);
   const settled = settle2(heard, rng, minutes2, [result]);
   return {
@@ -37811,7 +37924,8 @@ function resolveAsk(run, rng, toolId) {
       minutes: minutes2,
       succeeded: result.success,
       consequences: [...result.success ? [] : ["time-lost"], ...settled.consequences],
-      ...helper === void 0 ? {} : { tool: { id: helper.item.id, wear: worn(helper.item, false).wear } }
+      ...helper === void 0 ? {} : { tool: { id: helper.item.id, wear: worn(helper.item, false).wear } },
+      ...witness === void 0 ? {} : { witness: { id: witness.id, sightings } }
     },
     details: [{ subject: { kind: "location", id: location.id }, result }],
     felt: distinctFelt([...attempt.felt, ...settled.felt]),
@@ -37877,7 +37991,7 @@ function dispatchIntent(run, input2, rng) {
     case "sit":
       return resolveSit(run, rng);
     case "ask":
-      return resolveAsk(run, rng, intent.toolId);
+      return resolveAsk(run, rng, intent);
     case "study":
       return resolveStudy(run, rng, intent.clueId, intent.toolId);
     case "interrogate":
@@ -38028,6 +38142,10 @@ var OutcomeSchema = external_exports.union([
     succeeded: external_exports.boolean(),
     consequences: external_exports.array(ConsequenceSchema),
     tool: external_exports.object({ id: GearIdSchema, wear: external_exports.enum(["spent", "broken"]).nullable() }).optional(),
+    witness: external_exports.object({
+      id: EntityIdSchema,
+      sightings: external_exports.array(external_exports.object({ suspectId: EntityIdSchema, minuteOfDay: external_exports.int().min(0).max(1439) }))
+    }).optional(),
     ...fatigue
   }),
   external_exports.object({
@@ -39191,6 +39309,21 @@ function checkAdmissions(detectiveCase) {
   );
 }
 
+// packages/engine/src/detective/checks/witnesses.ts
+var MINUTES_IN_DAY2 = 1440;
+function checkWitnesses(detectiveCase) {
+  const { truth } = detectiveCase;
+  return (detectiveCase.witnesses ?? []).flatMap(
+    (witness, index) => witness.locationId === truth.crimeLocationId && inWindow(witness.hours, truth.crimeAtMinute % MINUTES_IN_DAY2) ? [
+      {
+        code: "witness-saw-the-crime",
+        path: `witnesses[${String(index)}].hours`,
+        message: `Witness "${witness.id}" stands at the scene of the crime when it happens: move their hours off that minute, or their place off the scene.`
+      }
+    ] : []
+  );
+}
+
 // packages/engine/src/detective/checks/leads.ts
 function checkLeads(detectiveCase, obtainable) {
   const issues = [];
@@ -39589,6 +39722,10 @@ function checkUniqueIds(detectiveCase) {
       id: lead.id,
       path: `leads[${String(index)}].id`
     })),
+    ...(detectiveCase.witnesses ?? []).map((witness, index) => ({
+      id: witness.id,
+      path: `witnesses[${String(index)}].id`
+    })),
     ...detectiveCase.clues.map((clue, index) => ({ id: clue.id, path: `clues[${String(index)}].id` })),
     ...detectiveCase.suspects.flatMap((suspect, suspectIndex) => [
       { id: suspect.id, path: `suspects[${String(suspectIndex)}].id` },
@@ -39651,6 +39788,9 @@ function checkReferencesResolve(detectiveCase) {
         expect(leadIds, "lead", part.fallback.leadId, `${path}.fallback.leadId`);
       }
     });
+  });
+  (detectiveCase.witnesses ?? []).forEach((witness, index) => {
+    expect(locationIds, "location", witness.locationId, `witnesses[${String(index)}].locationId`);
   });
   detectiveCase.clues.forEach((clue, index) => {
     expect(locationIds, "location", clue.locationId, `clues[${String(index)}].locationId`);
@@ -39999,6 +40139,10 @@ function collectNarrativeTexts(detectiveCase) {
       )
     ]),
     ...(detectiveCase.leads ?? []).map((lead, index) => at3(`leads[${String(index)}].reason`, lead.reason)),
+    ...(detectiveCase.witnesses ?? []).flatMap((witness, index) => [
+      at3(`witnesses[${String(index)}].name`, witness.name),
+      at3(`witnesses[${String(index)}].persona`, witness.persona)
+    ]),
     ...detectiveCase.clues.map((clue, index) => at3(`clues[${String(index)}].description`, clue.description)),
     ...detectiveCase.suspects.flatMap((suspect, index) => [
       at3(`suspects[${String(index)}].name`, suspect.name),
@@ -40140,6 +40284,7 @@ function validateCase(input2, context2) {
     ...checkSolveChance(detectiveCase, context2.hero, context2.traits, obtainable),
     ...checkLies(detectiveCase, obtainable, context2.requireTies ?? false, context2.requireAdmissions ?? false),
     ...checkTimeline(detectiveCase),
+    ...checkWitnesses(detectiveCase),
     ...checkWorldEvents(detectiveCase, context2.hero, context2.traits),
     ...checkRandomEvents(
       detectiveCase,
@@ -53383,14 +53528,19 @@ var ActIntentSchema = external_exports.discriminatedUnion("kind", [
   }),
   external_exports.object({ kind: external_exports.literal("rest") }),
   external_exports.object({ kind: external_exports.literal("sit") }),
-  external_exports.object({ kind: external_exports.literal("ask"), toolId: GearIdSchema.optional() }),
+  external_exports.object({
+    kind: external_exports.literal("ask"),
+    toolId: GearIdSchema.optional(),
+    witnessId: EntityIdSchema.optional(),
+    aboutSuspectId: EntityIdSchema.optional()
+  }),
   external_exports.object({ kind: external_exports.literal("study"), clueId: EntityIdSchema, toolId: GearIdSchema.optional() }),
   UseIntentSchema,
   RereadIntentSchema
 ]);
 var act = defineTool({
   name: "act",
-  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
+  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it; or, with `witnessId` of a person run_view lists under `witnesses`, ask that person what they saw, and with `aboutSuspectId` only about that one suspect), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
   inputSchema: external_exports.object({ turn: TurnSchema, intent: ActIntentSchema }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, intent }, context2) => playIntent(context2, turn, intent)
@@ -54088,6 +54238,7 @@ var ISSUE_PRIORITY = {
   "clue-not-tied": 9.05,
   "lie-without-admission": 9.06,
   "lie-chain-broken": 9.07,
+  "witness-saw-the-crime": 18.5,
   "unearnable-lead": 9.1,
   "unused-lead": 9.1,
   "false-lead-holds-clue": 9.1,

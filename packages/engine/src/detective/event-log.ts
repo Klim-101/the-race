@@ -105,6 +105,12 @@ const OutcomeSchema = z.union([
     succeeded: z.boolean(),
     consequences: z.array(ConsequenceSchema),
     tool: z.object({ id: GearIdSchema, wear: z.enum(['spent', 'broken']).nullable() }).optional(),
+    witness: z
+      .object({
+        id: EntityIdSchema,
+        sightings: z.array(z.object({ suspectId: EntityIdSchema, minuteOfDay: z.int().min(0).max(1439) })),
+      })
+      .optional(),
     ...fatigue,
   }),
   z.object({
