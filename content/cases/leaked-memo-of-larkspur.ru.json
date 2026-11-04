@@ -358,6 +358,51 @@
       "discovery": null,
       "pointsTo": ["journalist"],
       "isRedHerring": true
+    },
+    {
+      "id": "seen-alley-newsboy-investor-relations",
+      "locationId": "ink-alley",
+      "description": "Свидетель Брам Оддлоу: Оттолина Ванс — Чернильный переулок, около 06:30.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["investor-relations"],
+      "sightingOf": {
+        "witnessId": "alley-newsboy",
+        "suspectId": "investor-relations"
+      },
+      "isRedHerring": false
+    },
+    {
+      "id": "seen-fishmonger-investor-relations",
+      "locationId": "harbour-street",
+      "description": "Свидетель Дора Венн: Оттолина Ванс — Портовая улица, около 08:00.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["investor-relations"],
+      "sightingOf": {
+        "witnessId": "fishmonger",
+        "suspectId": "investor-relations"
+      },
+      "isRedHerring": false
+    },
+    {
+      "id": "seen-plaza-guard-cfo",
+      "locationId": "larkspur-plaza",
+      "description": "Свидетель Йорун Хейл: Барнаби Фитч — Площадь Ларкспур, около 06:45.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["cfo"],
+      "sightingOf": {
+        "witnessId": "plaza-guard",
+        "suspectId": "cfo"
+      },
+      "isRedHerring": false
     }
   ],
   "suspects": [

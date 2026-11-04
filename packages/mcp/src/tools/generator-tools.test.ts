@@ -306,6 +306,69 @@ describe('scenario_submit', () => {
     expect(fs.files.has(pendingFile(SAVE_DIR))).toBe(false);
   });
 
+  describe('the clues in which witnesses tell what they saw', () => {
+    /** A sample as a generator would write it: the sightings are named in a lie, and no clue of them is written. */
+    const asWritten = (file: string): Record<string, unknown> => {
+      const sample = readCase(file);
+      return {
+        ...sample,
+        clues: (sample.clues as { sightingOf?: unknown }[]).filter((clue) => clue.sightingOf === undefined),
+      };
+    };
+
+    it.each([
+      ['en', 'goose-of-elmwick.en.json', 'Mabel Quince saw Wilhelmina Tuck at Elm Street around 02:30.'],
+      [
+        'ru',
+        'goose-of-elmwick.ru.json',
+        'Свидетель Мейбл Куинс: Вильгельмина Так — Вязовая улица, около 02:30.',
+      ],
+    ] as const)('are made on acceptance, in the words of a %s case (%s)', async (locale, file, words) => {
+      const { fs, call } = await start(pendingRun({ locale }));
+      const written = asWritten(file);
+      expect((written.clues as { id: string }[]).some(({ id }) => id.startsWith('seen-'))).toBe(false);
+
+      const result = await submit(call, written);
+
+      expect(result.body).toEqual({ accepted: true });
+      const loaded = await loadTheRun(SAVE_DIR, fs);
+      const made = loaded.ok
+        ? loaded.run.case.clues.find(({ id }) => id === 'seen-street-sweeper-postmaster')
+        : undefined;
+      expect(made).toMatchObject({
+        description: words,
+        about: ['postmaster'],
+        sightingOf: { witnessId: 'street-sweeper', suspectId: 'postmaster' },
+      });
+    });
+
+    it('are left as they are when the case already has them, so a case comes out the same', async () => {
+      const { fs, call } = await start(pendingRun({ locale: 'en' }));
+      const sample = readCase('goose-of-elmwick.en.json');
+
+      await submit(call, sample);
+
+      const loaded = await loadTheRun(SAVE_DIR, fs);
+      const ids = loaded.ok ? loaded.run.case.clues.map(({ id }) => id) : [];
+      expect(ids).toEqual((sample.clues as { id: string }[]).map(({ id }) => id));
+    });
+
+    it('are refused when a case names a sighting the timeline does not give, and the issue says why', async () => {
+      const { call } = await start(pendingRun({ locale: 'en' }));
+      const written = asWritten('goose-of-elmwick.en.json') as {
+        suspects: { id: string; lies: { brokenBy: string[] }[] }[];
+      };
+      const curator = written.suspects.find(({ id }) => id === 'curator');
+      if (curator?.lies[0] !== undefined) curator.lies[0].brokenBy = ['seen-clock-tender-curator'];
+
+      const result = await submit(call, written);
+
+      expect(result.body).toMatchObject({ accepted: false });
+      expect(result.text).toContain('unknown-reference');
+      expect(result.text).toContain('truth.timeline');
+    });
+  });
+
   it('keeps what the case grew from, as a kind and a sentence and no headline, in the run and its view', async () => {
     const fs = memoryFs();
     await saveSeedsForDay(SAVE_DIR, '2026-10-31', { seeds: [SEED], realNames: [] }, fs);

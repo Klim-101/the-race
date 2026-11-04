@@ -150,7 +150,10 @@ describe('sample cases', () => {
 
   describe.each(files)('$name', ({ locale, json }) => {
     it('has the structure the design asks for', () => {
-      const clues = json.clues as { isRedHerring: boolean }[];
+      // The clues the case's author wrote; the engine makes the ones in which witnesses tell what they saw.
+      const clues = (json.clues as { isRedHerring: boolean; sightingOf?: unknown }[]).filter(
+        (clue) => clue.sightingOf === undefined,
+      );
       const locations = json.locations as { access: { kind: string }; situations?: string[] }[];
       const suspects = json.suspects as unknown[];
       expect(locations.length).toBeGreaterThanOrEqual(8);

@@ -8,6 +8,8 @@ import {
   chooseSeed,
   chooseSetting,
   createDetectiveRun,
+  DetectiveCaseSchema,
+  deriveSightingClues,
   toolSlotsOf,
   validateCase,
   worldRealNames,
@@ -20,6 +22,7 @@ import { defineTool } from '../define-tool.js';
 import { seedsOfRun, toldSeedsOfRun } from '../news.js';
 import { clearPending, savePending } from '../pending-run.js';
 import { recordsOrNone } from '../profile.js';
+import { describeSighting } from '../sighting-text.js';
 import { requireWorld } from '../world.js';
 import { MAX_CASE_ATTEMPTS, openPendingRun } from './generator-brief.js';
 
@@ -169,7 +172,15 @@ export const scenarioSubmit = defineTool({
       }
 
       const world = await requireWorld(context);
-      const result = validateCase(readCase(input.case), {
+      // The clues in which witnesses tell what they saw are made here, with words in the language of the case: the
+      // generator names them (`seen-<witness>-<suspect>`) and writes no text for them. A case that does not parse is
+      // left as it is, and the validator reports it.
+      const submitted = readCase(input.case);
+      const parsed = DetectiveCaseSchema.safeParse(submitted);
+      const candidate = parsed.success
+        ? deriveSightingClues(parsed.data, describeSighting(parsed.data.locale))
+        : submitted;
+      const result = validateCase(candidate, {
         hero,
         traits: pending.traits,
         locale: pending.locale,

@@ -348,6 +348,36 @@
       "discovery": null,
       "pointsTo": ["curator"],
       "isRedHerring": true
+    },
+    {
+      "id": "seen-street-sweeper-postmaster",
+      "locationId": "elm-street",
+      "description": "Свидетель Мейбл Куинс: Вильгельмина Так — Вязовая улица, около 02:30.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["postmaster"],
+      "sightingOf": {
+        "witnessId": "street-sweeper",
+        "suspectId": "postmaster"
+      },
+      "isRedHerring": false
+    },
+    {
+      "id": "seen-clock-tender-postmaster",
+      "locationId": "bell-square",
+      "description": "Свидетель Хоб Тэрроу: Вильгельмина Так — Колокольная площадь, около 02:40.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["postmaster"],
+      "sightingOf": {
+        "witnessId": "clock-tender",
+        "suspectId": "postmaster"
+      },
+      "isRedHerring": false
     }
   ],
   "suspects": [
@@ -367,7 +397,7 @@
           "id": "postmaster-parcels",
           "statement": "Я всю ночь разбирала посылки на почте, об этом вам скажут любые ячейки.",
           "admission": "Хорошо, я выходила из почты после часу ночи. Старой женщине можно подышать воздухом, это всё.",
-          "brokenBy": ["door-log", "hatbox-witness"]
+          "brokenBy": ["door-log", "hatbox-witness", "seen-street-sweeper-postmaster"]
         }
       ],
       "reactions": [

@@ -505,5 +505,9 @@
       "toBoard": "На доске",
       "toMap": "На карте"
     }
+  },
+  "sighting": {
+    "clue": "Свидетель {witness}: {suspect} — {place}, около {times}.",
+    "and": "и"
   }
 }
