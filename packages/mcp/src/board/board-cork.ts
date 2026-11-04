@@ -141,7 +141,7 @@ export function renderCork(view: DetectiveRunView, board: BoardText, text: TabTe
     const attrs = `data-pick="clue:${e(clue.id)}" data-rel="${e(rel(clueTokens(view, clue.id)))}" tabindex="0" role="button" aria-controls="${e(openedId(clue.id))}" data-open="${e(clue.id)}" aria-label="${e(`${clue.number}: ${truncate(clue.description, 90)}`)}"`;
     const placeAttrs = `data-pick="place:${e(clue.locationId)}" data-rel="${e(rel(placeTokens(view, clue.locationId)))}"`;
     const turned = `rotate(${tilt(index).toFixed(1)} ${whole(x + CARD_W / 2)} ${whole(y + CARD_H / 2)})`;
-    return `<g class="card-pin${clue.garbled ? ' garbled' : ''}" transform="${turned}" ${attrs}><title>${e(clue.description)}</title><rect class="paper" x="${whole(x)}" y="${whole(y)}" width="${String(CARD_W)}" height="${String(CARD_H)}" rx="3"/><text class="num" x="${whole(x + 12)}" y="${whole(y + 26)}">${e(clue.number)}</text>${lines}<g class="where" ${placeAttrs}>${whereLines}</g><circle class="pin" cx="${whole(x + CARD_W / 2)}" cy="${whole(y)}" r="6"/></g>`;
+    return `<g class="card-pin${clue.garbled ? ' garbled' : ''}${clue.witness === null ? '' : ' sighting'}" transform="${turned}" ${attrs}><title>${e(clue.description)}</title><rect class="paper" x="${whole(x)}" y="${whole(y)}" width="${String(CARD_W)}" height="${String(CARD_H)}" rx="3"/><text class="num" x="${whole(x + 12)}" y="${whole(y + 26)}">${e(clue.number)}</text>${lines}<g class="where" ${placeAttrs}>${whereLines}</g><circle class="pin" cx="${whole(x + CARD_W / 2)}" cy="${whole(y)}" r="6"/></g>`;
   });
 
   // The leads in their own column, each with what earned it, what it opens and whether it can be followed now.

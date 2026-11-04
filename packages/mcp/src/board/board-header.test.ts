@@ -17,6 +17,7 @@ const clue = (id: string, number: string, locationId = 'market') => ({
   locationId,
   description: `Text of ${id}.`,
   garbled: false,
+  witness: null,
   number,
 });
 

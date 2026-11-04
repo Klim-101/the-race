@@ -212,6 +212,24 @@ describe('asking a witness, from the ruleset of sighting clues', () => {
   });
 });
 
+describe('a clue that a witness told, in the view', () => {
+  it('says whose words it is, and no other clue does', () => {
+    const base = newRun();
+    const held: DetectiveRunState = {
+      ...ask(base, {}).run,
+      foundClueIds: [...ask(base, {}).run.foundClueIds, 'cellar-key'],
+    };
+
+    const view = viewRun(held);
+
+    expect(view.clues.map(({ id, witness }) => [id, witness])).toEqual([
+      ['cellar-key', null],
+      ['seen-vendor-baker', 'Pip the vendor'],
+      ['seen-vendor-rival', 'Pip the vendor'],
+    ]);
+  });
+});
+
 describe('a sighting in the hands of the hero', () => {
   const holding = (): DetectiveRunState => ask(newRun(), {}).run;
 
