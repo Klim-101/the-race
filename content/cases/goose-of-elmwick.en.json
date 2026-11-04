@@ -346,6 +346,7 @@
         {
           "id": "postmaster-parcels",
           "statement": "I was sorting parcels at the post office all night, and the pigeonholes will tell you so.",
+          "admission": "Very well, I stepped out of the post office after one in the morning. An old woman may take the air if she likes, and that is all it was.",
           "brokenBy": ["door-log", "hatbox-witness"]
         }
       ]
@@ -361,6 +362,7 @@
         {
           "id": "curator-home",
           "statement": "I locked up at ten and slept at home, as I always do.",
+          "admission": "I stayed in the museum, in my office. I always do on the eve of a gala, because I am afraid of oversleeping.",
           "brokenBy": ["gold-cufflink"]
         }
       ]
@@ -376,6 +378,7 @@
         {
           "id": "caterer-boots",
           "statement": "My boots have never touched the museum floor.",
+          "admission": "All right, I came as far as the museum steps, but I never went inside. I only wanted a quiet place to bake where nobody could see me.",
           "brokenBy": ["wet-boots"]
         }
       ]
@@ -391,6 +394,7 @@
         {
           "id": "apprentice-bed",
           "statement": "I was in bed by nine and never left it.",
+          "admission": "I was not asleep. Somebody asked me to hold a handcart for a while and promised me toffee for it. I did not look at what lay on it.",
           "brokenBy": ["apprentice-confession", "door-log"],
           "brokenByInsights": ["night-visit"]
         }

@@ -72,6 +72,11 @@ function collectNarrativeTexts(detectiveCase: DetectiveCase): NarrativeText[] {
       ...suspect.lies.map((lie, lieIndex) =>
         at(`suspects[${String(index)}].lies[${String(lieIndex)}].statement`, lie.statement),
       ),
+      ...suspect.lies.flatMap((lie, lieIndex) =>
+        lie.admission === undefined
+          ? []
+          : [at(`suspects[${String(index)}].lies[${String(lieIndex)}].admission`, lie.admission)],
+      ),
     ]),
     ...detectiveCase.deductions.map((deduction, index) =>
       at(`deductions[${String(index)}].insight`, deduction.insight),

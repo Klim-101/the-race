@@ -349,6 +349,7 @@
         {
           "id": "ir-never-saw",
           "statement": "I never saw that memo before it appeared in the papers. Larkspur would never write anything so careless.",
+          "admission": "Yes, I opened it on my own machine on Sunday night. I was only checking what was going around the building, and that does not mean I wrote it.",
           "brokenBy": ["memo-metadata", "paper-stock", "deleted-draft"],
           "brokenByInsights": ["memo-origin"]
         }
@@ -365,6 +366,7 @@
         {
           "id": "cfo-dinner",
           "statement": "I sat through the board dinner from soup to cheese and never left my chair.",
+          "admission": "I did leave the table. I went to the cloakroom to make a private call, and I did not want the board to know about it.",
           "brokenBy": ["pigeon-receipt"]
         }
       ]
@@ -380,6 +382,7 @@
         {
           "id": "journalist-no-pay",
           "statement": "I never pay for tips and never celebrate a story before it's confirmed.",
+          "admission": "I did pay for something: a round of champagne for the newsroom, to mark my bonus. It had nothing to do with the story.",
           "brokenBy": ["champagne-bill"]
         }
       ]
@@ -395,6 +398,7 @@
         {
           "id": "trader-own-idea",
           "statement": "That big order against Larkspur was my own idea, no client involved.",
+          "admission": "It was not my idea. I placed the order for a client, and I am not allowed to say whose it was.",
           "brokenBy": ["big-short-slip"]
         }
       ]

@@ -34,6 +34,8 @@ export type CaseIssueCode =
   | 'single-building'
   | 'solution-after-culprit-flees'
   | 'clue-not-tied'
+  | 'lie-without-admission'
+  | 'lie-chain-broken'
   | 'hidden-start'
   | 'unused-lead'
   | 'unearnable-lead'

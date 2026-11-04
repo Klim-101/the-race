@@ -131,7 +131,9 @@ const OutcomeSchema = z.union([
       .optional(),
     mood: z.enum(SUSPECT_MOODS).optional(),
     closed: z.literal(true).optional(),
-    conceded: z.array(z.object({ lieId: EntityIdSchema, statement: z.string() })),
+    conceded: z.array(
+      z.object({ lieId: EntityIdSchema, statement: z.string(), admission: z.string().optional() }),
+    ),
     secret: z.string().nullable(),
     told: idList.optional(),
     reputationChange: z.int(),

@@ -58,6 +58,7 @@ export function computeObtainable(
   const locationIds = new Set<string>([detectiveCase.startLocationId]);
   const clueIds = new Set<string>();
   const leadIds = new Set<string>();
+  const fallenLieIds = new Set<string>();
 
   // Clues open locations and locations hold clues, so expand both until nothing new appears.
   let hasChanged = true;
@@ -86,6 +87,17 @@ export function computeObtainable(
           clueIds.add(clue.id);
           hasChanged = true;
         }
+      }
+    }
+    // Testimony: a suspect within reach hands a clue over when a lie of theirs, told by then, can be broken.
+    for (const suspect of detectiveCase.suspects) {
+      if (suspect.locationId !== undefined && !locationIds.has(suspect.locationId)) continue;
+      for (const lie of suspect.lies) {
+        const told = lie.after === undefined || fallenLieIds.has(lie.after);
+        if (fallenLieIds.has(lie.id) || !told || !canBreakLie(detectiveCase, lie, clueIds)) continue;
+        fallenLieIds.add(lie.id);
+        hasChanged = true;
+        if (lie.gives !== undefined && !clueIds.has(lie.gives)) clueIds.add(lie.gives);
       }
     }
     for (const lead of detectiveCase.leads ?? []) {
