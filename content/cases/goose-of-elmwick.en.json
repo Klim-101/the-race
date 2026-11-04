@@ -411,6 +411,21 @@
       "id": "night-visit",
       "clueIds": ["door-log", "feather-trail"],
       "insight": "The goose left by the service door at ten past two, opened with an old staff card, and was carried by someone who sheds feathers. That was no biscuit-baker's job."
+    },
+    {
+      "id": "violet-ink",
+      "clueIds": ["ink-smudge", "stand-hollow"],
+      "insight": "Someone who writes in violet ink looked up what the goose's stand held, and the stand did hide a compartment: the thief knew exactly where to look."
+    },
+    {
+      "id": "hatbox-letters",
+      "clueIds": ["hatbox-witness", "letters-rumour"],
+      "insight": "An elderly woman carried a softly honking hatbox across the courtyard after midnight, and the letters she cared for were hidden in the goose: she took the bird, letters and all."
+    },
+    {
+      "id": "staff-card-toffee",
+      "clueIds": ["door-log", "apprentice-confession"],
+      "insight": "A spare staff card opened the service door at ten past two, and a kind old lady paid the apprentice in toffee to hold her handcart: the goose left with someone who had the card and the nerve."
     }
   ],
   "truth": {

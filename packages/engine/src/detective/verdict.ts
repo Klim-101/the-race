@@ -40,6 +40,14 @@ export const AccuseIntentSchema = z.object({
 export type AccuseIntent = z.infer<typeof AccuseIntentSchema>;
 
 export const DEDUCE_MINUTES = 10;
+/**
+ * How many clues too many a link may hold and still give its conclusion: sound reasoning with a clue of noise
+ * thrown in is not answered with silence. One is enough to forgive a slip and too few to find a conclusion by
+ * piling clues on: the pair that makes it still has to be picked out.
+ */
+export const EXTRA_CLUES_FORGIVEN = 1;
+/** The first ruleset in which a link may hold a clue too many; before it a link was exactly a conclusion's clues. */
+export const LENIENT_LINKS_RULESET_VERSION = 20;
 /** A link that leads nowhere is time spent staring at the wall. */
 export const FAILED_DEDUCTION_MINUTES = 20;
 
@@ -98,7 +106,10 @@ function refuse(code: VerdictRefusalCode, message: string): { ok: false; refusal
   return { ok: false, refusal: { code, message } };
 }
 
-/** What the player is told when a link is of a size that no open conclusion has: the sizes, and nothing else. */
+/**
+ * What the player is told when a link is of a size that no open conclusion has: the sizes, and nothing else. A
+ * link may hold up to `EXTRA_CLUES_FORGIVEN` clues more than a conclusion needs, and it is not refused for that.
+ */
 function wrongSizeMessage(sizes: readonly number[]): string {
   return sizes.length === 0
     ? 'Every conclusion of this case has been drawn; there is nothing left to link.'
@@ -106,9 +117,10 @@ function wrongSizeMessage(sizes: readonly number[]): string {
 }
 
 /**
- * Links found clues into an insight. A link that is exactly the clue set of a deduction of the case gives
- * that insight. Any other link of a size an open conclusion has costs time and reveals nothing, so it never
- * tells whether it was close; one of a size none has is refused unspent (the sizes are public: `openLinks`).
+ * Links found clues into an insight. A link that holds all the clues of a deduction of the case, and at most
+ * `EXTRA_CLUES_FORGIVEN` more, gives that insight. Any other link of a size an open conclusion has costs time and
+ * reveals nothing, so it never tells whether it was close, and a link short of a conclusion by a clue is not told
+ * so either; one of a size none has is refused unspent (the sizes are public: `openLinks`).
  * An id that is not among the found clues is refused before anything is spent, and names nothing: the
  * same answer for a clue that does not exist and one that was not found.
  */
@@ -127,13 +139,24 @@ export function deduce(run: DetectiveRunState, input: unknown, rng: Rng): Deduce
 
   if (anyGarbled(run, [...link])) return refuse('garbled-clue', GARBLED_REFUSAL_MESSAGE);
 
-  const match = run.case.deductions.find(
-    (deduction) =>
-      new Set(deduction.clueIds).size === link.size && deduction.clueIds.every((id) => link.has(id)),
-  );
+  const forgiven = run.rulesetVersion >= LENIENT_LINKS_RULESET_VERSION ? EXTRA_CLUES_FORGIVEN : 0;
+  // The conclusions the link holds. One not yet drawn comes first, then the one that fits the link exactly.
+  const held = run.case.deductions
+    .filter((deduction) => {
+      const needed = new Set(deduction.clueIds);
+      return needed.size + forgiven >= link.size && [...needed].every((id) => link.has(id));
+    })
+    .toSorted(
+      (a, b) =>
+        Number(run.insightIds.includes(a.id)) - Number(run.insightIds.includes(b.id)) ||
+        Math.abs(new Set(a.clueIds).size - link.size) - Math.abs(new Set(b.clueIds).size - link.size),
+    );
+  const match = held[0];
   if (!match) {
     const sizes = [...new Set(openLinkSizes(run))];
-    if (!sizes.includes(link.size)) return refuse('wrong-link-size', wrongSizeMessage(sizes));
+    if (!sizes.some((size) => link.size >= size && link.size <= size + forgiven)) {
+      return refuse('wrong-link-size', wrongSizeMessage(sizes));
+    }
     const linked = recordLink(run, [...link], 'nothing');
     // A link that leads nowhere frays the nerves, up to the day's cap.
     const frayed = strainByAction(linked);

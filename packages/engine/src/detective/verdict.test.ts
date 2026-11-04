@@ -10,6 +10,7 @@ import { createDetectiveRun, endRun, viewRun, type DetectiveRunState } from './r
 import {
   DEDUCE_MINUTES,
   FAILED_DEDUCTION_MINUTES,
+  LENIENT_LINKS_RULESET_VERSION,
   VERDICTS,
   accuse,
   deduce,
@@ -60,6 +61,86 @@ describe('deduce', () => {
     expect(viewRun(result.run).insights.map(({ id }) => id)).toEqual(['motive-debt']);
   });
 
+  describe('a link with a clue too many', () => {
+    it('gives the conclusion all the same, and never says which clue was the extra one', () => {
+      const run = newRun();
+      const exact = okDeduce(deduce(run, link('oven-receipt', 'debt-ledger'), createRng(1)));
+
+      for (const extra of ['blue-glove', 'cart-tracks', 'cellar-key']) {
+        const result = okDeduce(deduce(run, link('oven-receipt', extra, 'debt-ledger'), createRng(1)));
+
+        expect(result.outcome).toEqual(exact.outcome);
+        expect(result.run.insightIds).toEqual(['motive-debt']);
+      }
+    });
+
+    it('is not forgiven in a run of the ruleset before it: the link is exactly the clues of a conclusion', () => {
+      const old: DetectiveRunState = { ...newRun(), rulesetVersion: LENIENT_LINKS_RULESET_VERSION - 1 };
+
+      expect(deduce(old, link('oven-receipt', 'debt-ledger', 'blue-glove'), createRng(1))).toMatchObject({
+        ok: false,
+        refusal: { code: 'wrong-link-size' },
+      });
+      expect(okDeduce(deduce(old, link('oven-receipt', 'debt-ledger'), createRng(1))).outcome).toMatchObject({
+        result: 'insight',
+      });
+    });
+
+    it('is not forgiven a second clue: a link of two too many is refused or comes to nothing', () => {
+      const run = newRun();
+
+      expect(
+        deduce(run, link('oven-receipt', 'debt-ledger', 'blue-glove', 'cart-tracks'), createRng(1)),
+      ).toMatchObject({
+        ok: false,
+        refusal: { code: 'wrong-link-size' },
+      });
+    });
+
+    it('still comes to nothing when the clue it is short of is the one it lacks', () => {
+      const run = newRun();
+      const result = okDeduce(deduce(run, link('oven-receipt', 'blue-glove', 'cart-tracks'), createRng(1)));
+
+      expect(result.outcome).toMatchObject({ result: 'nothing' });
+      expect(result.run.insightIds).toEqual([]);
+    });
+
+    it('prefers a conclusion not yet drawn to one that is known, and the one that fits to one that holds more', () => {
+      const detectiveCase = DetectiveCaseSchema.parse(buildCheeseCase());
+      detectiveCase.deductions.push(
+        { id: 'trail', clueIds: ['flour-crumbs', 'cart-tracks', 'oven-receipt'], insight: 'A trail.' },
+        { id: 'pair', clueIds: ['flour-crumbs', 'cart-tracks'], insight: 'A pair.' },
+      );
+      const base = createDetectiveRun({
+        hero: buildHero(),
+        traits: [],
+        case: detectiveCase,
+        seed: 'links',
+        rngState: 1,
+        locale: 'en',
+      });
+      const run = (insights: string[]): DetectiveRunState => ({
+        ...base,
+        foundClueIds: [...ALL_CLUES],
+        insightIds: insights,
+      });
+      const three = link('flour-crumbs', 'cart-tracks', 'oven-receipt');
+
+      // The link is the whole of `trail` and `pair` with a clue too many: the exact one first.
+      expect(okDeduce(deduce(run([]), three, createRng(1))).outcome).toMatchObject({ deductionId: 'trail' });
+      // With `trail` drawn, the same link gives the one not yet drawn.
+      expect(okDeduce(deduce(run(['trail']), three, createRng(1))).outcome).toMatchObject({
+        result: 'insight',
+        deductionId: 'pair',
+      });
+      // With both drawn, it is known.
+      expect(okDeduce(deduce(run(['trail', 'pair']), three, createRng(1))).outcome).toMatchObject({
+        result: 'already-known',
+        deductionId: 'trail',
+      });
+    });
+  });
+
   it('does not add an insight twice and costs less than a failure', () => {
     const run = newRun(ALL_CLUES, ['motive-debt']);
     const result = okDeduce(deduce(run, link('oven-receipt', 'debt-ledger'), createRng(1)));
@@ -89,8 +170,8 @@ describe('deduce', () => {
     it('refuses a link no open conclusion can have, before any time is spent, naming the sizes and no clue', () => {
       const run = newRun();
       for (const clues of [
-        ['oven-receipt', 'debt-ledger', 'blue-glove'],
         ['flour-crumbs', 'blue-glove', 'cart-tracks', 'debt-ledger'],
+        ['cellar-key', 'flour-crumbs', 'blue-glove', 'cart-tracks', 'debt-ledger'],
       ]) {
         const result = deduce(run, link(...clues), createRng(1));
 
