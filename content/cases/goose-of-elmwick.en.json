@@ -342,6 +342,10 @@
       "persona": "The retired Elmwick postmaster, small, brisk and eighty-one, who knits during interrogations and answers every question with a question about your mother.",
       "secret": "Her late husband's love letters are hidden in the goose's stand, and the auction was about to sell them to a stranger along with the bird.",
       "alibi": "Claims she spent the whole night sorting parcels at the post office, as she has every night since she retired.",
+      "claims": [
+        "I was the postmaster of Elmwick for forty years.",
+        "My late husband and I never missed a gala."
+      ],
       "lies": [
         {
           "id": "postmaster-parcels",
@@ -369,6 +373,10 @@
       "persona": "The museum curator, a nervous man in a waistcoat the same colour as the goose's, who apologises to display cases when he bumps into them.",
       "secret": "He sleeps in his office on gala eves because he is afraid of oversleeping, and he is quietly relieved the goose is gone, as it was overinsured.",
       "alibi": "Says he locked the museum at ten and went straight home to bed.",
+      "claims": [
+        "I am answerable for every case and every key in this museum.",
+        "I do not like crowds, and a gala is a crowd."
+      ],
       "lies": [
         {
           "id": "curator-home",
@@ -385,6 +393,10 @@
       "persona": "The gala's caterer, a large man with flour in his moustache and a bitter feud with the town's goose population.",
       "secret": "He baked three hundred goose-shaped biscuits and burnt the lot, so he has been creeping around the courtyard at night, hoping to bake again unseen.",
       "alibi": "Says he was in the tea shop kitchen from dusk to dawn, baking.",
+      "claims": [
+        "I was hired to cater the gala: three hundred biscuits and a great deal of tea.",
+        "I have no love for geese."
+      ],
       "lies": [
         {
           "id": "caterer-boots",
@@ -401,6 +413,7 @@
       "persona": "The museum's apprentice, nineteen, a boy who agrees with whoever spoke last and sweats in an unusually interesting way.",
       "secret": "He was paid in toffee to help move a heavy hatbox and has been too frightened to say so.",
       "alibi": "Says he was tucked up in bed by nine and slept like a log.",
+      "claims": ["I have worked at the museum since the spring.", "I do what the curator tells me."],
       "lies": [
         {
           "id": "apprentice-bed",

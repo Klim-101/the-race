@@ -86,6 +86,7 @@ const PLAYED = {
       closed: false,
       talksAgain: null,
       place: null,
+      claims: [],
       statements: [],
     },
   ],

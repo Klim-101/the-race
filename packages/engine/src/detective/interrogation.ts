@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { SEARCH_BY_PART_RULESET_VERSION } from './search-parts.js';
+import { CLAIMS_RULESET_VERSION, followUpClaims, openingClaims } from './claims.js';
 import { findClue, grantLeads, recordShown, setSuspectMood, type ShownEffect } from './run-state.js';
 import {
   HOSTILE_MINUTES,
@@ -115,6 +116,7 @@ export interface InterrogationOutcome {
   /** Set when a pressure with nothing to stand on has closed the suspect for a while. */
   readonly closed?: true;
   /** Lies that fell in this talk, as the suspect told them. */
+  readonly claimed?: readonly string[];
   readonly conceded: readonly {
     readonly lieId: string;
     readonly statement: string;
@@ -315,6 +317,20 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
   const toldAlibi = run.statements.some(
     ({ suspectId, kind }) => suspectId === suspect.id && kind === 'alibi',
   );
+  // What the suspect claims aloud: at the first talk their story, the true and the false alike, and, as a lie falls,
+  // the lie that follows it. Nothing tells the hero which are which.
+  const claimed =
+    run.rulesetVersion < CLAIMS_RULESET_VERSION
+      ? []
+      : [
+          ...(toldAlibi ? [] : openingClaims(suspect)),
+          ...followUpClaims(
+            suspect,
+            fallen.map(({ id }) => id),
+          ),
+        ].filter(
+          (text) => !run.claims.some((known) => known.suspectId === suspect.id && known.text === text),
+        );
   const statements = [
     ...(toldAlibi ? [] : [said('alibi', suspect.alibi)]),
     ...fallen.map(({ statement, admission }) => said('conceded', admission ?? statement)),
@@ -329,6 +345,10 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
     {
       ...told.reduce(findClue, run),
       concededLieIds: [...run.concededLieIds, ...fallen.map(({ id }) => id)],
+      claims: [
+        ...run.claims,
+        ...claimed.map((text) => ({ suspectId: suspect.id, day: run.clock.day, text })),
+      ],
       statements: [...run.statements, ...statements],
     },
     suspect.id,
@@ -393,6 +413,7 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
       alibi: suspect.alibi,
       presented,
       ...(putInsights.length === 0 ? {} : { presentedInsights }),
+      ...(claimed.length === 0 ? {} : { claimed }),
       conceded: fallen.map(({ id, statement, admission }) => ({
         lieId: id,
         statement,

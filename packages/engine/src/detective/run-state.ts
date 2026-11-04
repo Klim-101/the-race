@@ -84,6 +84,7 @@ import { clueNumber } from './clue-number.js';
 import { buildNeighbors } from './obtainability.js';
 import { isLocationClosed, suspectPlace } from './random-events.js';
 import { CASE_SEAL_PATTERN, isCaseSealIntact, sealCase } from './seal.js';
+import { viewClaims } from './claims.js';
 import { requireWitness, witnessesHere } from './witnesses.js';
 
 /** A random event that has happened, and the day it happened on. */
@@ -112,6 +113,14 @@ export const StatementSchema = z.strictObject({
   text: z.string().min(1),
 });
 export type Statement = z.infer<typeof StatementSchema>;
+
+/** Something a suspect claimed to the hero: the day, and the words. Whether it is a lie is not recorded here. */
+export const ClaimRecordSchema = z.strictObject({
+  suspectId: EntityIdSchema,
+  day: z.int().min(1),
+  text: z.string().min(1),
+});
+export type ClaimRecord = z.infer<typeof ClaimRecordSchema>;
 
 /** Something a witness told the hero: that a suspect was at the witness's place at a time of the day. */
 export const SightingRecordSchema = z.strictObject({
@@ -243,6 +252,8 @@ export const DetectiveRunStateSchema = z
     setting: SettingSchema.nullable().default(null),
     /** What suspects have said at questioning, in the order they said it. Old saves have none. */
     statements: z.array(StatementSchema).default([]),
+    /** What suspects have claimed to the hero, in the order they said it. Old saves have none. */
+    claims: z.array(ClaimRecordSchema).default([]),
     /** What witnesses have told the hero they saw, in the order it was told. Old saves have none. */
     sightings: z.array(SightingRecordSchema).default([]),
     /** What the hero has done with the clues, for the board: where each was found, to whom it was shown, the links tried. */
@@ -302,6 +313,11 @@ export const DetectiveRunStateSchema = z
       'searchedParts',
       run.searchedParts.map(({ partId }) => partId),
       partIds,
+    );
+    known(
+      'claims',
+      run.claims.map(({ suspectId }) => suspectId),
+      new Set(run.case.suspects.map(({ id }) => id)),
     );
     known(
       'sightings',
@@ -399,6 +415,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     pendingEffects: [],
     setting: input.setting ?? null,
     statements: [],
+    claims: [],
     sightings: [],
     history: emptyHistory(),
     inspiration: input.inspiration ?? null,
@@ -873,6 +890,15 @@ export interface DetectiveRunView {
     readonly talksAgain: { readonly day: number; readonly minute: number } | null;
     /** Whether the hero has drawn a conclusion that clears the person: they could not have done it. */
     readonly cleared: boolean;
+    /**
+     * What the person has claimed, in the order they said it. A claim that was a lie and has fallen says which clues
+     * broke it; a true one and a lie that still stands look alike.
+     */
+    readonly claims: readonly {
+      readonly day: number;
+      readonly text: string;
+      readonly broken: { readonly clueIds: readonly string[] } | null;
+    }[];
     /** What the suspect has said at questioning, in the order they said it. */
     readonly statements: readonly {
       readonly day: number;
@@ -1234,6 +1260,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         closed: isClosed(run, suspect.id),
         talksAgain: talksAgainOf(run, suspect.id),
         cleared: isCleared(run, suspect.id),
+        claims: viewClaims(run, detectiveCase, suspect.id),
         statements: run.statements
           .filter(({ suspectId }) => suspectId === suspect.id)
           .map(({ day, kind, text }) => ({ day, kind, text })),

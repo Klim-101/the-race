@@ -230,6 +230,11 @@ export const SuspectSchema = z.object({
   lies: z.array(LieSchema),
   /** Optional, so that the cases of before it keep their seal; a clue with no reaction keeps the generic line. */
   reactions: z.array(ReactionSchema).optional(),
+  /**
+   * True things the suspect says at the first talk, beside the statements of their lies: a claim the hero hears is
+   * either one of these or a lie's `statement`, and nothing tells which until a lie falls. Optional for the same reason.
+   */
+  claims: z.array(NarrativeTextSchema).optional(),
 });
 export type Suspect = z.infer<typeof SuspectSchema>;
 

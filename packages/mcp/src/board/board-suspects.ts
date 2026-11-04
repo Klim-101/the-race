@@ -42,6 +42,26 @@ function chip(view: DetectiveRunView, clueId: string, label: string, effect: str
   return `<span class="chip fx-${e(effect)}" data-pick="${e(token('clue', clueId))}" data-rel="${e(rel(clueTokens(view, clueId)))}" tabindex="0" role="button"><span class="num">${e(number)}</span> ${e(label)}</span>`;
 }
 
+/**
+ * What the person has claimed, as they said it. A claim that was a lie and has fallen is struck through and tied to
+ * the clues that broke it; a true one, and a lie that still stands, look the same as the day it was made.
+ */
+function claimed(view: DetectiveRunView, suspect: Suspect, text: TabText): string {
+  if (suspect.claims.length === 0) return '';
+  const e = escapeHtml;
+  const t = text.statements;
+  const lines = suspect.claims.map(({ day, text: line, broken }) =>
+    broken === null
+      ? `<p class="claim"><span class="tag">${e(t.day)} ${String(day)}</span> ${e(line)}</p>`
+      : `<p class="claim fell"><span class="tag">${e(t.day)} ${String(day)} · ${e(t.lieFell)}</span><br><s>${e(line)}</s>${
+          broken.clueIds.length === 0
+            ? ''
+            : `<br><span class="tag">${e(t.brokenBy)}:</span> ${broken.clueIds.map((id) => chip(view, id, '', 'breaks-lie')).join(' ')}`
+        }</p>`,
+  );
+  return `<h3>${e(t.claims)}</h3>\n${lines.join('\n')}\n`;
+}
+
 /** What the person said, day by day; a lie that fell is struck through and tied to the clues that broke lies for them. */
 function said(view: DetectiveRunView, suspect: Suspect, text: TabText): string {
   const e = escapeHtml;
@@ -60,13 +80,15 @@ function said(view: DetectiveRunView, suspect: Suspect, text: TabText): string {
       const lines = suspect.statements
         .filter((statement) => statement.day === day)
         .map(({ kind, text: line }) =>
-          kind === 'conceded'
-            ? `<p class="statement fell"><span class="tag">${e(t.kinds[kind])} · ${e(t.lieFell)}</span><br><s>${e(line)}</s>${
-                breakers.length === 0
-                  ? ''
-                  : `<br><span class="tag">${e(t.brokenBy)}:</span> ${breakers.map((id) => chip(view, id, '', 'breaks-lie')).join(' ')}`
-              }</p>`
-            : `<p class="statement"><span class="tag">${e(t.kinds[kind])}</span><br>${e(line)}</p>`,
+          kind === 'conceded' && suspect.claims.length > 0
+            ? `<p class="statement"><span class="tag">${e(t.kinds[kind])} · ${e(t.lieFell)}</span><br>${e(line)}</p>`
+            : kind === 'conceded'
+              ? `<p class="statement fell"><span class="tag">${e(t.kinds[kind])} · ${e(t.lieFell)}</span><br><s>${e(line)}</s>${
+                  breakers.length === 0
+                    ? ''
+                    : `<br><span class="tag">${e(t.brokenBy)}:</span> ${breakers.map((id) => chip(view, id, '', 'breaks-lie')).join(' ')}`
+                }</p>`
+              : `<p class="statement"><span class="tag">${e(t.kinds[kind])}</span><br>${e(line)}</p>`,
         );
       return `<div class="day"><span class="tag">${e(t.day)} ${String(day)}</span>\n${lines.join('\n')}</div>`;
     })
@@ -126,7 +148,7 @@ export function renderSuspects(
         suspect.cleared ? `\n<p class="tag cleared-tag">${e(text.statements.cleared)}</p>` : ''
       }
 <p>${gauge(suspect, text)}</p></div></div>${closed}
-<h3>${e(text.statements.title)}</h3>
+${claimed(view, suspect, text)}<h3>${e(text.statements.title)}</h3>
 ${said(view, suspect, text)}
 <h3>${e(text.statements.shown)}</h3>
 ${shown(view, suspect, text)}

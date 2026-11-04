@@ -73,6 +73,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
         mood: 'calm',
         closed: false,
         talksAgain: null,
+        claims: [],
         place: null,
         statements: [],
       },
@@ -111,6 +112,7 @@ const person = (id: string, name: string, cleared: boolean) => ({
   place: null,
   statements: [],
   cleared,
+  claims: [],
 });
 
 const TWO = { suspects: [person('a', 'Anna', true), person('b', 'Boris', false)] };

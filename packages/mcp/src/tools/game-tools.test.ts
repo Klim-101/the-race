@@ -435,7 +435,8 @@ describe('evidence_board', () => {
     const loaded = await loadTheRun(context.saveDir, context.saveFs);
     if (!loaded.ok) throw new Error('The run must load.');
     const { run } = loaded;
-    const said = new Set(run.statements.map(({ text }) => text));
+    // A lie is on the page once the suspect has said it aloud: as a statement or as a claim.
+    const said = new Set([...run.statements, ...run.claims].map(({ text }) => text));
 
     expect(page).toContain('class="card suspect"');
     for (const { statement } of run.case.suspects.flatMap(({ lies }) => lies)) {

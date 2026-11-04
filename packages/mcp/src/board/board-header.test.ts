@@ -81,7 +81,16 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
       links: [{ from: 'market', to: 'archive' }],
     },
     suspects: [
-      { id: 'a', name: 'Anna', persona: 'Baker', mood: 'calm', closed: false, place: null, statements: [] },
+      {
+        id: 'a',
+        name: 'Anna',
+        persona: 'Baker',
+        mood: 'calm',
+        closed: false,
+        place: null,
+        claims: [],
+        statements: [],
+      },
     ],
     clues: [],
     openLinks: [],
@@ -112,7 +121,16 @@ const AFTER = viewOf({
     links: [],
   },
   suspects: [
-    { id: 'a', name: 'Anna', persona: 'Baker', mood: 'shaken', closed: false, place: null, statements: [] },
+    {
+      id: 'a',
+      name: 'Anna',
+      persona: 'Baker',
+      mood: 'shaken',
+      closed: false,
+      place: null,
+      claims: [],
+      statements: [],
+    },
   ],
   kit: [kitItem('lockpicks', 'owned', 2)],
 });

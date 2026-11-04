@@ -73,6 +73,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
         mood: 'calm',
         closed: false,
         talksAgain: null,
+        claims: [],
         place: null,
         statements: [],
       },

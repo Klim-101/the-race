@@ -103,6 +103,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
         mood: 'calm',
         closed: false,
         place: { id: 'market', name: 'Market' },
+        claims: [],
         statements: [],
       },
       {
@@ -112,9 +113,19 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
         mood: 'calm',
         closed: false,
         place: { id: 'stall', name: 'Stall' },
+        claims: [],
         statements: [],
       },
-      { id: 'c', name: 'Cora', persona: 'Mayor', mood: 'calm', closed: false, place: null, statements: [] },
+      {
+        id: 'c',
+        name: 'Cora',
+        persona: 'Mayor',
+        mood: 'calm',
+        closed: false,
+        place: null,
+        claims: [],
+        statements: [],
+      },
     ],
     clues: [],
     openLinks: [],
@@ -339,7 +350,16 @@ describe('the corkboard tab', () => {
     const html = cork(
       viewOf({
         suspects: [
-          { id: 'b', name, persona: 'Rival', mood: 'calm', closed: false, place: null, statements: [] },
+          {
+            id: 'b',
+            name,
+            persona: 'Rival',
+            mood: 'calm',
+            closed: false,
+            place: null,
+            claims: [],
+            statements: [],
+          },
         ],
       }),
     );
