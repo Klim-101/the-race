@@ -34254,7 +34254,12 @@ var WitnessSchema = external_exports.object({
 var DeductionSchema = external_exports.object({
   id: EntityIdSchema,
   clueIds: external_exports.array(EntityIdSchema).min(2),
-  insight: NarrativeTextSchema
+  insight: NarrativeTextSchema,
+  /**
+   * The suspect this conclusion clears: once the hero has drawn it, that person could not have done it. Optional, so
+   * that the cases of before it keep their seal. It is earned by the hero's reasoning and never given.
+   */
+  clears: EntityIdSchema.optional()
 });
 var TimelineEntrySchema = external_exports.object({
   /** Minutes since the start of the crime day. */
@@ -36388,6 +36393,9 @@ function recordDrawnEvent(run, eventId, phase) {
   const drawn = { eventId, day: run.clock.day, ...phase === void 0 ? {} : { phase } };
   return { ...run, drawnEvents: [...run.drawnEvents, drawn] };
 }
+function isCleared(run, suspectId) {
+  return run.case.deductions.some(({ id, clears }) => clears === suspectId && run.insightIds.includes(id));
+}
 function openLinkSizes(run) {
   return run.case.deductions.filter(({ id }) => !run.insightIds.includes(id)).map(({ clueIds }) => new Set(clueIds).size).toSorted((a, b) => a - b);
 }
@@ -36614,6 +36622,7 @@ function viewRun(run) {
         mood: moodWord(moodOf(run, suspect.id).step),
         closed: isClosed(run, suspect.id),
         talksAgain: talksAgainOf(run, suspect.id),
+        cleared: isCleared(run, suspect.id),
         statements: run.statements.filter(({ suspectId }) => suspectId === suspect.id).map(({ day, kind, text }) => ({ day, kind, text }))
       };
     }),
@@ -36626,9 +36635,10 @@ function viewRun(run) {
       number: clueNumber(run.hero.name, run.foundClueIds.indexOf(id))
     })),
     openLinks: openLinkSizes(run),
-    insights: detectiveCase.deductions.filter(({ id }) => run.insightIds.includes(id)).map(({ id, insight, clueIds }) => ({
+    insights: detectiveCase.deductions.filter(({ id }) => run.insightIds.includes(id)).map(({ id, insight, clueIds, clears }) => ({
       id,
       insight,
+      clears: clears ?? null,
       // Only clues the hero has found: a conclusion never points at something still hidden.
       clueIds: clueIds.filter((clueId) => run.foundClueIds.includes(clueId))
     }))
@@ -37415,6 +37425,7 @@ function deduce(run, input2, rng) {
       kind: "deduce",
       result: known ? "already-known" : "insight",
       deductionId: match.id,
+      ...match.clears === void 0 ? {} : { clears: match.clears },
       minutes: DEDUCE_MINUTES
     }
   };
@@ -38219,6 +38230,7 @@ var OutcomeSchema = external_exports.union([
     kind: external_exports.literal("deduce"),
     result: external_exports.enum(["insight", "already-known"]),
     deductionId: EntityIdSchema,
+    clears: EntityIdSchema.optional(),
     minutes,
     ...fatigue
   }),
@@ -39359,6 +39371,50 @@ function checkAdmissions(detectiveCase) {
   );
 }
 
+// packages/engine/src/detective/checks/clearing.ts
+function checkClearing(detectiveCase, obtainable, required2) {
+  const { culpritId } = detectiveCase.truth;
+  const issues = [];
+  detectiveCase.deductions.forEach((deduction, index) => {
+    if (deduction.clears === culpritId) {
+      issues.push({
+        code: "culprit-cleared",
+        path: `deductions[${String(index)}].clears`,
+        message: `Deduction "${deduction.id}" clears "${culpritId}", who is the culprit: only the innocent can be cleared.`
+      });
+    }
+  });
+  if (!required2) return issues;
+  const clearing = (suspectId) => detectiveCase.deductions.filter(({ clears }) => clears === suspectId);
+  detectiveCase.suspects.forEach((suspect, index) => {
+    if (suspect.id === culpritId) return;
+    const reachable = clearing(suspect.id).some(
+      ({ clueIds }) => clueIds.every((clueId) => obtainable.clueIds.has(clueId))
+    );
+    if (!reachable) {
+      issues.push({
+        code: "suspect-cannot-be-cleared",
+        path: `suspects[${String(index)}]`,
+        message: `"${suspect.id}" is innocent, so a deduction that "clears" them, from clues the hero can find, must exist.`
+      });
+    }
+  });
+  detectiveCase.clues.forEach((clue, index) => {
+    if (!clue.isRedHerring) return;
+    const unexplained = clue.pointsTo.filter(
+      (suspectId) => suspectId !== culpritId && !clearing(suspectId).some(({ clueIds }) => clueIds.includes(clue.id))
+    );
+    if (unexplained.length > 0) {
+      issues.push({
+        code: "red-herring-unexplained",
+        path: `clues[${String(index)}]`,
+        message: `Red herring "${clue.id}" points at ${unexplained.map((id) => `"${id}"`).join(", ")}: it must be a clue of the deduction that clears them, which is its innocent explanation.`
+      });
+    }
+  });
+  return issues;
+}
+
 // packages/engine/src/detective/checks/links.ts
 function checkLinkable(detectiveCase) {
   return detectiveCase.solution.evidenceChains.flatMap((chain, index) => {
@@ -39888,6 +39944,9 @@ function checkReferencesResolve(detectiveCase) {
     });
   });
   detectiveCase.deductions.forEach((deduction, index) => {
+    if (deduction.clears !== void 0) {
+      expect(suspectIds, "suspect", deduction.clears, `deductions[${String(index)}].clears`);
+    }
     deduction.clueIds.forEach((id, clueIndex) => {
       expect(clueIds, "clue", id, `deductions[${String(index)}].clueIds[${String(clueIndex)}]`);
     });
@@ -40354,6 +40413,7 @@ function validateCase(input2, context2) {
     ...checkTimeline(detectiveCase),
     ...checkWitnesses(detectiveCase),
     ...context2.requireLinkable ? checkLinkable(detectiveCase) : [],
+    ...checkClearing(detectiveCase, obtainable, context2.requireClearing ?? false),
     ...checkWorldEvents(detectiveCase, context2.hero, context2.traits),
     ...checkRandomEvents(
       detectiveCase,
@@ -51195,6 +51255,7 @@ var en_default3 = {
     statements: {
       moods: { calm: "calm", shaken: "shaken", cornered: "cornered", broken: "broken" },
       closedUntil: "will not talk until day {day}, {time}",
+      cleared: "Cleared: could not have done it",
       mood: "Mood",
       lieFell: "a lie that fell",
       brokenBy: "broken by",
@@ -51704,6 +51765,7 @@ var ru_default2 = {
     statements: {
       moods: { calm: "\u0441\u043F\u043E\u043A\u043E\u0435\u043D", shaken: "\u0440\u0430\u0441\u0442\u0435\u0440\u044F\u043D", cornered: "\u0437\u0430\u0433\u043D\u0430\u043D \u0432 \u0443\u0433\u043E\u043B", broken: "\u0441\u043B\u043E\u043C\u043B\u0435\u043D" },
       closedUntil: "\u043D\u0435 \u0437\u0430\u0433\u043E\u0432\u043E\u0440\u0438\u0442 \u0434\u043E {day}-\u0433\u043E \u0434\u043D\u044F, {time}",
+      cleared: "\u0418\u0441\u043A\u043B\u044E\u0447\u0451\u043D: \u043D\u0435 \u043C\u043E\u0433 \u044D\u0442\u043E\u0433\u043E \u0441\u0434\u0435\u043B\u0430\u0442\u044C",
       mood: "\u041D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u0435",
       lieFell: "\u0440\u0443\u0445\u043D\u0443\u0432\u0448\u0430\u044F \u043B\u043E\u0436\u044C",
       brokenBy: "\u043E\u043F\u0440\u043E\u0432\u0435\u0440\u0433\u043D\u0443\u0442\u043E",
@@ -52453,7 +52515,7 @@ function renderCork(view, board, text) {
     ).join("");
     const initial = Array.from(suspect.name).slice(0, 1).join("").toUpperCase();
     const attrs = `data-pick="suspect:${e(suspect.id)}" data-rel="${e(rel(suspectTokens(view, suspect.id)))}" tabindex="0" role="button" aria-label="${e(suspect.name)}"`;
-    return `<g class="photo" ${attrs}><title>${e(suspect.name)}</title><rect class="paper" x="${whole2(x2)}" y="${whole2(photoTop)}" width="${String(PHOTO_W)}" height="${String(PHOTO_H)}" rx="3"/><rect class="print" x="${whole2(x2 + 8)}" y="${whole2(photoTop + 8)}" width="${String(PHOTO_W - 16)}" height="${String(PHOTO_H - 16)}" rx="2"/><text class="initial" x="${whole2(x2 + PHOTO_W / 2)}" y="${whole2(photoTop + 8 + (PHOTO_H - 16) / 2 + 14)}" text-anchor="middle">${e(initial)}</text>${caption}<circle class="pin" cx="${whole2(x2 + PHOTO_W / 2)}" cy="${whole2(photoTop)}" r="6"/></g>`;
+    return `<g class="photo${suspect.cleared ? " cleared" : ""}" ${attrs}><title>${e(suspect.name)}</title><rect class="paper" x="${whole2(x2)}" y="${whole2(photoTop)}" width="${String(PHOTO_W)}" height="${String(PHOTO_H)}" rx="3"/><rect class="print" x="${whole2(x2 + 8)}" y="${whole2(photoTop + 8)}" width="${String(PHOTO_W - 16)}" height="${String(PHOTO_H - 16)}" rx="2"/><text class="initial" x="${whole2(x2 + PHOTO_W / 2)}" y="${whole2(photoTop + 8 + (PHOTO_H - 16) / 2 + 14)}" text-anchor="middle">${e(initial)}</text>${caption}<circle class="pin" cx="${whole2(x2 + PHOTO_W / 2)}" cy="${whole2(photoTop)}" r="6"/></g>`;
   });
   const cardsTop = photoTop + (people > 0 ? PHOTO_H + CAPTION_H + 56 : 0);
   const cluePin = /* @__PURE__ */ new Map();
@@ -53107,10 +53169,11 @@ function renderSuspects(view, board, text, fresh) {
     )}</p>` : "";
     const mark = fresh.moods.has(suspect.id) || fresh.lieSuspectIds.has(suspect.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : "";
     const attrs = `data-pick="${e(token("suspect", suspect.id))}" data-rel="${e(rel(suspectTokens(view, suspect.id)))}" tabindex="0" role="button"`;
-    return `<div class="card suspect" ${attrs}>
+    return `<div class="card suspect${suspect.cleared ? " cleared" : ""}" ${attrs}>
 <div class="who">${portrait(suspect)}<div><strong>${e(suspect.name)}</strong>${mark}
 <p>${e(suspect.persona)}</p>
-<p class="tag">${e(board.whereabouts)}: ${e(where)}</p>
+<p class="tag">${e(board.whereabouts)}: ${e(where)}</p>${suspect.cleared ? `
+<p class="tag cleared-tag">${e(text.statements.cleared)}</p>` : ""}
 <p>${gauge(suspect, text)}</p></div></div>${closed}
 <h3>${e(text.statements.title)}</h3>
 ${said(view, suspect, text)}
@@ -53213,6 +53276,10 @@ meter{width:9em;vertical-align:middle}
 svg.board{display:block;width:100%;min-width:640px;height:auto;font:13px 'Segoe Print','Bradley Hand','Comic Sans MS',cursive,system-ui}
 svg.board .paper{fill:#fffdf4;stroke:#d6c9a8;stroke-width:1;filter:drop-shadow(2px 3px 2px rgba(0,0,0,.35))}
 svg.board .print{fill:#cfc6b2}
+svg.board .photo.cleared .paper,svg.board .photo.cleared .print{opacity:.55}
+svg.board .photo.cleared .initial{opacity:.4}
+.cleared-tag{color:#2f6a3a;font-weight:700}
+.card.suspect.cleared{opacity:.85}
 svg.board .initial{font:700 44px Georgia,serif;fill:#6b6354}
 svg.board .line{fill:#2a2622}
 svg.board .num{font:700 13px system-ui,sans-serif;fill:#8a3b2a;letter-spacing:.04em}
@@ -54359,6 +54426,9 @@ var ISSUE_PRIORITY = {
   "lie-chain-broken": 9.07,
   "witness-saw-the-crime": 18.5,
   "chain-without-deduction": 17.5,
+  "culprit-cleared": 17.6,
+  "suspect-cannot-be-cleared": 17.7,
+  "red-herring-unexplained": 17.8,
   "unearnable-lead": 9.1,
   "unused-lead": 9.1,
   "false-lead-holds-clue": 9.1,
@@ -54447,6 +54517,7 @@ var scenarioSubmit = defineTool({
       requireTies: true,
       requireAdmissions: true,
       requireLinkable: true,
+      requireClearing: true,
       // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
       realNames: [
         .../* @__PURE__ */ new Set([...worldRealNames(world), ...(await seedsOfRun(context2))?.realNames ?? []])

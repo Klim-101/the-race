@@ -863,6 +863,8 @@ export interface DetectiveRunView {
     readonly closed: boolean;
     /** The day and the minute from which a closed suspect will talk again; `null` for one who will talk now. */
     readonly talksAgain: { readonly day: number; readonly minute: number } | null;
+    /** Whether the hero has drawn a conclusion that clears the person: they could not have done it. */
+    readonly cleared: boolean;
     /** What the suspect has said at questioning, in the order they said it. */
     readonly statements: readonly {
       readonly day: number;
@@ -920,7 +922,14 @@ export interface DetectiveRunView {
     readonly id: string;
     readonly insight: string;
     readonly clueIds: readonly string[];
+    /** The suspect the conclusion clears, when it does. */
+    readonly clears: string | null;
   }[];
+}
+
+/** Whether a conclusion the hero has drawn clears the suspect: earned by reasoning, never given. */
+export function isCleared(run: DetectiveRunState, suspectId: string): boolean {
+  return run.case.deductions.some(({ id, clears }) => clears === suspectId && run.insightIds.includes(id));
 }
 
 /** The clue count of each conclusion not yet made, smallest first. */
@@ -1216,6 +1225,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         mood: moodWord(moodOf(run, suspect.id).step),
         closed: isClosed(run, suspect.id),
         talksAgain: talksAgainOf(run, suspect.id),
+        cleared: isCleared(run, suspect.id),
         statements: run.statements
           .filter(({ suspectId }) => suspectId === suspect.id)
           .map(({ day, kind, text }) => ({ day, kind, text })),
@@ -1234,9 +1244,10 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     openLinks: openLinkSizes(run),
     insights: detectiveCase.deductions
       .filter(({ id }) => run.insightIds.includes(id))
-      .map(({ id, insight, clueIds }) => ({
+      .map(({ id, insight, clueIds, clears }) => ({
         id,
         insight,
+        clears: clears ?? null,
         // Only clues the hero has found: a conclusion never points at something still hidden.
         clueIds: clueIds.filter((clueId) => run.foundClueIds.includes(clueId)),
       })),

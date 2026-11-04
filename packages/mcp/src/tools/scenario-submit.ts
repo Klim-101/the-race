@@ -58,6 +58,9 @@ const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
   'lie-chain-broken': 9.07,
   'witness-saw-the-crime': 18.5,
   'chain-without-deduction': 17.5,
+  'culprit-cleared': 17.6,
+  'suspect-cannot-be-cleared': 17.7,
+  'red-herring-unexplained': 17.8,
   'unearnable-lead': 9.1,
   'unused-lead': 9.1,
   'false-lead-holds-clue': 9.1,
@@ -171,6 +174,7 @@ export const scenarioSubmit = defineTool({
         requireTies: true,
         requireAdmissions: true,
         requireLinkable: true,
+        requireClearing: true,
         // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
         realNames: [
           ...new Set([...worldRealNames(world), ...((await seedsOfRun(context))?.realNames ?? [])]),

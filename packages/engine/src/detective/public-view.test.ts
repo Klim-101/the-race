@@ -255,6 +255,7 @@ describe('the sources of a conclusion', () => {
         id: 'motive-debt',
         insight: 'The baker needed money fast, and the wheel is worth a fortune.',
         clueIds: ['oven-receipt', 'debt-ledger'],
+        clears: null,
       },
     ]);
   });

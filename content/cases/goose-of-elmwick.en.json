@@ -426,6 +426,24 @@
       "id": "staff-card-toffee",
       "clueIds": ["door-log", "apprentice-confession"],
       "insight": "A spare staff card opened the service door at ten past two, and a kind old lady paid the apprentice in toffee to hold her handcart: the goose left with someone who had the card and the nerve."
+    },
+    {
+      "id": "cleared-caterer",
+      "clueIds": ["ransom-note", "wet-boots", "door-log"],
+      "insight": "The caterer's crumb-and-sugar boot prints stop at the museum steps, and his note asks only for scones; the goose left by the service door, opened with a staff card he never had. He came to bake in secret, not to steal.",
+      "clears": "caterer"
+    },
+    {
+      "id": "cleared-curator",
+      "clueIds": ["gold-cufflink", "door-log"],
+      "insight": "The curator slept in his office that night, which is why he lied about going home; but a man who sleeps in the building and holds its keys has no need of an old spare card to open the service door.",
+      "clears": "curator"
+    },
+    {
+      "id": "cleared-apprentice",
+      "clueIds": ["apprentice-confession", "hatbox-witness"],
+      "insight": "The apprentice only held a handcart for toffee; the one who carried the honking hatbox across the courtyard was an elderly woman. He was used, and he did not take the goose.",
+      "clears": "apprentice"
     }
   ],
   "truth": {

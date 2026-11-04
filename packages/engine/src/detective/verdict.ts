@@ -72,6 +72,8 @@ export type DeduceOutcome =
       readonly kind: 'deduce';
       readonly result: 'insight' | 'already-known';
       readonly deductionId: string;
+      /** The suspect the conclusion clears, when it clears one. */
+      readonly clears?: string;
       readonly minutes: number;
     }
   // Deliberately says nothing of how close the link was.
@@ -208,6 +210,7 @@ export function deduce(run: DetectiveRunState, input: unknown, rng: Rng): Deduce
       kind: 'deduce',
       result: known ? 'already-known' : 'insight',
       deductionId: match.id,
+      ...(match.clears === undefined ? {} : { clears: match.clears }),
       minutes: DEDUCE_MINUTES,
     },
   };

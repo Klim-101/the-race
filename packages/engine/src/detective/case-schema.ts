@@ -239,6 +239,11 @@ export const DeductionSchema = z.object({
   id: EntityIdSchema,
   clueIds: z.array(EntityIdSchema).min(2),
   insight: NarrativeTextSchema,
+  /**
+   * The suspect this conclusion clears: once the hero has drawn it, that person could not have done it. Optional, so
+   * that the cases of before it keep their seal. It is earned by the hero's reasoning and never given.
+   */
+  clears: EntityIdSchema.optional(),
 });
 export type Deduction = z.infer<typeof DeductionSchema>;
 

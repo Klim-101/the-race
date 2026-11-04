@@ -151,6 +151,8 @@ export interface TabText {
     readonly moods: Record<'calm' | 'shaken' | 'cornered' | 'broken', string>;
     /** A closed person: the day ({day}) and the time ({time}) from which they talk again. */
     readonly closedUntil: string;
+    /** A person the hero has cleared with a conclusion: they could not have done it. */
+    readonly cleared: string;
     readonly mood: string;
     readonly lieFell: string;
     readonly brokenBy: string;

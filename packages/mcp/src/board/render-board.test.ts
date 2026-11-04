@@ -94,6 +94,7 @@ function viewOf(overrides: Partial<View> = {}): View {
         mood: 'calm',
         closed: false,
         talksAgain: null,
+        cleared: false,
         place: { id: 'market', name: 'Market' },
         statements: [],
       },
@@ -104,6 +105,7 @@ function viewOf(overrides: Partial<View> = {}): View {
         mood: 'calm',
         closed: false,
         talksAgain: null,
+        cleared: false,
         place: { id: 'stall', name: 'Stall' },
         statements: [],
       },
@@ -142,7 +144,9 @@ const FOUND = {
       number: 'MIRA-02',
     },
   ],
-  insights: [{ id: 'liar', insight: 'The baker lied about the flour.', clueIds: ['key', 'flour'] }],
+  insights: [
+    { id: 'liar', insight: 'The baker lied about the flour.', clueIds: ['key', 'flour'], clears: null },
+  ],
 };
 
 describe('escapeHtml and truncate', () => {
@@ -227,6 +231,7 @@ describe('the page', () => {
             mood: 'calm',
             closed: false,
             talksAgain: null,
+            cleared: false,
             place: null,
             statements: [{ day: 1, kind: 'alibi', text: evil }],
           },
@@ -278,6 +283,7 @@ describe('the suspects tab', () => {
               mood: 'calm',
               closed: false,
               talksAgain: null,
+              cleared: false,
               place: { id: 'market', name: 'Market' },
               statements: [
                 { day: 1, kind: 'alibi', text: 'I was at the oven all night.' },
@@ -292,6 +298,7 @@ describe('the suspects tab', () => {
               mood: 'cornered',
               closed: true,
               talksAgain: { day: 2, minute: 600 },
+              cleared: false,
               place: null,
               statements: [],
             },
@@ -302,6 +309,7 @@ describe('the suspects tab', () => {
               mood: 'calm',
               closed: false,
               talksAgain: null,
+              cleared: false,
               place: { id: 'stall', name: 'Stall' },
               statements: [],
             },
@@ -364,8 +372,8 @@ describe('the clues and links tab', () => {
         viewOf({
           clues: [{ id: 'k', locationId: 'gone', description: 'Flour.', garbled: false, number: 'MIRA-03' }],
           insights: [
-            { id: 'i', insight: 'Odd.', clueIds: ['k', 'missing'] },
-            { id: 'j', insight: 'Odder.', clueIds: ['missing'] },
+            { id: 'i', insight: 'Odd.', clueIds: ['k', 'missing'], clears: null },
+            { id: 'j', insight: 'Odder.', clueIds: ['missing'], clears: null },
           ],
         }),
       ),
@@ -379,7 +387,7 @@ describe('the clues and links tab', () => {
 
   it('shows conclusions and no link note about clues when no clue is listed', () => {
     const clues = tab(
-      renderEvidenceBoard(viewOf({ insights: [{ id: 'i', insight: 'Odd.', clueIds: ['x'] }] })),
+      renderEvidenceBoard(viewOf({ insights: [{ id: 'i', insight: 'Odd.', clueIds: ['x'], clears: null }] })),
       'clues',
     );
 
@@ -401,7 +409,7 @@ describe('the clues and links tab', () => {
             number: 'MIRA-05',
           },
         ],
-        insights: [{ id: 'i', insight: 'Odd.', clueIds: ['ledger', 'envelope'] }],
+        insights: [{ id: 'i', insight: 'Odd.', clueIds: ['ledger', 'envelope'], clears: null }],
         history: {
           finds: [],
           shown: [{ turn: 3, clueId: 'ledger', suspectId: 'a', effect: 'no-effect' }],
@@ -568,6 +576,7 @@ describe('the chronicle tab', () => {
       mood: 'calm',
       closed: false,
       talksAgain: null,
+      cleared: false,
       place: null,
       statements: [{ day: 1, kind: 'alibi', text: 'Here.' }],
     });
@@ -671,6 +680,7 @@ describe('the chronicle tab', () => {
                 mood: 'calm',
                 closed: false,
                 talksAgain: null,
+                cleared: false,
                 place: null,
                 statements: [
                   { day: 1, kind: 'alibi', text: 'At the oven.' },

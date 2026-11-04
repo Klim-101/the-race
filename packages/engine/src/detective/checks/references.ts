@@ -131,6 +131,9 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
     });
   });
   detectiveCase.deductions.forEach((deduction, index) => {
+    if (deduction.clears !== undefined) {
+      expect(suspectIds, 'suspect', deduction.clears, `deductions[${String(index)}].clears`);
+    }
     deduction.clueIds.forEach((id, clueIndex) => {
       expect(clueIds, 'clue', id, `deductions[${String(index)}].clueIds[${String(clueIndex)}]`);
     });
