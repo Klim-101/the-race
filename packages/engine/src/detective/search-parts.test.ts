@@ -260,12 +260,20 @@ describe('a thorough search of one part', () => {
     expect(run.searchedParts).toMatchObject([{ partId: 'bench', foundClueIds: [] }]);
   });
 
-  it('finds nothing in a part whose clue the hero already has, without a penalty', () => {
+  it('is not offered a part whose clue the hero already has: it was emptied when the clue was found', () => {
     const run = findClue(looked(newRun()), 'cellar-key');
 
-    const { outcome } = ok(resolveIntent(run, { kind: 'search', partId: 'fountain-edge' }, createRng(5)));
+    const refused = resolveIntent(run, { kind: 'search', partId: 'fountain-edge' }, createRng(5));
 
-    expect(outcome).toMatchObject({ foundClueIds: [], consequences: [], minutes: PART_SEARCH_MINUTES });
+    expect(refused).toMatchObject({ ok: false, refusal: { code: 'part-searched' } });
+    expect(viewRun(run).location.parts.find(({ id }) => id === 'fountain-edge')).toMatchObject({
+      searched: true,
+    });
+    expect(
+      viewRun(run)
+        .placeParts.flatMap(({ parts }) => parts)
+        .find(({ id }) => id === 'fountain-edge'),
+    ).toMatchObject({ searched: true, gave: ['cellar-key'] });
   });
 
   it('keeps shut to the hero a clue from a source their traits close', () => {
@@ -387,5 +395,61 @@ describe('the state of parts', () => {
     expect(() => recordPartSearch(run, 'no-such-part', 'market-square', [])).toThrow(RangeError);
     expect(() => recordPartSearch(endRun(run, 'gave-up'), 'bench', 'market-square', [])).toThrow(RangeError);
     expect(() => noticeParts(endRun(run, 'gave-up'), ['bench'])).toThrow(RangeError);
+  });
+});
+
+describe('a part whose clue the hero found some other way', () => {
+  const openCrate = (detectiveCase: DetectiveCase): void => {
+    const crate = detectiveCase.locations[1]?.parts?.[1];
+    if (crate !== undefined) crate.obstacle = null;
+  };
+  const searchedPart = (run: DetectiveRunState, partId: string) =>
+    run.searchedParts.find((searched) => searched.partId === partId);
+
+  it('is written down as searched, with what it gave, when a glance takes the clue from it', () => {
+    const run = atStall({ edit: openCrate });
+
+    expect(searchedPart(run, 'crate')).toMatchObject({
+      locationId: 'cheese-stall',
+      foundClueIds: ['blue-glove'],
+    });
+    expect(searchedPart(run, 'plinth')).toBeUndefined();
+    const parts = viewRun(run).placeParts.flatMap((place) => place.parts);
+    expect(parts.find(({ id }) => id === 'crate')).toMatchObject({ searched: true, gave: ['blue-glove'] });
+    expect(parts.find(({ id }) => id === 'plinth')).toMatchObject({ searched: false, gave: [] });
+    expect(refusalOf(run, { kind: 'search', partId: 'crate' })).toBe('part-searched');
+  });
+
+  it('is written down as searched when a suspect tells the clue', () => {
+    const run = atStall();
+
+    const { run: next } = ok(
+      resolveIntent(
+        run,
+        { kind: 'interrogate', suspectId: 'baker', approach: 'social', clueIds: [] },
+        dice(15),
+      ),
+    );
+
+    expect(next.foundClueIds).toContain('blue-glove');
+    expect(searchedPart(next, 'crate')).toMatchObject({ foundClueIds: ['blue-glove'] });
+  });
+
+  it('is written down once, however the clue was found, and a search that finds it is no second record', () => {
+    const run = atStall();
+    const once = findClue(run, 'blue-glove');
+
+    expect(once.searchedParts.filter(({ partId }) => partId === 'crate')).toHaveLength(1);
+    expect(findClue(once, 'blue-glove').searchedParts).toEqual(once.searchedParts);
+    expect(recordPartSearch(once, 'crate', 'cheese-stall', []).searchedParts).toEqual(once.searchedParts);
+
+    const { run: searched } = ok(resolveIntent(run, { kind: 'search', partId: 'plinth' }, dice(15)));
+    expect(searched.searchedParts.filter(({ partId }) => partId === 'plinth')).toHaveLength(1);
+  });
+
+  it('is left alone by a clue that no part holds, and in a run from before the parts', () => {
+    expect(findClue(atStall(), 'debt-ledger').searchedParts).toEqual(atStall().searchedParts);
+    const old = newRun({ ruleset: SEARCH_BY_PART_RULESET_VERSION - 1 });
+    expect(findClue(old, 'blue-glove').searchedParts).toEqual([]);
   });
 });

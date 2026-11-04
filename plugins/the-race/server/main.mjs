@@ -36296,6 +36296,7 @@ function recordPartSearch(run, partId, locationId, foundClueIds) {
     partId,
     parts.map(({ id }) => id)
   );
+  if (run.searchedParts.some((searched) => searched.partId === partId)) return run;
   return {
     ...run,
     searchedParts: [
@@ -36322,12 +36323,14 @@ function findClue(run, clueId) {
   const found = run.case.clues.flatMap(
     ({ id, locationId }) => id === clueId ? [{ clueId, locationId, turn: run.turn + 1 }] : []
   );
+  const withClue = {
+    ...run,
+    foundClueIds: [...run.foundClueIds, clueId],
+    history: { ...run.history, finds: [...run.history.finds, ...found] }
+  };
+  const holder = run.rulesetVersion < SEARCH_BY_PART_RULESET_VERSION ? void 0 : run.case.locations.flatMap((location) => (location.parts ?? []).map((part) => ({ part, locationId: location.id }))).find(({ part }) => part.holds === clueId);
   return grantLeads(
-    {
-      ...run,
-      foundClueIds: [...run.foundClueIds, clueId],
-      history: { ...run.history, finds: [...run.history.finds, ...found] }
-    },
+    holder === void 0 ? withClue : recordPartSearch(withClue, holder.part.id, holder.locationId, [clueId]),
     [{ kind: "clue", clueId }]
   );
 }

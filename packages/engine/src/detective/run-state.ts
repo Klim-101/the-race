@@ -58,7 +58,7 @@ import { VENUE_RULESET_VERSION, sitsLeft } from './venue.js';
 import { MAX_TOOL_SLOTS, START_TOOL_SLOTS } from '../progress.js';
 import { isLeadEarned, isLeadOpen, isPlaceKnown, leadsEarnedBy } from './leads.js';
 import { SUSPECT_MOODS, isClosed, moodOf, moodWord } from './suspect-mood.js';
-import { partsOfPlace } from './search-parts.js';
+import { SEARCH_BY_PART_RULESET_VERSION, partsOfPlace } from './search-parts.js';
 import {
   PendingEffectSchema,
   SuppliesSchema,
@@ -467,7 +467,11 @@ export function noticeParts(run: DetectiveRunState, partIds: readonly string[]):
   return { ...run, noticedPartIds: partIds.reduce(addOnce, [...run.noticedPartIds]) };
 }
 
-/** Writes down that a part was searched in the turn being played, and what it gave. */
+/**
+ * Writes down that a part was searched in the turn being played, and what it gave. A part is written down once: one
+ * whose clue was already found some other way (a glance, a word from a suspect, a lead) has been emptied, and a search
+ * of it later adds nothing.
+ */
 export function recordPartSearch(
   run: DetectiveRunState,
   partId: string,
@@ -481,6 +485,7 @@ export function recordPartSearch(
     partId,
     parts.map(({ id }) => id),
   );
+  if (run.searchedParts.some((searched) => searched.partId === partId)) return run;
   return {
     ...run,
     searchedParts: [
@@ -511,12 +516,21 @@ export function findClue(run: DetectiveRunState, clueId: string): DetectiveRunSt
   const found = run.case.clues.flatMap(({ id, locationId }) =>
     id === clueId ? [{ clueId, locationId, turn: run.turn + 1 }] : [],
   );
+  const withClue: DetectiveRunState = {
+    ...run,
+    foundClueIds: [...run.foundClueIds, clueId],
+    history: { ...run.history, finds: [...run.history.finds, ...found] },
+  };
+  // However the clue came, a part that held it is emptied: it is written down as searched, with what it gave, so that
+  // the hero is not offered a search that can only waste an hour.
+  const holder =
+    run.rulesetVersion < SEARCH_BY_PART_RULESET_VERSION
+      ? undefined
+      : run.case.locations
+          .flatMap((location) => (location.parts ?? []).map((part) => ({ part, locationId: location.id })))
+          .find(({ part }) => part.holds === clueId);
   return grantLeads(
-    {
-      ...run,
-      foundClueIds: [...run.foundClueIds, clueId],
-      history: { ...run.history, finds: [...run.history.finds, ...found] },
-    },
+    holder === undefined ? withClue : recordPartSearch(withClue, holder.part.id, holder.locationId, [clueId]),
     [{ kind: 'clue', clueId }],
   );
 }

@@ -776,14 +776,22 @@ describe('the search by part', () => {
     expect(refused.isError).toBe(true);
     expect(errorCode(refused)).toBe('needs-tool');
 
-    const searched = await call(
+    // The glance took the ransom note from the front of the pedestal, which leaves nothing there to search for.
+    expect(view.location.parts.find(({ id }) => id === 'pedestal-front')).toMatchObject({ searched: true });
+    const emptied = await call(
       act,
       { turn: 1, intent: { kind: 'search', partId: 'pedestal-front' } },
       context,
     );
-    expect(searched.body).toMatchObject({ outcome: { kind: 'search', partId: 'pedestal-front' } });
-    const after = (await call(runView, {}, context)).body as typeof view;
-    expect(after.location.parts.find(({ id }) => id === 'pedestal-front')).toMatchObject({ searched: true });
+    expect(emptied.isError).toBe(true);
+    expect(errorCode(emptied)).toBe('part-searched');
+
+    const searched = await call(
+      act,
+      { turn: 1, intent: { kind: 'search', partId: 'pedestal-floor' } },
+      context,
+    );
+    expect(searched.body).toMatchObject({ outcome: { kind: 'search', partId: 'pedestal-floor' } });
   });
 });
 
