@@ -39572,6 +39572,63 @@ function checkReactions(detectiveCase, traits) {
   );
 }
 
+// packages/engine/src/detective/checks/observations.ts
+var CONCLUSION_MARKERS = {
+  en: [
+    "looks like",
+    "looks as if",
+    "looks as though",
+    "as if",
+    "must have",
+    "must be",
+    "clearly",
+    "obviously",
+    "evidently",
+    "apparently",
+    "seems",
+    "appears to",
+    "which proves",
+    "proves that",
+    "suggests",
+    "indicating",
+    "shows that",
+    "which means"
+  ],
+  ru: [
+    "\u043F\u043E\u0445\u043E\u0436\u0435",
+    "\u043E\u0447\u0435\u0432\u0438\u0434\u043D\u043E",
+    "\u043D\u0430\u0432\u0435\u0440\u043D\u044F\u043A\u0430",
+    "\u0432\u0438\u0434\u0438\u043C\u043E",
+    "\u043F\u043E-\u0432\u0438\u0434\u0438\u043C\u043E\u043C\u0443",
+    "\u0441\u0443\u0434\u044F \u043F\u043E \u0432\u0441\u0435\u043C\u0443",
+    "\u044F\u0432\u043D\u043E",
+    "\u0434\u043E\u043B\u0436\u043D\u043E \u0431\u044B\u0442\u044C",
+    "\u043A\u0430\u043A \u0431\u0443\u0434\u0442\u043E",
+    "\u0434\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u0442",
+    "\u0441\u0432\u0438\u0434\u0435\u0442\u0435\u043B\u044C\u0441\u0442\u0432\u0443\u0435\u0442",
+    "\u0447\u0442\u043E \u0437\u043D\u0430\u0447\u0438\u0442",
+    "\u0432\u044B\u0445\u043E\u0434\u0438\u0442, \u0447\u0442\u043E"
+  ]
+};
+function conclusionMarkerIn(text, locale) {
+  const lower = text.toLowerCase();
+  return CONCLUSION_MARKERS[locale].find(
+    (marker) => new RegExp(String.raw`(?<![\p{L}\p{N}])${marker}(?![\p{L}\p{N}])`, "u").test(lower)
+  );
+}
+function checkObservations(detectiveCase) {
+  return detectiveCase.clues.flatMap((clue, index) => {
+    const marker = conclusionMarkerIn(clue.description, detectiveCase.locale);
+    return marker === void 0 ? [] : [
+      {
+        code: "clue-draws-conclusion",
+        path: `clues[${String(index)}].description`,
+        message: `Clue "${clue.id}" says what it means ("${marker}"): describe only what is seen, read or measured, and let the hero conclude.`
+      }
+    ];
+  });
+}
+
 // packages/engine/src/detective/checks/public-places.ts
 function checkPublicPlaces(detectiveCase) {
   const witnessed = new Set((detectiveCase.witnesses ?? []).map(({ locationId }) => locationId));
@@ -40591,6 +40648,7 @@ function validateCase(input2, context2) {
     ...checkTimeline(detectiveCase),
     ...checkWitnesses(detectiveCase),
     ...context2.requirePublicLife ? checkPublicPlaces(detectiveCase) : [],
+    ...context2.requireObservations ? checkObservations(detectiveCase) : [],
     ...context2.requireLinkable ? checkLinkable(detectiveCase) : [],
     ...checkClearing(detectiveCase, obtainable, context2.requireClearing ?? false),
     ...checkReactions(detectiveCase, context2.traits),
@@ -54653,7 +54711,8 @@ var ISSUE_PRIORITY = {
   "random-event-violence": 26,
   "too-few-random-events": 27,
   "random-events-miss-a-day": 27.5,
-  "solution-after-culprit-flees": 28
+  "solution-after-culprit-flees": 28,
+  "clue-draws-conclusion": 29
 };
 function priorityOf(issue3) {
   return ISSUE_PRIORITY[issue3.code];
@@ -54720,6 +54779,7 @@ var scenarioSubmit = defineTool({
       requireClearing: true,
       requireClaims: true,
       requirePublicLife: true,
+      requireObservations: true,
       // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
       realNames: [
         .../* @__PURE__ */ new Set([...worldRealNames(world), ...(await seedsOfRun(context2))?.realNames ?? []])
