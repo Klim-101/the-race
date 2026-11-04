@@ -504,7 +504,21 @@ export function wearTool(run: DetectiveRunState, gearId: GearId, blundered: bool
   return { ...run, kit: run.kit.map((piece) => (piece.id === gearId ? next : piece)) };
 }
 
+/** Puts a clue in the hero's hands, found in the place it lies in. */
 export function findClue(run: DetectiveRunState, clueId: string): DetectiveRunState {
+  return takeClue(run, clueId, undefined);
+}
+
+/**
+ * Puts a clue in the hero's hands that a suspect or a witness told. It lies where the thing is, which the hero may not
+ * have seen, but it was found where the talk was held. A separate function, because `findClue` is passed to `reduce`,
+ * which would hand it an index as the place.
+ */
+export function findToldClue(run: DetectiveRunState, clueId: string): DetectiveRunState {
+  return takeClue(run, clueId, run.locationId);
+}
+
+function takeClue(run: DetectiveRunState, clueId: string, heardAt: string | undefined): DetectiveRunState {
   assertActive(run);
   requireId(
     'clue',
@@ -512,9 +526,10 @@ export function findClue(run: DetectiveRunState, clueId: string): DetectiveRunSt
     run.case.clues.map(({ id }) => id),
   );
   if (run.foundClueIds.includes(clueId)) return run;
-  // The place is the clue's own, public once the clue is found; `requireId` has proved there is one such clue.
+  // The place is the clue's own, public once the clue is found, unless it was told; `requireId` has proved there is
+  // one such clue.
   const found = run.case.clues.flatMap(({ id, locationId }) =>
-    id === clueId ? [{ clueId, locationId, turn: run.turn + 1 }] : [],
+    id === clueId ? [{ clueId, locationId: heardAt ?? locationId, turn: run.turn + 1 }] : [],
   );
   const withClue: DetectiveRunState = {
     ...run,
@@ -958,6 +973,8 @@ export interface DetectiveRunView {
     readonly garbled: boolean;
     /** The name the player can say for it: the hero's surname and the order of finding, such as `KESVIK-03`. */
     readonly number: string;
+    /** The name of the witness who told it, for a clue that is what a witness saw; `null` for any other. */
+    readonly witness: string | null;
   }[];
   /**
    * How many clues each conclusion still to be made takes, smallest first: a number for each, so the player
@@ -1282,10 +1299,11 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     }),
     clues: detectiveCase.clues
       .filter(({ id }) => run.foundClueIds.includes(id))
-      .map(({ id, locationId, description }) => ({
+      .map(({ id, locationId, description, sightingOf }) => ({
         id,
         locationId,
         description,
+        witness: sightingOf === undefined ? null : requireWitness(detectiveCase, sightingOf.witnessId).name,
         garbled: run.garbledClueIds.includes(id),
         // The order of finding, which `foundClueIds` keeps from the first turn, whatever the history holds.
         number: clueNumber(run.hero.name, run.foundClueIds.indexOf(id)),

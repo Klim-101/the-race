@@ -487,6 +487,7 @@
       }
     },
     "clueGrid": {
+      "heardFrom": "Told by {name}",
       "filters": "Filter the clues",
       "place": "Found at",
       "suspect": "Shown to",

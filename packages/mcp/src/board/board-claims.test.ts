@@ -63,7 +63,16 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
         { day: 2, text: 'A storm closes the road.' },
       ],
     },
-    clues: [{ id: 'key', locationId: 'stall', description: 'A key.', garbled: false, number: 'MIRA-01' }],
+    clues: [
+      {
+        id: 'key',
+        locationId: 'stall',
+        description: 'A key.',
+        garbled: false,
+        witness: null,
+        number: 'MIRA-01',
+      },
+    ],
     insights: [],
     suspects: [
       {

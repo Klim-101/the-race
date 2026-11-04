@@ -110,6 +110,8 @@ export interface TabText {
   };
   /** The grid of clue cards: its filters and what a card says about a clue. */
   readonly clueGrid: {
+    /** A clue that a witness told: whose words it is ({name}). */
+    readonly heardFrom: string;
     readonly filters: string;
     readonly place: string;
     readonly suspect: string;
