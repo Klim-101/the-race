@@ -136,7 +136,8 @@ export const LeadSchema = z.object({
   reason: NarrativeTextSchema,
   earnedBy: LeadTriggerSchema,
   window: LeadWindowSchema.optional(),
-  isFalse: z.boolean(),
+  // The generator's instructions call it optional, so a lead that leaves it out is a true one.
+  isFalse: z.boolean().default(false),
 });
 export type Lead = z.infer<typeof LeadSchema>;
 

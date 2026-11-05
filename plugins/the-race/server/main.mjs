@@ -34688,7 +34688,8 @@ var LeadSchema = external_exports.object({
   reason: NarrativeTextSchema,
   earnedBy: LeadTriggerSchema,
   window: LeadWindowSchema.optional(),
-  isFalse: external_exports.boolean()
+  // The generator's instructions call it optional, so a lead that leaves it out is a true one.
+  isFalse: external_exports.boolean().default(false)
 });
 var STOCK_HOWS = ["found", "sold"];
 var StockHowSchema = external_exports.enum(STOCK_HOWS);
