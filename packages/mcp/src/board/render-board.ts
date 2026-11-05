@@ -4,6 +4,7 @@
 import { createHash } from 'node:crypto';
 import type { DetectiveRunView, StripTurn, TurnView } from '@the-race/engine';
 import { renderChronicle } from './board-chronicle.js';
+import { closedFileOf, renderClosedFile } from './board-closed-file.js';
 import { cardRules, renderClues } from './board-clues.js';
 import { renderCork } from './board-cork.js';
 import { renderHeader } from './board-header.js';
@@ -21,7 +22,7 @@ import { TAB_TEXT } from './tab-text.js';
 
 export { escapeHtml } from './escape-html.js';
 
-const TAB_IDS = ['board', 'suspects', 'clues', 'map', 'chronicle', 'hero'] as const;
+const TAB_IDS = ['board', 'suspects', 'clues', 'map', 'chronicle', 'hero', 'file'] as const;
 
 // The tabs need no script: a panel is shown while it is the target of the address, and the first one when
 // none is, so a reload keeps the tab the player was on. A browser without `:has` shows every panel in turn.
@@ -63,6 +64,9 @@ h3{margin:22px 0 8px;font-size:1rem;color:var(--accent)}
 .meta{color:var(--muted);margin:0 0 16px}
 .premise{border-left:3px solid var(--accent);padding-left:12px;margin:16px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 16px;margin:0 0 10px}
+.empty-card{border-style:dashed;background:transparent}
+.led-astray{border-left:4px solid var(--warn)}
+.course{padding-left:1.4em}
 .card p{margin:4px 0}
 .tag{font:12px/1.2 system-ui,sans-serif;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .warn{color:var(--warn);font:14px/1.4 system-ui,sans-serif}
@@ -286,6 +290,7 @@ export function renderEvidenceBoard(
   const text = TAB_TEXT[view.locale];
   const e = escapeHtml;
   const fresh = freshSince(view, previous);
+  const closed = closedFileOf(turns);
 
   const news =
     view.news.length === 0
@@ -312,7 +317,9 @@ ${planRules(view)}</style>
 ${renderHeader(view, board, text, fresh)}
 <p class="premise">${e(view.premise)}</p>
 <p class="meta">${e(board.nowAt)}: <strong>${e(view.location.name)}</strong></p>
-<nav class="tabs" aria-label="${e(text.nav)}">${TAB_IDS.map((id) => `<a href="#${id}">${e(text.tabs[id])}</a>`).join('')}</nav>
+<nav class="tabs" aria-label="${e(text.nav)}">${TAB_IDS.filter((id) => id !== 'file' || closed !== undefined)
+    .map((id) => `<a href="#${id}">${e(text.tabs[id])}</a>`)
+    .join('')}</nav>
 <section class="tab" id="board">
 <h2>${e(text.corkboard.title)}</h2>
 ${renderCork(view, board, text)}
@@ -336,7 +343,15 @@ ${renderChronicle(view, turns, text, fresh, strip)}
 <section class="tab" id="hero">
 <h2>${e(text.tabs.hero)}</h2>
 ${renderHero(view, board, text, fresh)}
-</section>
+</section>${
+    closed === undefined
+      ? ''
+      : `
+<section class="tab" id="file">
+<h2>${e(text.closedFile.title)}</h2>
+${renderClosedFile(view, closed, text)}
+</section>`
+  }
 </main>
 <script>${SCRIPT}</script>
 </body>

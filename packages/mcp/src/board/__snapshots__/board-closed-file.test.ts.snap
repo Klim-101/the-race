@@ -1,0 +1,84 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the closed file, on the board of a finished run > has a tab, and tells the truth, the course in order, the pinned clues and an empty card 1`] = `
+"
+<h2>The closed file</h2>
+<div class="card">
+<h3>Unproven</h3>
+<p><span class="tag">Who did it</span> Orla Brenn</p>
+<p><span class="tag">Why</span> Debt to the miller.</p>
+<p><span class="tag">How</span> Rolled the wheel into the cellar.</p>
+<p><span class="tag">Where</span> Cheese stall</p>
+</div>
+<h3>How it really went</h3>
+<ol class="course">
+<li><span class="tag">01:40 · Storage cellar</span> <strong>Orla Brenn</strong>: Opens the cellar.</li>
+<li><span class="tag">02:05 · Market square</span> <strong>Gustav Holm</strong>: Tastes a sample.</li>
+</ol>
+<h3>What was pinned</h3>
+<div class="cards">
+<div class="card"><span class="tag"><span class="num">MIRA-01</span></span>
+<p class="text">A key.</p></div>
+<div class="card"><span class="tag"><span class="num">MIRA-02</span></span>
+<p class="text">A blue glove.</p></div>
+</div>
+<h3>What was never found</h3>
+<div class="cards">
+<div class="card empty-card"><span class="tag">never found · Storage cellar · in the dark</span>
+<p class="text">Round tracks in the cellar.</p></div>
+</div>
+
+"
+`;
+
+exports[`the closed file, on the board of a finished run > is short for a proven case: the truth and the course, nothing missed 1`] = `
+"
+<h2>The closed file</h2>
+<div class="card">
+<h3>Proven</h3>
+<p><span class="tag">Who did it</span> Orla Brenn</p>
+<p><span class="tag">Why</span> Debt to the miller.</p>
+<p><span class="tag">How</span> Rolled the wheel into the cellar.</p>
+<p><span class="tag">Where</span> Cheese stall</p>
+</div>
+<h3>How it really went</h3>
+<ol class="course">
+<li><span class="tag">01:40 · Storage cellar</span> <strong>Orla Brenn</strong>: Opens the cellar.</li>
+<li><span class="tag">02:05 · Market square</span> <strong>Gustav Holm</strong>: Tastes a sample.</li>
+</ol>
+<h3>What was pinned</h3>
+<div class="cards">
+<div class="card"><span class="tag"><span class="num">MIRA-01</span></span>
+<p class="text">A key.</p></div>
+<div class="card"><span class="tag"><span class="num">MIRA-02</span></span>
+<p class="text">A blue glove.</p></div>
+</div>
+
+"
+`;
+
+exports[`the closed file, on the board of a finished run > marks the false clue that led astray, for a wrong accusation 1`] = `
+"
+<h2>The closed file</h2>
+<div class="card">
+<h3>Wrong person</h3>
+<p><span class="tag">Who did it</span> Orla Brenn</p>
+<p><span class="tag">Why</span> Debt to the miller.</p>
+<p><span class="tag">How</span> Rolled the wheel into the cellar.</p>
+<p><span class="tag">Where</span> Cheese stall</p>
+</div>
+<h3>How it really went</h3>
+<ol class="course">
+<li><span class="tag">01:40 · Storage cellar</span> <strong>Orla Brenn</strong>: Opens the cellar.</li>
+<li><span class="tag">02:05 · Market square</span> <strong>Gustav Holm</strong>: Tastes a sample.</li>
+</ol>
+<h3>What was pinned</h3>
+<div class="cards">
+<div class="card"><span class="tag"><span class="num">MIRA-01</span></span>
+<p class="text">A key.</p></div>
+<div class="card led-astray"><span class="tag"><span class="num">MIRA-02</span> · led astray</span>
+<p class="text">A blue glove.</p></div>
+</div>
+
+"
+`;

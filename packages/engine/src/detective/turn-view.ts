@@ -6,13 +6,41 @@ import type { ConsumableId } from './consumables.js';
 import type { LogEntry, RunLog } from './event-log.js';
 import type { INTERROGATION_APPROACHES } from './interrogation.js';
 import type { DetectiveRunState } from './run-state.js';
-import type { Shortfall } from './verdict.js';
+import type { ObstacleKind } from './case-schema.js';
+import type { Shortfall, Verdict } from './verdict.js';
 
 // The run log is engine-side only: its entries hold every check, the clues rolled for and, for an accusation,
 // the truth. A turn is shown to the player as what they asked for and what they were told, nothing more, so the
 // projection below names the fields it takes one by one and never passes an entry on.
 
 export const DEFAULT_TURNS_SHOWN = 12;
+
+/**
+ * The closed file of a finished run, as the player is told it once the run is over: the truth of the case, the true
+ * course of the crime, the clues of the nearest chain that were never found and the false clues that led astray, with
+ * the names of people and places in place of ids. A log from before the epilogue has no course and nothing missed.
+ */
+export interface ClosedFile {
+  readonly verdict: Verdict;
+  readonly culprit: string;
+  readonly motive: string;
+  readonly method: string;
+  readonly place: string;
+  readonly course: readonly {
+    /** Minutes since the start of the crime day. */
+    readonly atMinute: number;
+    readonly actor: string;
+    readonly place: string;
+    readonly action: string;
+  }[];
+  readonly missed: readonly {
+    readonly description: string;
+    readonly place: string;
+    /** What stood between the hero and it; `null` when nothing did. */
+    readonly obstacle: ObstacleKind | null;
+  }[];
+  readonly misled: readonly { readonly number: string; readonly description: string }[];
+}
 
 export type TurnDetail =
   | { readonly kind: 'look'; readonly found: number }
@@ -40,10 +68,16 @@ export type TurnDetail =
       readonly kind: 'accuse';
       /** What the proof lacked, when the right person was named and the proof fell short: told once the run is over. */
       readonly shortfall: Shortfall | null;
+      /** The truth of the case, the course of the crime and what was missed, told once the run is over. */
+      readonly file?: ClosedFile | null;
     };
 
 /** One turn the player took, in the order of play, with the day and the hour it ended at. */
 export type TurnView = { readonly turn: number; readonly day: number; readonly minute: number } & TurnDetail;
+
+/** A suspect's name; the id of one the case does not list, which only a damaged log can name. */
+const nameOf = (run: DetectiveRunState, id: string): string =>
+  run.case.suspects.find((suspect) => suspect.id === id)?.name ?? id;
 
 function detailOf(run: DetectiveRunState, entry: LogEntry): TurnDetail {
   const { outcome } = entry;
@@ -94,7 +128,32 @@ function detailOf(run: DetectiveRunState, entry: LogEntry): TurnDetail {
     case 'use':
       return { kind: 'use', item: outcome.itemId };
     case 'accuse':
-      return { kind: 'accuse', shortfall: outcome.shortfall ?? null };
+      return {
+        kind: 'accuse',
+        shortfall: outcome.shortfall ?? null,
+        file: {
+          verdict: outcome.verdict,
+          culprit: nameOf(run, outcome.truth.culpritId),
+          motive: outcome.truth.motive,
+          method: outcome.truth.method,
+          place: placeName(outcome.truth.crimeLocationId),
+          course: (outcome.epilogue?.course ?? []).map(({ atMinute, actorId, locationId, action }) => ({
+            atMinute,
+            actor: nameOf(run, actorId),
+            place: placeName(locationId),
+            action,
+          })),
+          missed: (outcome.epilogue?.missed ?? []).map(({ description, locationId, obstacle }) => ({
+            description,
+            place: placeName(locationId),
+            obstacle,
+          })),
+          misled: (outcome.epilogue?.misled ?? []).map(({ number, description }) => ({
+            number,
+            description,
+          })),
+        },
+      };
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
     default:
       return assertNever(outcome);

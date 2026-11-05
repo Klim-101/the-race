@@ -38913,6 +38913,7 @@ function viewDayStrip(run, log) {
 
 // packages/engine/src/detective/turn-view.ts
 var DEFAULT_TURNS_SHOWN = 12;
+var nameOf = (run, id) => run.case.suspects.find((suspect) => suspect.id === id)?.name ?? id;
 function detailOf(run, entry) {
   const { outcome } = entry;
   const placeName = (id) => run.case.locations.find((place) => place.id === id)?.name ?? id;
@@ -38956,7 +38957,32 @@ function detailOf(run, entry) {
     case "use":
       return { kind: "use", item: outcome.itemId };
     case "accuse":
-      return { kind: "accuse", shortfall: outcome.shortfall ?? null };
+      return {
+        kind: "accuse",
+        shortfall: outcome.shortfall ?? null,
+        file: {
+          verdict: outcome.verdict,
+          culprit: nameOf(run, outcome.truth.culpritId),
+          motive: outcome.truth.motive,
+          method: outcome.truth.method,
+          place: placeName(outcome.truth.crimeLocationId),
+          course: (outcome.epilogue?.course ?? []).map(({ atMinute, actorId, locationId, action }) => ({
+            atMinute,
+            actor: nameOf(run, actorId),
+            place: placeName(locationId),
+            action
+          })),
+          missed: (outcome.epilogue?.missed ?? []).map(({ description, locationId, obstacle }) => ({
+            description,
+            place: placeName(locationId),
+            obstacle
+          })),
+          misled: (outcome.epilogue?.misled ?? []).map(({ number: number4, description }) => ({
+            number: number4,
+            description
+          }))
+        }
+      };
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
     default:
       return assertNever2(outcome);
@@ -51780,9 +51806,32 @@ var en_default3 = {
       suspects: "Suspects",
       clues: "Clues and links",
       chronicle: "Chronicle",
-      hero: "Hero and kit"
+      hero: "Hero and kit",
+      file: "Closed file"
     },
     nav: "Sections of the board",
+    closedFile: {
+      title: "The closed file",
+      verdicts: { proven: "Proven", unproven: "Unproven", wrong: "Wrong person" },
+      culprit: "Who did it",
+      motive: "Why",
+      method: "How",
+      place: "Where",
+      course: "How it really went",
+      pinned: "What was pinned",
+      noneFound: "Not a single clue was found.",
+      misled: "led astray",
+      missed: "What was never found",
+      neverFound: "never found",
+      obstacles: {
+        locked: "behind a lock",
+        dark: "in the dark",
+        soft: "under something soft",
+        trace: "a trace to lift",
+        sealed: "sealed",
+        digital: "on a screen"
+      }
+    },
     header: {
       turn: "Turn {n}",
       day: "Day {day} of {total}, {time}",
@@ -52295,9 +52344,32 @@ var ru_default2 = {
       suspects: "\u041F\u043E\u0434\u043E\u0437\u0440\u0435\u0432\u0430\u0435\u043C\u044B\u0435",
       clues: "\u0423\u043B\u0438\u043A\u0438 \u0438 \u0441\u0432\u044F\u0437\u0438",
       chronicle: "\u0425\u0440\u043E\u043D\u0438\u043A\u0430",
-      hero: "\u0413\u0435\u0440\u043E\u0439 \u0438 \u0441\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435"
+      hero: "\u0413\u0435\u0440\u043E\u0439 \u0438 \u0441\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435",
+      file: "\u0417\u0430\u043A\u0440\u044B\u0442\u043E\u0435 \u0434\u0435\u043B\u043E"
     },
     nav: "\u0420\u0430\u0437\u0434\u0435\u043B\u044B \u0434\u043E\u0441\u043A\u0438",
+    closedFile: {
+      title: "\u0417\u0430\u043A\u0440\u044B\u0442\u043E\u0435 \u0434\u0435\u043B\u043E",
+      verdicts: { proven: "\u0414\u043E\u043A\u0430\u0437\u0430\u043D\u043E", unproven: "\u041D\u0435 \u0434\u043E\u043A\u0430\u0437\u0430\u043D\u043E", wrong: "\u041D\u0435 \u0442\u043E\u0442 \u0447\u0435\u043B\u043E\u0432\u0435\u043A" },
+      culprit: "\u041A\u0442\u043E \u044D\u0442\u043E \u0441\u0434\u0435\u043B\u0430\u043B",
+      motive: "\u041F\u043E\u0447\u0435\u043C\u0443",
+      method: "\u041A\u0430\u043A",
+      place: "\u0413\u0434\u0435",
+      course: "\u041A\u0430\u043A \u0432\u0441\u0451 \u0431\u044B\u043B\u043E \u043D\u0430 \u0441\u0430\u043C\u043E\u043C \u0434\u0435\u043B\u0435",
+      pinned: "\u0427\u0442\u043E \u0431\u044B\u043B\u043E \u043F\u0440\u0438\u043A\u043E\u043B\u043E\u0442\u043E",
+      noneFound: "\u041D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u043D\u0438 \u043E\u0434\u043D\u043E\u0439 \u0443\u043B\u0438\u043A\u0438.",
+      misled: "\u0443\u0432\u0435\u043B\u0430 \u043D\u0435 \u0442\u0443\u0434\u0430",
+      missed: "\u0427\u0442\u043E \u0442\u0430\u043A \u0438 \u043D\u0435 \u043D\u0430\u0448\u043B\u0438",
+      neverFound: "\u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u0430",
+      obstacles: {
+        locked: "\u0437\u0430 \u0437\u0430\u043C\u043A\u043E\u043C",
+        dark: "\u0432 \u0442\u0435\u043C\u043D\u043E\u0442\u0435",
+        soft: "\u043F\u043E\u0434 \u0447\u0435\u043C-\u0442\u043E \u043C\u044F\u0433\u043A\u0438\u043C",
+        trace: "\u0441\u043B\u0435\u0434, \u043A\u043E\u0442\u043E\u0440\u044B\u0439 \u043D\u0443\u0436\u043D\u043E \u0441\u043D\u044F\u0442\u044C",
+        sealed: "\u043E\u043F\u0435\u0447\u0430\u0442\u0430\u043D\u043E",
+        digital: "\u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435"
+      }
+    },
     header: {
       turn: "\u0425\u043E\u0434 {n}",
       day: "\u0414\u0435\u043D\u044C {day} \u0438\u0437 {total}, {time}",
@@ -52871,6 +52943,45 @@ ${view.leads.length === 0 ? `<p class="empty">${e(t.noLeads)}</p>` : list(
 ${open3.length === 0 ? `<p class="empty">${e(t.nothingOpen)}</p>` : list(open3)}`;
 }
 
+// packages/mcp/src/board/board-closed-file.ts
+function closedFileOf(turns) {
+  return turns.flatMap((turn) => turn.kind === "accuse" && turn.file ? [turn.file] : [])[0];
+}
+function renderClosedFile(view, file2, text) {
+  const e = escapeHtml;
+  const t = text.closedFile;
+  const led = new Set(file2.misled.map(({ number: number4 }) => number4));
+  return `<div class="card">
+<h3>${e(named(t.verdicts, file2.verdict))}</h3>
+<p><span class="tag">${e(t.culprit)}</span> ${e(file2.culprit)}</p>
+<p><span class="tag">${e(t.motive)}</span> ${e(file2.motive)}</p>
+<p><span class="tag">${e(t.method)}</span> ${e(file2.method)}</p>
+<p><span class="tag">${e(t.place)}</span> ${e(file2.place)}</p>
+</div>${file2.course.length === 0 ? "" : `
+<h3>${e(t.course)}</h3>
+<ol class="course">
+${file2.course.map(
+    ({ atMinute, actor, place, action }) => `<li><span class="tag">${clock(atMinute)} \xB7 ${e(place)}</span> <strong>${e(actor)}</strong>: ${e(action)}</li>`
+  ).join("\n")}
+</ol>`}
+<h3>${e(t.pinned)}</h3>${view.clues.length === 0 ? `
+<p class="empty">${e(t.noneFound)}</p>` : `
+<div class="cards">
+${view.clues.map(
+    ({ number: number4, description }) => `<div class="card${led.has(number4) ? " led-astray" : ""}"><span class="tag"><span class="num">${e(number4)}</span>${led.has(number4) ? ` \xB7 ${e(t.misled)}` : ""}</span>
+<p class="text">${e(description)}</p></div>`
+  ).join("\n")}
+</div>`}${file2.missed.length === 0 ? "" : `
+<h3>${e(t.missed)}</h3>
+<div class="cards">
+${file2.missed.map(
+    ({ description, place, obstacle }) => `<div class="card empty-card"><span class="tag">${e(t.neverFound)} \xB7 ${e(place)}${obstacle === null ? "" : ` \xB7 ${e(named(t.obstacles, obstacle))}`}</span>
+<p class="text">${e(description)}</p></div>`
+  ).join("\n")}
+</div>`}
+`;
+}
+
 // packages/mcp/src/board/board-links.ts
 function openLinks(view, text) {
   const { open: open3, size, group, allDrawn } = text.links;
@@ -53059,7 +53170,7 @@ var LEAD_X = MARGIN + COLUMNS * (CARD_W + GAP);
 var LEAD_LINE = 30;
 var ROW_STEP = CARD_H + GAP + 8;
 var whole2 = (value) => String(Math.round(value));
-var nameOf = (names, id) => names.get(id) ?? id;
+var nameOf2 = (names, id) => names.get(id) ?? id;
 function wrap(text, length, lines) {
   const out = [];
   let current = "";
@@ -53134,17 +53245,17 @@ function renderCork(view, board, text) {
     if (source === null) return t.unknown;
     switch (source.kind) {
       case "clue":
-        return t.clue.replace("{n}", nameOf(clueNumber2, source.clueId));
+        return t.clue.replace("{n}", nameOf2(clueNumber2, source.clueId));
       case "study":
-        return source.tool === null ? t.study.replace("{n}", nameOf(clueNumber2, source.clueId)) : t.studyWith.replace("{n}", nameOf(clueNumber2, source.clueId)).replace("{tool}", named(text.hero.gear, source.tool));
+        return source.tool === null ? t.study.replace("{n}", nameOf2(clueNumber2, source.clueId)) : t.studyWith.replace("{n}", nameOf2(clueNumber2, source.clueId)).replace("{tool}", named(text.hero.gear, source.tool));
       case "talk":
-        return t.talk.replace("{name}", nameOf(suspectName, source.suspectId));
+        return t.talk.replace("{name}", nameOf2(suspectName, source.suspectId));
       case "lie":
-        return source.suspectId === null ? t.unknown : t.lie.replace("{name}", nameOf(suspectName, source.suspectId));
+        return source.suspectId === null ? t.unknown : t.lie.replace("{name}", nameOf2(suspectName, source.suspectId));
       case "deduction":
         return t.deduction;
       case "locals":
-        return t.locals.replace("{place}", nameOf(placeName, source.locationId));
+        return t.locals.replace("{place}", nameOf2(placeName, source.locationId));
       /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
       default:
         return assertNever2(source);
@@ -53789,7 +53900,7 @@ var BOARD_TEXT = {
 };
 
 // packages/mcp/src/board/render-board.ts
-var TAB_IDS = ["board", "suspects", "clues", "map", "chronicle", "hero"];
+var TAB_IDS = ["board", "suspects", "clues", "map", "chronicle", "hero", "file"];
 var tabRules = TAB_IDS.map(
   (id) => `main:has(#${id}:target) nav a[href="#${id}"]{background:var(--accent);color:var(--card);border-color:var(--accent)}`
 ).join("\n");
@@ -53822,6 +53933,9 @@ h3{margin:22px 0 8px;font-size:1rem;color:var(--accent)}
 .meta{color:var(--muted);margin:0 0 16px}
 .premise{border-left:3px solid var(--accent);padding-left:12px;margin:16px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 16px;margin:0 0 10px}
+.empty-card{border-style:dashed;background:transparent}
+.led-astray{border-left:4px solid var(--warn)}
+.course{padding-left:1.4em}
 .card p{margin:4px 0}
 .tag{font:12px/1.2 system-ui,sans-serif;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .warn{color:var(--warn);font:14px/1.4 system-ui,sans-serif}
@@ -54031,6 +54145,7 @@ function renderEvidenceBoard(view, turns = [], previous, strip = []) {
   const text = TAB_TEXT[view.locale];
   const e = escapeHtml;
   const fresh = freshSince(view, previous);
+  const closed = closedFileOf(turns);
   const news = view.news.length === 0 ? "" : `<h2>${e(board.news)}</h2>
 <ul>${view.news.map((line) => `<li>${e(line)}</li>`).join("\n")}</ul>`;
   return `<!doctype html>
@@ -54053,7 +54168,7 @@ ${planRules(view)}</style>
 ${renderHeader(view, board, text, fresh)}
 <p class="premise">${e(view.premise)}</p>
 <p class="meta">${e(board.nowAt)}: <strong>${e(view.location.name)}</strong></p>
-<nav class="tabs" aria-label="${e(text.nav)}">${TAB_IDS.map((id) => `<a href="#${id}">${e(text.tabs[id])}</a>`).join("")}</nav>
+<nav class="tabs" aria-label="${e(text.nav)}">${TAB_IDS.filter((id) => id !== "file" || closed !== void 0).map((id) => `<a href="#${id}">${e(text.tabs[id])}</a>`).join("")}</nav>
 <section class="tab" id="board">
 <h2>${e(text.corkboard.title)}</h2>
 ${renderCork(view, board, text)}
@@ -54077,7 +54192,11 @@ ${renderChronicle(view, turns, text, fresh, strip)}
 <section class="tab" id="hero">
 <h2>${e(text.tabs.hero)}</h2>
 ${renderHero(view, board, text, fresh)}
-</section>
+</section>${closed === void 0 ? "" : `
+<section class="tab" id="file">
+<h2>${e(text.closedFile.title)}</h2>
+${renderClosedFile(view, closed, text)}
+</section>`}
 </main>
 <script>${SCRIPT}</script>
 </body>
