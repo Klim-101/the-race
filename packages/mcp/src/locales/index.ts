@@ -5,6 +5,7 @@ import type { Locale } from '@the-race/engine';
 import type { BoardText } from '../board/board-text.js';
 import type { TabText } from '../board/tab-text.js';
 import type { SightingText } from '../sighting-text.js';
+import type { StatsText } from '../stats-text.js';
 import en from './en.json' with { type: 'json' };
 import ru from './ru.json' with { type: 'json' };
 
@@ -13,6 +14,7 @@ export interface LocaleText {
   readonly board: BoardText;
   readonly tabs: TabText;
   readonly sighting: SightingText;
+  readonly stats: StatsText;
 }
 
 // Assigning the files to `LocaleText` is the completeness check at compile time: a key missing from either

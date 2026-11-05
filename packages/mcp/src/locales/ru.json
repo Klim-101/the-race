@@ -536,5 +536,44 @@
   "sighting": {
     "clue": "Свидетель {witness}: {suspect} — {place}, около {times}.",
     "and": "и"
+  },
+  "stats": {
+    "title": "Все забеги",
+    "updated": "Обновлено",
+    "none": "Забегов пока нет.",
+    "unreadable": "забег, который не удалось прочитать",
+    "openBoard": "Открыть доску",
+    "columns": {
+      "date": "Дата",
+      "title": "Дело",
+      "hero": "Герой",
+      "result": "Итог",
+      "days": "Дни",
+      "turns": "Ходы",
+      "board": "Доска"
+    },
+    "totals": {
+      "runs": "забегов",
+      "wins": "выиграно",
+      "longest": "дней в самом долгом забеге",
+      "streak": "лучшая серия побед"
+    },
+    "results": {
+      "won": "выигран",
+      "lost": "проигран",
+      "gave-up": "оставлен",
+      "in-progress": "идёт",
+      "damaged": "повреждён"
+    },
+    "reasons": {
+      "proven": "доказано",
+      "unproven": "не доказано",
+      "wrong": "не тот человек",
+      "time-ran-out": "вышло время",
+      "culprit-fled": "виновный скрылся",
+      "reputation-zero": "репутации не осталось",
+      "breakdown": "сдали нервы",
+      "gave-up": "оставлен"
+    }
   }
 }
