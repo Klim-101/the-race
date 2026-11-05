@@ -17,7 +17,7 @@ import {
   type CaseIssue,
   type CaseIssueCode,
 } from '@the-race/engine';
-import { makeRunId, saveRun } from '@the-race/saves';
+import { makeRunId, saveRun, saveRunSeeds } from '@the-race/saves';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
 import { seedsOfRun, toldSeedsOfRun } from '../news.js';
@@ -212,14 +212,15 @@ export const scenarioSubmit = defineTool({
           background: hero.background,
           runSeed: pending.seed,
         });
+        // The run's id and folder, made now: the date and time it starts and the seed.
+        const runId = makeRunId(context.now(), pending.seed);
         // The run continues the dice the hero was made with: the pending record holds their state.
         const run = createDetectiveRun({
           hero,
           traits: pending.traits,
           case: result.detectiveCase,
           seed: pending.seed,
-          // The run's id and folder, made now: the date and time it starts and the seed.
-          runId: makeRunId(context.now(), pending.seed),
+          runId,
           rngState: pending.rngState,
           locale: pending.locale,
           // The same country the brief named for this seed; the run keeps it from here on.
@@ -230,6 +231,9 @@ export const scenarioSubmit = defineTool({
           toolSlots: toolSlotsOf(await recordsOrNone(context)),
         });
         await saveRun(context.saveDir, run, context.saveFs, EMPTY_RUN_LOG);
+        // The news the run was made from stays with it, so that it can be read back on its own.
+        const news = await seedsOfRun(context);
+        if (news !== undefined) await saveRunSeeds(context.saveDir, runId, news, context.saveFs);
         await keepStats(context);
         await clearPending(context.saveDir, context.saveFs);
         return { accepted: true };

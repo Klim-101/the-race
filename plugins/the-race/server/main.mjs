@@ -34327,6 +34327,295 @@ function climateFor(real, region) {
   return ClimateProfileSchema.parse(ZONE_PROFILES[found?.zone ?? REGION_ZONES[region]]);
 }
 
+// packages/engine/src/progress.ts
+var START_TOOL_SLOTS = 1;
+var MAX_TOOL_SLOTS = 5;
+var LOSSES_TO_LOSE_A_SLOT = 2;
+var START_TRAIT_SLOTS = 2;
+var MAX_TRAIT_SLOTS = 5;
+var POCKET_LIMITS = { coffee: 2, sedative: 7 };
+function toolSlotsOf(records) {
+  let slots = START_TOOL_SLOTS;
+  let losses = 0;
+  for (const record2 of records) {
+    if (record2.won) {
+      slots = Math.min(MAX_TOOL_SLOTS, slots + 1);
+      losses = 0;
+    } else {
+      losses += 1;
+      if (losses === LOSSES_TO_LOSE_A_SLOT) {
+        slots = Math.max(START_TOOL_SLOTS, slots - 1);
+        losses = 0;
+      }
+    }
+  }
+  return slots;
+}
+function traitSlotsOf(wins) {
+  return Math.min(MAX_TRAIT_SLOTS, START_TRAIT_SLOTS + wins);
+}
+function traitRuleFor(slots, seed) {
+  const half = Math.floor(slots / 2);
+  const extraToGood = slots % 2 === 1 && createRng(`${seed}:trait-slots`).roll(2) === 1;
+  return { positive: half + (extraToGood ? 1 : 0), negative: slots - half - (extraToGood ? 1 : 0), any: 0 };
+}
+var winsOf = (records) => records.filter(({ won }) => won).length;
+
+// packages/engine/src/detective/condition.ts
+var NERVES_MINUTES_PER_POINT = 240;
+var LATE_FROM_MINUTE = 22 * 60;
+var SLEEP_DEBT_MINUTES_PER_POINT = 60;
+var ACTION_STRAIN_RULESET_VERSION = 9;
+var ACTION_STRAIN_CAP_PER_DAY = 3;
+var CONDITION_IDS = [
+  "drunk",
+  "injured",
+  "exhausted",
+  "shaken",
+  "sedated",
+  "ill-equipped",
+  "emboldened"
+];
+var ConditionIdSchema = external_exports.enum(CONDITION_IDS);
+var ConditionDurationSchema = external_exports.union([
+  external_exports.object({ minutes: external_exports.int().min(1) }),
+  external_exports.object({ untilNight: external_exports.literal(true) })
+]);
+var DETECTIVE_CONDITIONS = {
+  drunk: {
+    duration: { minutes: 240 },
+    effects: [
+      { skills: ["perception", "reasoning"], amount: -2 },
+      { skills: ["pressure"], amount: 1 }
+    ]
+  },
+  injured: { duration: { minutes: MINUTES_PER_DAY }, effects: [{ skills: "all", amount: -1 }] },
+  exhausted: { duration: { untilNight: true }, effects: [{ skills: "all", amount: -2 }] },
+  shaken: { duration: { minutes: 120 }, effects: [{ skills: ["social", "pressure"], amount: -2 }] },
+  // A sedative settles the nerves at once, at the price of attention.
+  sedated: { duration: { minutes: 360 }, effects: [{ skills: ["perception"], amount: -3 }] },
+  // The lift of a drink: bolder in talk, until it wears off.
+  emboldened: { duration: { minutes: 240 }, effects: [{ skills: ["social"], amount: 2 }] },
+  // Gear lost to a robbery, until it is replaced: gear is not an item yet, so it is a timed penalty.
+  "ill-equipped": { duration: { minutes: 2 * MINUTES_PER_DAY }, effects: [{ skills: "all", amount: -1 }] }
+};
+var ActiveConditionSchema = external_exports.object({
+  id: ConditionIdSchema,
+  remaining: external_exports.union([external_exports.int().min(1), external_exports.literal("night")])
+});
+var HeroConditionSchema = external_exports.object({
+  nerves: external_exports.int().min(0).max(DETECTIVE_NERVES.max),
+  sleepDebt: external_exports.int().min(0).max(DETECTIVE_SLEEP_DEBT.max),
+  active: external_exports.array(ActiveConditionSchema)
+}).refine(({ active }) => new Set(active.map(({ id }) => id)).size === active.length, {
+  message: "A condition is on the hero at most once."
+});
+function initialCondition() {
+  return { nerves: DETECTIVE_NERVES.start, sleepDebt: DETECTIVE_SLEEP_DEBT.start, active: [] };
+}
+function absoluteMinute(clock2) {
+  return (clock2.day - 1) * MINUTES_PER_DAY + clock2.minute;
+}
+var LATE_MINUTES_PER_DAY = MINUTES_PER_DAY - LATE_FROM_MINUTE;
+function lateMinutesUntil(minute) {
+  const rest = minute % MINUTES_PER_DAY;
+  return Math.floor(minute / MINUTES_PER_DAY) * LATE_MINUTES_PER_DAY + Math.max(0, rest - LATE_FROM_MINUTE);
+}
+function passTime(condition, clock2, minutes2) {
+  const start = absoluteMinute(clock2);
+  const end = start + minutes2;
+  const spent = Math.floor(end / NERVES_MINUTES_PER_POINT) - Math.floor(start / NERVES_MINUTES_PER_POINT);
+  const late2 = Math.floor(lateMinutesUntil(end) / SLEEP_DEBT_MINUTES_PER_POINT) - Math.floor(lateMinutesUntil(start) / SLEEP_DEBT_MINUTES_PER_POINT);
+  const active = [];
+  for (const item of condition.active) {
+    if (item.remaining === "night") active.push(item);
+    else if (item.remaining > minutes2) active.push({ id: item.id, remaining: item.remaining - minutes2 });
+  }
+  return {
+    nerves: Math.max(0, condition.nerves - spent),
+    sleepDebt: Math.min(DETECTIVE_SLEEP_DEBT.max, condition.sleepDebt + late2),
+    active
+  };
+}
+function withNervesStrained(condition) {
+  return { ...condition, nerves: applyMeterRate(DETECTIVE_NERVES, condition.nerves, "drain", "failure") };
+}
+function withCondition(condition, id) {
+  const { duration: duration4 } = DETECTIVE_CONDITIONS[id];
+  const fresh = "untilNight" in duration4 ? "night" : duration4.minutes;
+  const current = condition.active.find((item) => item.id === id);
+  let remaining = fresh;
+  if (current !== void 0) {
+    remaining = current.remaining === "night" || fresh === "night" ? "night" : Math.max(current.remaining, fresh);
+  }
+  return {
+    ...condition,
+    active: [...condition.active.filter((item) => item.id !== id), { id, remaining }]
+  };
+}
+function modifierSources(run) {
+  const { condition } = run;
+  const meters = [
+    { definition: DETECTIVE_NERVES, value: condition.nerves },
+    { definition: DETECTIVE_SLEEP_DEBT, value: condition.sleepDebt }
+  ];
+  return {
+    traits: run.traits,
+    signal: findSignal(DETECTIVE.signals, run.hero?.signalId),
+    conditions: condition.active.map(({ id }) => ({ id, effects: DETECTIVE_CONDITIONS[id].effects })),
+    gear: gearModifiers(run.kit),
+    meters
+  };
+}
+function meterReadings(run) {
+  return [
+    { definition: DETECTIVE_REPUTATION, value: run.reputation },
+    { definition: DETECTIVE_NERVES, value: run.condition.nerves },
+    { definition: DETECTIVE_SLEEP_DEBT, value: run.condition.sleepDebt }
+  ];
+}
+function viewCondition(condition) {
+  return {
+    nerves: condition.nerves,
+    maxNerves: DETECTIVE_NERVES.max,
+    sleepDebt: condition.sleepDebt,
+    maxSleepDebt: DETECTIVE_SLEEP_DEBT.max,
+    conditions: condition.active.map(({ id, remaining }) => ({
+      id,
+      minutesLeft: remaining === "night" ? null : remaining
+    }))
+  };
+}
+
+// packages/engine/src/detective/consumables.ts
+var CONSUMABLE_IDS = ["coffee", "alcohol", "sedative"];
+var ConsumableIdSchema = external_exports.enum(CONSUMABLE_IDS);
+var SUPPLY_METERS = ["nerves", "sleepDebt"];
+var SupplyMeterSchema = external_exports.enum(SUPPLY_METERS);
+var EffectDelaySchema = external_exports.union([
+  external_exports.object({ minutes: external_exports.int().min(1) }),
+  external_exports.object({ night: external_exports.literal(true) })
+]);
+var MeterDeltaSchema = external_exports.object({
+  meter: SupplyMeterSchema,
+  delta: external_exports.int().refine((delta) => delta !== 0, { message: "A change of zero does nothing." })
+});
+var ConsumableEffectSchema = external_exports.discriminatedUnion("kind", [
+  /** A meter moves at once. */
+  external_exports.object({ kind: external_exports.literal("meter"), ...MeterDeltaSchema.shape }),
+  /** A meter moves later: the price that arrives after the benefit. */
+  external_exports.object({ kind: external_exports.literal("later"), ...MeterDeltaSchema.shape, after: EffectDelaySchema }),
+  /** A timed condition starts, with its own modifiers and duration. */
+  external_exports.object({ kind: external_exports.literal("condition"), id: ConditionIdSchema })
+]);
+var CONSUMABLES = {
+  coffee: {
+    nameKey: "consumable.coffee",
+    benefits: [{ kind: "meter", meter: "nerves", delta: 2 }],
+    prices: [
+      { kind: "later", meter: "nerves", delta: -1, after: { minutes: 180 } },
+      { kind: "later", meter: "sleepDebt", delta: 1, after: { night: true } }
+    ]
+  },
+  alcohol: {
+    nameKey: "consumable.alcohol",
+    benefits: [{ kind: "condition", id: "emboldened" }],
+    // Drunk lasts until the night sobers the hero up.
+    prices: [{ kind: "condition", id: "drunk" }]
+  },
+  sedative: {
+    nameKey: "consumable.sedative",
+    benefits: [{ kind: "meter", meter: "nerves", delta: 3 }],
+    prices: [{ kind: "condition", id: "sedated" }]
+  }
+};
+var BACKGROUND_SUPPLIES = {
+  police: { coffee: 1 },
+  journalist: { coffee: 2 },
+  locksmith: { coffee: 1 },
+  analyst: { coffee: 1, sedative: 1 },
+  "bus-driver": { coffee: 2 },
+  nurse: { coffee: 1, sedative: 1 },
+  schoolteacher: { coffee: 1 },
+  electrician: { coffee: 1 },
+  sommelier: { alcohol: 1 },
+  accountant: { coffee: 1 },
+  courier: { coffee: 1 },
+  bailiff: { coffee: 1 },
+  translator: { coffee: 1 },
+  librarian: { coffee: 1 },
+  pharmacist: { coffee: 1, sedative: 1 },
+  "radio-presenter": { coffee: 2 },
+  "retired-inspector": { coffee: 1 },
+  "dismissed-auditor": { coffee: 1 },
+  "investigative-blogger": { coffee: 2 },
+  "street-private-eye": { coffee: 1, alcohol: 1 }
+};
+var SuppliesSchema = external_exports.partialRecord(ConsumableIdSchema, external_exports.int().min(1));
+function pocketLimit(id) {
+  return id === "coffee" || id === "sedative" ? POCKET_LIMITS[id] : null;
+}
+function inPockets(supplies) {
+  return Object.fromEntries(
+    Object.entries(supplies).map(([id, count]) => [
+      id,
+      Math.min(count, pocketLimit(id) ?? count)
+    ])
+  );
+}
+function withSupplyAdded(supplies, id, count) {
+  const have = supplies[id] ?? 0;
+  const taken = Math.max(0, Math.min(count, (pocketLimit(id) ?? Number.MAX_SAFE_INTEGER) - have));
+  return { supplies: taken === 0 ? supplies : { ...supplies, [id]: have + taken }, taken };
+}
+function initialSupplies(background, lifeState) {
+  const supplies = { ...BACKGROUND_SUPPLIES[background] };
+  const added = lifeState === void 0 ? void 0 : LIFE_STATE_SHIFTS[lifeState].supply;
+  return inPockets(added === void 0 ? supplies : { ...supplies, [added]: (supplies[added] ?? 0) + 1 });
+}
+function withSupplyUsed(supplies, id) {
+  const left = (supplies[id] ?? 0) - 1;
+  const rest = Object.fromEntries(Object.entries(supplies).filter(([key]) => key !== id));
+  return left > 0 ? { ...rest, [id]: left } : rest;
+}
+var PendingEffectSchema = external_exports.object({
+  source: ConsumableIdSchema,
+  ...MeterDeltaSchema.shape,
+  due: external_exports.union([external_exports.object({ minute: external_exports.int().min(0) }), external_exports.object({ night: external_exports.literal(true) })])
+});
+function withMeterDelta(condition, { meter: meter2, delta }) {
+  if (meter2 === "nerves") {
+    return { ...condition, nerves: Math.min(DETECTIVE_NERVES.max, Math.max(0, condition.nerves + delta)) };
+  }
+  return {
+    ...condition,
+    sleepDebt: Math.min(DETECTIVE_SLEEP_DEBT.max, Math.max(0, condition.sleepDebt + delta))
+  };
+}
+function splitPending(pending, minute, night) {
+  const due = [];
+  const waiting = [];
+  for (const item of pending) {
+    const lands = "night" in item.due ? night : item.due.minute <= minute;
+    (lands ? due : waiting).push(item);
+  }
+  return { due, waiting };
+}
+function viewSupplies(supplies) {
+  return CONSUMABLE_IDS.flatMap((id) => {
+    const count = supplies[id] ?? 0;
+    return count > 0 ? [{ id, nameKey: CONSUMABLES[id].nameKey, count, limit: pocketLimit(id) }] : [];
+  });
+}
+function viewPending(pending, nowMinute) {
+  return pending.map(({ source, meter: meter2, delta, due }) => ({
+    source,
+    meter: meter2,
+    delta,
+    inMinutes: "night" in due ? null : Math.max(0, due.minute - nowMinute)
+  }));
+}
+
 // packages/engine/src/detective/case-schema.ts
 var CASE_SCHEMA_VERSION = 1;
 var CRIME_TYPES = [
@@ -34401,6 +34690,17 @@ var LeadSchema = external_exports.object({
   window: LeadWindowSchema.optional(),
   isFalse: external_exports.boolean()
 });
+var STOCK_HOWS = ["found", "sold"];
+var StockHowSchema = external_exports.enum(STOCK_HOWS);
+var StockEntrySchema = external_exports.discriminatedUnion("kind", [
+  external_exports.object({ id: EntityIdSchema, kind: external_exports.literal("tool"), itemId: GearIdSchema, how: StockHowSchema }),
+  external_exports.object({
+    id: EntityIdSchema,
+    kind: external_exports.literal("supply"),
+    itemId: ConsumableIdSchema,
+    how: StockHowSchema
+  })
+]);
 var LocationSchema = external_exports.object({
   id: EntityIdSchema,
   name: NarrativeTextSchema,
@@ -34424,7 +34724,9 @@ var LocationSchema = external_exports.object({
    * The things to look at in the place. Optional rather than defaulted, so that the cases of before the parts
    * keep their seal; a place without parts is searched as a whole, as it always was.
    */
-  parts: external_exports.array(PlacePartSchema).optional()
+  parts: external_exports.array(PlacePartSchema).optional(),
+  /** What the place keeps for the hero. Optional, so that the cases of before it keep their seal. */
+  stock: external_exports.array(StockEntrySchema).optional()
 });
 var ClueSchema = external_exports.object({
   id: EntityIdSchema,
@@ -34634,134 +34936,23 @@ var DetectiveCaseSchema = external_exports.object({
   witnesses: external_exports.array(WitnessSchema).optional()
 });
 
-// packages/engine/src/detective/condition.ts
-var NERVES_MINUTES_PER_POINT = 240;
-var LATE_FROM_MINUTE = 22 * 60;
-var SLEEP_DEBT_MINUTES_PER_POINT = 60;
-var ACTION_STRAIN_RULESET_VERSION = 9;
-var ACTION_STRAIN_CAP_PER_DAY = 3;
-var CONDITION_IDS = [
-  "drunk",
-  "injured",
-  "exhausted",
-  "shaken",
-  "sedated",
-  "ill-equipped",
-  "emboldened"
-];
-var ConditionIdSchema = external_exports.enum(CONDITION_IDS);
-var ConditionDurationSchema = external_exports.union([
-  external_exports.object({ minutes: external_exports.int().min(1) }),
-  external_exports.object({ untilNight: external_exports.literal(true) })
-]);
-var DETECTIVE_CONDITIONS = {
-  drunk: {
-    duration: { minutes: 240 },
-    effects: [
-      { skills: ["perception", "reasoning"], amount: -2 },
-      { skills: ["pressure"], amount: 1 }
-    ]
-  },
-  injured: { duration: { minutes: MINUTES_PER_DAY }, effects: [{ skills: "all", amount: -1 }] },
-  exhausted: { duration: { untilNight: true }, effects: [{ skills: "all", amount: -2 }] },
-  shaken: { duration: { minutes: 120 }, effects: [{ skills: ["social", "pressure"], amount: -2 }] },
-  // A sedative settles the nerves at once, at the price of attention.
-  sedated: { duration: { minutes: 360 }, effects: [{ skills: ["perception"], amount: -3 }] },
-  // The lift of a drink: bolder in talk, until it wears off.
-  emboldened: { duration: { minutes: 240 }, effects: [{ skills: ["social"], amount: 2 }] },
-  // Gear lost to a robbery, until it is replaced: gear is not an item yet, so it is a timed penalty.
-  "ill-equipped": { duration: { minutes: 2 * MINUTES_PER_DAY }, effects: [{ skills: "all", amount: -1 }] }
-};
-var ActiveConditionSchema = external_exports.object({
-  id: ConditionIdSchema,
-  remaining: external_exports.union([external_exports.int().min(1), external_exports.literal("night")])
-});
-var HeroConditionSchema = external_exports.object({
-  nerves: external_exports.int().min(0).max(DETECTIVE_NERVES.max),
-  sleepDebt: external_exports.int().min(0).max(DETECTIVE_SLEEP_DEBT.max),
-  active: external_exports.array(ActiveConditionSchema)
-}).refine(({ active }) => new Set(active.map(({ id }) => id)).size === active.length, {
-  message: "A condition is on the hero at most once."
-});
-function initialCondition() {
-  return { nerves: DETECTIVE_NERVES.start, sleepDebt: DETECTIVE_SLEEP_DEBT.start, active: [] };
-}
-function absoluteMinute(clock2) {
-  return (clock2.day - 1) * MINUTES_PER_DAY + clock2.minute;
-}
-var LATE_MINUTES_PER_DAY = MINUTES_PER_DAY - LATE_FROM_MINUTE;
-function lateMinutesUntil(minute) {
-  const rest = minute % MINUTES_PER_DAY;
-  return Math.floor(minute / MINUTES_PER_DAY) * LATE_MINUTES_PER_DAY + Math.max(0, rest - LATE_FROM_MINUTE);
-}
-function passTime(condition, clock2, minutes2) {
-  const start = absoluteMinute(clock2);
-  const end = start + minutes2;
-  const spent = Math.floor(end / NERVES_MINUTES_PER_POINT) - Math.floor(start / NERVES_MINUTES_PER_POINT);
-  const late2 = Math.floor(lateMinutesUntil(end) / SLEEP_DEBT_MINUTES_PER_POINT) - Math.floor(lateMinutesUntil(start) / SLEEP_DEBT_MINUTES_PER_POINT);
-  const active = [];
-  for (const item of condition.active) {
-    if (item.remaining === "night") active.push(item);
-    else if (item.remaining > minutes2) active.push({ id: item.id, remaining: item.remaining - minutes2 });
-  }
-  return {
-    nerves: Math.max(0, condition.nerves - spent),
-    sleepDebt: Math.min(DETECTIVE_SLEEP_DEBT.max, condition.sleepDebt + late2),
-    active
-  };
-}
-function withNervesStrained(condition) {
-  return { ...condition, nerves: applyMeterRate(DETECTIVE_NERVES, condition.nerves, "drain", "failure") };
-}
-function withCondition(condition, id) {
-  const { duration: duration4 } = DETECTIVE_CONDITIONS[id];
-  const fresh = "untilNight" in duration4 ? "night" : duration4.minutes;
-  const current = condition.active.find((item) => item.id === id);
-  let remaining = fresh;
-  if (current !== void 0) {
-    remaining = current.remaining === "night" || fresh === "night" ? "night" : Math.max(current.remaining, fresh);
-  }
-  return {
-    ...condition,
-    active: [...condition.active.filter((item) => item.id !== id), { id, remaining }]
-  };
-}
-function modifierSources(run) {
-  const { condition } = run;
-  const meters = [
-    { definition: DETECTIVE_NERVES, value: condition.nerves },
-    { definition: DETECTIVE_SLEEP_DEBT, value: condition.sleepDebt }
-  ];
-  return {
-    traits: run.traits,
-    signal: findSignal(DETECTIVE.signals, run.hero?.signalId),
-    conditions: condition.active.map(({ id }) => ({ id, effects: DETECTIVE_CONDITIONS[id].effects })),
-    gear: gearModifiers(run.kit),
-    meters
-  };
-}
-function meterReadings(run) {
-  return [
-    { definition: DETECTIVE_REPUTATION, value: run.reputation },
-    { definition: DETECTIVE_NERVES, value: run.condition.nerves },
-    { definition: DETECTIVE_SLEEP_DEBT, value: run.condition.sleepDebt }
-  ];
-}
-function viewCondition(condition) {
-  return {
-    nerves: condition.nerves,
-    maxNerves: DETECTIVE_NERVES.max,
-    sleepDebt: condition.sleepDebt,
-    maxSleepDebt: DETECTIVE_SLEEP_DEBT.max,
-    conditions: condition.active.map(({ id, remaining }) => ({
-      id,
-      minutesLeft: remaining === "night" ? null : remaining
-    }))
-  };
-}
-
 // packages/engine/src/detective/suitcase.ts
 var suitcaseOf = (run) => run.kit.filter(({ suitcase }) => suitcase === true);
+var freeSlots = (run) => Math.max(0, run.toolSlots - suitcaseOf(run).length);
+function takeTool(run, toolId, dropId) {
+  if (run.kit.some(({ id }) => id === toolId)) return { ok: false, code: "already-carried" };
+  const kept = dropId === void 0 ? run.kit : run.kit.filter(({ id, suitcase }) => !(id === dropId && suitcase === true));
+  if (dropId !== void 0 && kept.length === run.kit.length) return { ok: false, code: "not-in-suitcase" };
+  if (dropId === void 0 && freeSlots(run) === 0) return { ok: false, code: "no-slot" };
+  const rules = DETECTIVE_GEAR[toolId].tool;
+  const taken = {
+    id: toolId,
+    state: "owned",
+    suitcase: true,
+    ...rules?.wear === "used-up" ? { charges: rules.charges } : {}
+  };
+  return { ok: true, run: { ...run, kit: [...kept, taken] } };
+}
 
 // packages/engine/src/detective/skill-presets.ts
 var DETECTIVE_SKILL_PRESETS = [
@@ -34950,164 +35141,6 @@ function candidateHeroInput(candidate2, name) {
     skills: candidate2.skills,
     ...candidate2.signalId === void 0 ? {} : { signalId: candidate2.signalId }
   };
-}
-
-// packages/engine/src/progress.ts
-var START_TOOL_SLOTS = 1;
-var MAX_TOOL_SLOTS = 5;
-var LOSSES_TO_LOSE_A_SLOT = 2;
-var START_TRAIT_SLOTS = 2;
-var MAX_TRAIT_SLOTS = 5;
-var POCKET_LIMITS = { coffee: 2, sedative: 7 };
-function toolSlotsOf(records) {
-  let slots = START_TOOL_SLOTS;
-  let losses = 0;
-  for (const record2 of records) {
-    if (record2.won) {
-      slots = Math.min(MAX_TOOL_SLOTS, slots + 1);
-      losses = 0;
-    } else {
-      losses += 1;
-      if (losses === LOSSES_TO_LOSE_A_SLOT) {
-        slots = Math.max(START_TOOL_SLOTS, slots - 1);
-        losses = 0;
-      }
-    }
-  }
-  return slots;
-}
-function traitSlotsOf(wins) {
-  return Math.min(MAX_TRAIT_SLOTS, START_TRAIT_SLOTS + wins);
-}
-function traitRuleFor(slots, seed) {
-  const half = Math.floor(slots / 2);
-  const extraToGood = slots % 2 === 1 && createRng(`${seed}:trait-slots`).roll(2) === 1;
-  return { positive: half + (extraToGood ? 1 : 0), negative: slots - half - (extraToGood ? 1 : 0), any: 0 };
-}
-var winsOf = (records) => records.filter(({ won }) => won).length;
-
-// packages/engine/src/detective/consumables.ts
-var CONSUMABLE_IDS = ["coffee", "alcohol", "sedative"];
-var ConsumableIdSchema = external_exports.enum(CONSUMABLE_IDS);
-var SUPPLY_METERS = ["nerves", "sleepDebt"];
-var SupplyMeterSchema = external_exports.enum(SUPPLY_METERS);
-var EffectDelaySchema = external_exports.union([
-  external_exports.object({ minutes: external_exports.int().min(1) }),
-  external_exports.object({ night: external_exports.literal(true) })
-]);
-var MeterDeltaSchema = external_exports.object({
-  meter: SupplyMeterSchema,
-  delta: external_exports.int().refine((delta) => delta !== 0, { message: "A change of zero does nothing." })
-});
-var ConsumableEffectSchema = external_exports.discriminatedUnion("kind", [
-  /** A meter moves at once. */
-  external_exports.object({ kind: external_exports.literal("meter"), ...MeterDeltaSchema.shape }),
-  /** A meter moves later: the price that arrives after the benefit. */
-  external_exports.object({ kind: external_exports.literal("later"), ...MeterDeltaSchema.shape, after: EffectDelaySchema }),
-  /** A timed condition starts, with its own modifiers and duration. */
-  external_exports.object({ kind: external_exports.literal("condition"), id: ConditionIdSchema })
-]);
-var CONSUMABLES = {
-  coffee: {
-    nameKey: "consumable.coffee",
-    benefits: [{ kind: "meter", meter: "nerves", delta: 2 }],
-    prices: [
-      { kind: "later", meter: "nerves", delta: -1, after: { minutes: 180 } },
-      { kind: "later", meter: "sleepDebt", delta: 1, after: { night: true } }
-    ]
-  },
-  alcohol: {
-    nameKey: "consumable.alcohol",
-    benefits: [{ kind: "condition", id: "emboldened" }],
-    // Drunk lasts until the night sobers the hero up.
-    prices: [{ kind: "condition", id: "drunk" }]
-  },
-  sedative: {
-    nameKey: "consumable.sedative",
-    benefits: [{ kind: "meter", meter: "nerves", delta: 3 }],
-    prices: [{ kind: "condition", id: "sedated" }]
-  }
-};
-var BACKGROUND_SUPPLIES = {
-  police: { coffee: 1 },
-  journalist: { coffee: 2 },
-  locksmith: { coffee: 1 },
-  analyst: { coffee: 1, sedative: 1 },
-  "bus-driver": { coffee: 2 },
-  nurse: { coffee: 1, sedative: 1 },
-  schoolteacher: { coffee: 1 },
-  electrician: { coffee: 1 },
-  sommelier: { alcohol: 1 },
-  accountant: { coffee: 1 },
-  courier: { coffee: 1 },
-  bailiff: { coffee: 1 },
-  translator: { coffee: 1 },
-  librarian: { coffee: 1 },
-  pharmacist: { coffee: 1, sedative: 1 },
-  "radio-presenter": { coffee: 2 },
-  "retired-inspector": { coffee: 1 },
-  "dismissed-auditor": { coffee: 1 },
-  "investigative-blogger": { coffee: 2 },
-  "street-private-eye": { coffee: 1, alcohol: 1 }
-};
-var SuppliesSchema = external_exports.partialRecord(ConsumableIdSchema, external_exports.int().min(1));
-function pocketLimit(id) {
-  return id === "coffee" || id === "sedative" ? POCKET_LIMITS[id] : null;
-}
-function inPockets(supplies) {
-  return Object.fromEntries(
-    Object.entries(supplies).map(([id, count]) => [
-      id,
-      Math.min(count, pocketLimit(id) ?? count)
-    ])
-  );
-}
-function initialSupplies(background, lifeState) {
-  const supplies = { ...BACKGROUND_SUPPLIES[background] };
-  const added = lifeState === void 0 ? void 0 : LIFE_STATE_SHIFTS[lifeState].supply;
-  return inPockets(added === void 0 ? supplies : { ...supplies, [added]: (supplies[added] ?? 0) + 1 });
-}
-function withSupplyUsed(supplies, id) {
-  const left = (supplies[id] ?? 0) - 1;
-  const rest = Object.fromEntries(Object.entries(supplies).filter(([key]) => key !== id));
-  return left > 0 ? { ...rest, [id]: left } : rest;
-}
-var PendingEffectSchema = external_exports.object({
-  source: ConsumableIdSchema,
-  ...MeterDeltaSchema.shape,
-  due: external_exports.union([external_exports.object({ minute: external_exports.int().min(0) }), external_exports.object({ night: external_exports.literal(true) })])
-});
-function withMeterDelta(condition, { meter: meter2, delta }) {
-  if (meter2 === "nerves") {
-    return { ...condition, nerves: Math.min(DETECTIVE_NERVES.max, Math.max(0, condition.nerves + delta)) };
-  }
-  return {
-    ...condition,
-    sleepDebt: Math.min(DETECTIVE_SLEEP_DEBT.max, Math.max(0, condition.sleepDebt + delta))
-  };
-}
-function splitPending(pending, minute, night) {
-  const due = [];
-  const waiting = [];
-  for (const item of pending) {
-    const lands = "night" in item.due ? night : item.due.minute <= minute;
-    (lands ? due : waiting).push(item);
-  }
-  return { due, waiting };
-}
-function viewSupplies(supplies) {
-  return CONSUMABLE_IDS.flatMap((id) => {
-    const count = supplies[id] ?? 0;
-    return count > 0 ? [{ id, nameKey: CONSUMABLES[id].nameKey, count, limit: pocketLimit(id) }] : [];
-  });
-}
-function viewPending(pending, nowMinute) {
-  return pending.map(({ source, meter: meter2, delta, due }) => ({
-    source,
-    meter: meter2,
-    delta,
-    inMinutes: "night" in due ? null : Math.max(0, due.minute - nowMinute)
-  }));
 }
 
 // packages/engine/src/detective/weather.ts
@@ -35813,6 +35846,82 @@ function sitRefusal(run, location, nervesMax) {
   return sitsLeft(run) === 0 ? "sat-enough" : null;
 }
 
+// packages/engine/src/detective/search-parts.ts
+var SEARCH_BY_PART_RULESET_VERSION = 12;
+function partsOfPlace(run, locationId) {
+  if (run.rulesetVersion < SEARCH_BY_PART_RULESET_VERSION) return [];
+  return run.case.locations.find(({ id }) => id === locationId)?.parts ?? [];
+}
+var TOOLS_RULESET_VERSION = 14;
+var WEAR_ORDER = ["lasting", "may-break", "used-up"];
+function chooseTool(run, obstacle, toolId) {
+  if (obstacle === null) return { kind: "none" };
+  if (run.rulesetVersion < TOOLS_RULESET_VERSION) {
+    return obstacle === "dark" ? { kind: "none" } : { kind: "refused", code: "needs-tool" };
+  }
+  const usable = run.kit.flatMap((item) => {
+    const rules = DETECTIVE_GEAR[item.id].tool;
+    return item.state === "owned" && rules?.removes.includes(obstacle) === true ? [{ item, rules }] : [];
+  });
+  if (toolId !== void 0) {
+    const named2 = usable.find(({ item }) => item.id === toolId);
+    return named2 === void 0 ? { kind: "refused", code: "wrong-tool" } : { kind: "tool", ...named2 };
+  }
+  const best = [...usable].sort(
+    (a, b) => WEAR_ORDER.indexOf(a.rules.wear) - WEAR_ORDER.indexOf(b.rules.wear)
+  )[0];
+  return best === void 0 ? { kind: "refused", code: "needs-tool" } : { kind: "tool", ...best };
+}
+
+// packages/engine/src/detective/stock.ts
+var FIND_MINUTES = 5;
+var BUY_MINUTES = 15;
+var MESSAGES = {
+  "unknown-stock": "There is nothing like that on offer here.",
+  "stock-taken": "The hero has already taken that.",
+  "already-carried": "The hero already carries that tool.",
+  "no-slot": "The suitcase is full: name a tool to drop.",
+  "not-in-suitcase": "The tool to drop is not in the suitcase.",
+  "pockets-full": "The pockets hold all of that they can."
+};
+var refused = (code) => ({ ok: false, code, message: MESSAGES[code] });
+function searchedHere(run, locationId) {
+  return run.searchedLocationIds.includes(locationId) || partsOfPlace(run, locationId).some(({ id }) => run.searchedParts.some(({ partId }) => partId === id));
+}
+function offeredHere(run) {
+  const place = run.case.locations.find(({ id }) => id === run.locationId);
+  const searched = searchedHere(run, run.locationId);
+  return (place?.stock ?? []).filter(
+    ({ id, how }) => !run.takenStockIds.includes(id) && (how === "sold" || searched)
+  );
+}
+function takeStock(run, stockId, dropId) {
+  const entry = offeredHere(run).find(({ id }) => id === stockId);
+  if (entry === void 0) {
+    const taken2 = run.takenStockIds.includes(stockId);
+    return refused(taken2 ? "stock-taken" : "unknown-stock");
+  }
+  const minutes2 = entry.how === "sold" ? BUY_MINUTES : FIND_MINUTES;
+  if (entry.kind === "tool") {
+    const result = takeTool(run, entry.itemId, dropId);
+    if (!result.ok) return refused(result.code);
+    return {
+      ok: true,
+      run: { ...result.run, takenStockIds: [...run.takenStockIds, entry.id] },
+      entry,
+      minutes: minutes2
+    };
+  }
+  const { supplies, taken } = withSupplyAdded(run.supplies, entry.itemId, 1);
+  if (taken === 0) return refused("pockets-full");
+  return {
+    ok: true,
+    run: { ...run, supplies, takenStockIds: [...run.takenStockIds, entry.id] },
+    entry,
+    minutes: minutes2
+  };
+}
+
 // packages/engine/src/detective/trait-scenes.ts
 var TRAIT_SCENES_RULESET_VERSION = 25;
 var PLACE_BOUND_TRIGGERS = [
@@ -35920,33 +36029,6 @@ function isClosed(run, suspectId) {
 }
 function moodWord(step) {
   return SUSPECT_MOODS.slice(step, step + 1).join("");
-}
-
-// packages/engine/src/detective/search-parts.ts
-var SEARCH_BY_PART_RULESET_VERSION = 12;
-function partsOfPlace(run, locationId) {
-  if (run.rulesetVersion < SEARCH_BY_PART_RULESET_VERSION) return [];
-  return run.case.locations.find(({ id }) => id === locationId)?.parts ?? [];
-}
-var TOOLS_RULESET_VERSION = 14;
-var WEAR_ORDER = ["lasting", "may-break", "used-up"];
-function chooseTool(run, obstacle, toolId) {
-  if (obstacle === null) return { kind: "none" };
-  if (run.rulesetVersion < TOOLS_RULESET_VERSION) {
-    return obstacle === "dark" ? { kind: "none" } : { kind: "refused", code: "needs-tool" };
-  }
-  const usable = run.kit.flatMap((item) => {
-    const rules = DETECTIVE_GEAR[item.id].tool;
-    return item.state === "owned" && rules?.removes.includes(obstacle) === true ? [{ item, rules }] : [];
-  });
-  if (toolId !== void 0) {
-    const named2 = usable.find(({ item }) => item.id === toolId);
-    return named2 === void 0 ? { kind: "refused", code: "wrong-tool" } : { kind: "tool", ...named2 };
-  }
-  const best = [...usable].sort(
-    (a, b) => WEAR_ORDER.indexOf(a.rules.wear) - WEAR_ORDER.indexOf(b.rules.wear)
-  )[0];
-  return best === void 0 ? { kind: "refused", code: "needs-tool" } : { kind: "tool", ...best };
 }
 
 // packages/engine/src/detective/clue-number.ts
@@ -36238,6 +36320,8 @@ var DetectiveRunStateSchema = external_exports.object({
   sightings: external_exports.array(SightingRecordSchema).default([]),
   /** What the hero has done with the clues, for the board: where each was found, to whom it was shown, the links tried. */
   history: RunHistorySchema.default(() => emptyHistory()),
+  /** The stock the hero has taken, by id: what a place offered once is gone. Old saves have none. */
+  takenStockIds: external_exports.array(EntityIdSchema).default([]),
   /** Scenes the engine added to places for the hero's traits (see `trait-scenes.ts`). Old saves have none. */
   traitScenes: external_exports.array(TraitSceneSchema).default([]),
   /** The pattern of news the case grew from, when it grew from one. Old saves have none. */
@@ -36331,6 +36415,11 @@ var DetectiveRunStateSchema = external_exports.object({
     run.traitScenes.map(({ locationId }) => locationId),
     locationIds
   );
+  known(
+    "takenStockIds",
+    run.takenStockIds,
+    new Set(run.case.locations.flatMap(({ stock }) => (stock ?? []).map(({ id }) => id)))
+  );
   known("revealedTraitIds", run.revealedTraitIds, new Set(run.traits.map(({ id }) => id)));
 });
 function alibiRefuted(run, suspect) {
@@ -36386,6 +36475,7 @@ function createDetectiveRun(input2) {
     claims: [],
     sightings: [],
     history: emptyHistory(),
+    takenStockIds: [],
     traitScenes: drawTraitScenes(input2.case, input2.traits, input2.seed),
     inspiration: input2.inspiration ?? null
   });
@@ -36817,6 +36907,7 @@ function viewRun(run) {
       description: location.description,
       exposure: location.exposure,
       venue: location.venue === void 0 || run.rulesetVersion < VENUE_RULESET_VERSION ? null : { kind: location.venue, sitsLeft: sitsLeft(run) },
+      offers: offeredHere(run).map(({ id, kind, itemId, how }) => ({ id, kind, itemId, how })),
       parts: partsOfPlace(run, location.id).filter(({ id }) => run.noticedPartIds.includes(id)).map(({ id, name, obstacle }) => ({
         id,
         name,
@@ -36945,6 +37036,33 @@ function resolveUse(run, intent, rng) {
   };
 }
 
+// packages/engine/src/detective/take.ts
+var TakeIntentSchema = external_exports.object({
+  kind: external_exports.literal("take"),
+  stockId: EntityIdSchema,
+  dropId: GearIdSchema.optional()
+});
+function resolveTake(run, intent, rng) {
+  const result = takeStock(run, intent.stockId, intent.dropId);
+  if (!result.ok) return { ok: false, refusal: { code: result.code, message: result.message } };
+  const { entry, minutes: minutes2 } = result;
+  const dropped = entry.kind === "tool" && intent.dropId !== void 0 ? { dropped: intent.dropId } : {};
+  return {
+    ok: true,
+    run: endTurn(spendTime(result.run, minutes2), rng),
+    outcome: {
+      kind: "take",
+      stockId: entry.id,
+      how: entry.how,
+      itemKind: entry.kind,
+      itemId: entry.itemId,
+      minutes: minutes2,
+      ...dropped
+    },
+    details: []
+  };
+}
+
 // packages/engine/src/detective/fatigue.ts
 var RereadIntentSchema = external_exports.object({ kind: external_exports.literal("reread"), clueId: EntityIdSchema });
 var REREAD_MINUTES = 10;
@@ -36997,7 +37115,7 @@ function resolveReread(run, intent, rng) {
 }
 function applyFatigue(before, resolution, rng) {
   const { outcome } = resolution;
-  if (outcome.kind === "accuse" || outcome.kind === "rest" || outcome.kind === "sit" || outcome.kind === "use") {
+  if (outcome.kind === "accuse" || outcome.kind === "rest" || outcome.kind === "sit" || outcome.kind === "use" || outcome.kind === "take") {
     return resolution;
   }
   let { run } = resolution;
@@ -37857,7 +37975,9 @@ var IntentSchema = external_exports.discriminatedUnion("kind", [
   /** Read a garbled clue again, carefully. */
   RereadIntentSchema,
   /** Take a consumable the hero carries. */
-  UseIntentSchema
+  UseIntentSchema,
+  /** Take what the place offers: a tool for the suitcase or a supply for the pockets. */
+  TakeIntentSchema
 ]);
 var LOOK_MINUTES = 5;
 var MOVE_MINUTES = 15;
@@ -38382,6 +38502,8 @@ function dispatchIntent(run, input2, rng) {
       return resolveReread(run, intent, rng);
     case "use":
       return resolveUse(run, intent, rng);
+    case "take":
+      return resolveTake(run, intent, rng);
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
     default:
       return assertNever2(intent);
@@ -38547,6 +38669,15 @@ var OutcomeSchema = external_exports.union([
     ...fatigue
   }),
   external_exports.object({ kind: external_exports.literal("sit"), minutes, nervesRestored: external_exports.int().min(0), sitsLeft: external_exports.int().min(0) }),
+  external_exports.object({
+    kind: external_exports.literal("take"),
+    stockId: EntityIdSchema,
+    how: StockHowSchema,
+    itemKind: external_exports.enum(["tool", "supply"]),
+    itemId: external_exports.string().min(1),
+    minutes,
+    dropped: GearIdSchema.optional()
+  }),
   external_exports.object({
     kind: external_exports.literal("interrogate"),
     suspectId: EntityIdSchema,
@@ -38857,6 +38988,7 @@ var KIND_OF = {
   reread: "reread",
   sit: "sit",
   use: "use",
+  take: "take",
   rest: "rest",
   accuse: "accuse"
 };
@@ -38883,6 +39015,7 @@ function touchedOf(outcome, placeId) {
     case "sit":
     case "deduce":
     case "use":
+    case "take":
     case "rest":
     case "accuse":
       return { ...NOTHING, placeId };
@@ -38970,6 +39103,8 @@ function detailOf(run, entry) {
       };
     case "use":
       return { kind: "use", item: outcome.itemId };
+    case "take":
+      return { kind: "take", how: outcome.how, itemKind: outcome.itemKind, item: outcome.itemId };
     case "accuse":
       return {
         kind: "accuse",
@@ -40419,6 +40554,12 @@ function checkUniqueIds(detectiveCase) {
         path: `locations[${String(locationIndex)}].parts[${String(partIndex)}].id`
       }))
     ),
+    ...detectiveCase.locations.flatMap(
+      (location, locationIndex) => (location.stock ?? []).map((entry, entryIndex) => ({
+        id: entry.id,
+        path: `locations[${String(locationIndex)}].stock[${String(entryIndex)}].id`
+      }))
+    ),
     ...(detectiveCase.leads ?? []).map((lead, index) => ({
       id: lead.id,
       path: `leads[${String(index)}].id`
@@ -41224,6 +41365,23 @@ function runBoardFile(saveDir, runId) {
   return join3(runFiles(saveDir, runId).directory, BOARD_DIR, BOARD_FILE);
 }
 
+// packages/saves/src/run-seeds.ts
+import { join as join4 } from "node:path";
+var RunSeedsSchema = external_exports.strictObject({
+  schemaVersion: external_exports.literal(1),
+  day: external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  seeds: NewsSeedsSchema,
+  realNames: external_exports.array(external_exports.string().min(1).max(80)).max(2e3)
+});
+var RUN_SEEDS_FILE = "seeds.json";
+var runSeedsFile = (saveDir, runId) => join4(runFiles(saveDir, runId).directory, RUN_SEEDS_FILE);
+async function saveRunSeeds(saveDir, runId, entry, fs = nodeSaveFs) {
+  const copy = RunSeedsSchema.parse({ schemaVersion: 1, ...entry });
+  await fs.mkdir(runFiles(saveDir, runId).directory);
+  await replaceFile(fs, runSeedsFile(saveDir, runId), `${JSON.stringify(copy, null, 2)}
+`);
+}
+
 // packages/saves/src/runs-stats.ts
 var RUN_RESULTS = ["won", "lost", "gave-up", "in-progress", "damaged"];
 var RunResultSchema = external_exports.enum(RUN_RESULTS);
@@ -41322,7 +41480,7 @@ async function collectRunsStats(saveDir, updatedOn, fs = nodeSaveFs) {
 }
 
 // packages/saves/src/seed-store.ts
-import { join as join4 } from "node:path";
+import { join as join5 } from "node:path";
 var SEED_DAYS_KEPT = 14;
 var DaySchema = external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 var DaySeedsSchema = external_exports.strictObject({
@@ -41335,7 +41493,7 @@ var SeedStoreSchema = external_exports.strictObject({
   namesEdition: external_exports.literal(NAME_RULES_EDITION),
   days: external_exports.record(DaySchema, DaySeedsSchema)
 });
-var seedsFile = (saveDir) => join4(saveDir, "seeds", "seeds.json");
+var seedsFile = (saveDir) => join5(saveDir, "seeds", "seeds.json");
 async function loadSeeds(saveDir, fs = nodeSaveFs) {
   try {
     const text = await fs.readFile(seedsFile(saveDir));
@@ -41354,7 +41512,7 @@ async function saveSeedsForDay(saveDir, day, entry, fs = nodeSaveFs) {
     namesEdition: NAME_RULES_EDITION,
     days: Object.fromEntries(kept)
   });
-  await fs.mkdir(join4(saveDir, "seeds"));
+  await fs.mkdir(join5(saveDir, "seeds"));
   await replaceFile(fs, seedsFile(saveDir), `${JSON.stringify(store, null, 2)}
 `);
 }
@@ -41365,8 +41523,8 @@ function seedsOnOrBefore(days, day) {
 }
 
 // packages/saves/src/world-store.ts
-import { join as join5 } from "node:path";
-var worldFile = (saveDir) => join5(saveDir, "world.json");
+import { join as join6 } from "node:path";
+var worldFile = (saveDir) => join6(saveDir, "world.json");
 async function loadWorld(saveDir, fs = nodeSaveFs, migrations = WORLD_MIGRATIONS) {
   let text;
   try {
@@ -41410,7 +41568,7 @@ async function saveWorld(saveDir, world, fs = nodeSaveFs) {
 
 // packages/saves/src/profile-store.ts
 import { homedir as homedir2 } from "node:os";
-import { join as join6, resolve as resolve3 } from "node:path";
+import { join as join7, resolve as resolve3 } from "node:path";
 var PROFILE_FILE = "profile.json";
 var PROFILE_EXPORT_FILE = "export.json";
 var PROFILE_IMPORT_FILE = "import.json";
@@ -41442,7 +41600,7 @@ async function readRecords(fs, path) {
   }
 }
 async function loadProfile(profileDir, fs = nodeSaveFs) {
-  const read = await readRecords(fs, join6(profileDir, PROFILE_FILE));
+  const read = await readRecords(fs, join7(profileDir, PROFILE_FILE));
   if (read.ok) return read;
   return read.reason === "missing" ? { ok: true, records: [] } : { ok: false, reason: read.reason };
 }
@@ -41450,7 +41608,7 @@ async function writeRecords(profileDir, fs, file2, records) {
   await fs.mkdir(profileDir);
   const data = `${JSON.stringify({ version: 1, records }, null, 2)}
 `;
-  await replaceFile(fs, join6(profileDir, file2), data);
+  await replaceFile(fs, join7(profileDir, file2), data);
 }
 async function recordRun(profileDir, record2, fs = nodeSaveFs) {
   const loaded = await loadProfile(profileDir, fs);
@@ -41463,12 +41621,12 @@ async function exportProfile(profileDir, fs = nodeSaveFs) {
   const loaded = await loadProfile(profileDir, fs);
   if (!loaded.ok) throw new RangeError(`The profile on disk is unusable (${loaded.reason}).`);
   await writeRecords(profileDir, fs, PROFILE_EXPORT_FILE, loaded.records);
-  return join6(profileDir, PROFILE_EXPORT_FILE);
+  return join7(profileDir, PROFILE_EXPORT_FILE);
 }
 async function importProfile(profileDir, fs = nodeSaveFs) {
   const own2 = await loadProfile(profileDir, fs);
   if (!own2.ok) return { ok: false, reason: "profile-unusable" };
-  const incoming = await readRecords(fs, join6(profileDir, PROFILE_IMPORT_FILE));
+  const incoming = await readRecords(fs, join7(profileDir, PROFILE_IMPORT_FILE));
   if (!incoming.ok) return { ok: false, reason: incoming.reason === "corrupt" ? "invalid" : "no-file" };
   const known = new Set(own2.records.map(({ runId }) => runId));
   const fresh = incoming.records.filter(({ runId }) => {
@@ -41483,12 +41641,12 @@ async function importProfile(profileDir, fs = nodeSaveFs) {
 // packages/saves/src/legacy-move.ts
 import { homedir as homedir3 } from "node:os";
 import { mkdir as mkdir2, readFile as readFile2, readdir as readdir2, rename as rename2, rm as rm2, stat, writeFile } from "node:fs/promises";
-import { dirname, join as join7, relative } from "node:path";
+import { dirname, join as join8, relative } from "node:path";
 async function listAll(directory, base) {
   const entries = await readdir2(directory, { withFileTypes: true });
   const nested = await Promise.all(
     entries.map(async (entry) => {
-      const path = join7(directory, entry.name);
+      const path = join8(directory, entry.name);
       return entry.isDirectory() ? listAll(path, base) : [relative(base, path)];
     })
   );
@@ -41519,7 +41677,7 @@ async function sameContent(fs, a, b) {
   const [left, right] = await Promise.all([fs.listFiles(a), fs.listFiles(b)]);
   if (left.length !== right.length || left.some((file2) => !right.includes(file2))) return false;
   for (const file2 of left) {
-    const [one, other] = await Promise.all([fs.readFile(join7(a, file2)), fs.readFile(join7(b, file2))]);
+    const [one, other] = await Promise.all([fs.readFile(join8(a, file2)), fs.readFile(join8(b, file2))]);
     if (one !== other) return false;
   }
   return true;
@@ -41537,7 +41695,7 @@ async function moveFolder(fs, from, to) {
     const staging = `${to}.moving`;
     await fs.removeDirectory(staging);
     try {
-      for (const file2 of files) await fs.writeFile(join7(staging, file2), await fs.readFile(join7(from, file2)));
+      for (const file2 of files) await fs.writeFile(join8(staging, file2), await fs.readFile(join8(from, file2)));
       if (!await sameContent(fs, from, staging))
         throw new RangeError("The copy does not match the original.");
       await fs.mkdir(dirname(to));
@@ -41557,7 +41715,7 @@ async function moveLegacySaves(inputs, fs = nodeMoveFs) {
   return moveFolder(fs, legacySaveDir(inputs), resolveSaveDir(inputs));
 }
 function moveLegacyRun(saveDir, fs = nodeMoveFs) {
-  return moveFolder(fs, join7(saveDir, "run"), join7(saveDir, RUNS_DIR, LEGACY_RUN_ID));
+  return moveFolder(fs, join8(saveDir, "run"), join8(saveDir, RUNS_DIR, LEGACY_RUN_ID));
 }
 function moveDefaultLegacySaves() {
   return moveLegacySaves({ env: process.env, platform: process.platform, homedir: homedir3() });
@@ -43350,14 +43508,14 @@ function createHttpGet(options) {
 }
 
 // packages/news/src/load-headlines.ts
-import { join as join8 } from "node:path";
+import { join as join9 } from "node:path";
 var DEFAULT_MAX_HEADLINES = 40;
 var DaySchema2 = external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 var CacheSchema = external_exports.object({
   day: DaySchema2,
   headlines: external_exports.array(external_exports.object({ title: external_exports.string(), summary: external_exports.string().optional() }))
 });
-var cacheFile = (saveDir, feed) => join8(saveDir, "news", `${feed.id}.json`);
+var cacheFile = (saveDir, feed) => join9(saveDir, "news", `${feed.id}.json`);
 async function readCache(input2, feed) {
   try {
     const text = await input2.saveFs.readFile(cacheFile(input2.saveDir, feed));
@@ -43372,7 +43530,7 @@ async function writeCache(input2, feed, headlines) {
   const file2 = cacheFile(input2.saveDir, feed);
   const temporary = `${file2}.tmp`;
   try {
-    await input2.saveFs.mkdir(join8(input2.saveDir, "news"));
+    await input2.saveFs.mkdir(join9(input2.saveDir, "news"));
     await input2.saveFs.writeFileSynced(temporary, JSON.stringify({ day: input2.day, headlines }));
     await input2.saveFs.rename(temporary, file2);
   } catch {
@@ -51736,6 +51894,7 @@ var STRIP_SYMBOLS = {
   reread: "\u21BA",
   sit: "\u2248",
   use: "+",
+  take: "\u25A3",
   rest: "\u263E",
   accuse: "!"
 };
@@ -52076,6 +52235,8 @@ var en_default3 = {
         moveFailed: "Tried to get into {name} and could not",
         search: "Searched the place: found {n}",
         rest: "Rested for the night",
+        found: "Found and took: {name}",
+        bought: "Bought: {name}",
         gotSomething: "something to go on",
         gotNothing: "nothing",
         ask: "Asked the locals: {result}",
@@ -52123,6 +52284,12 @@ var en_default3 = {
       minutes: "min left",
       warnings: "Mind this",
       kit: "Kit",
+      pockets: "In the pockets",
+      suitcase: "The suitcase: {used} of {total} slots",
+      freeSlot: "a free slot",
+      unlawful: "not within the law",
+      getsPast: "gets past",
+      forParts: "The tool for each part noticed",
       lost: "lost",
       spent: "used up",
       broken: "broken",
@@ -52343,6 +52510,7 @@ var en_default3 = {
         reread: "read again",
         sit: "sit down",
         use: "use something",
+        take: "pick something up",
         rest: "rest",
         accuse: "accusation"
       }
@@ -52657,6 +52825,8 @@ var ru_default2 = {
         moveFailed: "\u041F\u044B\u0442\u0430\u043B\u0438\u0441\u044C \u043F\u043E\u043F\u0430\u0441\u0442\u044C \u0432 {name}, \u043D\u043E \u043D\u0435 \u0432\u044B\u0448\u043B\u043E",
         search: "\u041E\u0431\u044B\u0441\u043A\u0430\u043B\u0438 \u043C\u0435\u0441\u0442\u043E: \u043D\u0430\u0439\u0434\u0435\u043D\u043E {n}",
         rest: "\u0417\u0430\u0441\u043D\u0443\u043B\u0438 \u0434\u043E \u0443\u0442\u0440\u0430",
+        found: "\u041D\u0430\u0448\u0451\u043B \u0438 \u0432\u0437\u044F\u043B: {name}",
+        bought: "\u041A\u0443\u043F\u0438\u043B: {name}",
         gotSomething: "\u0435\u0441\u0442\u044C \u0437\u0430 \u0447\u0442\u043E \u0437\u0430\u0446\u0435\u043F\u0438\u0442\u044C\u0441\u044F",
         gotNothing: "\u043D\u0438\u0447\u0435\u0433\u043E",
         ask: "\u0420\u0430\u0441\u0441\u043F\u0440\u043E\u0441\u0438\u043B\u0438 \u043C\u0435\u0441\u0442\u043D\u044B\u0445: {result}",
@@ -52704,6 +52874,12 @@ var ru_default2 = {
       minutes: "\u043C\u0438\u043D \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C",
       warnings: "\u041E\u0431\u0440\u0430\u0442\u0438\u0442\u0435 \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u0435",
       kit: "\u0421\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435",
+      pockets: "\u0412 \u043A\u0430\u0440\u043C\u0430\u043D\u0430\u0445",
+      suitcase: "\u0427\u0435\u043C\u043E\u0434\u0430\u043D: \u0437\u0430\u043D\u044F\u0442\u043E {used} \u0438\u0437 {total} \u043C\u0435\u0441\u0442",
+      freeSlot: "\u0441\u0432\u043E\u0431\u043E\u0434\u043D\u043E\u0435 \u043C\u0435\u0441\u0442\u043E",
+      unlawful: "\u043D\u0435 \u043F\u043E \u0437\u0430\u043A\u043E\u043D\u0443",
+      getsPast: "\u0441\u043F\u0440\u0430\u0432\u043B\u044F\u0435\u0442\u0441\u044F \u0441",
+      forParts: "\u0427\u0435\u043C \u043E\u0442\u043A\u0440\u044B\u0442\u044C \u043A\u0430\u0436\u0434\u0443\u044E \u0437\u0430\u043C\u0435\u0447\u0435\u043D\u043D\u0443\u044E \u0447\u0430\u0441\u0442\u044C",
       lost: "\u043F\u043E\u0442\u0435\u0440\u044F\u043D\u043E",
       spent: "\u0438\u0437\u0440\u0430\u0441\u0445\u043E\u0434\u043E\u0432\u0430\u043D\u043E",
       broken: "\u0441\u043B\u043E\u043C\u0430\u043D\u043E",
@@ -52924,6 +53100,7 @@ var ru_default2 = {
         reread: "\u043F\u0435\u0440\u0435\u0447\u0438\u0442\u044B\u0432\u0430\u043D\u0438\u0435",
         sit: "\u043F\u0435\u0440\u0435\u0434\u044B\u0448\u043A\u0430",
         use: "\u043F\u0440\u0438\u043C\u0435\u043D\u0435\u043D\u0438\u0435",
+        take: "\u0432\u0437\u044F\u0442\u044C \u0438\u043B\u0438 \u043A\u0443\u043F\u0438\u0442\u044C",
         rest: "\u043E\u0442\u0434\u044B\u0445",
         accuse: "\u043E\u0431\u0432\u0438\u043D\u0435\u043D\u0438\u0435"
       }
@@ -53063,6 +53240,10 @@ function turnText(turn, text) {
       return fill2(t.reread, { text: truncate(turn.clue, REREAD_LENGTH) });
     case "use":
       return fill2(t.use, { name: named(text.hero.consumables, turn.item) });
+    case "take":
+      return fill2(turn.how === "sold" ? t.bought : t.found, {
+        name: named(turn.itemKind === "tool" ? text.hero.gear : text.hero.consumables, turn.item)
+      });
     case "accuse":
       return t.accuse;
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
@@ -53581,6 +53762,55 @@ function renderHeader(view, board, text, fresh) {
 </header>`;
 }
 
+// packages/mcp/src/board/board-kit.ts
+function renderKit(view, text, fresh) {
+  const e = escapeHtml;
+  const t = text.hero;
+  const wording = text.plan;
+  const piece = ({ id, state, charges, lawful, removes }) => {
+    const status = state === "owned" ? charges === null ? "" : ` <span class="tag">${e(t.chargesLeft.replace("{n}", String(charges)))}</span>` : ` <span class="warn">(${e(named({ lost: t.lost, spent: t.spent, broken: t.broken }, state))})</span>`;
+    const unlawful = lawful ? "" : ` <span class="warn">${e(t.unlawful)}</span>`;
+    const gets = removes.length === 0 ? "" : `<br><span class="tag">${e(t.getsPast)}: ${e(removes.map((kind) => named(wording.obstacles, kind)).join(", "))}</span>`;
+    const mark = fresh.tools.has(id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : "";
+    return `${e(named(t.gear, id))}${status}${unlawful}${mark}${gets}`;
+  };
+  const pockets = [
+    ...view.kit.filter(({ suitcase }) => !suitcase).map(piece),
+    ...view.supplies.map(
+      ({ id, count, limit }) => `${e(named(t.consumables, id))} \xD7${String(count)}${limit === null ? "" : ` <span class="tag">/ ${String(limit)}</span>`}`
+    )
+  ];
+  const slots = [
+    ...view.kit.filter(({ suitcase }) => suitcase).map((item) => `<div class="card slot">${piece(item)}</div>`),
+    ...Array.from(
+      { length: Math.max(0, view.toolSlots.total - view.toolSlots.used) },
+      () => `<div class="card slot empty-card"><span class="empty">${e(t.freeSlot)}</span></div>`
+    )
+  ];
+  const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
+  const forParts = view.placeParts.flatMap(
+    ({ placeId, parts }) => parts.flatMap(({ name, obstacle, searched }) => {
+      if (searched || obstacle === null) return [];
+      const tool = view.kit.find(({ state, removes }) => state === "owned" && removes.includes(obstacle))?.id;
+      const how = tool === void 0 ? wording.noTool : wording.tool.replace("{tool}", named(t.gear, tool));
+      return [
+        `${e(placeName.get(placeId) ?? placeId)}: ${e(name)} <span class="tag">${e(named(wording.obstacles, obstacle))} \xB7 ${e(how)}</span>`
+      ];
+    })
+  );
+  const list3 = (items) => `<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+  return `<h3>${e(t.kit)}</h3>
+<h4>${e(t.pockets)}</h4>
+${pockets.length === 0 ? `<p class="empty">${e(t.nothing)}</p>` : list3(pockets)}
+<h4>${e(t.suitcase.replace("{used}", String(view.toolSlots.used)).replace("{total}", String(view.toolSlots.total)))}</h4>
+<div class="slots">
+${slots.join("\n")}
+</div>${forParts.length === 0 ? "" : `
+<h4>${e(t.forParts)}</h4>
+${list3(forParts)}`}
+`;
+}
+
 // packages/mcp/src/board/board-hero.ts
 var list2 = (items) => `<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
 function meter(label, value, max) {
@@ -53613,12 +53843,6 @@ function renderHero(view, board, text, fresh = NOTHING_NEW) {
     )
   );
   const warnings = view.warnings.length === 0 ? "" : list2(view.warnings.map((id) => `<span class="warn">${e(named(t.warningNames, id))}</span>`));
-  const kit = view.kit.length === 0 ? `<p class="empty">${e(t.nothing)}</p>` : list2(
-    view.kit.map(
-      ({ id, state, charges }) => `${e(named(t.gear, id))}${state === "owned" ? charges === null ? "" : ` <span class="tag">${e(t.chargesLeft.replace("{n}", String(charges)))}</span>` : ` <span class="warn">(${e(named({ lost: t.lost, spent: t.spent, broken: t.broken }, state))})</span>`}${fresh.tools.has(id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ""}`
-    )
-  );
-  const supplies = view.supplies.length === 0 ? `<p class="empty">${e(t.nothing)}</p>` : list2(view.supplies.map(({ id, count }) => `${e(named(t.consumables, id))} \xD7${String(count)}`));
   const pending = view.pending.length === 0 ? "" : `<h3>${e(t.pending)}</h3>${list2(
     view.pending.map(
       ({ source, meter: target, delta, inMinutes }) => `${e(named(t.consumables, source))}: ${delta > 0 ? "+" : ""}${String(delta)} ${e(named(t.meters, target))} <span class="tag">${inMinutes === null ? e(t.atNight) : e(t.inMinutes.replace("{n}", String(inMinutes)))}</span>`
@@ -53643,11 +53867,7 @@ ${meter(t.sleepDebt, condition.sleepDebt, condition.maxSleepDebt)}
 ${conditions}
 ${warnings}
 </div>
-<h3>${e(t.kit)}</h3>
-${kit}
-<h3>${e(t.supplies)}</h3>
-${supplies}
-${pending}
+${renderKit(view, text, fresh)}${pending}
 <h3>${e(t.traits)}</h3>
 ${traits}
 <p class="tag">${e(t.hidden)}: ${String(view.hiddenTraitCount)}</p>
@@ -54144,6 +54364,8 @@ h3{margin:22px 0 8px;font-size:1rem;color:var(--accent)}
 .premise{border-left:3px solid var(--accent);padding-left:12px;margin:16px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 16px;margin:0 0 10px}
 .empty-card{border-style:dashed;background:transparent}
+.slots{display:flex;flex-wrap:wrap;gap:10px}
+.slot{margin:0;min-width:150px}
 .led-astray{border-left:4px solid var(--warn)}
 .course{padding-left:1.4em}
 .card p{margin:4px 0}
@@ -54444,7 +54666,7 @@ async function keepBoard(context2, runId, run, log, before) {
 }
 
 // packages/mcp/src/stats.ts
-import { basename, dirname as dirname3, join as join9, relative as relative2, sep } from "node:path";
+import { basename, dirname as dirname3, join as join10, relative as relative2, sep } from "node:path";
 
 // packages/mcp/src/stats-page.ts
 var STYLE2 = `
@@ -54528,9 +54750,9 @@ async function writeStats(context2) {
     (runId) => relative2(directory, runBoardFile(context2.saveDir, runId)).split(sep).join("/")
   );
   await context2.saveFs.mkdir(directory);
-  await replaceFile(context2.saveFs, join9(directory, STATS_JSON), `${JSON.stringify(stats, null, 2)}
+  await replaceFile(context2.saveFs, join10(directory, STATS_JSON), `${JSON.stringify(stats, null, 2)}
 `);
-  await replaceFile(context2.saveFs, join9(directory, STATS_PAGE), page);
+  await replaceFile(context2.saveFs, join10(directory, STATS_PAGE), page);
 }
 async function keepStats(context2) {
   try {
@@ -54757,11 +54979,12 @@ var ActIntentSchema = external_exports.discriminatedUnion("kind", [
   }),
   external_exports.object({ kind: external_exports.literal("study"), clueId: EntityIdSchema, toolId: GearIdSchema.optional() }),
   UseIntentSchema,
+  TakeIntentSchema,
   RereadIntentSchema
 ]);
 var act = defineTool({
   name: "act",
-  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it; or, with `witnessId` of a person run_view lists under `witnesses`, ask that person what they saw, and with `aboutSuspectId` only about that one suspect), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
+  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it; or, with `witnessId` of a person run_view lists under `witnesses`, ask that person what they saw, and with `aboutSuspectId` only about that one suspect), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit), take (`stockId` of something run_view lists under `location.offers`: a tool for the suitcase, with `dropId` of a tool of the suitcase to put down when it is full, or a supply for the pockets) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
   inputSchema: external_exports.object({ turn: TurnSchema, intent: ActIntentSchema }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, intent }, context2) => playIntent(context2, turn, intent)
@@ -54852,7 +55075,7 @@ function namesInHeadlines(news) {
 }
 
 // packages/mcp/src/pending-run.ts
-import { join as join10 } from "node:path";
+import { join as join11 } from "node:path";
 var PENDING_THEMES = CRIME_TYPES;
 var PendingThemeSchema = external_exports.enum(PENDING_THEMES);
 var PendingRunSchema = external_exports.object({
@@ -54869,7 +55092,7 @@ var PendingRunSchema = external_exports.object({
   failed: external_exports.boolean().default(false)
 });
 function pendingFile(saveDir) {
-  return join10(saveDir, "pending", "state.json");
+  return join11(saveDir, "pending", "state.json");
 }
 function themeOfSeed(seed) {
   const pick5 = createRng(`${seed}:theme`).roll(PENDING_THEMES.length) - 1;
@@ -54907,7 +55130,7 @@ async function loadPending(saveDir, fs) {
 async function savePending(saveDir, pending, fs) {
   const path = pendingFile(saveDir);
   const temporary = `${path}.tmp`;
-  await fs.mkdir(join10(saveDir, "pending"));
+  await fs.mkdir(join11(saveDir, "pending"));
   try {
     await fs.writeFileSynced(temporary, `${JSON.stringify(PendingRunSchema.parse(pending), null, 2)}
 `);
@@ -55595,13 +55818,13 @@ var scenarioSubmit = defineTool({
         background: hero.background,
         runSeed: pending.seed
       });
+      const runId = makeRunId(context2.now(), pending.seed);
       const run = createDetectiveRun({
         hero,
         traits: pending.traits,
         case: result.detectiveCase,
         seed: pending.seed,
-        // The run's id and folder, made now: the date and time it starts and the seed.
-        runId: makeRunId(context2.now(), pending.seed),
+        runId,
         rngState: pending.rngState,
         locale: pending.locale,
         // The same country the brief named for this seed; the run keeps it from here on.
@@ -55612,6 +55835,8 @@ var scenarioSubmit = defineTool({
         toolSlots: toolSlotsOf(await recordsOrNone(context2))
       });
       await saveRun(context2.saveDir, run, context2.saveFs, EMPTY_RUN_LOG);
+      const news = await seedsOfRun(context2);
+      if (news !== void 0) await saveRunSeeds(context2.saveDir, runId, news, context2.saveFs);
       await keepStats(context2);
       await clearPending(context2.saveDir, context2.saveFs);
       return { accepted: true };

@@ -20,6 +20,8 @@ function viewOf(overrides: Partial<View> = {}): View {
     reputation: 7,
     condition: { nerves: 8, maxNerves: 10, sleepDebt: 1, maxSleepDebt: 10, conditions: [] },
     kit: [],
+    placeParts: [],
+    toolSlots: { total: 1, used: 0 },
     supplies: [],
     pending: [],
     warnings: [],
@@ -515,6 +517,27 @@ const TURNS: TurnView[] = [
   { turn: 1, day: 1, minute: 470, kind: 'move', to: 'Cellar', entered: false },
 ];
 
+describe('what the hero took, in the chronicle', () => {
+  const took: TurnView[] = [
+    { turn: 2, day: 1, minute: 500, kind: 'take', how: 'sold', itemKind: 'supply', item: 'sedative' },
+    { turn: 1, day: 1, minute: 490, kind: 'take', how: 'found', itemKind: 'tool', item: 'crowbar' },
+  ];
+
+  it('says what was found and what was bought, a tool or a supply, by its name', () => {
+    const chronicle = tab(renderEvidenceBoard(viewOf(), took), 'chronicle');
+
+    expect(chronicle).toContain('Bought: ');
+    expect(chronicle).toContain('Found and took: crowbar');
+  });
+
+  it('is told in the language of the run', () => {
+    const chronicle = tab(renderEvidenceBoard(viewOf({ locale: 'ru' }), took), 'chronicle');
+
+    expect(chronicle).toContain('Купил: ');
+    expect(chronicle).toContain('Нашёл и взял: ');
+  });
+});
+
 describe('the chronicle tab', () => {
   it('shows the day and the working time left', () => {
     const chronicle = tab(
@@ -784,13 +807,53 @@ describe('the hero tab', () => {
           },
           warnings: ['low-reputation'],
           kit: [
-            { id: 'phone', nameKey: 'gear.phone', state: 'owned', removes: ['dark'], charges: null },
-            { id: 'picks', nameKey: 'gear.picks', state: 'lost', removes: ['locked'], charges: null },
-            { id: 'powder', nameKey: 'gear.powder', state: 'owned', removes: ['trace'], charges: 2 },
-            { id: 'test-kit', nameKey: 'gear.test-kit', state: 'spent', removes: ['trace'], charges: 0 },
-            { id: 'knife', nameKey: 'gear.knife', state: 'broken', removes: ['soft'], charges: null },
+            {
+              id: 'phone',
+              nameKey: 'gear.phone',
+              state: 'owned',
+              removes: ['dark'],
+              charges: null,
+              lawful: true,
+              suitcase: false,
+            },
+            {
+              id: 'picks',
+              nameKey: 'gear.picks',
+              state: 'lost',
+              removes: ['locked'],
+              charges: null,
+              lawful: true,
+              suitcase: false,
+            },
+            {
+              id: 'powder',
+              nameKey: 'gear.powder',
+              state: 'owned',
+              removes: ['trace'],
+              charges: 2,
+              lawful: true,
+              suitcase: false,
+            },
+            {
+              id: 'test-kit',
+              nameKey: 'gear.test-kit',
+              state: 'spent',
+              removes: ['trace'],
+              charges: 0,
+              lawful: true,
+              suitcase: false,
+            },
+            {
+              id: 'knife',
+              nameKey: 'gear.knife',
+              state: 'broken',
+              removes: ['soft'],
+              charges: null,
+              lawful: true,
+              suitcase: false,
+            },
           ],
-          supplies: [{ id: 'coffee', nameKey: 'consumable.coffee', count: 2 }],
+          supplies: [{ id: 'coffee', nameKey: 'consumable.coffee', count: 2, limit: 2 }],
           pending: [
             { source: 'coffee', meter: 'sleepDebt', delta: -1, inMinutes: 30 },
             { source: 'alcohol', meter: 'nerves', delta: 2, inMinutes: null },
@@ -809,12 +872,12 @@ describe('the hero tab', () => {
     expect(hero).toContain('exhausted <span class="tag">until the night</span>');
     expect(hero).toContain('drunk <span class="tag">90 min left</span>');
     expect(hero).toContain('reputation is low');
-    expect(hero).toContain('phone</li>');
+    expect(hero).toContain('phone<br><span class="tag">gets past: dark</span>');
     expect(hero).toContain('lock picks <span class="warn">(lost)</span>');
     expect(hero).toContain('fingerprint powder <span class="tag">left: 2</span>');
     expect(hero).toContain('test kit <span class="warn">(used up)</span>');
     expect(hero).toContain('pocket knife <span class="warn">(broken)</span>');
-    expect(hero).toContain('coffee ×2');
+    expect(hero).toContain('coffee ×2 <span class="tag">/ 2</span>');
     expect(hero).toContain('coffee: -1 sleep debt <span class="tag">in 30 min</span>');
     expect(hero).toContain('a drink: +2 nerves <span class="tag">at night</span>');
     expect(hero).toContain('a night owl');
@@ -827,7 +890,8 @@ describe('the hero tab', () => {
     const hero = tab(renderEvidenceBoard(viewOf()), 'hero');
 
     expect(hero).toContain('nothing in particular');
-    expect(hero.match(/<p class="empty">nothing<\/p>/g)).toHaveLength(2);
+    expect(hero.match(/<p class="empty">nothing<\/p>/g)).toHaveLength(1);
+    expect(hero).toContain('a free slot');
     expect(hero).toContain('None revealed yet.');
     expect(hero).not.toContain('On its way');
     expect(hero).not.toContain('Climate');
@@ -850,6 +914,117 @@ describe('the hero tab', () => {
     expect(hero).toContain('вспыльчив');
     expect(hero).toContain('через 15 мин');
     expect(hero).toContain('Ещё скрыто: 2');
+  });
+});
+
+describe('the kit in the hero tab', () => {
+  const piece = (id: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    nameKey: `gear.${id}`,
+    state: 'owned',
+    removes: [],
+    charges: null,
+    lawful: true,
+    suitcase: false,
+    ...extra,
+  });
+  const kitTab = (view: Record<string, unknown>) => tab(renderEvidenceBoard(viewOf(view)), 'hero');
+
+  it('lays out the pockets, the suitcase with its slots taken and free, and what each piece gets past', () => {
+    const hero = kitTab({
+      kit: [
+        piece('phone', { removes: ['dark'] }),
+        piece('crowbar', { suitcase: true, lawful: false, removes: ['locked', 'sealed'] }),
+        piece('powder', { suitcase: true, charges: 1, removes: ['trace'] }),
+      ],
+      toolSlots: { total: 3, used: 2 },
+      supplies: [{ id: 'coffee', nameKey: 'consumable.coffee', count: 1, limit: 2 }],
+    });
+
+    expect(hero).toContain('In the pockets');
+    expect(hero).toContain('The suitcase: 2 of 3 slots');
+    expect(hero.match(/class="card slot"/g)).toHaveLength(2);
+    expect(hero.match(/class="card slot empty-card"/g)).toHaveLength(1);
+    expect(hero).toContain('crowbar <span class="warn">not within the law</span>');
+    expect(hero).toContain('gets past: locked, sealed');
+    expect(hero).toContain('fingerprint powder <span class="tag">left: 1</span>');
+    expect(hero).toContain('coffee ×1 <span class="tag">/ 2</span>');
+    expect(hero).toMatchSnapshot();
+  });
+
+  it('marks a piece used up, broken or lost where it sits, and shows a free slot only when there is one', () => {
+    const hero = kitTab({
+      kit: [
+        piece('picks', { suitcase: true, state: 'broken' }),
+        piece('knife', { suitcase: true, state: 'lost' }),
+      ],
+      toolSlots: { total: 2, used: 2 },
+      // A supply the pockets do not limit shows its count and no limit.
+      supplies: [{ id: 'coffee', nameKey: 'consumable.coffee', count: 3, limit: null }],
+    });
+
+    expect(hero).toContain('coffee ×3</li>');
+    expect(hero).toContain('lock picks <span class="warn">(broken)</span>');
+    expect(hero).toContain('pocket knife <span class="warn">(lost)</span>');
+    expect(hero).not.toContain('empty-card');
+  });
+
+  it('names the tool of the kit for each part noticed and not searched, and says when there is none', () => {
+    const hero = kitTab({
+      kit: [
+        piece('picks', { removes: ['locked'], suitcase: true }),
+        piece('mirror', { removes: ['dark'], state: 'lost' }),
+      ],
+      toolSlots: { total: 1, used: 1 },
+      map: { current: 'a', places: [{ id: 'a', name: 'The office', visited: true }], links: [] },
+      placeParts: [
+        {
+          placeId: 'a',
+          parts: [
+            { id: 'safe', name: 'The safe', obstacle: 'locked', searched: false, gave: [] },
+            { id: 'shelf', name: 'The dark shelf', obstacle: 'dark', searched: false, gave: [] },
+            { id: 'desk', name: 'The desk', obstacle: null, searched: false, gave: [] },
+            { id: 'bin', name: 'The bin', obstacle: 'locked', searched: true, gave: [] },
+          ],
+        },
+        {
+          placeId: 'unlisted',
+          parts: [{ id: 'x', name: 'A box', obstacle: 'sealed', searched: false, gave: [] }],
+        },
+      ],
+    });
+
+    expect(hero).toContain('The tool for each part noticed');
+    expect(hero).toContain(
+      'The office: The safe <span class="tag">locked · tool in the kit: lock picks</span>',
+    );
+    expect(hero).toContain(
+      'The office: The dark shelf <span class="tag">dark · no tool for it in the kit</span>',
+    );
+    expect(hero).toContain('unlisted: A box');
+    expect(hero).not.toContain('The desk');
+    expect(hero).not.toContain('The bin');
+  });
+
+  it('has no list of tools for the parts when none is in the way', () => {
+    expect(kitTab({})).not.toContain('The tool for each part noticed');
+  });
+
+  it('is told in the language of the run, and no id breaks out of its markup', () => {
+    const hero = kitTab({
+      locale: 'ru',
+      kit: [piece('crowbar', { suitcase: true, lawful: false, removes: ['locked'] })],
+      toolSlots: { total: 2, used: 1 },
+    });
+    const hostile = kitTab({
+      kit: [piece('x"><script>alert(1)</script>', { suitcase: true })],
+      toolSlots: { total: 1, used: 1 },
+    });
+
+    expect(hero).toContain('Чемодан: занято 1 из 2 мест');
+    expect(hero).toContain('свободное место');
+    expect(hero).toContain('не по закону');
+    expect(hostile).not.toContain('<script>');
   });
 });
 

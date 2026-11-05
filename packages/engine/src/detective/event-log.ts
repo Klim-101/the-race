@@ -15,7 +15,7 @@ import {
 } from '../run.js';
 import { IntentSchema, resolveIntent, type Intent, type Resolution } from './actions.js';
 import { HeroConditionSchema } from './condition.js';
-import { EntityIdSchema, ObstacleKindSchema } from './case-schema.js';
+import { EntityIdSchema, ObstacleKindSchema, StockHowSchema } from './case-schema.js';
 import { GearIdSchema } from './gear.js';
 import { daysPassed } from './clock.js';
 import { MishapKindSchema } from './fatigue.js';
@@ -124,6 +124,15 @@ const OutcomeSchema = z.union([
     ...fatigue,
   }),
   z.object({ kind: z.literal('sit'), minutes, nervesRestored: z.int().min(0), sitsLeft: z.int().min(0) }),
+  z.object({
+    kind: z.literal('take'),
+    stockId: EntityIdSchema,
+    how: StockHowSchema,
+    itemKind: z.enum(['tool', 'supply']),
+    itemId: z.string().min(1),
+    minutes,
+    dropped: GearIdSchema.optional(),
+  }),
   z.object({
     kind: z.literal('interrogate'),
     suspectId: EntityIdSchema,

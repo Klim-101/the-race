@@ -74,6 +74,10 @@ export function turnText(turn: TurnView, text: TabText): string {
       return fill(t.reread, { text: truncate(turn.clue, REREAD_LENGTH) });
     case 'use':
       return fill(t.use, { name: named(text.hero.consumables, turn.item) });
+    case 'take':
+      return fill(turn.how === 'sold' ? t.bought : t.found, {
+        name: named(turn.itemKind === 'tool' ? text.hero.gear : text.hero.consumables, turn.item),
+      });
     case 'accuse':
       return t.accuse;
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */

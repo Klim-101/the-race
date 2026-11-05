@@ -25,6 +25,8 @@ export * from './detective/skill-presets.js';
 export * from './detective/tavern.js';
 export * from './detective/consumables.js';
 export * from './detective/use-item.js';
+export * from './detective/stock.js';
+export * from './detective/take.js';
 export * from './detective/run-state.js';
 export * from './detective/actions.js';
 export * from './detective/interrogation.js';

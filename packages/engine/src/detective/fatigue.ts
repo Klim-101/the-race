@@ -116,7 +116,8 @@ export function applyFatigue(
     outcome.kind === 'accuse' ||
     outcome.kind === 'rest' ||
     outcome.kind === 'sit' ||
-    outcome.kind === 'use'
+    outcome.kind === 'use' ||
+    outcome.kind === 'take'
   ) {
     return resolution;
   }

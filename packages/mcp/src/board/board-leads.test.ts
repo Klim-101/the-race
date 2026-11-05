@@ -39,6 +39,8 @@ const PLAYED = {
   reputation: 7,
   condition: { nerves: 8, maxNerves: 10, sleepDebt: 1, maxSleepDebt: 10, conditions: [] },
   kit: [],
+  placeParts: [],
+  toolSlots: { total: 1, used: 0 },
   supplies: [],
   pending: [],
   warnings: [],

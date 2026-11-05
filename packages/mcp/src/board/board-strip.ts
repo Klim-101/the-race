@@ -36,6 +36,7 @@ export const STRIP_SYMBOLS: Record<StripKind, string> = {
   reread: '↺',
   sit: '≈',
   use: '+',
+  take: '▣',
   rest: '☾',
   accuse: '!',
 };
