@@ -41209,8 +41209,25 @@ function runBoardFile(saveDir, runId) {
   return join3(runFiles(saveDir, runId).directory, BOARD_DIR, BOARD_FILE);
 }
 
-// packages/saves/src/seed-store.ts
+// packages/saves/src/run-seeds.ts
 import { join as join4 } from "node:path";
+var RunSeedsSchema = external_exports.strictObject({
+  schemaVersion: external_exports.literal(1),
+  day: external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  seeds: NewsSeedsSchema,
+  realNames: external_exports.array(external_exports.string().min(1).max(80)).max(2e3)
+});
+var RUN_SEEDS_FILE = "seeds.json";
+var runSeedsFile = (saveDir, runId) => join4(runFiles(saveDir, runId).directory, RUN_SEEDS_FILE);
+async function saveRunSeeds(saveDir, runId, entry, fs = nodeSaveFs) {
+  const copy = RunSeedsSchema.parse({ schemaVersion: 1, ...entry });
+  await fs.mkdir(runFiles(saveDir, runId).directory);
+  await replaceFile(fs, runSeedsFile(saveDir, runId), `${JSON.stringify(copy, null, 2)}
+`);
+}
+
+// packages/saves/src/seed-store.ts
+import { join as join5 } from "node:path";
 var SEED_DAYS_KEPT = 14;
 var DaySchema = external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 var DaySeedsSchema = external_exports.strictObject({
@@ -41223,7 +41240,7 @@ var SeedStoreSchema = external_exports.strictObject({
   namesEdition: external_exports.literal(NAME_RULES_EDITION),
   days: external_exports.record(DaySchema, DaySeedsSchema)
 });
-var seedsFile = (saveDir) => join4(saveDir, "seeds", "seeds.json");
+var seedsFile = (saveDir) => join5(saveDir, "seeds", "seeds.json");
 async function loadSeeds(saveDir, fs = nodeSaveFs) {
   try {
     const text = await fs.readFile(seedsFile(saveDir));
@@ -41242,7 +41259,7 @@ async function saveSeedsForDay(saveDir, day, entry, fs = nodeSaveFs) {
     namesEdition: NAME_RULES_EDITION,
     days: Object.fromEntries(kept)
   });
-  await fs.mkdir(join4(saveDir, "seeds"));
+  await fs.mkdir(join5(saveDir, "seeds"));
   await replaceFile(fs, seedsFile(saveDir), `${JSON.stringify(store, null, 2)}
 `);
 }
@@ -41253,8 +41270,8 @@ function seedsOnOrBefore(days, day) {
 }
 
 // packages/saves/src/world-store.ts
-import { join as join5 } from "node:path";
-var worldFile = (saveDir) => join5(saveDir, "world.json");
+import { join as join6 } from "node:path";
+var worldFile = (saveDir) => join6(saveDir, "world.json");
 async function loadWorld(saveDir, fs = nodeSaveFs, migrations = WORLD_MIGRATIONS) {
   let text;
   try {
@@ -41298,7 +41315,7 @@ async function saveWorld(saveDir, world, fs = nodeSaveFs) {
 
 // packages/saves/src/profile-store.ts
 import { homedir as homedir2 } from "node:os";
-import { join as join6, resolve as resolve3 } from "node:path";
+import { join as join7, resolve as resolve3 } from "node:path";
 var PROFILE_FILE = "profile.json";
 var PROFILE_EXPORT_FILE = "export.json";
 var PROFILE_IMPORT_FILE = "import.json";
@@ -41330,7 +41347,7 @@ async function readRecords(fs, path) {
   }
 }
 async function loadProfile(profileDir, fs = nodeSaveFs) {
-  const read = await readRecords(fs, join6(profileDir, PROFILE_FILE));
+  const read = await readRecords(fs, join7(profileDir, PROFILE_FILE));
   if (read.ok) return read;
   return read.reason === "missing" ? { ok: true, records: [] } : { ok: false, reason: read.reason };
 }
@@ -41338,7 +41355,7 @@ async function writeRecords(profileDir, fs, file2, records) {
   await fs.mkdir(profileDir);
   const data = `${JSON.stringify({ version: 1, records }, null, 2)}
 `;
-  await replaceFile(fs, join6(profileDir, file2), data);
+  await replaceFile(fs, join7(profileDir, file2), data);
 }
 async function recordRun(profileDir, record2, fs = nodeSaveFs) {
   const loaded = await loadProfile(profileDir, fs);
@@ -41351,12 +41368,12 @@ async function exportProfile(profileDir, fs = nodeSaveFs) {
   const loaded = await loadProfile(profileDir, fs);
   if (!loaded.ok) throw new RangeError(`The profile on disk is unusable (${loaded.reason}).`);
   await writeRecords(profileDir, fs, PROFILE_EXPORT_FILE, loaded.records);
-  return join6(profileDir, PROFILE_EXPORT_FILE);
+  return join7(profileDir, PROFILE_EXPORT_FILE);
 }
 async function importProfile(profileDir, fs = nodeSaveFs) {
   const own2 = await loadProfile(profileDir, fs);
   if (!own2.ok) return { ok: false, reason: "profile-unusable" };
-  const incoming = await readRecords(fs, join6(profileDir, PROFILE_IMPORT_FILE));
+  const incoming = await readRecords(fs, join7(profileDir, PROFILE_IMPORT_FILE));
   if (!incoming.ok) return { ok: false, reason: incoming.reason === "corrupt" ? "invalid" : "no-file" };
   const known = new Set(own2.records.map(({ runId }) => runId));
   const fresh = incoming.records.filter(({ runId }) => {
@@ -41371,12 +41388,12 @@ async function importProfile(profileDir, fs = nodeSaveFs) {
 // packages/saves/src/legacy-move.ts
 import { homedir as homedir3 } from "node:os";
 import { mkdir as mkdir2, readFile as readFile2, readdir as readdir2, rename as rename2, rm as rm2, stat, writeFile } from "node:fs/promises";
-import { dirname, join as join7, relative } from "node:path";
+import { dirname, join as join8, relative } from "node:path";
 async function listAll(directory, base) {
   const entries = await readdir2(directory, { withFileTypes: true });
   const nested = await Promise.all(
     entries.map(async (entry) => {
-      const path = join7(directory, entry.name);
+      const path = join8(directory, entry.name);
       return entry.isDirectory() ? listAll(path, base) : [relative(base, path)];
     })
   );
@@ -41407,7 +41424,7 @@ async function sameContent(fs, a, b) {
   const [left, right] = await Promise.all([fs.listFiles(a), fs.listFiles(b)]);
   if (left.length !== right.length || left.some((file2) => !right.includes(file2))) return false;
   for (const file2 of left) {
-    const [one, other] = await Promise.all([fs.readFile(join7(a, file2)), fs.readFile(join7(b, file2))]);
+    const [one, other] = await Promise.all([fs.readFile(join8(a, file2)), fs.readFile(join8(b, file2))]);
     if (one !== other) return false;
   }
   return true;
@@ -41425,7 +41442,7 @@ async function moveFolder(fs, from, to) {
     const staging = `${to}.moving`;
     await fs.removeDirectory(staging);
     try {
-      for (const file2 of files) await fs.writeFile(join7(staging, file2), await fs.readFile(join7(from, file2)));
+      for (const file2 of files) await fs.writeFile(join8(staging, file2), await fs.readFile(join8(from, file2)));
       if (!await sameContent(fs, from, staging))
         throw new RangeError("The copy does not match the original.");
       await fs.mkdir(dirname(to));
@@ -41445,7 +41462,7 @@ async function moveLegacySaves(inputs, fs = nodeMoveFs) {
   return moveFolder(fs, legacySaveDir(inputs), resolveSaveDir(inputs));
 }
 function moveLegacyRun(saveDir, fs = nodeMoveFs) {
-  return moveFolder(fs, join7(saveDir, "run"), join7(saveDir, RUNS_DIR, LEGACY_RUN_ID));
+  return moveFolder(fs, join8(saveDir, "run"), join8(saveDir, RUNS_DIR, LEGACY_RUN_ID));
 }
 function moveDefaultLegacySaves() {
   return moveLegacySaves({ env: process.env, platform: process.platform, homedir: homedir3() });
@@ -43238,14 +43255,14 @@ function createHttpGet(options) {
 }
 
 // packages/news/src/load-headlines.ts
-import { join as join8 } from "node:path";
+import { join as join9 } from "node:path";
 var DEFAULT_MAX_HEADLINES = 40;
 var DaySchema2 = external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 var CacheSchema = external_exports.object({
   day: DaySchema2,
   headlines: external_exports.array(external_exports.object({ title: external_exports.string(), summary: external_exports.string().optional() }))
 });
-var cacheFile = (saveDir, feed) => join8(saveDir, "news", `${feed.id}.json`);
+var cacheFile = (saveDir, feed) => join9(saveDir, "news", `${feed.id}.json`);
 async function readCache(input2, feed) {
   try {
     const text = await input2.saveFs.readFile(cacheFile(input2.saveDir, feed));
@@ -43260,7 +43277,7 @@ async function writeCache(input2, feed, headlines) {
   const file2 = cacheFile(input2.saveDir, feed);
   const temporary = `${file2}.tmp`;
   try {
-    await input2.saveFs.mkdir(join8(input2.saveDir, "news"));
+    await input2.saveFs.mkdir(join9(input2.saveDir, "news"));
     await input2.saveFs.writeFileSynced(temporary, JSON.stringify({ day: input2.day, headlines }));
     await input2.saveFs.rename(temporary, file2);
   } catch {
@@ -54565,7 +54582,7 @@ function namesInHeadlines(news) {
 }
 
 // packages/mcp/src/pending-run.ts
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
 var PENDING_THEMES = CRIME_TYPES;
 var PendingThemeSchema = external_exports.enum(PENDING_THEMES);
 var PendingRunSchema = external_exports.object({
@@ -54582,7 +54599,7 @@ var PendingRunSchema = external_exports.object({
   failed: external_exports.boolean().default(false)
 });
 function pendingFile(saveDir) {
-  return join9(saveDir, "pending", "state.json");
+  return join10(saveDir, "pending", "state.json");
 }
 function themeOfSeed(seed) {
   const pick5 = createRng(`${seed}:theme`).roll(PENDING_THEMES.length) - 1;
@@ -54620,7 +54637,7 @@ async function loadPending(saveDir, fs) {
 async function savePending(saveDir, pending, fs) {
   const path = pendingFile(saveDir);
   const temporary = `${path}.tmp`;
-  await fs.mkdir(join9(saveDir, "pending"));
+  await fs.mkdir(join10(saveDir, "pending"));
   try {
     await fs.writeFileSynced(temporary, `${JSON.stringify(PendingRunSchema.parse(pending), null, 2)}
 `);
@@ -55305,13 +55322,13 @@ var scenarioSubmit = defineTool({
         background: hero.background,
         runSeed: pending.seed
       });
+      const runId = makeRunId(context2.now(), pending.seed);
       const run = createDetectiveRun({
         hero,
         traits: pending.traits,
         case: result.detectiveCase,
         seed: pending.seed,
-        // The run's id and folder, made now: the date and time it starts and the seed.
-        runId: makeRunId(context2.now(), pending.seed),
+        runId,
         rngState: pending.rngState,
         locale: pending.locale,
         // The same country the brief named for this seed; the run keeps it from here on.
@@ -55322,6 +55339,8 @@ var scenarioSubmit = defineTool({
         toolSlots: toolSlotsOf(await recordsOrNone(context2))
       });
       await saveRun(context2.saveDir, run, context2.saveFs, EMPTY_RUN_LOG);
+      const news = await seedsOfRun(context2);
+      if (news !== void 0) await saveRunSeeds(context2.saveDir, runId, news, context2.saveFs);
       await clearPending(context2.saveDir, context2.saveFs);
       return { accepted: true };
     }
