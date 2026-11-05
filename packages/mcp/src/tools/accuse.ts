@@ -26,7 +26,9 @@ export const accuse = defineTool({
   inputSchema: z.object({
     turn: TurnSchema,
     culpritId: EntityIdSchema,
-    motiveInsightId: EntityIdSchema.nullable(),
+    // A host that has not loaded the tool's schema sends every argument as a string, and "null" is a valid id to
+    // the schema: no insight has that id, so it is read for what the caller meant, no motive.
+    motiveInsightId: z.union([z.null(), z.literal('null').transform(() => null), EntityIdSchema]),
     evidenceClueIds: z.array(EntityIdSchema),
   }),
   outputSchema: TurnResultSchema,

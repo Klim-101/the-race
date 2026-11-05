@@ -7,7 +7,13 @@ import { createRng, D20_SIDES, type Rng } from '../dice.js';
 import { resolveIntent, type Resolved } from './actions.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { APPROACH_RULES } from './interrogation.js';
-import { HOSTILE_MINUTES, MAX_MOOD_STEP, SHAKEN_EASE, TALKS_RULESET_VERSION } from './suspect-mood.js';
+import {
+  HOSTILE_MINUTES,
+  MAX_MOOD_STEP,
+  SHAKEN_EASE,
+  STALE_SHOWS_RULESET_VERSION,
+  TALKS_RULESET_VERSION,
+} from './suspect-mood.js';
 import {
   addInsight,
   createDetectiveRun,
@@ -99,12 +105,64 @@ const atBaker = (options: Parameters<typeof newRun>[0] = {}): DetectiveRunState 
 const moodOf = (run: DetectiveRunState, suspectId = 'baker') =>
   viewRun(run).suspects.find(({ id }) => id === suspectId)?.mood;
 
+describe('a show that can change nothing', () => {
+  const lied = () => interrogation(ask(atBaker(), 'baker', 'social', ['cart-tracks'], dice(20)));
+
+  it('is refused, unspent, with an answer that says why', () => {
+    const first = lied();
+    const again = ask(first.run, 'baker', 'pressure', ['cart-tracks'], dice(20));
+
+    expect(refusalOf(again)).toBe('nothing-new');
+    if (again.ok) throw new Error('Expected a refusal.');
+    expect(again.refusal.message).toContain('already given up');
+    // Nothing was spent: the same state answers a talk that can change something.
+    expect(first.run.turn).toBe(1);
+    expect(ok(ask(first.run, 'baker', 'social', ['flour-crumbs'], dice(20))).run.turn).toBe(2);
+  });
+
+  it('is refused for a conclusion that only confirms, and for several clues that all confirm', () => {
+    const drawn = addInsight(atBaker(), 'motive-debt');
+    const first = interrogation(ask(drawn, 'baker', 'social', [], dice(20), ['motive-debt']));
+
+    expect(refusalOf(ask(first.run, 'baker', 'social', [], dice(20), ['motive-debt']))).toBe('nothing-new');
+
+    const both = interrogation(ask(atBaker(), 'baker', 'social', ['cart-tracks', 'flour-crumbs'], dice(20)));
+    expect(both.run.concededLieIds).toEqual(['baker-asleep', 'baker-alone']);
+    expect(refusalOf(ask(both.run, 'baker', 'social', ['flour-crumbs', 'cart-tracks'], dice(20)))).toBe(
+      'nothing-new',
+    );
+  });
+
+  it('goes ahead when anything shown is new, and when nothing is shown', () => {
+    const first = lied();
+
+    expect(ok(ask(first.run, 'baker', 'social', ['cart-tracks', 'flour-crumbs'], dice(20))).run.turn).toBe(2);
+    expect(ok(ask(first.run, 'baker', 'social', ['cart-tracks', 'blue-glove'], dice(20))).run.turn).toBe(2);
+    expect(ok(ask(first.run, 'baker', 'social', [], dice(20))).run.turn).toBe(2);
+  });
+
+  it('is only for the ruleset of stale shows', () => {
+    const old = { ...lied().run, rulesetVersion: STALE_SHOWS_RULESET_VERSION - 1 };
+
+    expect(ok(ask(old, 'baker', 'social', ['cart-tracks'], dice(20))).run.turn).toBe(2);
+  });
+});
+
 describe('what a shown clue does', () => {
   it('breaks a lie the first time, and confirms it afterwards', () => {
     const first = interrogation(ask(atBaker(), 'baker', 'social', ['cart-tracks'], dice(20)));
     expect(first.outcome.presented).toEqual([{ clueId: 'cart-tracks', effect: 'breaks-lie' }]);
 
-    const second = interrogation(ask(first.run, 'baker', 'social', ['cart-tracks'], dice(20)));
+    // From the ruleset of stale shows the second show is refused (below); before it, it was made and confirmed.
+    const second = interrogation(
+      ask(
+        { ...first.run, rulesetVersion: STALE_SHOWS_RULESET_VERSION - 1 },
+        'baker',
+        'social',
+        ['cart-tracks'],
+        dice(20),
+      ),
+    );
 
     expect(second.outcome.presented).toEqual([{ clueId: 'cart-tracks', effect: 'confirms' }]);
     expect(second.outcome.stance).toBe('holds');
@@ -194,7 +252,11 @@ describe('putting a conclusion to a suspect', () => {
   it('confirms a lie that has fallen, and implicates a suspect its clues are about', () => {
     const first = interrogation(ask(concluded(), 'baker', 'social', [], dice(20), ['motive-debt']));
 
-    const again = interrogation(ask(first.run, 'baker', 'social', [], dice(1), ['motive-debt']));
+    const again = interrogation(
+      ask({ ...first.run, rulesetVersion: STALE_SHOWS_RULESET_VERSION - 1 }, 'baker', 'social', [], dice(1), [
+        'motive-debt',
+      ]),
+    );
 
     expect(again.outcome.presentedInsights).toEqual([{ insightId: 'motive-debt', effect: 'confirms' }]);
     // The same conclusion put to the rival is not about them: the ledger is about the baker, the receipt about no one.
@@ -359,7 +421,10 @@ describe('a pressure with nothing to stand on', () => {
     const backed = interrogation(ask(atBaker(), 'baker', 'pressure', ['flour-crumbs'], dice(2)));
     const confirming = interrogation(
       ask(
-        interrogation(ask(atBaker(), 'baker', 'social', ['cart-tracks'], dice(20))).run,
+        {
+          ...interrogation(ask(atBaker(), 'baker', 'social', ['cart-tracks'], dice(20))).run,
+          rulesetVersion: STALE_SHOWS_RULESET_VERSION - 1,
+        },
         'baker',
         'pressure',
         ['cart-tracks'],
@@ -399,7 +464,7 @@ describe('over many seeds', () => {
           rng,
         );
         if (!resolution.ok) {
-          expect(resolution.refusal.code).toBe('suspect-closed');
+          expect(['suspect-closed', 'nothing-new']).toContain(resolution.refusal.code);
           continue;
         }
         run = resolution.run;
@@ -467,5 +532,54 @@ describe('which suspects a found clue bears on', () => {
     );
 
     expect(bearsOn(run)['seen-pip-rival']).toEqual(['rival']);
+  });
+});
+
+describe('the alibi, once the lie it rests on has fallen', () => {
+  const marked = () =>
+    atBaker({
+      edit: (detectiveCase) => {
+        const lie = detectiveCase.suspects
+          .find(({ id }) => id === 'baker')
+          ?.lies.find(({ id }) => id === 'baker-asleep');
+        if (lie) lie.replacesAlibi = true;
+      },
+    });
+  const alibiOf = (run: DetectiveRunState) =>
+    viewRun(run)
+      .suspects.find(({ id }) => id === 'baker')
+      ?.statements.filter(({ kind }) => kind === 'alibi');
+
+  it('is told as said while the lie stands, and marked refuted when it falls, the admission beside it', () => {
+    const first = interrogation(ask(marked(), 'baker', 'social', [], dice(20)));
+    expect(alibiOf(first.run)).toEqual([expect.objectContaining({ kind: 'alibi' })]);
+    expect(alibiOf(first.run)?.[0]).not.toHaveProperty('refuted');
+
+    const fallen = interrogation(ask(first.run, 'baker', 'social', ['cart-tracks'], dice(20)));
+
+    expect(alibiOf(fallen.run)?.[0]).toMatchObject({ refuted: true });
+    const said = viewRun(fallen.run).suspects.find(({ id }) => id === 'baker')?.statements ?? [];
+    expect(said.map(({ kind }) => kind)).toEqual(expect.arrayContaining(['alibi', 'conceded']));
+  });
+
+  it('stays when a clue breaks other lies of the suspect but not the one it rests on', () => {
+    const fallen = interrogation(ask(marked(), 'baker', 'social', ['flour-crumbs'], dice(20)));
+
+    expect(fallen.run.concededLieIds).toEqual(['baker-alone']);
+    expect(alibiOf(fallen.run)?.[0]).not.toHaveProperty('refuted');
+  });
+
+  it('is refuted once, however many lies fall with it', () => {
+    const fallen = interrogation(ask(marked(), 'baker', 'social', ['cart-tracks', 'flour-crumbs'], dice(20)));
+
+    expect(fallen.run.concededLieIds).toHaveLength(2);
+    expect(alibiOf(fallen.run)).toHaveLength(1);
+    expect(alibiOf(fallen.run)?.[0]).toMatchObject({ refuted: true });
+  });
+
+  it('is never refuted in a case that marks no lie', () => {
+    const fallen = interrogation(ask(atBaker(), 'baker', 'social', ['cart-tracks'], dice(20)));
+
+    expect(alibiOf(fallen.run)?.[0]).not.toHaveProperty('refuted');
   });
 });

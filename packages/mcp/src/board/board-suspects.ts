@@ -79,16 +79,18 @@ function said(view: DetectiveRunView, suspect: Suspect, text: TabText): string {
     .map((day) => {
       const lines = suspect.statements
         .filter((statement) => statement.day === day)
-        .map(({ kind, text: line }) =>
-          kind === 'conceded' && suspect.claims.length > 0
-            ? `<p class="statement"><span class="tag">${e(t.kinds[kind])} · ${e(t.lieFell)}</span><br>${e(line)}</p>`
-            : kind === 'conceded'
-              ? `<p class="statement fell"><span class="tag">${e(t.kinds[kind])} · ${e(t.lieFell)}</span><br><s>${e(line)}</s>${
-                  breakers.length === 0
-                    ? ''
-                    : `<br><span class="tag">${e(t.brokenBy)}:</span> ${breakers.map((id) => chip(view, id, '', 'breaks-lie')).join(' ')}`
-                }</p>`
-              : `<p class="statement"><span class="tag">${e(t.kinds[kind])}</span><br>${e(line)}</p>`,
+        .map(({ kind, text: line, refuted }) =>
+          kind === 'alibi' && refuted === true
+            ? `<p class="statement fell"><span class="tag">${e(t.kinds[kind])} · ${e(t.alibiRefuted)}</span><br><s>${e(line)}</s></p>`
+            : kind === 'conceded' && suspect.claims.length > 0
+              ? `<p class="statement"><span class="tag">${e(t.kinds[kind])} · ${e(t.lieFell)}</span><br>${e(line)}</p>`
+              : kind === 'conceded'
+                ? `<p class="statement fell"><span class="tag">${e(t.kinds[kind])} · ${e(t.lieFell)}</span><br><s>${e(line)}</s>${
+                    breakers.length === 0
+                      ? ''
+                      : `<br><span class="tag">${e(t.brokenBy)}:</span> ${breakers.map((id) => chip(view, id, '', 'breaks-lie')).join(' ')}`
+                  }</p>`
+                : `<p class="statement"><span class="tag">${e(t.kinds[kind])}</span><br>${e(line)}</p>`,
         );
       return `<div class="day"><span class="tag">${e(t.day)} ${String(day)}</span>\n${lines.join('\n')}</div>`;
     })

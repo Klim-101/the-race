@@ -50,6 +50,7 @@ import {
   type Lead,
   type LeadTrigger,
   type Location,
+  type Suspect,
   type ObstacleKind,
   type Venue,
 } from './case-schema.js';
@@ -374,6 +375,11 @@ export interface NewDetectiveRun {
   readonly inspiration?: Inspiration | null | undefined;
   /** The tool slots the player's runs have earned this hero (see `progress.ts`); one for a hero with no runs behind them. */
   readonly toolSlots?: number | undefined;
+}
+
+/** Whether a lie the suspect's alibi rests on has fallen, so the alibi no longer stands. */
+function alibiRefuted(run: DetectiveRunState, suspect: Suspect): boolean {
+  return suspect.lies.some((lie) => lie.replacesAlibi === true && run.concededLieIds.includes(lie.id));
 }
 
 export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
@@ -942,6 +948,8 @@ export interface DetectiveRunView {
       readonly day: number;
       readonly kind: (typeof STATEMENT_KINDS)[number];
       readonly text: string;
+      /** Set on an alibi that a fallen lie has taken away: what the suspect says now is the lie's admission. */
+      readonly refuted?: true;
     }[];
   }[];
   /** The people here whom the hero can ask what they saw: those of the place who are there at this hour. */
@@ -1319,7 +1327,12 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         claims: viewClaims(run, detectiveCase, suspect.id),
         statements: run.statements
           .filter(({ suspectId }) => suspectId === suspect.id)
-          .map(({ day, kind, text }) => ({ day, kind, text })),
+          .map(({ day, kind, text }) => ({
+            day,
+            kind,
+            text,
+            ...(kind === 'alibi' && alibiRefuted(run, suspect) ? { refuted: true as const } : {}),
+          })),
       };
     }),
     clues: detectiveCase.clues

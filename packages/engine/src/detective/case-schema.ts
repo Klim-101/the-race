@@ -212,6 +212,12 @@ export const LieSchema = z.object({
   after: EntityIdSchema.optional(),
   /** A clue the suspect hands over, as testimony, when this lie falls. */
   gives: EntityIdSchema.optional(),
+  /**
+   * Set on the lie the suspect's alibi rests on: when it falls the alibi no longer stands, and the notebook shows it
+   * refuted beside what the suspect now says. At most one lie of a suspect carries it. Optional, so that the cases of
+   * before it keep their seal.
+   */
+  replacesAlibi: z.boolean().optional(),
 });
 export type Lie = z.infer<typeof LieSchema>;
 

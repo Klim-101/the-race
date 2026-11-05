@@ -162,6 +162,8 @@ export interface TabText {
     readonly claims: string;
     readonly mood: string;
     readonly lieFell: string;
+    /** An alibi that a fallen lie has taken away. */
+    readonly alibiRefuted: string;
     readonly brokenBy: string;
     readonly shown: string;
     readonly noneShown: string;
