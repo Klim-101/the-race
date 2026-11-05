@@ -55794,7 +55794,7 @@ function serialized(task) {
 var FINAL_REASON = "All three attempts were used and the engine accepted none of the cases.";
 var scenarioSubmit = defineTool({
   name: "scenario_submit",
-  description: `For the case generator only. Submits one complete case, as JSON text or as an object, to the engine. The engine validates it for this run's hero. If it is accepted the engine seals it and starts the run, and the result is just {"accepted":true}: stop and answer "accepted". If it is not, the result lists the issues (code, path, message), most important first, and how many attempts are left: fix exactly those and submit the whole case again. At most three submissions are allowed; after that the result has "final":true and the run reports a failure, so stop and answer "failed: <reason>". An accepted case can never be replaced. Never repeat a submission that was accepted.`,
+  description: `For the case generator only. Submits one complete case, as JSON text or as an object, to the engine. The engine validates it for this run's hero. If it is accepted the engine seals it and starts the run, and the result is just {"accepted":true}: stop and answer "accepted". If it is not, the result lists the issues (code, path, message), most important first, and how many attempts are left: fix exactly those and submit the whole case again. At most three submissions are allowed; after that the result has "final":true (with the issues of that last rejection) and the run reports a failure, so stop and answer "failed: <reason>". An accepted case can never be replaced. Never repeat a submission that was accepted.`,
   inputSchema: external_exports.object({
     case: external_exports.union([external_exports.string().max(MAX_CASE_TEXT_LENGTH), external_exports.record(external_exports.string(), external_exports.unknown())])
   }),
@@ -55870,8 +55870,10 @@ var scenarioSubmit = defineTool({
       { ...pending, attempts, failed: attemptsLeft === 0 },
       context2.saveFs
     );
-    if (attemptsLeft === 0) return { accepted: false, attemptsLeft, final: true, reason: FINAL_REASON };
-    return { accepted: false, attemptsLeft, ...compactIssues(result.issues) };
+    const issues = compactIssues(result.issues);
+    if (attemptsLeft === 0)
+      return { accepted: false, attemptsLeft, final: true, reason: FINAL_REASON, ...issues };
+    return { accepted: false, attemptsLeft, ...issues };
   })
 });
 
