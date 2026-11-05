@@ -252,6 +252,21 @@ describe('the turn tools', () => {
     expect(errorCode(await call(runGiveUp, { turn: 1 }, context))).toBe('run-over');
   });
 
+  it('read the string "null" as no motive, as a host that sends every argument as text means it', async () => {
+    const context = await activeRun();
+    const choice = { turn: 0, culpritId: 'caterer', motiveInsightId: 'null', evidenceClueIds: [] };
+    const result = await call(accuse, choice, context);
+
+    expect(result.body).toMatchObject({ outcome: { kind: 'accuse', verdict: 'wrong', motiveRight: false } });
+  });
+
+  it('still refuse a motive that names an insight the hero has not made', async () => {
+    const context = await activeRun();
+    const choice = { turn: 0, culpritId: 'caterer', motiveInsightId: 'made-up', evidenceClueIds: [] };
+
+    expect(errorCode(await call(accuse, choice, context))).toBe('no-insight');
+  });
+
   it('give up once, and answer a retry with the same end', async () => {
     const context = await activeRun();
     await call(act, { turn: 0, intent: { kind: 'look' } }, context);
