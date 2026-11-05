@@ -8,6 +8,7 @@ import {
   HOSTILE_MINUTES,
   MAX_MOOD_STEP,
   SHAKEN_EASE,
+  STALE_SHOWS_RULESET_VERSION,
   moodWord,
   TALKS_RULESET_VERSION,
   isClosed,
@@ -136,7 +137,12 @@ export interface InterrogationOutcome {
 }
 
 type TalkRefusal =
-  'unknown-suspect' | 'suspect-elsewhere' | 'clue-not-found' | 'insight-not-found' | 'suspect-closed';
+  | 'unknown-suspect'
+  | 'suspect-elsewhere'
+  | 'clue-not-found'
+  | 'insight-not-found'
+  | 'suspect-closed'
+  | 'nothing-new';
 
 function refuse(code: TalkRefusal, message: string): Resolution {
   return { ok: false, refusal: { code, message } };
@@ -172,6 +178,10 @@ function brokenLies(
     return byInsight || lie.brokenBy.some((clueId) => clueIds.includes(clueId)) ? [{ lie, byInsight }] : [];
   });
 }
+
+/** Whether a clue (or, put to the suspect, a conclusion) is one that breaks the lie. */
+const fellBy = (lie: Lie, kind: 'clue' | 'insight', id: string): boolean =>
+  (kind === 'clue' ? lie.brokenBy : (lie.brokenByInsights ?? [])).includes(id);
 
 /** Whether a clue bears on a suspect: it points at them, or the case says it is about them. */
 function isAbout(detectiveCase: DetectiveCase, clueId: string, suspectId: string): boolean {
@@ -238,6 +248,25 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
   const rules = APPROACH_RULES[intent.approach];
   const mood = moodOf(run, suspect.id);
   const breakable = brokenLies(run, suspect, shown, putInsights);
+  // A show that can change nothing is not made: everything put to the suspect only confirms what they have
+  // already given up. It is public (the lie is in the statements), so saying so tells the player nothing hidden.
+  const confirming = (kind: 'clue' | 'insight', id: string): boolean =>
+    suspect.lies.some((lie) => run.concededLieIds.includes(lie.id) && fellBy(lie, kind, id));
+  const offered = [
+    ...shown.map((id) => confirming('clue', id)),
+    ...putInsights.map((id) => confirming('insight', id)),
+  ];
+  if (
+    run.rulesetVersion >= STALE_SHOWS_RULESET_VERSION &&
+    breakable.length === 0 &&
+    offered.length > 0 &&
+    offered.every(Boolean)
+  ) {
+    return refuse(
+      'nothing-new',
+      `"${suspect.id}" has already given up everything that is shown; it changes nothing.`,
+    );
+  }
   const eased = breakable.reduce(
     (total, { byInsight }) => total + rules.easePerBrokenLie * (byInsight ? INSIGHT_EASE_FACTOR : 1),
     0,
@@ -280,8 +309,6 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
   const minutes = INTERROGATE_MINUTES + (result.success ? 0 : FAILED_INTERROGATION_MINUTES);
 
   // What each thing shown did, by what fell in this talk and by what had fallen before.
-  const fellBy = (lie: Lie, kind: 'clue' | 'insight', id: string): boolean =>
-    (kind === 'clue' ? lie.brokenBy : (lie.brokenByInsights ?? [])).includes(id);
   const effectOfShown = (kind: 'clue' | 'insight', id: string, implicates: boolean): ShownEffect =>
     effectOf(
       fallen.some((lie) => fellBy(lie, kind, id)),
