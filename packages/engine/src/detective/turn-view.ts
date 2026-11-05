@@ -65,6 +65,12 @@ export type TurnDetail =
   | { readonly kind: 'reread'; readonly clue: string }
   | { readonly kind: 'use'; readonly item: ConsumableId }
   | {
+      readonly kind: 'take';
+      readonly how: 'found' | 'sold';
+      readonly itemKind: 'tool' | 'supply';
+      readonly item: string;
+    }
+  | {
       readonly kind: 'accuse';
       /** What the proof lacked, when the right person was named and the proof fell short: told once the run is over. */
       readonly shortfall: Shortfall | null;
@@ -127,6 +133,8 @@ function detailOf(run: DetectiveRunState, entry: LogEntry): TurnDetail {
       };
     case 'use':
       return { kind: 'use', item: outcome.itemId };
+    case 'take':
+      return { kind: 'take', how: outcome.how, itemKind: outcome.itemKind, item: outcome.itemId };
     case 'accuse':
       return {
         kind: 'accuse',

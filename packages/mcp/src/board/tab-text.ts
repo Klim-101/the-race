@@ -258,6 +258,9 @@ export interface TabText {
       readonly nothing: string;
       readonly reread: string;
       readonly use: string;
+      /** What was taken ({name}): found in a search, or bought. */
+      readonly found: string;
+      readonly bought: string;
       readonly accuse: string;
     };
     readonly approaches: Readonly<Record<string, string>>;

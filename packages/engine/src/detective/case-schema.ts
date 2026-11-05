@@ -6,6 +6,7 @@ import { LocaleSchema } from '../locale.js';
 import { InformationSourceSchema, TraitTriggerSchema } from '../traits.js';
 import { WeatherSchema } from '../world/climate.js';
 import { DetectiveSkillSchema } from './archetype.js';
+import { ConsumableIdSchema } from './consumables.js';
 import { GearIdSchema } from './gear.js';
 
 export const CASE_SCHEMA_VERSION = 1;
@@ -139,6 +140,25 @@ export const LeadSchema = z.object({
 });
 export type Lead = z.infer<typeof LeadSchema>;
 
+/**
+ * Something a place keeps for the hero, a tool or a supply: `found` once the place has been searched (a crowbar on a
+ * farm), `sold` there for the asking (a sedative in a shop). Nothing in a case is ever needed from it: the validator
+ * judges the hero's own kit alone, so stock is a way to carry on, never a way to solve.
+ */
+export const STOCK_HOWS = ['found', 'sold'] as const;
+export const StockHowSchema = z.enum(STOCK_HOWS);
+export type StockHow = z.infer<typeof StockHowSchema>;
+export const StockEntrySchema = z.discriminatedUnion('kind', [
+  z.object({ id: EntityIdSchema, kind: z.literal('tool'), itemId: GearIdSchema, how: StockHowSchema }),
+  z.object({
+    id: EntityIdSchema,
+    kind: z.literal('supply'),
+    itemId: ConsumableIdSchema,
+    how: StockHowSchema,
+  }),
+]);
+export type StockEntry = z.infer<typeof StockEntrySchema>;
+
 /** Connections are two-way: listing a connection on either location links both. */
 export const LocationSchema = z.object({
   id: EntityIdSchema,
@@ -164,6 +184,8 @@ export const LocationSchema = z.object({
    * keep their seal; a place without parts is searched as a whole, as it always was.
    */
   parts: z.array(PlacePartSchema).optional(),
+  /** What the place keeps for the hero. Optional, so that the cases of before it keep their seal. */
+  stock: z.array(StockEntrySchema).optional(),
 });
 export type Location = z.infer<typeof LocationSchema>;
 

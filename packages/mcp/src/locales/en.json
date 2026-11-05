@@ -219,6 +219,8 @@
         "moveFailed": "Tried to get into {name} and could not",
         "search": "Searched the place: found {n}",
         "rest": "Rested for the night",
+        "found": "Found and took: {name}",
+        "bought": "Bought: {name}",
         "gotSomething": "something to go on",
         "gotNothing": "nothing",
         "ask": "Asked the locals: {result}",
@@ -492,6 +494,7 @@
         "reread": "read again",
         "sit": "sit down",
         "use": "use something",
+        "take": "pick something up",
         "rest": "rest",
         "accuse": "accusation"
       }

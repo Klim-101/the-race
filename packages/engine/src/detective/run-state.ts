@@ -50,12 +50,14 @@ import {
   type Lead,
   type LeadTrigger,
   type Location,
+  type StockHow,
   type Suspect,
   type ObstacleKind,
   type Venue,
 } from './case-schema.js';
 import { suitcaseOf } from './suitcase.js';
 import { VENUE_RULESET_VERSION, sitsLeft } from './venue.js';
+import { offeredHere } from './stock.js';
 import { TraitSceneSchema, drawTraitScenes } from './trait-scenes.js';
 import { MAX_TOOL_SLOTS, START_TOOL_SLOTS } from '../progress.js';
 import { isLeadEarned, isLeadOpen, isPlaceKnown, leadsEarnedBy } from './leads.js';
@@ -260,6 +262,8 @@ export const DetectiveRunStateSchema = z
     sightings: z.array(SightingRecordSchema).default([]),
     /** What the hero has done with the clues, for the board: where each was found, to whom it was shown, the links tried. */
     history: RunHistorySchema.default(() => emptyHistory()),
+    /** The stock the hero has taken, by id: what a place offered once is gone. Old saves have none. */
+    takenStockIds: z.array(EntityIdSchema).default([]),
     /** Scenes the engine added to places for the hero's traits (see `trait-scenes.ts`). Old saves have none. */
     traitScenes: z.array(TraitSceneSchema).default([]),
     /** The pattern of news the case grew from, when it grew from one. Old saves have none. */
@@ -355,6 +359,11 @@ export const DetectiveRunStateSchema = z
       run.traitScenes.map(({ locationId }) => locationId),
       locationIds,
     );
+    known(
+      'takenStockIds',
+      run.takenStockIds,
+      new Set(run.case.locations.flatMap(({ stock }) => (stock ?? []).map(({ id }) => id))),
+    );
     known('revealedTraitIds', run.revealedTraitIds, new Set(run.traits.map(({ id }) => id)));
   });
 export type DetectiveRunState = z.infer<typeof DetectiveRunStateSchema>;
@@ -432,6 +441,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     claims: [],
     sightings: [],
     history: emptyHistory(),
+    takenStockIds: [],
     traitScenes: drawTraitScenes(input.case, input.traits, input.seed),
     inspiration: input.inspiration ?? null,
   });
@@ -858,6 +868,16 @@ export interface DetectiveRunView {
     readonly exposure: Exposure;
     /** Set for a place where the hero can sit down; with the sittings still left today. */
     readonly venue: { readonly kind: Venue; readonly sitsLeft: number } | null;
+    /**
+     * What the place offers the hero now: what is sold there, and what a search has turned up. What lies undiscovered
+     * is never here, and what was taken is gone.
+     */
+    readonly offers: readonly {
+      readonly id: string;
+      readonly kind: 'tool' | 'supply';
+      readonly itemId: string;
+      readonly how: StockHow;
+    }[];
     /**
      * The parts of the place the hero has noticed, in a place made of parts; what a part holds is never here, and
      * `obstacle` is what stands in the way, which a quick look shows. Empty for a place left whole.
@@ -1287,6 +1307,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         location.venue === undefined || run.rulesetVersion < VENUE_RULESET_VERSION
           ? null
           : { kind: location.venue, sitsLeft: sitsLeft(run) },
+      offers: offeredHere(run).map(({ id, kind, itemId, how }) => ({ id, kind, itemId, how })),
       parts: partsOfPlace(run, location.id)
         .filter(({ id }) => run.noticedPartIds.includes(id))
         .map(({ id, name, obstacle }) => ({
