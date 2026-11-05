@@ -27,6 +27,14 @@ export {
   type LoadRunResult,
 } from './run-store.js';
 export { isRunId, makeRunId } from './run-id.js';
+export {
+  RUN_RESULTS,
+  RunsStatsSchema,
+  collectRunsStats,
+  type RunResult,
+  type RunStatsEntry,
+  type RunsStats,
+} from './runs-stats.js';
 export { buildResumeSummary, RESUME_LABELS, type ResumeLabels } from './resume-summary.js';
 export {
   loadSeeds,

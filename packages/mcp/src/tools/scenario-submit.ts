@@ -24,6 +24,7 @@ import { clearPending, savePending } from '../pending-run.js';
 import { recordsOrNone } from '../profile.js';
 import { describeSighting } from '../sighting-text.js';
 import { requireWorld } from '../world.js';
+import { keepStats } from '../stats.js';
 import { MAX_CASE_ATTEMPTS, openPendingRun } from './generator-brief.js';
 
 /** What a generator is told at most: a long list of issues helps nobody. */
@@ -226,6 +227,7 @@ export const scenarioSubmit = defineTool({
           toolSlots: toolSlotsOf(await recordsOrNone(context)),
         });
         await saveRun(context.saveDir, run, context.saveFs, EMPTY_RUN_LOG);
+        await keepStats(context);
         await clearPending(context.saveDir, context.saveFs);
         return { accepted: true };
       }

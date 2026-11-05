@@ -538,5 +538,44 @@
   "sighting": {
     "clue": "{witness} saw {suspect} at {place} around {times}.",
     "and": "and"
+  },
+  "stats": {
+    "title": "All the runs",
+    "updated": "Updated",
+    "none": "No runs yet.",
+    "unreadable": "a run that cannot be read",
+    "openBoard": "Open the board",
+    "columns": {
+      "date": "Date",
+      "title": "Case",
+      "hero": "Hero",
+      "result": "Result",
+      "days": "Days",
+      "turns": "Turns",
+      "board": "Board"
+    },
+    "totals": {
+      "runs": "runs",
+      "wins": "won",
+      "longest": "days in the longest run",
+      "streak": "best streak of wins"
+    },
+    "results": {
+      "won": "won",
+      "lost": "lost",
+      "gave-up": "given up",
+      "in-progress": "still going",
+      "damaged": "damaged"
+    },
+    "reasons": {
+      "proven": "proven",
+      "unproven": "unproven",
+      "wrong": "wrong person",
+      "time-ran-out": "time ran out",
+      "culprit-fled": "the culprit fled",
+      "reputation-zero": "no reputation left",
+      "breakdown": "nerves gave out",
+      "gave-up": "given up"
+    }
   }
 }

@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
 import { RunSummarySchema, TurnSchema, assertFreshTurn, requireRun, summarizeRun } from '../play.js';
 import { keepProfile } from '../profile.js';
+import { keepStats } from '../stats.js';
 import { ToolFailure } from '../tool-error.js';
 
 export const runGiveUp = defineTool({
@@ -37,6 +38,7 @@ export const runGiveUp = defineTool({
     const ended = run.status === 'active' ? endRun(run, 'gave-up', 'gave-up') : run;
     if (ended !== run) await saveRun(context.saveDir, ended, context.saveFs);
     await keepProfile(context, ended, log);
+    await keepStats(context);
     const { turns, minutes, cluesFound, insights } = deriveStats(log);
     return { view: summarizeRun(ended), stats: { turns, minutes, cluesFound, insights } };
   },
