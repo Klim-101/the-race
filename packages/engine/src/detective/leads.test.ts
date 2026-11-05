@@ -171,6 +171,7 @@ describe('earning a lead', () => {
         reason: 'The hero has a reason to look: office hint.',
         window: null,
         openNow: true,
+        done: false,
         source: { kind: 'clue', clueId: 'flour-crumbs' },
         opens: [{ kind: 'place', id: 'mayor-office', name: 'Mayor office' }],
       },
@@ -390,6 +391,64 @@ describe('a window of time', () => {
     expect(inWindow(day, 9 * 60)).toBe(true);
     expect(inWindow(day, 12 * 60)).toBe(false);
     expect(inWindow(day, 7 * 60)).toBe(false);
+  });
+
+  describe('followed to the end', () => {
+    const onlyWindow = (detectiveCase: DetectiveCase) => {
+      const hint = detectiveCase.leads?.find(({ id }) => id === 'office-hint');
+      if (hint !== undefined) hint.window = night;
+    };
+    const atNight = (run: DetectiveRunState): DetectiveRunState => ({
+      ...run,
+      clock: { ...run.clock, minute: 23 * 60 },
+    });
+
+    it('is done once the place it opens has been visited, whatever the hour of its window', () => {
+      const run = findClue(atStall(newRun({ edit: onlyWindow })), 'flour-crumbs');
+      expect(viewRun(run).leads[0]).toMatchObject({ opens: [{ kind: 'place' }], done: false });
+
+      const visited = ok(
+        resolveIntent(atNight(run), { kind: 'move', locationId: 'mayor-office' }, dice(20)),
+      ).run;
+      expect(viewRun(visited).leads[0]).toMatchObject({ done: true, openNow: true });
+      const morning = { ...visited, clock: { ...visited.clock, minute: 9 * 60 } };
+      expect(viewRun(morning).leads[0]).toMatchObject({ done: true, openNow: false });
+    });
+
+    it('is not done until the part it shows has been searched too', () => {
+      const run = findClue(atStall(newRun({ edit: withWindow })), 'flour-crumbs');
+      const visited = ok(
+        resolveIntent(atNight(run), { kind: 'move', locationId: 'mayor-office' }, dice(20)),
+      ).run;
+      const opened = viewRun(visited).leads[0]?.opens.find(({ kind }) => kind === 'part');
+      expect(opened).toBeDefined();
+      expect(viewRun(visited).leads[0]).toMatchObject({ done: false });
+
+      const searched = {
+        ...visited,
+        searchedParts: [
+          ...visited.searchedParts,
+          { partId: opened?.id ?? '', locationId: 'market-square', turn: visited.turn, foundClueIds: [] },
+        ],
+      };
+      expect(viewRun(searched).leads[0]).toMatchObject({ done: true });
+    });
+
+    it('is not done while the lead opens nothing', () => {
+      const run = findClue(
+        atStall(
+          newRun({
+            edit: (detectiveCase) => {
+              const office = detectiveCase.locations.find(({ id }) => id === 'mayor-office');
+              if (office !== undefined) delete office.requiresLead;
+            },
+          }),
+        ),
+        'flour-crumbs',
+      );
+
+      expect(viewRun(run).leads[0]).toMatchObject({ opens: [], done: false });
+    });
   });
 
   it('keeps a place shut out of its hours, without spending anything', () => {

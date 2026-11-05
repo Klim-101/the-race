@@ -23,6 +23,7 @@ const lead = (id: string, source: unknown, extra: Record<string, unknown> = {}) 
   source,
   window: null,
   openNow: true,
+  done: false,
   opens: [{ kind: 'place', id: 'archive', name: 'Archive' }],
   ...extra,
 });
@@ -142,6 +143,20 @@ describe('the leads on the corkboard', () => {
     expect(pin('by-talk')).toContain('has opened nothing yet');
     expect(pin('by-old-save')).toMatch(/class="lead-pin shut"/);
     expect(pin('by-old-save')).toContain('shut at this hour');
+  });
+
+  it('look done when everything they open has been reached, even in the hours that shut them', () => {
+    const followed = renderEvidenceBoard({
+      ...PLAYED,
+      leads: [lead('followed', { kind: 'clue', clueId: 'c1' }, { done: true, openNow: false })],
+    } as unknown as View);
+    const svg = /<svg class="board"[\s\S]*?<\/svg>/.exec(followed)?.[0] ?? '';
+    const card = /<g class="lead-pin[^"]*"[^>]*data-pick="lead:followed"[\s\S]*?<\/g>/.exec(svg)?.[0] ?? '';
+
+    expect(card).toMatch(/class="lead-pin done"/);
+    expect(card).toContain('followed to the end');
+    expect(card).not.toContain('shut at this hour');
+    expect(pin('by-clue')).not.toContain('followed to the end');
   });
 
   it('are tied by a green thread to the clue, the person or the clues of the conclusion that earned them', () => {

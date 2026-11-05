@@ -426,6 +426,7 @@
       "opensNothing": "has opened nothing yet",
       "followNow": "can be followed now",
       "shutNow": "shut at this hour",
+      "doneNow": "followed to the end",
       "from": {
         "clue": "from clue {n}",
         "study": "from studying {n}",
