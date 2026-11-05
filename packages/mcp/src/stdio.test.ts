@@ -8,7 +8,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { defineTool } from './define-tool.js';
 import { SERVER_NAME, SERVER_VERSION } from './server-identity.js';
-import { MAX_NEWS_LAG_DAYS, createDefaultContext, newsLagDays, serveStdio } from './stdio.js';
+import {
+  MAX_NEWS_LAG_DAYS,
+  createDefaultContext,
+  newsLagDays,
+  pluginVersionOf,
+  serveStdio,
+} from './stdio.js';
 import { TOOLS } from './tools/index.js';
 import { ToolFailure } from './tool-error.js';
 import { fakeContext } from '../test/fake-context.js';
@@ -64,6 +70,7 @@ describe('serveStdio', () => {
     const expected = {
       name: SERVER_NAME,
       version: SERVER_VERSION,
+      pluginVersion: null,
       rulesetVersion: RULESET_VERSION,
       locales: [...LOCALES],
     };
@@ -119,6 +126,11 @@ describe('createDefaultContext', () => {
     expect(createDefaultContext('some-dir', {}).newsLagDays).toBe(0);
   });
 
+  it('takes the version of the plugin from the environment the launcher sets, and none without it', () => {
+    expect(createDefaultContext('some-dir', { RACE_PLUGIN_VERSION: '0.55.0' }).pluginVersion).toBe('0.55.0');
+    expect(createDefaultContext('some-dir', {}).pluginVersion).toBeUndefined();
+  });
+
   it('defaults to the save directory resolved from the environment', () => {
     const home = resolve('temp-race-home');
     vi.stubEnv('RACE_HOME', home);
@@ -135,6 +147,32 @@ describe('newsLagDays', () => {
     expect(newsLagDays('2')).toBe(2);
     expect(newsLagDays('99')).toBe(MAX_NEWS_LAG_DAYS);
     for (const bad of [undefined, '', '0', '-1', '1.5', 'many']) expect(newsLagDays(bad)).toBe(0);
+  });
+});
+
+describe('pluginVersionOf', () => {
+  it('keeps a text, trimmed, and drops an empty or a missing one', () => {
+    expect(pluginVersionOf(' 1.2.3 ')).toEqual({ pluginVersion: '1.2.3' });
+    for (const none of [undefined, '', '   ']) expect(pluginVersionOf(none)).toEqual({});
+  });
+});
+
+describe('server_info and the plugin', () => {
+  it('tells the version of the plugin that started the server, beside its own', async () => {
+    const peer = new Peer();
+    const server = await serveStdio(peer, { ...fakeContext(), pluginVersion: '0.55.0' }, TOOLS);
+    closers.push(() => server.close());
+    await peer.initialize();
+
+    const reply = await peer.request('tools/call', { name: 'server_info', arguments: {} });
+
+    expect(reply.result).toMatchObject({
+      structuredContent: {
+        version: SERVER_VERSION,
+        pluginVersion: '0.55.0',
+        rulesetVersion: RULESET_VERSION,
+      },
+    });
   });
 });
 
