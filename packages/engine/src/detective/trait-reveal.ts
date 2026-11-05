@@ -3,6 +3,7 @@
 
 import { traitsActing, type Trait, type TraitTrigger } from '../traits.js';
 import { closedSources } from './obtainability.js';
+import { scenesOf } from './trait-scenes.js';
 import { spendTime, type DetectiveRunState } from './run-state.js';
 
 // A hidden trait is shown to the player the first time it does something: it shifts a roll, finds a clue
@@ -67,10 +68,12 @@ export function lockOutReveals(run: DetectiveRunState, locationId: string): Reve
       clue.source !== null &&
       closed.has(clue.source),
   );
-  if (!shutOut) return [];
-  return run.traits
-    .filter(({ effects }) => effects.some((effect) => effect.kind === 'lock-out'))
-    .map((trait) => revealedBy(trait, 'lock-out'));
+  // A trait that shuts a source is also met where the engine put its scene (the old enemy at the precinct): the
+  // hero is shut out of what that person guards, whether or not a clue of the case came from it.
+  const met = (trait: Trait): boolean =>
+    scenesOf(run).some((scene) => scene.locationId === locationId && scene.trigger === trait.trigger);
+  const lockOuts = run.traits.filter(({ effects }) => effects.some((effect) => effect.kind === 'lock-out'));
+  return lockOuts.filter((trait) => shutOut || met(trait)).map((trait) => revealedBy(trait, 'lock-out'));
 }
 
 const SPAWNING = (trait: Trait): boolean => trait.effects.some((effect) => effect.kind === 'spawn-event');

@@ -30,8 +30,9 @@ export const RUN_SCHEMA_VERSION = 2;
  * 23: a world event can set the weather of its day, so the news and the road agree (see `weather.ts`).
  * 24: the hazards of the climate make a bad day of the road harder: a longer walk and mishaps of their own (see
  * `road.ts`).
+ * 25: the engine gives each place-bound trait of the hero a place of its own to act in (see `trait-scenes.ts`).
  */
-export const RULESET_VERSION = 24;
+export const RULESET_VERSION = 25;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;

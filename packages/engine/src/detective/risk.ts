@@ -8,6 +8,7 @@ import { modifierSources } from './condition.js';
 import type { Consequence } from './actions.js';
 import { changeReputation, strainNerves, type DetectiveRunState } from './run-state.js';
 import { actingReveals, sceneSituations, type Revealed } from './trait-reveal.js';
+import { locationScene } from './trait-scenes.js';
 
 // Using a tool that is not lawful (a lockpick, a knife, a crowbar) risks being seen. How well the hero keeps their
 // head is a die and their social skill, and what weighs on it: a calm trait, and how worn they are. A hero
@@ -57,7 +58,7 @@ export const risks = (run: Pick<DetectiveRunState, 'rulesetVersion'>): boolean =
 
 /** The risk of one use of an unlawful tool in a place: a die, and what it costs the hero if they are seen. */
 export function unlawfulRisk(run: DetectiveRunState, rng: Rng, location: Location): Risk {
-  const scene = sceneSituations(run, ['unlawful-act' as const, ...location.situations]);
+  const scene = sceneSituations(run, ['unlawful-act' as const, ...locationScene(run, location)]);
   const total =
     rng.roll(D20_SIDES) +
     run.hero.skills[DISCRETION] +

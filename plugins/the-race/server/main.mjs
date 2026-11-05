@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 24;
+var RULESET_VERSION = 25;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -35807,6 +35807,50 @@ function sitRefusal(run, location, nervesMax) {
   return sitsLeft(run) === 0 ? "sat-enough" : null;
 }
 
+// packages/engine/src/detective/trait-scenes.ts
+var TRAIT_SCENES_RULESET_VERSION = 25;
+var PLACE_BOUND_TRIGGERS = [
+  "financial-documents",
+  "confined-space",
+  "police-contact",
+  "digital-evidence",
+  "crowd",
+  "high-society"
+];
+var TraitSceneSchema = external_exports.object({
+  locationId: external_exports.string().min(1),
+  trigger: TraitTriggerSchema
+});
+var isPlaceBound = (trigger) => PLACE_BOUND_TRIGGERS.includes(trigger);
+function placesFor(detectiveCase) {
+  const closing = scheduledClosures(detectiveCase);
+  const usable = detectiveCase.locations.filter(
+    ({ id }) => id !== detectiveCase.startLocationId && !closing.has(id)
+  );
+  const easy = usable.filter(
+    ({ access, requiresLead }) => access.kind === "open" && requiresLead === void 0
+  );
+  const chosen = easy.length > 0 ? easy : usable;
+  return (chosen.length > 0 ? chosen : detectiveCase.locations.filter(({ id }) => !closing.has(id))).map(
+    ({ id }) => id
+  );
+}
+function drawTraitScenes(detectiveCase, traits, seed) {
+  const rng = createRng(`${seed}:trait-scenes`);
+  const places = placesFor(detectiveCase);
+  const triggers = [...new Set(traits.map(({ trigger }) => trigger).filter(isPlaceBound))];
+  return triggers.flatMap((trigger) => {
+    const pick5 = rng.roll(places.length || 1) - 1;
+    return places.filter((_, at3) => at3 === pick5).map((locationId) => ({ locationId, trigger }));
+  });
+}
+var scenesOf = (run) => run.rulesetVersion >= TRAIT_SCENES_RULESET_VERSION ? run.traitScenes : [];
+function locationScene(run, location) {
+  const added = scenesOf(run).filter(({ locationId }) => locationId === location.id);
+  if (added.length === 0) return location.situations;
+  return [.../* @__PURE__ */ new Set([...location.situations, ...added.map(({ trigger }) => trigger)])];
+}
+
 // packages/engine/src/detective/leads.ts
 var LEADS_RULESET_VERSION = 13;
 var leadsApply = (run) => run.rulesetVersion >= LEADS_RULESET_VERSION;
@@ -36187,6 +36231,8 @@ var DetectiveRunStateSchema = external_exports.object({
   sightings: external_exports.array(SightingRecordSchema).default([]),
   /** What the hero has done with the clues, for the board: where each was found, to whom it was shown, the links tried. */
   history: RunHistorySchema.default(() => emptyHistory()),
+  /** Scenes the engine added to places for the hero's traits (see `trait-scenes.ts`). Old saves have none. */
+  traitScenes: external_exports.array(TraitSceneSchema).default([]),
   /** The pattern of news the case grew from, when it grew from one. Old saves have none. */
   inspiration: InspirationSchema.nullable().default(null)
 }).superRefine((run, context2) => {
@@ -36273,6 +36319,11 @@ var DetectiveRunStateSchema = external_exports.object({
       message: "A piece of gear is in the kit at most once."
     });
   }
+  known(
+    "traitScenes",
+    run.traitScenes.map(({ locationId }) => locationId),
+    locationIds
+  );
   known("revealedTraitIds", run.revealedTraitIds, new Set(run.traits.map(({ id }) => id)));
 });
 function createDetectiveRun(input2) {
@@ -36325,6 +36376,7 @@ function createDetectiveRun(input2) {
     claims: [],
     sightings: [],
     history: emptyHistory(),
+    traitScenes: drawTraitScenes(input2.case, input2.traits, input2.seed),
     inspiration: input2.inspiration ?? null
   });
 }
@@ -37184,8 +37236,9 @@ function lockOutReveals(run, locationId) {
   const shutOut = run.case.clues.some(
     (clue) => clue.locationId === locationId && !run.foundClueIds.includes(clue.id) && clue.source !== null && closed.has(clue.source)
   );
-  if (!shutOut) return [];
-  return run.traits.filter(({ effects }) => effects.some((effect) => effect.kind === "lock-out")).map((trait) => revealedBy(trait, "lock-out"));
+  const met = (trait) => scenesOf(run).some((scene) => scene.locationId === locationId && scene.trigger === trait.trigger);
+  const lockOuts = run.traits.filter(({ effects }) => effects.some((effect) => effect.kind === "lock-out"));
+  return lockOuts.filter((trait) => shutOut || met(trait)).map((trait) => revealedBy(trait, "lock-out"));
 }
 var SPAWNING = (trait) => trait.effects.some((effect) => effect.kind === "spawn-event");
 function collectDebt(run, previousDay) {
@@ -37296,7 +37349,7 @@ function resolveInterrogate(run, intent, rng) {
   const difficulty = Math.max(MIN_INTERROGATION_DIFFICULTY, rules.difficulty - eased - shaken);
   const situations = sceneSituations(run, [
     "interrogation",
-    ...run.case.locations.flatMap(({ id, situations: situations2 }) => id === run.locationId ? situations2 : [])
+    ...run.case.locations.flatMap((place2) => place2.id === run.locationId ? locationScene(run, place2) : [])
   ]);
   const result = rollCheck(
     rng,
@@ -37505,7 +37558,7 @@ function detentionMinutes(reputation, contacts) {
 }
 var risks = (run) => run.rulesetVersion >= RISK_RULESET_VERSION;
 function unlawfulRisk(run, rng, location) {
-  const scene = sceneSituations(run, ["unlawful-act", ...location.situations]);
+  const scene = sceneSituations(run, ["unlawful-act", ...locationScene(run, location)]);
   const total = rng.roll(D20_SIDES) + run.hero.skills[DISCRETION] + collectModifier(modifierSources(run), DISCRETION, scene);
   const revealed = actingReveals(run, scene, DISCRETION);
   if (total >= UNSEEN_AT) return { run, detentionMinutes: 0, consequences: [], revealed };
@@ -37853,7 +37906,7 @@ function resolveSearchPart(run, rng, location, parts, partId, toolId) {
   let cleared = true;
   let blundered = false;
   if (rules.check !== null) {
-    const attempt = roll(run, rng, rules.check, location.situations);
+    const attempt = roll(run, rng, rules.check, locationScene(run, location));
     felt.push(...attempt.felt);
     revealed.push(...attempt.revealed);
     details.push({ subject: { kind: "part", id: part.id }, result: attempt.result });
@@ -37915,7 +37968,7 @@ function searchPartForClue(run, rng, location, part, carried) {
       found = clue;
       details.push({ subject, result: "auto" });
     } else {
-      const situations = [...location.situations, ...clue.situations];
+      const situations = [...locationScene(run, location), ...clue.situations];
       const { result, felt: moved3, revealed: acted } = roll(run, rng, clue.discovery, situations);
       felt.push(...moved3);
       revealed.push(...acted);
@@ -37970,7 +38023,7 @@ function resolveSearch(run, rng, partId, toolId) {
   const revealed = lockOutReveals(run, location.id);
   const found = [];
   for (const clue of hidden) {
-    const situations = [...location.situations, ...clue.situations];
+    const situations = [...locationScene(run, location), ...clue.situations];
     if (reinspection) situations.push("reinspection");
     const subject = { kind: "clue", id: clue.id };
     const scene = sceneSituations(run, situations);
@@ -38050,7 +38103,11 @@ function resolveMove(run, rng, locationId) {
         }
         break;
       case "skill": {
-        const { result, felt: moved4, revealed: acted } = roll(run, rng, access.check, destination.situations);
+        const {
+          result,
+          felt: moved4,
+          revealed: acted
+        } = roll(run, rng, access.check, locationScene(run, destination));
         felt.push(...moved4);
         revealed.push(...acted);
         results.push(result);
@@ -38160,7 +38217,7 @@ function resolveAsk(run, rng, intent) {
       skill: "contacts",
       difficulty: ASK_DIFFICULTY - (helper?.bonus ?? 0) - (named2 ? WITNESS_NAMED_EASE : 0)
     },
-    location.situations
+    locationScene(run, location)
   );
   const { result } = attempt;
   const worndown = helper === void 0 ? run : wearTool(run, helper.item.id, false);
@@ -38202,7 +38259,7 @@ function resolveStudy(run, rng, clueId, toolId) {
   }
   const { item, rules } = choice;
   const location = locationById(run.case, run.locationId);
-  const attempt = roll(run, rng, rules.study, location.situations);
+  const attempt = roll(run, rng, rules.study, locationScene(run, location));
   const { result } = attempt;
   const used = worn(item, result.critical === "failure");
   const worndown = wearTool(run, item.id, result.critical === "failure");
