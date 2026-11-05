@@ -3913,50 +3913,50 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative2, options, skipNormalization) {
+    function resolveComponent(base, relative3, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative2 = parse3(serialize(relative2, options), options);
+        relative3 = parse3(serialize(relative3, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative2.scheme) {
-        target.scheme = relative2.scheme;
-        target.userinfo = relative2.userinfo;
-        target.host = relative2.host;
-        target.port = relative2.port;
-        target.path = removeDotSegments(relative2.path || "");
-        target.query = relative2.query;
+      if (!options.tolerant && relative3.scheme) {
+        target.scheme = relative3.scheme;
+        target.userinfo = relative3.userinfo;
+        target.host = relative3.host;
+        target.port = relative3.port;
+        target.path = removeDotSegments(relative3.path || "");
+        target.query = relative3.query;
       } else {
-        if (relative2.userinfo !== void 0 || relative2.host !== void 0 || relative2.port !== void 0) {
-          target.userinfo = relative2.userinfo;
-          target.host = relative2.host;
-          target.port = relative2.port;
-          target.path = removeDotSegments(relative2.path || "");
-          target.query = relative2.query;
+        if (relative3.userinfo !== void 0 || relative3.host !== void 0 || relative3.port !== void 0) {
+          target.userinfo = relative3.userinfo;
+          target.host = relative3.host;
+          target.port = relative3.port;
+          target.path = removeDotSegments(relative3.path || "");
+          target.query = relative3.query;
         } else {
-          if (!relative2.path) {
+          if (!relative3.path) {
             target.path = base.path;
-            if (relative2.query !== void 0) {
-              target.query = relative2.query;
+            if (relative3.query !== void 0) {
+              target.query = relative3.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative2.path[0] === "/") {
-              target.path = removeDotSegments(relative2.path);
+            if (relative3.path[0] === "/") {
+              target.path = removeDotSegments(relative3.path);
             } else {
               const baseHasAuthority = base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0;
               if (baseHasAuthority && !base.path) {
-                target.path = "/" + relative2.path;
+                target.path = "/" + relative3.path;
               } else if (!base.path) {
-                target.path = relative2.path;
+                target.path = relative3.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative2.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative3.path;
               }
               target.path = base.scheme === void 0 && !baseHasAuthority && target.path[0] !== "/" ? removeDotSegmentsRelative(target.path) : removeDotSegments(target.path);
             }
-            target.query = relative2.query;
+            target.query = relative3.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3964,7 +3964,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative2.fragment;
+      target.fragment = relative3.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -41209,6 +41209,103 @@ function runBoardFile(saveDir, runId) {
   return join3(runFiles(saveDir, runId).directory, BOARD_DIR, BOARD_FILE);
 }
 
+// packages/saves/src/runs-stats.ts
+var RUN_RESULTS = ["won", "lost", "gave-up", "in-progress", "damaged"];
+var RunResultSchema = external_exports.enum(RUN_RESULTS);
+var RunStatsEntrySchema = external_exports.strictObject({
+  runId: external_exports.string().min(1),
+  /** The day the run was made, from its id; `null` for a run whose id carries none. */
+  startedOn: external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  /** `null` for a run that could not be read. */
+  title: external_exports.string().nullable(),
+  hero: external_exports.string().nullable(),
+  result: RunResultSchema,
+  /** How the run ended, as the view says it; `null` while it goes on or when it cannot be read. */
+  endReason: external_exports.string().nullable(),
+  days: external_exports.int().min(1).nullable(),
+  turns: external_exports.int().min(0).nullable(),
+  /** Whether the board of the run is on disk, so that the page may link to it. */
+  board: external_exports.boolean()
+});
+var RunsStatsSchema = external_exports.strictObject({
+  schemaVersion: external_exports.literal(1),
+  updatedOn: external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  /** The language of the page: that of the newest run that could be read. */
+  locale: LocaleSchema,
+  /** The first played first. */
+  runs: external_exports.array(RunStatsEntrySchema),
+  totals: external_exports.strictObject({
+    runs: external_exports.int().min(0),
+    wins: external_exports.int().min(0),
+    /** The most days any run took. */
+    longestDays: external_exports.int().min(0),
+    /** The most wins in a row among the runs that are over, in the order they were played. */
+    bestStreak: external_exports.int().min(0)
+  })
+});
+var DAY_OF_ID = /^\d{8}-\d{6}-/;
+function startedOn(runId) {
+  return DAY_OF_ID.test(runId) ? `${runId.slice(0, 4)}-${runId.slice(4, 6)}-${runId.slice(6, 8)}` : null;
+}
+function bestStreak(runs) {
+  let best = 0;
+  let current = 0;
+  for (const { result } of runs) {
+    if (result === "in-progress" || result === "damaged") continue;
+    current = result === "won" ? current + 1 : 0;
+    best = Math.max(best, current);
+  }
+  return best;
+}
+async function collectRunsStats(saveDir, updatedOn, fs = nodeSaveFs) {
+  const runs = [];
+  let locale = "en";
+  for (const runId of await listRunIds(saveDir, fs)) {
+    const board = await fs.readFile(runBoardFile(saveDir, runId)).catch(() => void 0) !== void 0;
+    const loaded = await loadRun(saveDir, runId, fs);
+    if (!loaded.ok && loaded.reason === "missing") continue;
+    if (!loaded.ok) {
+      runs.push({
+        runId,
+        startedOn: startedOn(runId),
+        title: null,
+        hero: null,
+        result: "damaged",
+        endReason: null,
+        days: null,
+        turns: null,
+        board
+      });
+      continue;
+    }
+    const { run } = loaded;
+    locale = run.locale;
+    runs.push({
+      runId,
+      startedOn: startedOn(runId),
+      title: run.case.title,
+      hero: run.hero.name,
+      result: run.status === "active" ? "in-progress" : run.status,
+      endReason: run.endReason,
+      days: run.clock.day,
+      turns: run.turn,
+      board
+    });
+  }
+  return RunsStatsSchema.parse({
+    schemaVersion: 1,
+    updatedOn,
+    locale,
+    runs,
+    totals: {
+      runs: runs.length,
+      wins: runs.filter(({ result }) => result === "won").length,
+      longestDays: Math.max(0, ...runs.map(({ days }) => days ?? 0)),
+      bestStreak: bestStreak(runs)
+    }
+  });
+}
+
 // packages/saves/src/seed-store.ts
 import { join as join4 } from "node:path";
 var SEED_DAYS_KEPT = 14;
@@ -52277,6 +52374,45 @@ var en_default3 = {
   sighting: {
     clue: "{witness} saw {suspect} at {place} around {times}.",
     and: "and"
+  },
+  stats: {
+    title: "All the runs",
+    updated: "Updated",
+    none: "No runs yet.",
+    unreadable: "a run that cannot be read",
+    openBoard: "Open the board",
+    columns: {
+      date: "Date",
+      title: "Case",
+      hero: "Hero",
+      result: "Result",
+      days: "Days",
+      turns: "Turns",
+      board: "Board"
+    },
+    totals: {
+      runs: "runs",
+      wins: "won",
+      longest: "days in the longest run",
+      streak: "best streak of wins"
+    },
+    results: {
+      won: "won",
+      lost: "lost",
+      "gave-up": "given up",
+      "in-progress": "still going",
+      damaged: "damaged"
+    },
+    reasons: {
+      proven: "proven",
+      unproven: "unproven",
+      wrong: "wrong person",
+      "time-ran-out": "time ran out",
+      "culprit-fled": "the culprit fled",
+      "reputation-zero": "no reputation left",
+      breakdown: "nerves gave out",
+      "gave-up": "given up"
+    }
   }
 };
 
@@ -52819,6 +52955,45 @@ var ru_default2 = {
   sighting: {
     clue: "\u0421\u0432\u0438\u0434\u0435\u0442\u0435\u043B\u044C {witness}: {suspect} \u2014 {place}, \u043E\u043A\u043E\u043B\u043E {times}.",
     and: "\u0438"
+  },
+  stats: {
+    title: "\u0412\u0441\u0435 \u0437\u0430\u0431\u0435\u0433\u0438",
+    updated: "\u041E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u043E",
+    none: "\u0417\u0430\u0431\u0435\u0433\u043E\u0432 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442.",
+    unreadable: "\u0437\u0430\u0431\u0435\u0433, \u043A\u043E\u0442\u043E\u0440\u044B\u0439 \u043D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u044C",
+    openBoard: "\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0434\u043E\u0441\u043A\u0443",
+    columns: {
+      date: "\u0414\u0430\u0442\u0430",
+      title: "\u0414\u0435\u043B\u043E",
+      hero: "\u0413\u0435\u0440\u043E\u0439",
+      result: "\u0418\u0442\u043E\u0433",
+      days: "\u0414\u043D\u0438",
+      turns: "\u0425\u043E\u0434\u044B",
+      board: "\u0414\u043E\u0441\u043A\u0430"
+    },
+    totals: {
+      runs: "\u0437\u0430\u0431\u0435\u0433\u043E\u0432",
+      wins: "\u0432\u044B\u0438\u0433\u0440\u0430\u043D\u043E",
+      longest: "\u0434\u043D\u0435\u0439 \u0432 \u0441\u0430\u043C\u043E\u043C \u0434\u043E\u043B\u0433\u043E\u043C \u0437\u0430\u0431\u0435\u0433\u0435",
+      streak: "\u043B\u0443\u0447\u0448\u0430\u044F \u0441\u0435\u0440\u0438\u044F \u043F\u043E\u0431\u0435\u0434"
+    },
+    results: {
+      won: "\u0432\u044B\u0438\u0433\u0440\u0430\u043D",
+      lost: "\u043F\u0440\u043E\u0438\u0433\u0440\u0430\u043D",
+      "gave-up": "\u043E\u0441\u0442\u0430\u0432\u043B\u0435\u043D",
+      "in-progress": "\u0438\u0434\u0451\u0442",
+      damaged: "\u043F\u043E\u0432\u0440\u0435\u0436\u0434\u0451\u043D"
+    },
+    reasons: {
+      proven: "\u0434\u043E\u043A\u0430\u0437\u0430\u043D\u043E",
+      unproven: "\u043D\u0435 \u0434\u043E\u043A\u0430\u0437\u0430\u043D\u043E",
+      wrong: "\u043D\u0435 \u0442\u043E\u0442 \u0447\u0435\u043B\u043E\u0432\u0435\u043A",
+      "time-ran-out": "\u0432\u044B\u0448\u043B\u043E \u0432\u0440\u0435\u043C\u044F",
+      "culprit-fled": "\u0432\u0438\u043D\u043E\u0432\u043D\u044B\u0439 \u0441\u043A\u0440\u044B\u043B\u0441\u044F",
+      "reputation-zero": "\u0440\u0435\u043F\u0443\u0442\u0430\u0446\u0438\u0438 \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C",
+      breakdown: "\u0441\u0434\u0430\u043B\u0438 \u043D\u0435\u0440\u0432\u044B",
+      "gave-up": "\u043E\u0441\u0442\u0430\u0432\u043B\u0435\u043D"
+    }
   }
 };
 
@@ -54253,6 +54428,102 @@ async function keepBoard(context2, runId, run, log, before) {
   }
 }
 
+// packages/mcp/src/stats.ts
+import { basename, dirname as dirname3, join as join9, relative as relative2, sep } from "node:path";
+
+// packages/mcp/src/stats-page.ts
+var STYLE2 = `
+:root{color-scheme:light dark;--bg:#f4efe6;--card:#fffdf8;--ink:#2a2622;--muted:#7a7066;--line:#ddd3c3;--accent:#8a3b2a;--warn:#b26a00}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1917;--card:#252220;--ink:#ece4d8;--muted:#a09484;--line:#3a3430;--accent:#e08a70;--warn:#e0a040}}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 16px 48px;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,'Times New Roman',serif;overflow-wrap:anywhere}
+main{max-width:960px;margin:0 auto}
+h1{margin:0 0 4px;font-size:1.8rem}
+.meta{color:var(--muted);margin:0 0 16px}
+.totals{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 20px;padding:0;list-style:none}
+.totals li{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:8px 14px}
+.totals strong{display:block;font-size:1.4rem}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line)}
+th,td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:normal;font-size:.9rem}
+a{color:var(--accent)}
+.won{color:var(--accent);font-weight:bold}
+.damaged,.in-progress{color:var(--warn)}
+.empty{color:var(--muted)}
+@media print{body{background:#fff;color:#000}}
+`;
+function renderStatsPage(stats, boardHref) {
+  const text = LOCALE_TEXT[stats.locale].stats;
+  const e = escapeHtml;
+  const none = "\u2013";
+  const rows = stats.runs.toReversed().map(({ runId, startedOn: startedOn2, title, hero, result, endReason, days, turns, board }) => {
+    const how = endReason === null ? text.results[result] : `${text.results[result]} \xB7 ${named(text.reasons, endReason)}`;
+    return `<tr>
+<td>${e(startedOn2 ?? none)}</td>
+<td>${title === null ? `<span class="empty">${e(text.unreadable)}</span>` : e(title)}</td>
+<td>${hero === null ? none : e(hero)}</td>
+<td class="${e(result)}">${e(how)}</td>
+<td>${days === null ? none : String(days)}</td>
+<td>${turns === null ? none : String(turns)}</td>
+<td>${board ? `<a href="${e(boardHref(runId))}">${e(text.openBoard)}</a>` : none}</td>
+</tr>`;
+  });
+  return `<!doctype html>
+<html lang="${stats.locale}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+<title>${e(text.title)}</title>
+<style>${STYLE2}</style>
+</head>
+<body>
+<main>
+<h1>${e(text.title)}</h1>
+<p class="meta">${e(text.updated)}: ${e(stats.updatedOn)}</p>
+<ul class="totals">
+<li><strong>${String(stats.totals.runs)}</strong>${e(text.totals.runs)}</li>
+<li><strong>${String(stats.totals.wins)}</strong>${e(text.totals.wins)}</li>
+<li><strong>${String(stats.totals.longestDays)}</strong>${e(text.totals.longest)}</li>
+<li><strong>${String(stats.totals.bestStreak)}</strong>${e(text.totals.streak)}</li>
+</ul>${rows.length === 0 ? `
+<p class="empty">${e(text.none)}</p>` : `
+<div class="scroll"><table>
+<thead><tr><th>${e(text.columns.date)}</th><th>${e(text.columns.title)}</th><th>${e(text.columns.hero)}</th><th>${e(text.columns.result)}</th><th>${e(text.columns.days)}</th><th>${e(text.columns.turns)}</th><th>${e(text.columns.board)}</th></tr></thead>
+<tbody>
+${rows.join("\n")}
+</tbody>
+</table></div>`}
+</main>
+</body>
+</html>
+`;
+}
+
+// packages/mcp/src/stats.ts
+var STATS_JSON = "stats.json";
+var STATS_PAGE = "stats.html";
+var statsDirOf = (saveDir) => basename(saveDir) === "saves" ? dirname3(saveDir) : saveDir;
+async function writeStats(context2) {
+  const directory = statsDirOf(context2.saveDir);
+  const stats = await collectRunsStats(context2.saveDir, context2.today(), context2.saveFs);
+  const page = renderStatsPage(
+    stats,
+    (runId) => relative2(directory, runBoardFile(context2.saveDir, runId)).split(sep).join("/")
+  );
+  await context2.saveFs.mkdir(directory);
+  await replaceFile(context2.saveFs, join9(directory, STATS_JSON), `${JSON.stringify(stats, null, 2)}
+`);
+  await replaceFile(context2.saveFs, join9(directory, STATS_PAGE), page);
+}
+async function keepStats(context2) {
+  try {
+    await writeStats(context2);
+  } catch {
+  }
+}
+
 // packages/mcp/src/profile.ts
 async function keepProfile(context2, run, log) {
   const record2 = profileRecordOf(run, log);
@@ -54423,6 +54694,7 @@ async function playIntent(context2, turn, intent) {
   await saveRun(context2.saveDir, resolution.run, context2.saveFs, recorded);
   await keepProfile(context2, resolution.run, recorded);
   await keepBoard(context2, runId, resolution.run, recorded, run);
+  if (run.status === "active" && resolution.run.status !== "active") await keepStats(context2);
   return {
     outcome: { ...resolution.outcome },
     events: eventsOfTurn(run, resolution.run),
@@ -54490,7 +54762,7 @@ var deduce2 = defineTool({
 });
 
 // packages/mcp/src/tools/evidence-board.ts
-import { dirname as dirname3 } from "node:path";
+import { dirname as dirname4 } from "node:path";
 import { pathToFileURL } from "node:url";
 var evidenceBoard = defineTool({
   name: "evidence_board",
@@ -54511,7 +54783,7 @@ var evidenceBoard = defineTool({
     } catch {
       throw new ToolFailure({
         code: "board-unwritable",
-        message: `The evidence board could not be written to ${dirname3(path)}.`,
+        message: `The evidence board could not be written to ${dirname4(path)}.`,
         remediation: 'Tell the player in one plain sentence that the board folder cannot be written, and that they can choose another game folder in the plugin settings (the "Game folder" option, or the RACE_GAME_FOLDER variable) and start a new session. The run itself is fine: carry on without the board.'
       });
     }
@@ -54565,7 +54837,7 @@ function namesInHeadlines(news) {
 }
 
 // packages/mcp/src/pending-run.ts
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
 var PENDING_THEMES = CRIME_TYPES;
 var PendingThemeSchema = external_exports.enum(PENDING_THEMES);
 var PendingRunSchema = external_exports.object({
@@ -54582,7 +54854,7 @@ var PendingRunSchema = external_exports.object({
   failed: external_exports.boolean().default(false)
 });
 function pendingFile(saveDir) {
-  return join9(saveDir, "pending", "state.json");
+  return join10(saveDir, "pending", "state.json");
 }
 function themeOfSeed(seed) {
   const pick5 = createRng(`${seed}:theme`).roll(PENDING_THEMES.length) - 1;
@@ -54620,7 +54892,7 @@ async function loadPending(saveDir, fs) {
 async function savePending(saveDir, pending, fs) {
   const path = pendingFile(saveDir);
   const temporary = `${path}.tmp`;
-  await fs.mkdir(join9(saveDir, "pending"));
+  await fs.mkdir(join10(saveDir, "pending"));
   try {
     await fs.writeFileSynced(temporary, `${JSON.stringify(PendingRunSchema.parse(pending), null, 2)}
 `);
@@ -55051,6 +55323,7 @@ var runGiveUp = defineTool({
     const ended = run.status === "active" ? endRun(run, "gave-up", "gave-up") : run;
     if (ended !== run) await saveRun(context2.saveDir, ended, context2.saveFs);
     await keepProfile(context2, ended, log);
+    await keepStats(context2);
     const { turns, minutes: minutes2, cluesFound, insights } = deriveStats(log);
     return { view: summarizeRun(ended), stats: { turns, minutes: minutes2, cluesFound, insights } };
   }
@@ -55322,6 +55595,7 @@ var scenarioSubmit = defineTool({
         toolSlots: toolSlotsOf(await recordsOrNone(context2))
       });
       await saveRun(context2.saveDir, run, context2.saveFs, EMPTY_RUN_LOG);
+      await keepStats(context2);
       await clearPending(context2.saveDir, context2.saveFs);
       return { accepted: true };
     }

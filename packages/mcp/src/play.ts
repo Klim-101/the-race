@@ -15,6 +15,7 @@ import {
 import { loadCurrentRun, saveRun, type LoadFailureReason } from '@the-race/saves';
 import { z } from 'zod';
 import { keepBoard } from './board-file.js';
+import { keepStats } from './stats.js';
 import type { ServerContext } from './context.js';
 import { keepProfile } from './profile.js';
 import { ToolFailure, refusalToToolError } from './tool-error.js';
@@ -238,6 +239,8 @@ export async function playIntent(
   await saveRun(context.saveDir, resolution.run, context.saveFs, recorded);
   await keepProfile(context, resolution.run, recorded);
   await keepBoard(context, runId, resolution.run, recorded, run);
+  // The page of all the runs changes when a run ends, and only then.
+  if (run.status === 'active' && resolution.run.status !== 'active') await keepStats(context);
   return {
     outcome: { ...resolution.outcome },
     events: eventsOfTurn(run, resolution.run),
