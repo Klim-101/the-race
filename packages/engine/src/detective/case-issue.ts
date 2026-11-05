@@ -36,6 +36,7 @@ export type CaseIssueCode =
   | 'clue-not-tied'
   | 'lie-without-admission'
   | 'lie-chain-broken'
+  | 'alibi-replaced-twice'
   | 'witness-saw-the-crime'
   | 'chain-without-deduction'
   | 'culprit-cleared'

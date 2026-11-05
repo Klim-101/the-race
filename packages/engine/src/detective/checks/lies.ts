@@ -26,6 +26,7 @@ export function checkLies(
   return [
     ...unbreakable,
     ...checkChains(detectiveCase),
+    ...checkAlibiLies(detectiveCase),
     ...(requireTies ? checkTies(detectiveCase) : []),
     ...(requireAdmissions ? checkAdmissions(detectiveCase) : []),
     ...(requireClaims ? checkTrueClaims(detectiveCase) : []),
@@ -77,6 +78,22 @@ function checkChains(detectiveCase: DetectiveCase): CaseIssue[] {
           ];
     }),
   );
+}
+
+/** One alibi is held up by one lie: a second lie that claims to replace it would leave the notebook with no single answer. */
+function checkAlibiLies(detectiveCase: DetectiveCase): CaseIssue[] {
+  return detectiveCase.suspects.flatMap((suspect, suspectIndex) => {
+    const replacing = suspect.lies.filter((lie) => lie.replacesAlibi === true);
+    return replacing.length <= 1
+      ? []
+      : [
+          {
+            code: 'alibi-replaced-twice' as const,
+            path: `suspects[${String(suspectIndex)}].lies`,
+            message: `"${suspect.id}" has ${String(replacing.length)} lies marked "replacesAlibi"; only the lie the alibi rests on carries it.`,
+          },
+        ];
+  });
 }
 
 /** A lie that falls gives the suspect something to say; without it the scene repeats the lie. */
