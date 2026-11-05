@@ -293,3 +293,37 @@ describe('generate-plugin CLI', () => {
     expect(run('--check').code).toBe(1);
   });
 });
+
+describe('the launcher of the server', () => {
+  const launcher = () => join(root, PLUGIN_DIR, 'bin', 'race-server.mjs');
+  const start = () =>
+    execFileSync(process.execPath, [launcher()], {
+      encoding: 'utf8',
+      env: { ...process.env, RACE_PLUGIN_VERSION: 'left-over' },
+    }).trim();
+  const withStubServer = () => {
+    writePlugin(root, buildPlugin(agents()));
+    mkdirSync(join(root, PLUGIN_DIR, 'server'), { recursive: true });
+    // The bundle is stood in for by a file that tells what the launcher handed it.
+    writeFileSync(
+      join(root, PLUGIN_DIR, 'server', 'main.mjs'),
+      "console.log(process.env.RACE_PLUGIN_VERSION ?? 'none');\n",
+    );
+  };
+
+  it('hands the server the version in the plugin manifest, whatever was in the environment', () => {
+    withStubServer();
+    const manifest = JSON.parse(
+      readFileSync(join(root, PLUGIN_DIR, '.claude-plugin', 'plugin.json'), 'utf8'),
+    );
+
+    expect(start()).toBe(manifest.version);
+  });
+
+  it('hands it nothing when the manifest cannot be read', () => {
+    withStubServer();
+    rmSync(join(root, PLUGIN_DIR, '.claude-plugin', 'plugin.json'));
+
+    expect(start()).toBe('none');
+  });
+});

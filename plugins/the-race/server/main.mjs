@@ -55034,17 +55034,19 @@ var seedsSubmit = defineTool({
 // packages/mcp/src/tools/server-info.ts
 var serverInfo = defineTool({
   name: "server_info",
-  description: "Reports which game server this is: its name and version, the version of the rules it plays by, and the languages the game can be told in. Takes no arguments and changes nothing, so it is safe to call at any time. Call it once at the start of a session to check the server is the-race and that the ruleset matches what you expect; the locales are the only values the later tools accept as a language.",
+  description: "Reports which game server this is: its name and version, the version of the plugin that started it (`pluginVersion`, or null when it was started outside the plugin), the version of the rules it plays by, and the languages the game can be told in. `version` is that of the server package and does not move with the plugin; to tell which build a session runs, read `pluginVersion` and `rulesetVersion`. Takes no arguments and changes nothing, so it is safe to call at any time. Call it once at the start of a session to check the server is the-race and that the ruleset matches what you expect; the locales are the only values the later tools accept as a language.",
   inputSchema: external_exports.object({}),
   outputSchema: external_exports.object({
     name: external_exports.string(),
     version: external_exports.string(),
+    pluginVersion: external_exports.string().nullable(),
     rulesetVersion: external_exports.number().int(),
     locales: external_exports.array(external_exports.string())
   }),
-  handler: () => Promise.resolve({
+  handler: (_input, context2) => Promise.resolve({
     name: SERVER_NAME,
     version: SERVER_VERSION,
+    pluginVersion: context2.pluginVersion ?? null,
     rulesetVersion: RULESET_VERSION,
     locales: [...LOCALES]
   })
@@ -55193,8 +55195,13 @@ function createDefaultContext(saveDir = defaultSaveDir(), env = process.env, pro
     now: () => /* @__PURE__ */ new Date(),
     httpGet: createHttpGet({ timeoutMs: DEFAULT_TIMEOUT_MS, maxBytes: DEFAULT_MAX_BYTES }),
     feeds: loadShippedFeeds,
-    newsLagDays: newsLagDays(env.RACE_NEWS_LAG_DAYS)
+    newsLagDays: newsLagDays(env.RACE_NEWS_LAG_DAYS),
+    ...pluginVersionOf(env.RACE_PLUGIN_VERSION)
   };
+}
+function pluginVersionOf(setting) {
+  const version2 = setting?.trim() ?? "";
+  return version2 === "" ? {} : { pluginVersion: version2 };
 }
 var MAX_NEWS_LAG_DAYS = 14;
 function newsLagDays(setting) {

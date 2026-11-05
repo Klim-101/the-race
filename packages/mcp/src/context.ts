@@ -34,6 +34,8 @@ export interface ServerContext {
   readonly feeds: () => Promise<FeedList>;
   /** How many days behind the news a run is set: 0 is today's, more is the cautious mode. */
   readonly newsLagDays: number;
+  /** The version of the plugin that started the server; absent when it was started outside the plugin. */
+  readonly pluginVersion?: string | undefined;
 }
 
 export interface StartupNotices {

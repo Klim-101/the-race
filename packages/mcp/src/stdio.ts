@@ -32,7 +32,14 @@ export function createDefaultContext(
     httpGet: createHttpGet({ timeoutMs: DEFAULT_TIMEOUT_MS, maxBytes: DEFAULT_MAX_BYTES }),
     feeds: loadShippedFeeds,
     newsLagDays: newsLagDays(env.RACE_NEWS_LAG_DAYS),
+    ...pluginVersionOf(env.RACE_PLUGIN_VERSION),
   };
+}
+
+/** The `RACE_PLUGIN_VERSION` the launcher of the plugin sets: kept when it is a non-empty text, else none. */
+export function pluginVersionOf(setting: string | undefined): { readonly pluginVersion?: string } {
+  const version = setting?.trim() ?? '';
+  return version === '' ? {} : { pluginVersion: version };
 }
 
 export const MAX_NEWS_LAG_DAYS = 14;
