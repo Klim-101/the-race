@@ -39385,6 +39385,7 @@ function tavernFeed(seeds, context2, runSeed, max = TAVERN_FEED_LENGTH) {
 }
 
 // packages/engine/src/text/extract-names.ts
+var NAME_RULES_EDITION = 2;
 var TOKEN = /[\p{L}][\p{L}\p{M}'’-]*/gu;
 var TRAILING_MARKS = ["'", "\u2019", "-"];
 var BREAKS_SENTENCE = /[.!?…:;«»"“”()[\]—–\n]/u;
@@ -41019,6 +41020,8 @@ var DaySeedsSchema = external_exports.strictObject({
 });
 var SeedStoreSchema = external_exports.strictObject({
   schemaVersion: external_exports.literal(2),
+  // Names kept by an older edition of the rules count as no seeds: the day is extracted again.
+  namesEdition: external_exports.literal(NAME_RULES_EDITION),
   days: external_exports.record(DaySchema, DaySeedsSchema)
 });
 var seedsFile = (saveDir) => join4(saveDir, "seeds", "seeds.json");
@@ -41035,7 +41038,11 @@ async function loadSeeds(saveDir, fs = nodeSaveFs) {
 async function saveSeedsForDay(saveDir, day, entry, fs = nodeSaveFs) {
   const days = { ...await loadSeeds(saveDir, fs), [day]: entry };
   const kept = Object.keys(days).sort().slice(-SEED_DAYS_KEPT).map((key) => [key, days[key]]);
-  const store = SeedStoreSchema.parse({ schemaVersion: 2, days: Object.fromEntries(kept) });
+  const store = SeedStoreSchema.parse({
+    schemaVersion: 2,
+    namesEdition: NAME_RULES_EDITION,
+    days: Object.fromEntries(kept)
+  });
   await fs.mkdir(join4(saveDir, "seeds"));
   await replaceFile(fs, seedsFile(saveDir), `${JSON.stringify(store, null, 2)}
 `);
