@@ -70,6 +70,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
         description: 'A key.',
         garbled: false,
         witness: null,
+        bearsOn: [],
         number: 'MIRA-01',
       },
     ],

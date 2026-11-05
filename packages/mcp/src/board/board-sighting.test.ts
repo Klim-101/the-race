@@ -70,6 +70,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
         description: 'A key.',
         garbled: false,
         witness: null,
+        bearsOn: [],
         number: 'MIRA-01',
       },
     ],
@@ -119,6 +120,7 @@ const CLUES = {
       description: 'A key.',
       garbled: false,
       witness: null,
+      bearsOn: [],
       number: 'MIRA-01',
     },
     {
@@ -127,6 +129,7 @@ const CLUES = {
       description: 'Pip saw Anna at the stall around 02:30.',
       garbled: false,
       witness: 'Pip the vendor',
+      bearsOn: ['a'],
       number: 'MIRA-02',
     },
   ],
@@ -165,5 +168,31 @@ describe('a clue that a witness told, on the board', () => {
     );
     expect(evil).toContain('Told by &lt;b&gt;Pip&lt;/b&gt;');
     expect(evil).not.toContain('<b>Pip</b>');
+  });
+});
+
+describe('the people a clue bears on, on its card', () => {
+  const tab = (clues: Record<string, unknown>[]): string =>
+    /id="clues">([\s\S]*?)<\/section>/.exec(renderEvidenceBoard(viewOf({ clues })))?.[1] ?? '';
+  const clue = (bearsOn: string[]) => ({
+    id: 'key',
+    locationId: 'stall',
+    description: 'A key.',
+    garbled: false,
+    witness: null,
+    bearsOn,
+    number: 'MIRA-01',
+  });
+
+  it('names them, as the suspects are named on the board', () => {
+    expect(tab([clue(['a'])])).toContain('Bears on: Anna');
+  });
+
+  it('says nothing for a clue nobody is tied to', () => {
+    expect(tab([clue([])])).not.toContain('Bears on');
+  });
+
+  it('falls back to the id for a suspect the view does not list', () => {
+    expect(tab([clue(['ghost'])])).toContain('Bears on: ghost');
   });
 });

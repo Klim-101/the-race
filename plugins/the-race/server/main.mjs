@@ -36846,10 +36846,17 @@ function viewRun(run) {
         statements: run.statements.filter(({ suspectId }) => suspectId === suspect.id).map(({ day, kind, text }) => ({ day, kind, text }))
       };
     }),
-    clues: detectiveCase.clues.filter(({ id }) => run.foundClueIds.includes(id)).map(({ id, locationId, description, sightingOf }) => ({
+    clues: detectiveCase.clues.filter(({ id }) => run.foundClueIds.includes(id)).map(({ id, locationId, description, sightingOf, about, pointsTo }) => ({
       id,
       locationId,
       description,
+      bearsOn: detectiveCase.suspects.filter(
+        ({ id: suspectId }) => [
+          ...about ?? [],
+          ...pointsTo,
+          ...sightingOf === void 0 ? [] : [sightingOf.suspectId]
+        ].includes(suspectId)
+      ).map(({ id: suspectId }) => suspectId),
       witness: sightingOf === void 0 ? null : requireWitness(detectiveCase, sightingOf.witnessId).name,
       garbled: run.garbledClueIds.includes(id),
       // The order of finding, which `foundClueIds` keeps from the first turn, whatever the history holds.
@@ -52142,6 +52149,7 @@ var en_default3 = {
     },
     clueGrid: {
       heardFrom: "Told by {name}",
+      bearsOn: "Bears on: {names}",
       filters: "Filter the clues",
       place: "Found at",
       suspect: "Shown to",
@@ -52659,6 +52667,7 @@ var ru_default2 = {
     },
     clueGrid: {
       heardFrom: "\u0421\u043E \u0441\u043B\u043E\u0432 \u0441\u0432\u0438\u0434\u0435\u0442\u0435\u043B\u044F: {name}",
+      bearsOn: "\u041A\u0430\u0441\u0430\u0435\u0442\u0441\u044F: {names}",
       filters: "\u041E\u0442\u0431\u043E\u0440 \u0443\u043B\u0438\u043A",
       place: "\u041D\u0430\u0439\u0434\u0435\u043D\u043E \u0432",
       suspect: "\u041F\u043E\u043A\u0430\u0437\u0430\u043D\u043E",
@@ -52895,6 +52904,12 @@ function tried(view, text) {
   });
   return `<ul class="tried">${items.join("\n")}</ul>`;
 }
+function bearsOnLine(view, clue, text) {
+  const names = new Map(view.suspects.map(({ id, name }) => [id, name]));
+  const people = clue.bearsOn.map((id) => names.get(id) ?? id);
+  return people.length === 0 ? "" : `<p class="tag bears-on">${escapeHtml(text.clueGrid.bearsOn.replace("{names}", people.join(", ")))}</p>
+`;
+}
 var cardId = (clueId) => `card-${clueId}`;
 var placeOf = (view, clue) => view.history.finds.find(({ clueId }) => clueId === clue.id)?.locationId ?? clue.locationId;
 var linksOf = (view, clueId) => view.history.links.filter(({ clueIds }) => clueIds.includes(clueId));
@@ -52944,7 +52959,7 @@ function card(view, clue, board, text, fresh) {
 <p class="text">${e(clue.description)}</p>${clue.witness === null ? "" : `
 <p class="tag witness-tag">${e(text.clueGrid.heardFrom.replace("{name}", clue.witness))}</p>`}${clue.garbled ? `
 <p class="warn">${e(board.garbled)}</p>` : ""}
-<p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
+${bearsOnLine(view, clue, text)}<p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
 <p class="tag">${e(used)}</p>
 <p class="tag ways"><a href="#board">${e(text.clueGrid.toBoard)}</a> \xB7 <a href="#map">${e(text.clueGrid.toMap)}</a></p>
 </div>`;

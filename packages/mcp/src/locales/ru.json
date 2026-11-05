@@ -493,6 +493,7 @@
     },
     "clueGrid": {
       "heardFrom": "Со слов свидетеля: {name}",
+      "bearsOn": "Касается: {names}",
       "filters": "Отбор улик",
       "place": "Найдено в",
       "suspect": "Показано",

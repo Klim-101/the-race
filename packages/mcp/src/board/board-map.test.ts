@@ -265,6 +265,7 @@ describe('the paper map', () => {
       description: id,
       garbled: false,
       witness: null,
+      bearsOn: [],
       number: id,
     });
     const found = renderMap(
@@ -284,6 +285,7 @@ describe('the paper map', () => {
       description: id,
       garbled: false,
       witness: null,
+      bearsOn: [],
       number: id,
     });
     const found = renderMap(viewOf(TOWN, { clues: [clue('b', 'vault')] }), TAB_TEXT.en);

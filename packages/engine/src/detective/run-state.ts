@@ -986,6 +986,12 @@ export interface DetectiveRunView {
     readonly number: string;
     /** The name of the witness who told it, for a clue that is what a witness saw; `null` for any other. */
     readonly witness: string | null;
+    /**
+     * The suspects the clue bears on, in the order of `suspects`: those it points at, those the case says it is about
+     * and the one a witness saw. It says a show to them will be more than beside the point, never whether it breaks a
+     * lie, and never who did it: a false clue and a true one are marked alike.
+     */
+    readonly bearsOn: readonly string[];
   }[];
   /**
    * How many clues each conclusion still to be made takes, smallest first: a number for each, so the player
@@ -1318,10 +1324,19 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     }),
     clues: detectiveCase.clues
       .filter(({ id }) => run.foundClueIds.includes(id))
-      .map(({ id, locationId, description, sightingOf }) => ({
+      .map(({ id, locationId, description, sightingOf, about, pointsTo }) => ({
         id,
         locationId,
         description,
+        bearsOn: detectiveCase.suspects
+          .filter(({ id: suspectId }) =>
+            [
+              ...(about ?? []),
+              ...pointsTo,
+              ...(sightingOf === undefined ? [] : [sightingOf.suspectId]),
+            ].includes(suspectId),
+          )
+          .map(({ id: suspectId }) => suspectId),
         witness: sightingOf === undefined ? null : requireWitness(detectiveCase, sightingOf.witnessId).name,
         garbled: run.garbledClueIds.includes(id),
         // The order of finding, which `foundClueIds` keeps from the first turn, whatever the history holds.

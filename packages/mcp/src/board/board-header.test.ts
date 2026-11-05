@@ -18,6 +18,7 @@ const clue = (id: string, number: string, locationId = 'market') => ({
   description: `Text of ${id}.`,
   garbled: false,
   witness: null,
+  bearsOn: [],
   number,
 });
 
