@@ -478,6 +478,63 @@ describe('over many seeds', () => {
   });
 });
 
+describe('which suspects a found clue bears on', () => {
+  const bearsOn = (run: DetectiveRunState) =>
+    Object.fromEntries(viewRun(run).clues.map(({ id, bearsOn: people }) => [id, people]));
+
+  it('says it for a clue that points at someone, one the case says is about someone, and one nobody is tied to', () => {
+    const marks = bearsOn(atBaker());
+
+    expect(marks['blue-glove']).toEqual(['rival']);
+    expect(marks['debt-ledger']).toEqual(['baker']);
+    expect(marks['cellar-key']).toEqual([]);
+  });
+
+  it('names a false clue and a true one alike, in the order of the suspects', () => {
+    const run = atBaker({
+      edit: (detectiveCase) => {
+        const glove = detectiveCase.clues.find(({ id }) => id === 'blue-glove');
+        if (glove) glove.about = ['baker'];
+      },
+    });
+
+    expect(bearsOn(run)['blue-glove']).toEqual(['baker', 'rival']);
+    expect(bearsOn(run)['flour-crumbs']).toEqual(['baker']);
+  });
+
+  it('names the suspect a witness saw, for the clue the witness told', () => {
+    const run = findClue(
+      atBaker({
+        edit: (detectiveCase) => {
+          detectiveCase.witnesses = [
+            {
+              id: 'pip',
+              locationId: 'cheese-stall',
+              name: 'Pip',
+              persona: 'A vendor.',
+              hours: { fromMinute: 0, untilMinute: 1439 },
+            },
+          ];
+          detectiveCase.clues.push({
+            id: 'seen-pip-rival',
+            locationId: 'cheese-stall',
+            description: 'Pip saw the rival.',
+            discovery: null,
+            situations: [],
+            source: null,
+            pointsTo: [],
+            sightingOf: { witnessId: 'pip', suspectId: 'rival' },
+            isRedHerring: false,
+          });
+        },
+      }),
+      'seen-pip-rival',
+    );
+
+    expect(bearsOn(run)['seen-pip-rival']).toEqual(['rival']);
+  });
+});
+
 describe('the alibi, once the lie it rests on has fallen', () => {
   const marked = () =>
     atBaker({

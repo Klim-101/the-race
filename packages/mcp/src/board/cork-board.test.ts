@@ -152,6 +152,7 @@ const PLAYED = {
       description: 'A rusty key under the counter.',
       garbled: false,
       witness: null,
+      bearsOn: [],
       number: 'MIRA-01',
     },
     {
@@ -160,6 +161,7 @@ const PLAYED = {
       description: 'Flour on the cellar steps.',
       garbled: false,
       witness: null,
+      bearsOn: [],
       number: 'MIRA-02',
     },
     {
@@ -168,6 +170,7 @@ const PLAYED = {
       description: 'A blue glove by the till.',
       garbled: true,
       witness: null,
+      bearsOn: [],
       number: 'MIRA-03',
     },
   ],
@@ -245,6 +248,7 @@ describe('what lights up when something is picked', () => {
           description: 'x',
           garbled: false,
           witness: null,
+          bearsOn: [],
           number: 'MIRA-04',
         },
       ],
@@ -330,6 +334,7 @@ describe('the corkboard tab', () => {
       description: `Clue ${String(index)}`,
       garbled: false,
       witness: null,
+      bearsOn: [],
       number: 'MIRA-99',
     }));
 
@@ -428,6 +433,7 @@ describe('the corkboard tab', () => {
       description: 'Odd.',
       garbled: false,
       witness: null,
+      bearsOn: [],
       number: 'MIRA-01',
     };
     const page = renderEvidenceBoard(viewOf({ clues: [odd] }));
@@ -461,6 +467,7 @@ describe('the corkboard tab', () => {
             description: 'A key.',
             garbled: false,
             witness: null,
+            bearsOn: [],
             number: 'MIRA-05',
           },
         ],

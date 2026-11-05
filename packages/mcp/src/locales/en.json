@@ -490,6 +490,7 @@
     },
     "clueGrid": {
       "heardFrom": "Told by {name}",
+      "bearsOn": "Bears on: {names}",
       "filters": "Filter the clues",
       "place": "Found at",
       "suspect": "Shown to",

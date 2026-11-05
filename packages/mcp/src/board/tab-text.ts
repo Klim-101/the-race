@@ -113,6 +113,8 @@ export interface TabText {
   readonly clueGrid: {
     /** A clue that a witness told: whose words it is ({name}). */
     readonly heardFrom: string;
+    /** The people a clue bears on ({names}). */
+    readonly bearsOn: string;
     readonly filters: string;
     readonly place: string;
     readonly suspect: string;

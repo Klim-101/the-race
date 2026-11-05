@@ -30,6 +30,16 @@ function tried(view: DetectiveRunView, text: TabText): string {
   return `<ul class="tried">${items.join('\n')}</ul>`;
 }
 
+/** The people a clue bears on, so that a show is not a guess; nothing of whether it breaks a lie. */
+function bearsOnLine(view: DetectiveRunView, clue: Clue, text: TabText): string {
+  const names = new Map(view.suspects.map(({ id, name }) => [id, name]));
+  const people = clue.bearsOn.map((id) => names.get(id) ?? id);
+  return people.length === 0
+    ? ''
+    : `<p class="tag bears-on">${escapeHtml(text.clueGrid.bearsOn.replace('{names}', people.join(', ')))}</p>
+`;
+}
+
 /** The id of a clue's card, for the style that opens it when the clue is picked. */
 export const cardId = (clueId: string): string => `card-${clueId}`;
 
@@ -96,7 +106,7 @@ function card(view: DetectiveRunView, clue: Clue, board: BoardText, text: TabTex
   return `<div class="card clue-card${clue.witness === null ? '' : ' sighting'}" ${attrs}>
 <span class="tag"><span class="num">${e(clue.number)}</span> · ${e(where)}</span>${fresh.clueIds.has(clue.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ''}
 <p class="text">${e(clue.description)}</p>${clue.witness === null ? '' : `\n<p class="tag witness-tag">${e(text.clueGrid.heardFrom.replace('{name}', clue.witness))}</p>`}${clue.garbled ? `\n<p class="warn">${e(board.garbled)}</p>` : ''}
-<p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
+${bearsOnLine(view, clue, text)}<p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
 <p class="tag">${e(used)}</p>
 <p class="tag ways"><a href="#board">${e(text.clueGrid.toBoard)}</a> · <a href="#map">${e(text.clueGrid.toMap)}</a></p>
 </div>`;

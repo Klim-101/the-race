@@ -88,6 +88,7 @@ const VIEW = {
       description: 'A key.',
       garbled: false,
       witness: null,
+      bearsOn: [],
       number: 'MIRA-01',
     },
     {
@@ -96,6 +97,7 @@ const VIEW = {
       description: 'Flour.',
       garbled: false,
       witness: null,
+      bearsOn: [],
       number: 'MIRA-02',
     },
   ],

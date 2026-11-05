@@ -14,6 +14,7 @@ const clue = (id: string, number: string) => ({
   description: `Text of ${id}.`,
   garbled: false,
   witness: null,
+  bearsOn: [],
   number,
 });
 
