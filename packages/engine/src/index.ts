@@ -60,7 +60,7 @@ export {
   type TragedyCategory,
   type TragedyVerdict,
 } from './text/tragedy-filter.js';
-export { extractRealNames } from './text/extract-names.js';
+export { extractRealNames, NAME_RULES_EDITION } from './text/extract-names.js';
 export { findRealName } from './text/real-names.js';
 export {
   validateCase,

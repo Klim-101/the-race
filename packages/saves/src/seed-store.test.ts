@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { NewsSeed } from '@the-race/engine';
+import { NAME_RULES_EDITION, type NewsSeed } from '@the-race/engine';
 import { describe, expect, it } from 'vitest';
 import { memoryFs } from '../test/memory-fs.js';
 import {
@@ -63,9 +63,23 @@ describe('loadSeeds and saveSeedsForDay', () => {
 
     fs.files.set(
       seedsFile('dir'),
-      JSON.stringify({ schemaVersion: 2, days: { '2026-10-31': { seeds: [{ id: 1 }], realNames: [] } } }),
+      JSON.stringify({
+        schemaVersion: 2,
+        namesEdition: NAME_RULES_EDITION,
+        days: { '2026-10-31': { seeds: [{ id: 1 }], realNames: [] } },
+      }),
     );
     expect(await loadSeeds('dir', fs)).toEqual({});
+
+    // Names made by an older edition of the rules, or before editions existed, are made again: they would go on
+    // blocking words that the current rules let through ("the", "on").
+    for (const edition of [{}, { namesEdition: NAME_RULES_EDITION - 1 }]) {
+      fs.files.set(
+        seedsFile('dir'),
+        JSON.stringify({ schemaVersion: 2, ...edition, days: { '2026-10-31': ENTRY } }),
+      );
+      expect(await loadSeeds('dir', fs)).toEqual({});
+    }
 
     fs.files.set(seedsFile('dir'), JSON.stringify({ schemaVersion: 1, days: { '2026-10-31': [SEED] } }));
     expect(await loadSeeds('dir', fs)).toEqual({});
@@ -80,6 +94,7 @@ describe('loadSeeds and saveSeedsForDay', () => {
 
     expect(JSON.parse(fs.files.get(seedsFile('dir')) ?? '')).toEqual({
       schemaVersion: 2,
+      namesEdition: NAME_RULES_EDITION,
       days: { '2026-10-31': ENTRY },
     });
   });

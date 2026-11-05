@@ -11,6 +11,13 @@ import { transliterate } from './transliterate.js';
 // is still a name when it stands capitalised in the middle of a sentence: a needless rejection is cheaper
 // than a real name that reaches the player.
 
+/**
+ * The edition of the rules that decide which words are names. A list of names kept on disk was made by one
+ * edition; when the rules change, bump this, so that a list made by an older one is thrown away and made again
+ * and does not go on blocking words the new rules let through.
+ */
+export const NAME_RULES_EDITION = 2;
+
 const TOKEN = /[\p{L}][\p{L}\p{M}'’-]*/gu;
 const TRAILING_MARKS = ["'", '’', '-'];
 const BREAKS_SENTENCE = /[.!?…:;«»"“”()[\]—–\n]/u;

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { join } from 'node:path';
-import { NewsSeedsSchema } from '@the-race/engine';
+import { NAME_RULES_EDITION, NewsSeedsSchema } from '@the-race/engine';
 import { z } from 'zod';
 import { nodeSaveFs, replaceFile, type SaveFs } from './save-fs.js';
 
@@ -22,6 +22,8 @@ export type DaySeeds = z.infer<typeof DaySeedsSchema>;
 
 const SeedStoreSchema = z.strictObject({
   schemaVersion: z.literal(2),
+  // Names kept by an older edition of the rules count as no seeds: the day is extracted again.
+  namesEdition: z.literal(NAME_RULES_EDITION),
   days: z.record(DaySchema, DaySeedsSchema),
 });
 
@@ -61,7 +63,11 @@ export async function saveSeedsForDay(
     .sort()
     .slice(-SEED_DAYS_KEPT)
     .map((key) => [key, days[key]] as const);
-  const store = SeedStoreSchema.parse({ schemaVersion: 2, days: Object.fromEntries(kept) });
+  const store = SeedStoreSchema.parse({
+    schemaVersion: 2,
+    namesEdition: NAME_RULES_EDITION,
+    days: Object.fromEntries(kept),
+  });
   await fs.mkdir(join(saveDir, 'seeds'));
   await replaceFile(fs, seedsFile(saveDir), `${JSON.stringify(store, null, 2)}\n`);
 }
