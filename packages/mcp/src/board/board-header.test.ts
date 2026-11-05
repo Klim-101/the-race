@@ -44,6 +44,8 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
     reputation: 8,
     condition: { nerves: 9, maxNerves: 10, sleepDebt: 1, maxSleepDebt: 10, conditions: [] },
     kit: [],
+    placeParts: [],
+    toolSlots: { total: 1, used: 0 },
     supplies: [],
     pending: [],
     warnings: [],

@@ -52011,6 +52011,12 @@ var en_default3 = {
       minutes: "min left",
       warnings: "Mind this",
       kit: "Kit",
+      pockets: "In the pockets",
+      suitcase: "The suitcase: {used} of {total} slots",
+      freeSlot: "a free slot",
+      unlawful: "not within the law",
+      getsPast: "gets past",
+      forParts: "The tool for each part noticed",
       lost: "lost",
       spent: "used up",
       broken: "broken",
@@ -52553,6 +52559,12 @@ var ru_default2 = {
       minutes: "\u043C\u0438\u043D \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C",
       warnings: "\u041E\u0431\u0440\u0430\u0442\u0438\u0442\u0435 \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u0435",
       kit: "\u0421\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435",
+      pockets: "\u0412 \u043A\u0430\u0440\u043C\u0430\u043D\u0430\u0445",
+      suitcase: "\u0427\u0435\u043C\u043E\u0434\u0430\u043D: \u0437\u0430\u043D\u044F\u0442\u043E {used} \u0438\u0437 {total} \u043C\u0435\u0441\u0442",
+      freeSlot: "\u0441\u0432\u043E\u0431\u043E\u0434\u043D\u043E\u0435 \u043C\u0435\u0441\u0442\u043E",
+      unlawful: "\u043D\u0435 \u043F\u043E \u0437\u0430\u043A\u043E\u043D\u0443",
+      getsPast: "\u0441\u043F\u0440\u0430\u0432\u043B\u044F\u0435\u0442\u0441\u044F \u0441",
+      forParts: "\u0427\u0435\u043C \u043E\u0442\u043A\u0440\u044B\u0442\u044C \u043A\u0430\u0436\u0434\u0443\u044E \u0437\u0430\u043C\u0435\u0447\u0435\u043D\u043D\u0443\u044E \u0447\u0430\u0441\u0442\u044C",
       lost: "\u043F\u043E\u0442\u0435\u0440\u044F\u043D\u043E",
       spent: "\u0438\u0437\u0440\u0430\u0441\u0445\u043E\u0434\u043E\u0432\u0430\u043D\u043E",
       broken: "\u0441\u043B\u043E\u043C\u0430\u043D\u043E",
@@ -53391,6 +53403,55 @@ function renderHeader(view, board, text, fresh) {
 </header>`;
 }
 
+// packages/mcp/src/board/board-kit.ts
+function renderKit(view, text, fresh) {
+  const e = escapeHtml;
+  const t = text.hero;
+  const wording = text.plan;
+  const piece = ({ id, state, charges, lawful, removes }) => {
+    const status = state === "owned" ? charges === null ? "" : ` <span class="tag">${e(t.chargesLeft.replace("{n}", String(charges)))}</span>` : ` <span class="warn">(${e(named({ lost: t.lost, spent: t.spent, broken: t.broken }, state))})</span>`;
+    const unlawful = lawful ? "" : ` <span class="warn">${e(t.unlawful)}</span>`;
+    const gets = removes.length === 0 ? "" : `<br><span class="tag">${e(t.getsPast)}: ${e(removes.map((kind) => named(wording.obstacles, kind)).join(", "))}</span>`;
+    const mark = fresh.tools.has(id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : "";
+    return `${e(named(t.gear, id))}${status}${unlawful}${mark}${gets}`;
+  };
+  const pockets = [
+    ...view.kit.filter(({ suitcase }) => !suitcase).map(piece),
+    ...view.supplies.map(
+      ({ id, count, limit }) => `${e(named(t.consumables, id))} \xD7${String(count)}${limit === null ? "" : ` <span class="tag">/ ${String(limit)}</span>`}`
+    )
+  ];
+  const slots = [
+    ...view.kit.filter(({ suitcase }) => suitcase).map((item) => `<div class="card slot">${piece(item)}</div>`),
+    ...Array.from(
+      { length: Math.max(0, view.toolSlots.total - view.toolSlots.used) },
+      () => `<div class="card slot empty-card"><span class="empty">${e(t.freeSlot)}</span></div>`
+    )
+  ];
+  const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
+  const forParts = view.placeParts.flatMap(
+    ({ placeId, parts }) => parts.flatMap(({ name, obstacle, searched }) => {
+      if (searched || obstacle === null) return [];
+      const tool = view.kit.find(({ state, removes }) => state === "owned" && removes.includes(obstacle))?.id;
+      const how = tool === void 0 ? wording.noTool : wording.tool.replace("{tool}", named(t.gear, tool));
+      return [
+        `${e(placeName.get(placeId) ?? placeId)}: ${e(name)} <span class="tag">${e(named(wording.obstacles, obstacle))} \xB7 ${e(how)}</span>`
+      ];
+    })
+  );
+  const list3 = (items) => `<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+  return `<h3>${e(t.kit)}</h3>
+<h4>${e(t.pockets)}</h4>
+${pockets.length === 0 ? `<p class="empty">${e(t.nothing)}</p>` : list3(pockets)}
+<h4>${e(t.suitcase.replace("{used}", String(view.toolSlots.used)).replace("{total}", String(view.toolSlots.total)))}</h4>
+<div class="slots">
+${slots.join("\n")}
+</div>${forParts.length === 0 ? "" : `
+<h4>${e(t.forParts)}</h4>
+${list3(forParts)}`}
+`;
+}
+
 // packages/mcp/src/board/board-hero.ts
 var list2 = (items) => `<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
 function meter(label, value, max) {
@@ -53423,12 +53484,6 @@ function renderHero(view, board, text, fresh = NOTHING_NEW) {
     )
   );
   const warnings = view.warnings.length === 0 ? "" : list2(view.warnings.map((id) => `<span class="warn">${e(named(t.warningNames, id))}</span>`));
-  const kit = view.kit.length === 0 ? `<p class="empty">${e(t.nothing)}</p>` : list2(
-    view.kit.map(
-      ({ id, state, charges }) => `${e(named(t.gear, id))}${state === "owned" ? charges === null ? "" : ` <span class="tag">${e(t.chargesLeft.replace("{n}", String(charges)))}</span>` : ` <span class="warn">(${e(named({ lost: t.lost, spent: t.spent, broken: t.broken }, state))})</span>`}${fresh.tools.has(id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ""}`
-    )
-  );
-  const supplies = view.supplies.length === 0 ? `<p class="empty">${e(t.nothing)}</p>` : list2(view.supplies.map(({ id, count }) => `${e(named(t.consumables, id))} \xD7${String(count)}`));
   const pending = view.pending.length === 0 ? "" : `<h3>${e(t.pending)}</h3>${list2(
     view.pending.map(
       ({ source, meter: target, delta, inMinutes }) => `${e(named(t.consumables, source))}: ${delta > 0 ? "+" : ""}${String(delta)} ${e(named(t.meters, target))} <span class="tag">${inMinutes === null ? e(t.atNight) : e(t.inMinutes.replace("{n}", String(inMinutes)))}</span>`
@@ -53453,11 +53508,7 @@ ${meter(t.sleepDebt, condition.sleepDebt, condition.maxSleepDebt)}
 ${conditions}
 ${warnings}
 </div>
-<h3>${e(t.kit)}</h3>
-${kit}
-<h3>${e(t.supplies)}</h3>
-${supplies}
-${pending}
+${renderKit(view, text, fresh)}${pending}
 <h3>${e(t.traits)}</h3>
 ${traits}
 <p class="tag">${e(t.hidden)}: ${String(view.hiddenTraitCount)}</p>
@@ -53954,6 +54005,8 @@ h3{margin:22px 0 8px;font-size:1rem;color:var(--accent)}
 .premise{border-left:3px solid var(--accent);padding-left:12px;margin:16px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 16px;margin:0 0 10px}
 .empty-card{border-style:dashed;background:transparent}
+.slots{display:flex;flex-wrap:wrap;gap:10px}
+.slot{margin:0;min-width:150px}
 .led-astray{border-left:4px solid var(--warn)}
 .course{padding-left:1.4em}
 .card p{margin:4px 0}

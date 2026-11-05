@@ -39,6 +39,7 @@ const VIEW = {
   reputation: 7,
   condition: { nerves: 8, maxNerves: 10, sleepDebt: 1, maxSleepDebt: 10, conditions: [] },
   kit: [gear('picks', ['locked']), gear('mirror', ['dark'], 'lost'), gear('torch', ['dark'], 'broken')],
+  toolSlots: { total: 2, used: 0 },
   supplies: [],
   pending: [],
   warnings: [],
