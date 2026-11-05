@@ -180,6 +180,21 @@ describe('recording', () => {
     );
   });
 
+  it('keeps the epilogue of an accusation, and a log from before it still loads', () => {
+    const { log } = play(newRun(2), [
+      { kind: 'accuse', culpritId: 'rival', motiveInsightId: null, evidenceClueIds: [] },
+    ]);
+    const [entry] = log;
+    if (entry?.outcome.kind !== 'accuse') throw new Error('Expected an accusation.');
+
+    expect(entry.outcome.epilogue?.course.length).toBeGreaterThan(0);
+    expect(RunLogSchema.parse(log)).toEqual(log);
+    const { epilogue, ...old } = entry.outcome;
+    expect(epilogue).toBeDefined();
+    const [loaded] = RunLogSchema.parse([{ ...entry, outcome: old }]);
+    expect(loaded?.outcome).toEqual(old);
+  });
+
   it('refuses entries that do not follow on', () => {
     const { log: played } = play(newRun(2), [{ kind: 'look' }, { kind: 'look' }]);
     const log = [

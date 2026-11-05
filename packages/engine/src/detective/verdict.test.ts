@@ -506,3 +506,96 @@ describe('what leaks before the verdict', () => {
     expect(shown).not.toContain('evidenceChains');
   });
 });
+
+describe('what the closing story is told from', () => {
+  const accuseWith = (run: DetectiveRunState, culpritId: string, motive: string | null, evidence: string[]) =>
+    okAccuse(accuse(run, accusation(culpritId, motive, evidence), createRng(1))).outcome.epilogue;
+
+  it('gives the course of the crime in the order it happened, for every verdict', () => {
+    const shuffled = DetectiveCaseSchema.parse(buildCheeseCase());
+    shuffled.truth.timeline = shuffled.truth.timeline.toReversed();
+    const run = newRun(ALL_CLUES, ['motive-debt'], shuffled);
+
+    const proven = accuseWith(run, 'baker', 'motive-debt', ['flour-crumbs', 'cart-tracks']);
+
+    expect(proven.course.map(({ atMinute }) => atMinute)).toEqual([100, 120, 120]);
+    expect(proven.course[0]).toEqual({
+      atMinute: 100,
+      actorId: 'baker',
+      locationId: 'storage-cellar',
+      action: 'Opens the cellar.',
+    });
+    expect(proven.missed).toEqual([]);
+    expect(proven.misled).toEqual([]);
+  });
+
+  it('names a clue never found, with its place, and the part and the obstacle when one held it', () => {
+    const detectiveCase = DetectiveCaseSchema.parse(buildCheeseCase());
+    const stall = detectiveCase.locations.find(({ id }) => id === 'cheese-stall');
+    if (stall) {
+      stall.parts = [
+        {
+          id: 'plinth',
+          name: 'The plinth',
+          obstacle: 'locked',
+          holds: 'flour-crumbs',
+          inQuickLook: true,
+          requiresLead: null,
+          fallback: { kind: 'ask', suspectId: 'baker' },
+        },
+      ];
+    }
+    // The hero found the receipt and the ledger but not the crumbs, and laid out only one clue of that chain.
+    const run = newRun(['oven-receipt', 'debt-ledger'], ['motive-debt'], detectiveCase);
+
+    const { missed } = accuseWith(run, 'baker', 'motive-debt', ['oven-receipt']);
+
+    expect(missed).toEqual([]);
+    const crumbs = accuseWith(
+      newRun(['cart-tracks'], ['motive-debt'], detectiveCase),
+      'baker',
+      'motive-debt',
+      ['cart-tracks'],
+    ).missed;
+    expect(crumbs).toEqual([
+      {
+        clueId: 'flour-crumbs',
+        description: 'Flour on the plinth, though nobody bakes at a cheese stall.',
+        locationId: 'cheese-stall',
+        partId: 'plinth',
+        obstacle: 'locked',
+      },
+    ]);
+  });
+
+  it('names a clue that no part holds with no part and no obstacle', () => {
+    const { missed } = accuseWith(newRun(['cart-tracks'], ['motive-debt']), 'baker', 'motive-debt', [
+      'cart-tracks',
+    ]);
+
+    expect(missed).toEqual([
+      expect.objectContaining({ clueId: 'flour-crumbs', partId: null, obstacle: null }),
+    ]);
+  });
+
+  it('leaves out a clue that was found but not laid out: the shortfall tells that one', () => {
+    const { missed } = accuseWith(newRun(['cart-tracks', 'flour-crumbs'], []), 'baker', null, [
+      'cart-tracks',
+    ]);
+
+    expect(missed).toEqual([]);
+  });
+
+  it('gives the false clues that led to a wrong accusation, by their numbers, and none that were not found', () => {
+    const { misled } = accuseWith(newRun(ALL_CLUES, []), 'rival', null, []);
+
+    expect(misled).toEqual([
+      expect.objectContaining({
+        clueId: 'blue-glove',
+        description: 'A blue glove of the kind the rival cheesemaker wears.',
+        number: expect.stringMatching(/-\d\d$/) as unknown,
+      }),
+    ]);
+    expect(accuseWith(newRun(['flour-crumbs'], []), 'rival', null, []).misled).toEqual([]);
+  });
+});

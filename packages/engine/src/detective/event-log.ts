@@ -15,7 +15,7 @@ import {
 } from '../run.js';
 import { IntentSchema, resolveIntent, type Intent, type Resolution } from './actions.js';
 import { HeroConditionSchema } from './condition.js';
-import { EntityIdSchema } from './case-schema.js';
+import { EntityIdSchema, ObstacleKindSchema } from './case-schema.js';
 import { GearIdSchema } from './gear.js';
 import { daysPassed } from './clock.js';
 import { MishapKindSchema } from './fatigue.js';
@@ -193,6 +193,29 @@ const OutcomeSchema = z.union([
             }),
           ),
         }),
+      })
+      .optional(),
+    // Optional: a log written before the epilogue existed has none.
+    epilogue: z
+      .object({
+        course: z.array(
+          z.object({
+            atMinute: z.int().min(0),
+            actorId: EntityIdSchema,
+            locationId: EntityIdSchema,
+            action: z.string(),
+          }),
+        ),
+        missed: z.array(
+          z.object({
+            clueId: EntityIdSchema,
+            description: z.string(),
+            locationId: EntityIdSchema,
+            partId: EntityIdSchema.nullable(),
+            obstacle: ObstacleKindSchema.nullable(),
+          }),
+        ),
+        misled: z.array(z.object({ clueId: EntityIdSchema, description: z.string(), number: z.string() })),
       })
       .optional(),
     truth: z.object({
