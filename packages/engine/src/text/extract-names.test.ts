@@ -37,6 +37,18 @@ describe('extractRealNames and a headline in Title Case', () => {
     for (const word of ['the', 'on', 'die', 'und', 'der']) expect(names).not.toContain(word);
   });
 
+  it('cuts the hyphens and apostrophes off the end of a word, however many, without slowing down', () => {
+    expect(extractRealNames(["Talks with Norway-' stalled", 'Talks with Norway’’ stalled'])).toEqual(
+      expect.arrayContaining(['norway']),
+    );
+
+    const started = Date.now();
+    const names = extractRealNames([`Talks with Norway${"'-".repeat(50_000)} stalled`]);
+
+    expect(names).toContain('norway');
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
   it('takes the whole name of a person and the last word, and not the given name that points at no one', () => {
     const names = extractRealNames([
       'Beau Lamarre-Condon tells court he deleted a phone',

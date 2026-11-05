@@ -12,6 +12,7 @@ import { transliterate } from './transliterate.js';
 // than a real name that reaches the player.
 
 const TOKEN = /[\p{L}][\p{L}\p{M}'’-]*/gu;
+const TRAILING_MARKS = ["'", '’', '-'];
 const BREAKS_SENTENCE = /[.!?…:;«»"“”()[\]—–\n]/u;
 const MIN_NAME_LENGTH = 2;
 const MAX_RUN_PARTS = 4;
@@ -58,13 +59,23 @@ interface Piece {
   readonly joined: boolean;
 }
 
+/**
+ * The word without the hyphens and apostrophes at its end. A loop and not a pattern such as `/[-']+$/`, which backtracks
+ * in time quadratic in the length of a token made of many of them (the text is a feed, which is untrusted).
+ */
+function withoutTrailingMarks(word: string): string {
+  let end = word.length;
+  while (end > 0 && TRAILING_MARKS.includes(word.charAt(end - 1))) end -= 1;
+  return word.slice(0, end);
+}
+
 function piecesOf(text: string): Piece[] {
   const pieces: Piece[] = [];
   const normalized = text.normalize('NFKC');
   let previousEnd = 0;
   for (const match of normalized.matchAll(TOKEN)) {
     const gap = normalized.slice(previousEnd, match.index);
-    const word = match[0].replace(/[-'’]+$/u, '');
+    const word = withoutTrailingMarks(match[0]);
     pieces.push({
       word,
       opens: pieces.length === 0 || BREAKS_SENTENCE.test(gap),
@@ -156,7 +167,7 @@ function namesInText(text: string): Found[] {
 function plainWordsOf(text: string): string[] {
   const plain: string[] = [];
   for (const match of text.normalize('NFKC').matchAll(TOKEN)) {
-    const word = match[0].replace(/[-'’]+$/u, '');
+    const word = withoutTrailingMarks(match[0]);
     if (word === word.toLowerCase()) plain.push(word);
   }
   return plain;
