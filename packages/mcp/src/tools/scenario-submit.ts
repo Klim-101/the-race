@@ -69,6 +69,7 @@ const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
   'reaction-names-trait': 17.66,
   'suspect-cannot-be-cleared': 17.7,
   'red-herring-unexplained': 17.8,
+  'red-herring-without-thread': 17.85,
   'unearnable-lead': 9.1,
   'unused-lead': 9.1,
   'false-lead-holds-clue': 9.1,
