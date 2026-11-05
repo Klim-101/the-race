@@ -9,6 +9,7 @@ import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { checkFleeDeadline } from './checks/flee-deadline.js';
 import { checkLies } from './checks/lies.js';
 import { checkClearing } from './checks/clearing.js';
+import { checkRunLength, type DayRules } from './checks/run-length.js';
 import { checkLinkable } from './checks/links.js';
 import { checkReactions } from './checks/reactions.js';
 import { checkObservations } from './checks/observations.js';
@@ -50,6 +51,11 @@ export interface CaseValidationContext {
    * squares between the buildings, and more than one building. Left out, any map is accepted.
    */
   readonly map?: MapRules;
+  /**
+   * How many days the case may give the hero (`GENERATED_DAYS` for a generated one). Left out, any length the schema
+   * allows is accepted.
+   */
+  readonly days?: DayRules;
   /**
    * Whether every place that holds a clue must be split into parts (a generated case must). Left out, a place
    * may stay whole, as the places of the cases before the parts did.
@@ -129,6 +135,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
       context.minRandomEvents ?? 0,
     ),
     ...(context.map === undefined ? [] : checkMapShape(detectiveCase, context.map)),
+    ...(context.days === undefined ? [] : checkRunLength(detectiveCase, context.days)),
     ...checkFleeDeadline(detectiveCase, context.hero, context.traits),
     ...checkRedHerrings(detectiveCase),
     ...checkTexts(detectiveCase, context.locale, context.realNames),

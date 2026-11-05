@@ -38448,6 +38448,20 @@ function checkMapShape(detectiveCase, rules) {
   return issues;
 }
 
+// packages/engine/src/detective/checks/run-length.ts
+var GENERATED_DAYS = { min: 3, max: 10 };
+function checkRunLength(detectiveCase, rules) {
+  const { days } = detectiveCase.clock;
+  if (days >= rules.min && days <= rules.max) return [];
+  return [
+    {
+      code: "run-length-out-of-range",
+      path: "clock.days",
+      message: `The case gives ${String(days)} days; a run lasts from ${String(rules.min)} to ${String(rules.max)}, so set "clock.days" in that range.`
+    }
+  ];
+}
+
 // packages/engine/src/detective/event-log.ts
 var SkillCheckResultSchema = external_exports.object({
   skill: external_exports.string().min(1),
@@ -41026,6 +41040,7 @@ function validateCase(input2, context2) {
       context2.minRandomEvents ?? 0
     ),
     ...context2.map === void 0 ? [] : checkMapShape(detectiveCase, context2.map),
+    ...context2.days === void 0 ? [] : checkRunLength(detectiveCase, context2.days),
     ...checkFleeDeadline(detectiveCase, context2.hero, context2.traits),
     ...checkRedHerrings(detectiveCase),
     ...checkTexts(detectiveCase, context2.locale, context2.realNames)
@@ -55496,6 +55511,7 @@ var ISSUE_PRIORITY = {
   "random-event-violence": 26,
   "too-few-random-events": 27,
   "random-events-miss-a-day": 27.5,
+  "run-length-out-of-range": 27.6,
   "solution-after-culprit-flees": 28,
   "clue-draws-conclusion": 29
 };
@@ -55560,6 +55576,7 @@ var scenarioSubmit = defineTool({
       locale: pending.locale,
       minRandomEvents: MIN_RANDOM_EVENTS,
       map: GENERATED_MAP,
+      days: GENERATED_DAYS,
       requireParts: true,
       requireTies: true,
       requireAdmissions: true,

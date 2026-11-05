@@ -28,6 +28,7 @@ export type CaseIssueCode =
   | 'random-event-violence'
   | 'too-few-random-events'
   | 'random-events-miss-a-day'
+  | 'run-length-out-of-range'
   | 'map-too-small'
   | 'map-too-large'
   | 'too-few-outdoor-places'
