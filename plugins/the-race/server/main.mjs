@@ -35159,6 +35159,7 @@ function hazardOfDay(run, weather) {
 var MIN_LENGTH_FOR_INFLECTION = 5;
 var MAX_ENDING_LETTERS = 3;
 var RUSSIAN_ENDING = /[аеиоуыэюяйь]+$/u;
+var CYRILLIC = new RegExp("\\p{Script=Cyrillic}", "u");
 function findRealName(text, realNames) {
   const normalizedText = normalize(text);
   return realNames.find((name) => {
@@ -35166,15 +35167,15 @@ function findRealName(text, realNames) {
     return normalizedName.length > 0 && buildNamePattern(normalizedName).test(normalizedText);
   });
 }
-function replaceRealName(text, name, replacement) {
+function replaceRealName(text, name, replacement, options = {}) {
   const normalizedName = normalize(name.trim());
   if (normalizedName.length === 0) return text;
-  const pattern = buildNamePattern(normalizedName);
+  const pattern = buildNamePattern(normalizedName, options.looseEndings === true);
   const loose = new RegExp(pattern.source.replaceAll("\u0435", "[\u0435\u0451]"), "giu");
   return text.normalize("NFKC").replace(loose, () => replacement);
 }
-function buildNamePattern(normalizedName) {
-  const canInflect = normalizedName.length >= MIN_LENGTH_FOR_INFLECTION;
+function buildNamePattern(normalizedName, looseEndings = false) {
+  const canInflect = normalizedName.length >= MIN_LENGTH_FOR_INFLECTION && (looseEndings || CYRILLIC.test(normalizedName));
   const stem = canInflect ? normalizedName.replace(RUSSIAN_ENDING, "") : normalizedName;
   const ending = canInflect ? `\\p{L}{0,${String(MAX_ENDING_LETTERS)}}` : "";
   return new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(stem)}${ending}(?![\\p{L}\\p{N}])`, "u");
@@ -35393,7 +35394,8 @@ var withSpellings = (names) => [
 function slugOf(english) {
   return english.normalize("NFKD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
-var touches = (a, b) => replaceRealName(a, b, "").trim() === "" || replaceRealName(b, a, "").trim() === "";
+var LOOSE = { looseEndings: true };
+var touches = (a, b) => replaceRealName(a, b, "", LOOSE).trim() === "" || replaceRealName(b, a, "", LOOSE).trim() === "";
 function proposeEntry(world, proposal, knownRealNames = []) {
   const issues = [];
   if (repeated(proposal.real.map(fold2))) {
@@ -39387,9 +39389,11 @@ var TOKEN = /[\p{L}][\p{L}\p{M}'’-]*/gu;
 var BREAKS_SENTENCE = /[.!?…:;«»"“”()[\]—–\n]/u;
 var MIN_NAME_LENGTH = 2;
 var MAX_RUN_PARTS = 4;
+var MIN_TITLE_CASE_WORDS = 6;
+var TITLE_CASE_SHARE = 0.8;
 var SPEECH_VERB = /^(?:заяв|сообщ|назвал|призв|пообещ|объяв|отказ|подтверд|предлож|счита|расска|отмет|сказ|пригроз|предупред|ответ|says?$|said$|warns?$|warned$|announces?$|announced$|denies$|denied$|admits?$|admitted$|claims?$|claimed$|urges?$|urged$|confirms?$|confirmed$|promises?$|promised$|insists?$|insisted$|rejects?$|rejected$|vows?$|vowed$|tells$|told$|suggests?$)/u;
 var NOT_NAMES = new Set(
-  "monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october november december mr mrs ms dr sir president minister prime chancellor king queen mayor governor senator judge general colonel captain minister ministry bank university company group city republic state council committee court agency office department police party union \u043F\u0440\u0435\u0437\u0438\u0434\u0435\u043D\u0442 \u043C\u0438\u043D\u0438\u0441\u0442\u0440 \u043F\u0440\u0435\u043C\u044C\u0435\u0440 \u043A\u0430\u043D\u0446\u043B\u0435\u0440 \u043A\u043E\u0440\u043E\u043B\u044C \u043A\u043E\u0440\u043E\u043B\u0435\u0432\u0430 \u043C\u044D\u0440 \u0433\u0443\u0431\u0435\u0440\u043D\u0430\u0442\u043E\u0440 \u0441\u0435\u043D\u0430\u0442\u043E\u0440 \u0441\u0443\u0434\u044C\u044F \u0433\u0435\u043D\u0435\u0440\u0430\u043B \u043F\u043E\u043B\u043A\u043E\u0432\u043D\u0438\u043A \u043A\u0430\u043F\u0438\u0442\u0430\u043D \u043C\u0438\u043D\u0438\u0441\u0442\u0435\u0440\u0441\u0442\u0432\u043E \u0431\u0430\u043D\u043A \u0443\u043D\u0438\u0432\u0435\u0440\u0441\u0438\u0442\u0435\u0442 \u043A\u043E\u043C\u043F\u0430\u043D\u0438\u044F \u0433\u0440\u0443\u043F\u043F\u0430 \u0433\u043E\u0440\u043E\u0434 \u0440\u0435\u0441\u043F\u0443\u0431\u043B\u0438\u043A\u0430 \u0433\u043E\u0441\u0443\u0434\u0430\u0440\u0441\u0442\u0432\u043E \u0441\u043E\u0432\u0435\u0442 \u043A\u043E\u043C\u0438\u0442\u0435\u0442 \u0441\u0443\u0434 \u0430\u0433\u0435\u043D\u0442\u0441\u0442\u0432\u043E \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0435 \u043F\u043E\u043B\u0438\u0446\u0438\u044F \u043F\u0430\u0440\u0442\u0438\u044F \u0441\u043E\u044E\u0437 he she it they we you i \u043E\u043D \u043E\u043D\u0430 \u043E\u043D\u043E \u043E\u043D\u0438 \u043C\u044B \u0432\u044B \u044F gdp ceo cfo ai it tv pr ok vat \u0432\u0432\u043F \u0438\u0438 \u0436\u043A\u0445 \u043D\u0434\u0441 \u0441\u043C\u0438 \u0438\u0442 \u0442\u0432 \u0434\u0442\u043F \u0447\u043F".split(" ")
+  "monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october november december mr mrs ms dr sir president minister prime chancellor king queen mayor governor senator judge general colonel captain minister ministry bank university company group city republic state council committee court agency office department police party union \u043F\u0440\u0435\u0437\u0438\u0434\u0435\u043D\u0442 \u043C\u0438\u043D\u0438\u0441\u0442\u0440 \u043F\u0440\u0435\u043C\u044C\u0435\u0440 \u043A\u0430\u043D\u0446\u043B\u0435\u0440 \u043A\u043E\u0440\u043E\u043B\u044C \u043A\u043E\u0440\u043E\u043B\u0435\u0432\u0430 \u043C\u044D\u0440 \u0433\u0443\u0431\u0435\u0440\u043D\u0430\u0442\u043E\u0440 \u0441\u0435\u043D\u0430\u0442\u043E\u0440 \u0441\u0443\u0434\u044C\u044F \u0433\u0435\u043D\u0435\u0440\u0430\u043B \u043F\u043E\u043B\u043A\u043E\u0432\u043D\u0438\u043A \u043A\u0430\u043F\u0438\u0442\u0430\u043D \u043C\u0438\u043D\u0438\u0441\u0442\u0435\u0440\u0441\u0442\u0432\u043E \u0431\u0430\u043D\u043A \u0443\u043D\u0438\u0432\u0435\u0440\u0441\u0438\u0442\u0435\u0442 \u043A\u043E\u043C\u043F\u0430\u043D\u0438\u044F \u0433\u0440\u0443\u043F\u043F\u0430 \u0433\u043E\u0440\u043E\u0434 \u0440\u0435\u0441\u043F\u0443\u0431\u043B\u0438\u043A\u0430 \u0433\u043E\u0441\u0443\u0434\u0430\u0440\u0441\u0442\u0432\u043E \u0441\u043E\u0432\u0435\u0442 \u043A\u043E\u043C\u0438\u0442\u0435\u0442 \u0441\u0443\u0434 \u0430\u0433\u0435\u043D\u0442\u0441\u0442\u0432\u043E \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0435 \u043F\u043E\u043B\u0438\u0446\u0438\u044F \u043F\u0430\u0440\u0442\u0438\u044F \u0441\u043E\u044E\u0437 agreement treaty accord pact summit commission authority administration \u0441\u043E\u0433\u043B\u0430\u0448\u0435\u043D\u0438\u0435 \u0434\u043E\u0433\u043E\u0432\u043E\u0440 \u0441\u0430\u043C\u043C\u0438\u0442 \u043A\u043E\u043C\u0438\u0441\u0441\u0438\u044F \u0430\u0434\u043C\u0438\u043D\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044F he she it they we you i \u043E\u043D \u043E\u043D\u0430 \u043E\u043D\u043E \u043E\u043D\u0438 \u043C\u044B \u0432\u044B \u044F gdp ceo cfo ai it tv pr ok vat \u0432\u0432\u043F \u0438\u0438 \u0436\u043A\u0445 \u043D\u0434\u0441 \u0441\u043C\u0438 \u0438\u0442 \u0442\u0432 \u0434\u0442\u043F \u0447\u043F".split(" ")
 );
 function piecesOf(text) {
   const pieces = [];
@@ -39409,6 +39413,12 @@ function piecesOf(text) {
 }
 var isCapitalised = (word) => new RegExp("^\\p{Lu}", "u").test(word);
 var isAcronym = (word) => word.length >= 2 && word === word.toUpperCase() && new RegExp("\\p{L}", "u").test(word);
+function isTitleCase(pieces) {
+  const rest = pieces.slice(1);
+  if (rest.length < MIN_TITLE_CASE_WORDS) return false;
+  const capitalised = rest.filter(({ word }) => isCapitalised(word) && !isAcronym(word)).length;
+  return capitalised / rest.length >= TITLE_CASE_SHARE;
+}
 function continuesRun(piece) {
   return piece?.joined === true && isCapitalised(piece.word) && !isAcronym(piece.word);
 }
@@ -39418,6 +39428,8 @@ function isName(word) {
 function namesInText(text) {
   const names = [];
   const pieces = piecesOf(text);
+  if (isTitleCase(pieces))
+    return pieces.map(({ word }) => word).filter(isAcronym).filter(isName);
   let resumeAt = 0;
   for (const [at3, first] of pieces.entries()) {
     if (at3 < resumeAt || !isCapitalised(first.word)) continue;

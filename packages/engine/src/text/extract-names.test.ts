@@ -6,6 +6,38 @@ import { extractRealNames } from './extract-names.js';
 import { findRealName } from './real-names.js';
 import { transliterate } from './transliterate.js';
 
+describe('extractRealNames and a headline in Title Case', () => {
+  it('takes no word of it for a name, as every word stands capitalised', () => {
+    expect(extractRealNames(['Man Shocked As Dog Barks At Mailman Again'])).toEqual([]);
+    expect(
+      extractRealNames(['Court Shuts Independent Newsroom For Lacking Licence No Applicant Could Obtain']),
+    ).toEqual([]);
+  });
+
+  it('still takes an acronym from it, and the names of the headlines in sentence case beside it', () => {
+    const names = extractRealNames([
+      'UK Man Shocked As Dog Barks At Mailman Again',
+      'Trucks stalled outside Berlin',
+    ]);
+
+    expect(names).toEqual(expect.arrayContaining(['uk', 'berlin']));
+    expect(names).not.toContain('mailman');
+  });
+
+  it('does not take the generic head of a name for a name: the Paris Agreement is not "agreement"', () => {
+    const names = extractRealNames(['Ten years of the Paris Agreement: has the world kept its promises?']);
+
+    expect(names).toEqual(expect.arrayContaining(['paris', 'paris agreement']));
+    expect(names).not.toContain('agreement');
+  });
+
+  it('leaves a short run of names in sentence case alone: it is a list of names, not Title Case', () => {
+    expect(extractRealNames(['Talks with Apple Google Microsoft Amazon stalled'])).toEqual(
+      expect.arrayContaining(['apple', 'google', 'microsoft', 'amazon']),
+    );
+  });
+});
+
 describe('extractRealNames', () => {
   it('takes a capitalised word in the middle of a sentence, in either language', () => {
     expect(extractRealNames(['Грузовики встали в Берлине', 'Trucks stalled outside Berlin'])).toEqual(

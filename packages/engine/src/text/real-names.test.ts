@@ -27,6 +27,20 @@ describe('findRealName', () => {
     expect(findRealName('Germanicus was a general.', ['German'])).toBeUndefined();
   });
 
+  it('matches a name in Latin letters as a whole word, so an ordinary word that begins with it is not a name', () => {
+    expect(findRealName('The recording was lost.', ['Record'])).toBeUndefined();
+    expect(findRealName('A pressure gauge.', ['Press'])).toBeUndefined();
+    expect(findRealName('A parish register.', ['Paris'])).toBeUndefined();
+    expect(findRealName('Records of the Press.', ['Press'])).toBe('Press');
+    expect(findRealName("Washington's office.", ['Washington'])).toBe('Washington');
+  });
+
+  it('still reads a Russian name with its ending, and a Latin name inside Russian text as a whole word', () => {
+    expect(findRealName('Они приехали из Германии.', ['Германия'])).toBe('Германия');
+    expect(findRealName('Акции Apple упали.', ['Apple'])).toBe('Apple');
+    expect(findRealName('Запись яблока.', ['Яблоко'])).toBe('Яблоко');
+  });
+
   it('escapes names with regular expression characters', () => {
     expect(findRealName('Shares of A.B.C. fell.', ['A.B.C.'])).toBe('A.B.C.');
     expect(findRealName('Shares of AxBxCx fell.', ['A.B.C.'])).toBeUndefined();
@@ -45,6 +59,17 @@ describe('replaceRealName', () => {
   it('leaves a text without the name, and a blank name, alone', () => {
     expect(replaceRealName('Ничего', 'Германия', 'Икс')).toBe('Ничего');
     expect(replaceRealName('Ничего', '  ', 'Икс')).toBe('Ничего');
+  });
+
+  it('replaces a name in Latin letters as a whole word only', () => {
+    expect(replaceRealName('Record sales and a recording', 'Record', 'Zed')).toBe(
+      'Zed sales and a recording',
+    );
+  });
+
+  it('takes a few letters more of a name in Latin letters only when asked, to tell near-equal names apart', () => {
+    expect(replaceRealName('Valdmarks', 'Valdmark', '', { looseEndings: true })).toBe('');
+    expect(replaceRealName('Valdmarks', 'Valdmark', '')).toBe('Valdmarks');
   });
 
   it('does not read the replacement as a pattern', () => {
