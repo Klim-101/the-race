@@ -55,21 +55,31 @@ The `kind` of a signal event is the mood and the cause, nothing more: `partner-m
 
 `run_view` has `weather` (an id: `mild`, `warm`, `hot`, `humid`, `windy`, `fog`, `dry-heat`, `cold-rain`, `snow`, `frost`, `storms`) for today, or `null` when the case is set nowhere. It colours every place out of doors that day (the `location.exposure` of the view is `outdoor`; `indoor` is a room in a building, where the weather is only what comes through the window) and the walk between places; say it in a clause the hero would think, never as the id. A walk is slower in bad weather: the `minutes` of the move result already include it, so do not add anything up.
 
-A `move` result may carry `weather` (the walk was out of doors) and `roadMishap`, a small, comic thing that happened on the way. Tell it as a short beat of the hero's own thoughts after the arrival, from its id, never harming anyone, and let it cost what the result says (a quarter of an hour more, a point of nerves, a short `exhausted` or `shaken` in the view) and no more:
+A `move` result may carry `weather` (the walk was out of doors), `hazard` and `roadMishap`, a small, comic thing that happened on the way. Tell it as a short beat of the hero's own thoughts after the arrival, from its id, never harming anyone, and let it cost what the result says (a quarter of an hour more, a point of nerves, a short `exhausted` or `shaken` in the view) and no more:
 
-| `roadMishap`               | The beat                                                                |
-| -------------------------- | ----------------------------------------------------------------------- |
-| `wrong-turn`               | A street that was not the one; the hero arrives from the wrong side.    |
-| `missed-bus`               | The bus pulls away a step ahead of the hero.                            |
-| `stranger-asks-directions` | A stranger needs the way, and the hero is the last person who knows it. |
-| `dog-follows`              | A small dog decides to see the hero home, and barks at the doorstep.    |
-| `pigeon-incident`          | A pigeon with a grudge, and a hat that will never be the same.          |
-| `deep-puddle`              | A puddle deeper than it looked; a sock that squelches for the day.      |
-| `umbrella-inside-out`      | The umbrella gives up in a gust and turns itself inside out.            |
-| `hat-in-the-wind`          | The hat leaves, and the chase is undignified.                           |
-| `icy-step`                 | A slip on ice that is saved by a lamp post and a good deal of pride.    |
-| `lost-in-the-fog`          | The fog takes the street away for a while.                              |
-| `heat-and-no-shade`        | The sun with no shade, and a long wait for a bench.                     |
-| `shaken-by-a-bicycle-bell` | A bicycle bell at the worst moment; the hero's heart takes a minute.    |
+| `roadMishap`               | The beat                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------- |
+| `wrong-turn`               | A street that was not the one; the hero arrives from the wrong side.            |
+| `missed-bus`               | The bus pulls away a step ahead of the hero.                                    |
+| `stranger-asks-directions` | A stranger needs the way, and the hero is the last person who knows it.         |
+| `dog-follows`              | A small dog decides to see the hero home, and barks at the doorstep.            |
+| `pigeon-incident`          | A pigeon with a grudge, and a hat that will never be the same.                  |
+| `deep-puddle`              | A puddle deeper than it looked; a sock that squelches for the day.              |
+| `umbrella-inside-out`      | The umbrella gives up in a gust and turns itself inside out.                    |
+| `hat-in-the-wind`          | The hat leaves, and the chase is undignified.                                   |
+| `icy-step`                 | A slip on ice that is saved by a lamp post and a good deal of pride.            |
+| `lost-in-the-fog`          | The fog takes the street away for a while.                                      |
+| `heat-and-no-shade`        | The sun with no shade, and a long wait for a bench.                             |
+| `shaken-by-a-bicycle-bell` | A bicycle bell at the worst moment; the hero's heart takes a minute.            |
+| `slip-and-fall`            | The ice wins: a seat on the pavement, a bruised pride, a hand from a passer-by. |
+| `drift-in-the-way`         | A drift across the way, and a long detour round it.                             |
+| `caught-in-a-downpour`     | A downpour with no shelter; the hero arrives wet to the elbows.                 |
+| `dizzy-in-the-heat`        | The heat makes the street swim; the hero stops in the first shade.              |
+| `dust-and-thirst`          | Dust in the throat and a thirst that a tap does not answer.                     |
+| `gale-takes-the-papers`    | The gale takes the notes out of the hand and the chase is not dignified.        |
+| `fog-so-thick-it-hums`     | A fog so thick that the street hums; the hero walks by touch.                   |
+| `dust-in-the-eyes`         | A gust of dust in the eyes, and a minute of blinking at a wall.                 |
+
+`hazard` is a trouble of this country's climate (`blizzard`, `ice`, `heavy-rain`, `heatwave`, `drought`, `gale`, `fog`, `dust-wind`) that the weather of the day has brought out: the walk is already longer by it, so do not add anything up, and say it in a clause the hero would think (the pavement is glass, the heat is a hand on the neck), never as the id. On such a day the mishap is often its own.
 
 Never turn a mishap into an injury, a fight or a threat, whatever the weather, and never let it hint at the case: it is the street, not the plot.
