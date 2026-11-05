@@ -30,7 +30,9 @@ the RACE is a text roguelike that runs inside [Claude Code](https://claude.com/c
 
 You play by picking from a short list of moves or by saying what you want in your own words. Either way, one action goes to the engine, the engine rolls the dice, and the narrator tells you what came of it.
 
-**A real example.** One playtest started from the tavern rumour of an independent news site shut for lacking a licence that the registry says it never issues. It became a case in a country that does not exist: the registry's own public list has no such licence category, a sealed draft order had reached a rival the evening before, and you are asked to find who carried it out and wrote the licence in. Four suspects, a registry hall, a secretariat, a copy room, two newsrooms, three days. (Condensed from a Russian-language run.)
+**A real example.** One English-language playtest started from the tavern rumour of an editor fined for running a news site without a licence, with a licensing office that could not say where one is obtained. It became _The Fee That Was Never Filed_, a case in the invented town of Tosora: the editor swears she paid, the office has no record of it, and the detective, a retired police officer who is low on nerve and quick to lean on people, is sent to find where the money went. Four suspects, a licensing office with a records room, a bank, a notary, a teahouse, a canal yard and a sealed newsroom, three days of autumn storms.
+
+The run ended in the way a run can: the detective named the right culprit, but with no conclusion drawn for the motive and one key clue never found (the engine called it _unproven_). The evidence board it left behind, with the map, the suspects and every clue in the order it was found, is in [`docs/public/Examples/evidence.html`](docs/public/Examples/evidence.html). Download it and open it in a browser.
 
 ## What makes it different
 
