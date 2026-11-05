@@ -5,7 +5,14 @@ import { assertNever } from '../assert-never.js';
 import type { Rng } from '../dice.js';
 import { MINUTES_PER_DAY, type RunClock } from '../run.js';
 import { closedSources } from './obtainability.js';
-import { isLastingEffect, type RandomEvent, type RandomEventEffect, type Suspect } from './case-schema.js';
+import {
+  EVERY_DAY_EVENT_MAX_DAYS,
+  isLastingEffect,
+  promisedEventsOf,
+  type RandomEvent,
+  type RandomEventEffect,
+  type Suspect,
+} from './case-schema.js';
 import {
   recordDrawnEvent,
   spendTime,
@@ -31,6 +38,11 @@ export const BASE_EVENT_CHANCE_PERCENT = 35;
 export const DAY_EVENTS_RULESET_VERSION = 6;
 /** The first ruleset in which each day is promised an event and the night leaves the pool for the days to come. */
 export const EVERY_DAY_RULESET_VERSION = 10;
+/**
+ * The first ruleset in which a run longer than `EVERY_DAY_EVENT_MAX_DAYS` is promised a share of its days in
+ * events, spread over the run, and has no more than that; a shorter run is still promised one every day.
+ */
+export const FEWER_EVENTS_RULESET_VERSION = 27;
 /** The clock marks at which the day may bring an event: midday and the evening. */
 export const DAY_EVENT_MARKS = [12 * 60, 18 * 60] as const;
 /** The chance of an event at one mark of the day, in percent, before the growth towards the deadline. */
@@ -212,6 +224,24 @@ function daysLeftOf(run: DetectiveRunState): number {
   return Math.max(1, run.case.clock.days - run.clock.day + 1);
 }
 
+/** Whether the events of this run are paced over its days, not promised for every one of them. */
+function isPaced(run: DetectiveRunState): boolean {
+  return run.rulesetVersion >= FEWER_EVENTS_RULESET_VERSION && run.case.clock.days > EVERY_DAY_EVENT_MAX_DAYS;
+}
+
+/** How many events a paced run should have had by the end of the day it is at. */
+function paceTargetOf(run: DetectiveRunState): number {
+  const { days } = run.case.clock;
+  return Math.ceil((promisedEventsOf(days) * Math.min(run.clock.day, days)) / days);
+}
+
+/** How many events of the pool the run still owes, which the pool keeps back from the draws by chance. */
+function owedOf(run: DetectiveRunState): number {
+  return isPaced(run)
+    ? Math.max(0, promisedEventsOf(run.case.clock.days) - run.drawnEvents.length)
+    : daysLeftOf(run);
+}
+
 /** Events of the pool that have not happened yet. */
 function eventsLeftOf(run: DetectiveRunState): number {
   const drawn = new Set(run.drawnEvents.map(({ eventId }) => eventId));
@@ -221,6 +251,12 @@ function eventsLeftOf(run: DetectiveRunState): number {
 /** Whether the day has had an event at a mark of the clock already. */
 function dayEventToday(run: DetectiveRunState): boolean {
   return run.drawnEvents.some(({ day, phase }) => day === run.clock.day && phase === 'day');
+}
+
+/** Whether the day is owed an event by now: every day of a short run, a day behind the pace of a long one. */
+function isEventDue(run: DetectiveRunState): boolean {
+  if (dayEventToday(run)) return false;
+  return !isPaced(run) || run.drawnEvents.length < paceTargetOf(run);
 }
 
 /**
@@ -249,7 +285,7 @@ export function drawDayEvents(run: DetectiveRunState, before: RunClock, rng: Rng
  * ruleset of the daily event only, and only for a day that has had none at a mark of the clock.
  */
 export function drawOwedDayEvent(run: DetectiveRunState, rng: Rng): EventDraw {
-  if (run.rulesetVersion < EVERY_DAY_RULESET_VERSION || dayEventToday(run)) return { run, events: [] };
+  if (run.rulesetVersion < EVERY_DAY_RULESET_VERSION || !isEventDue(run)) return { run, events: [] };
   const drawn = drawSlots(run, rng, 1, DAY_EVENT_CHANCE_PERCENT, 'day', true);
   return { ...drawn, run: { ...drawn.run, rngState: rng.state() } };
 }
@@ -268,10 +304,14 @@ function drawSlots(
   const reserving = run.rulesetVersion >= EVERY_DAY_RULESET_VERSION;
   for (let slot = 0; slot < slots; slot += 1) {
     if (poolOf(current).length === 0) break;
-    const owed = promiseLast && slot === slots - 1 && !dayEventToday(current);
-    // Each day to come keeps one event of the pool. The night is for the morning of a day that is still owed
-    // its own, so it keeps one more; a day's chance draw leaves what the days after it are owed.
-    const spare = eventsLeftOf(current) - daysLeftOf(current);
+    const owed = promiseLast && slot === slots - 1 && isEventDue(current);
+    // A paced run never runs ahead of its pace: the events it is promised come when they are due.
+    if (reserving && !owed && isPaced(current) && current.drawnEvents.length >= paceTargetOf(current))
+      continue;
+    // Each event the run still owes keeps one event of the pool (one for each day to come, on a short run). The
+    // night is for the morning of a day that is still owed its own, so it keeps one more; a day's chance draw
+    // leaves what the days after it are owed.
+    const spare = eventsLeftOf(current) - owedOf(current);
     if (reserving && phase === 'night' && spare < 1) break;
     if (reserving && phase === 'day' && !owed && spare < 0) continue;
     const chance = owed ? 100 : baseChance + Math.round(pressureOf(current) * DEADLINE_CHANCE_GROWTH_PERCENT);

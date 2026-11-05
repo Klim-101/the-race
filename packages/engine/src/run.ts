@@ -32,8 +32,10 @@ export const RUN_SCHEMA_VERSION = 2;
  * `road.ts`).
  * 25: the engine gives each place-bound trait of the hero a place of its own to act in (see `trait-scenes.ts`).
  * 26: a show that only confirms what a suspect has already given up is refused, unspent (see `suspect-mood.ts`).
+ * 27: a run longer than three days is promised a third of its days in events, spread over the run, not one a day (see
+ * `random-events.ts`).
  */
-export const RULESET_VERSION = 26;
+export const RULESET_VERSION = 27;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;

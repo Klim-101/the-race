@@ -661,6 +661,21 @@
       "untilDay": null,
       "traitTriggers": [],
       "duration": { "kind": "instant" }
+    },
+    {
+      "id": "lift-music",
+      "description": "Лифт весь день играет один и тот же такт вальса, и никто на лестнице не решается пожаловаться.",
+      "weight": 2,
+      "fromDay": 1,
+      "effect": {
+        "kind": "flavor"
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
     }
   ]
 }

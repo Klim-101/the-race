@@ -510,7 +510,7 @@ describe('the pool of random events a generated case must bring', () => {
   });
 
   it('rejects a case with fewer events than the minimum, and says how many it has', () => {
-    for (const count of [0, 1, 2]) {
+    for (const count of [0, 1, 2, 3]) {
       const detectiveCase = { ...buildCheeseCase(), randomEvents: pool(count) };
       const result = validateCase(detectiveCase, context({ minRandomEvents: MIN_RANDOM_EVENTS }));
 

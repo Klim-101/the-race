@@ -358,8 +358,20 @@ export const RANDOM_EVENT_CONDITIONS = ['shaken', 'exhausted'] as const;
 export const MAX_RANDOM_EVENT_MINUTES = 120;
 export const MAX_RANDOM_EVENT_NERVES = 2;
 export const MAX_RANDOM_EVENTS = 40;
-/** What a generated case must bring, so that the days and the nights have something to draw from. */
-export const MIN_RANDOM_EVENTS = 3;
+/** What a generated case must bring at least, so that the days and the nights have something to draw from. */
+export const MIN_RANDOM_EVENTS = 4;
+/** A run this short (in days) is promised an event every day; a longer one is promised a share of its days. */
+export const EVERY_DAY_EVENT_MAX_DAYS = 3;
+/** The fewest events a run longer than `EVERY_DAY_EVENT_MAX_DAYS` is promised. */
+export const MIN_PROMISED_EVENTS = 3;
+
+/**
+ * How many events a run of this many days is promised: one a day while it is short, then a third of its days
+ * and never fewer than `MIN_PROMISED_EVENTS`, so that ten days of events do not crowd out the investigation.
+ */
+export function promisedEventsOf(days: number): number {
+  return days <= EVERY_DAY_EVENT_MAX_DAYS ? days : Math.max(MIN_PROMISED_EVENTS, Math.ceil(days / 3));
+}
 
 /**
  * What a random event does. The vocabulary is closed on purpose: an event can move the world or the hero's

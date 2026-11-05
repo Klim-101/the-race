@@ -6,7 +6,7 @@ import { findViolence } from '../../text/violence.js';
 import type { Trait } from '../../traits.js';
 import type { DetectiveHero } from '../archetype.js';
 import type { CaseIssue } from '../case-issue.js';
-import { isLastingEffect, type DetectiveCase } from '../case-schema.js';
+import { isLastingEffect, promisedEventsOf, type DetectiveCase } from '../case-schema.js';
 import { isSolvable, scheduledClosures, withEffect, type Standing } from '../solvability.js';
 
 /**
@@ -39,13 +39,13 @@ export function checkRandomEvents(
   const issues: CaseIssue[] = [];
 
   const pool = detectiveCase.randomEvents ?? [];
-  // A case that must have a pool needs an event for every day, and at least `minEvents`.
-  const needed = minEvents > 0 ? Math.max(minEvents, days) : 0;
+  // A case that must have a pool needs the events its run is promised, and at least `minEvents`.
+  const needed = minEvents > 0 ? Math.max(minEvents, promisedEventsOf(days)) : 0;
   if (pool.length < needed) {
     issues.push({
       code: 'too-few-random-events',
       path: 'randomEvents',
-      message: `The case needs at least ${String(needed)} random events (as many as it has days, and not fewer than ${String(minEvents)}), with fromDay and untilDay spread over its days; it has ${String(pool.length)}.`,
+      message: `The case needs at least ${String(needed)} random events (the events its ${String(days)} days promise, and not fewer than ${String(minEvents)}), with fromDay and untilDay spread over its days; it has ${String(pool.length)}.`,
     });
   }
   if (needed > 0 && pool.length > 0) {
