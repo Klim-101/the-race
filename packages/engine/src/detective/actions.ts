@@ -24,6 +24,7 @@ import { settleClock } from './clock.js';
 import { isCollapse, passNight, type NightCause, type NightReport } from './night.js';
 import { InterrogateIntentSchema, resolveInterrogate, type InterrogationOutcome } from './interrogation.js';
 import { applyMishap, walk } from './road.js';
+import { TakeIntentSchema, resolveTake, type TakeOutcome } from './take.js';
 import { UseIntentSchema, resolveUse, type UseOutcome } from './use-item.js';
 import {
   actingReveals,
@@ -131,6 +132,8 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   RereadIntentSchema,
   /** Take a consumable the hero carries. */
   UseIntentSchema,
+  /** Take what the place offers: a tool for the suitcase or a supply for the pockets. */
+  TakeIntentSchema,
 ]);
 export type Intent = z.infer<typeof IntentSchema>;
 
@@ -180,7 +183,13 @@ export type RefusalCode =
   | 'wrong-link-size'
   | 'not-garbled'
   | 'unknown-item'
-  | 'none-left';
+  | 'none-left'
+  | 'unknown-stock'
+  | 'stock-taken'
+  | 'already-carried'
+  | 'no-slot'
+  | 'not-in-suitcase'
+  | 'pockets-full';
 
 /** Why an intent was not carried out. Nothing changed and no time passed. */
 export interface Refusal {
@@ -275,6 +284,7 @@ export type Outcome = (
   | AccusationOutcome
   | { readonly kind: 'reread'; readonly clueId: string; readonly minutes: number }
   | UseOutcome
+  | TakeOutcome
 ) &
   /** Set by fatigue only when there is something to say: a mishap's kind, and the garble of a reading. */
   Partial<Fatigue>;
@@ -985,6 +995,8 @@ function dispatchIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resol
       return resolveReread(run, intent, rng);
     case 'use':
       return resolveUse(run, intent, rng);
+    case 'take':
+      return resolveTake(run, intent, rng);
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
     default:
       return assertNever(intent);

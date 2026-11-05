@@ -27,6 +27,12 @@ function checkUniqueIds(detectiveCase: DetectiveCase): CaseIssue[] {
         path: `locations[${String(locationIndex)}].parts[${String(partIndex)}].id`,
       })),
     ),
+    ...detectiveCase.locations.flatMap((location, locationIndex) =>
+      (location.stock ?? []).map((entry, entryIndex) => ({
+        id: entry.id,
+        path: `locations[${String(locationIndex)}].stock[${String(entryIndex)}].id`,
+      })),
+    ),
     ...(detectiveCase.leads ?? []).map((lead, index) => ({
       id: lead.id,
       path: `leads[${String(index)}].id`,

@@ -20,6 +20,7 @@ export const STRIP_KINDS = [
   'reread',
   'sit',
   'use',
+  'take',
   'rest',
   'accuse',
 ] as const;
@@ -63,6 +64,7 @@ const KIND_OF: Record<LogEntry['outcome']['kind'], StripKind> = {
   reread: 'reread',
   sit: 'sit',
   use: 'use',
+  take: 'take',
   rest: 'rest',
   accuse: 'accuse',
 };
@@ -96,6 +98,7 @@ function touchedOf(outcome: LogEntry['outcome'], placeId: string): StripTouched 
     case 'sit':
     case 'deduce':
     case 'use':
+    case 'take':
     case 'rest':
     case 'accuse':
       return { ...NOTHING, placeId };

@@ -515,6 +515,27 @@ const TURNS: TurnView[] = [
   { turn: 1, day: 1, minute: 470, kind: 'move', to: 'Cellar', entered: false },
 ];
 
+describe('what the hero took, in the chronicle', () => {
+  const took: TurnView[] = [
+    { turn: 2, day: 1, minute: 500, kind: 'take', how: 'sold', itemKind: 'supply', item: 'sedative' },
+    { turn: 1, day: 1, minute: 490, kind: 'take', how: 'found', itemKind: 'tool', item: 'crowbar' },
+  ];
+
+  it('says what was found and what was bought, a tool or a supply, by its name', () => {
+    const chronicle = tab(renderEvidenceBoard(viewOf(), took), 'chronicle');
+
+    expect(chronicle).toContain('Bought: ');
+    expect(chronicle).toContain('Found and took: crowbar');
+  });
+
+  it('is told in the language of the run', () => {
+    const chronicle = tab(renderEvidenceBoard(viewOf({ locale: 'ru' }), took), 'chronicle');
+
+    expect(chronicle).toContain('Купил: ');
+    expect(chronicle).toContain('Нашёл и взял: ');
+  });
+});
+
 describe('the chronicle tab', () => {
   it('shows the day and the working time left', () => {
     const chronicle = tab(
