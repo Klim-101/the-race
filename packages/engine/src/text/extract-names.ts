@@ -36,6 +36,14 @@ const NOT_NAMES = new Set(
     'капитан министерство банк университет компания группа город республика государство совет ' +
     'комитет суд агентство управление полиция партия союз ' +
     'agreement treaty accord pact summit commission authority administration ' +
+    // Function words: a feed's summary may run two sentences together with no full stop between them, and the
+    // first word of the second ("The African National Congress") then stands in the middle of what looks like
+    // one run. These are words of the language and no name alone, in the languages of the shipped feeds.
+    'the an on in at as of to for by with from into onto over under about after before during between among ' +
+    'against and or but nor so yet if than that this these those there here then who whom whose which what when ' +
+    'where why how while although because since until ' +
+    'der die das den dem des ein eine einen einem und oder aber mit von zu im am auf für nicht ' +
+    'el la los las un una unos unas y o pero con por para del al en que ' +
     'соглашение договор саммит комиссия администрация ' +
     'he she it they we you i он она оно они мы вы я ' +
     'gdp ceo cfo ai it tv pr ok vat ввп ии жкх ндс сми ит тв дтп чп'

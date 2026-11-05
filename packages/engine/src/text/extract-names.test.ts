@@ -24,6 +24,19 @@ describe('extractRealNames and a headline in Title Case', () => {
     expect(names).not.toContain('mailman');
   });
 
+  it('does not take a function word for a name when a summary runs two sentences together', () => {
+    const names = extractRealNames([
+      'Party expected to get less than a third of the vote amid power cuts The African National Congress faces voters',
+      'Court rules on Monday On Tuesday Berlin answers',
+      'Die Bundesregierung und der Bundestag streiten',
+    ]);
+
+    expect(names).toEqual(
+      expect.arrayContaining(['african', 'national', 'congress', 'berlin', 'bundesregierung', 'bundestag']),
+    );
+    for (const word of ['the', 'on', 'die', 'und', 'der']) expect(names).not.toContain(word);
+  });
+
   it('does not take the generic head of a name for a name: the Paris Agreement is not "agreement"', () => {
     const names = extractRealNames(['Ten years of the Paris Agreement: has the world kept its promises?']);
 
