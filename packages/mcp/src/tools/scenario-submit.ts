@@ -4,6 +4,7 @@
 import {
   EMPTY_RUN_LOG,
   MIN_RANDOM_EVENTS,
+  GENERATED_DAYS,
   GENERATED_MAP,
   chooseSeed,
   chooseSetting,
@@ -95,6 +96,7 @@ const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
   'random-event-violence': 26,
   'too-few-random-events': 27,
   'random-events-miss-a-day': 27.5,
+  'run-length-out-of-range': 27.6,
   'solution-after-culprit-flees': 28,
   'clue-draws-conclusion': 29,
 };
@@ -189,6 +191,7 @@ export const scenarioSubmit = defineTool({
         locale: pending.locale,
         minRandomEvents: MIN_RANDOM_EVENTS,
         map: GENERATED_MAP,
+        days: GENERATED_DAYS,
         requireParts: true,
         requireTies: true,
         requireAdmissions: true,
