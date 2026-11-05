@@ -81,9 +81,32 @@
       "suspects": "Suspects",
       "clues": "Clues and links",
       "chronicle": "Chronicle",
-      "hero": "Hero and kit"
+      "hero": "Hero and kit",
+      "file": "Closed file"
     },
     "nav": "Sections of the board",
+    "closedFile": {
+      "title": "The closed file",
+      "verdicts": { "proven": "Proven", "unproven": "Unproven", "wrong": "Wrong person" },
+      "culprit": "Who did it",
+      "motive": "Why",
+      "method": "How",
+      "place": "Where",
+      "course": "How it really went",
+      "pinned": "What was pinned",
+      "noneFound": "Not a single clue was found.",
+      "misled": "led astray",
+      "missed": "What was never found",
+      "neverFound": "never found",
+      "obstacles": {
+        "locked": "behind a lock",
+        "dark": "in the dark",
+        "soft": "under something soft",
+        "trace": "a trace to lift",
+        "sealed": "sealed",
+        "digital": "on a screen"
+      }
+    },
     "header": {
       "turn": "Turn {n}",
       "day": "Day {day} of {total}, {time}",

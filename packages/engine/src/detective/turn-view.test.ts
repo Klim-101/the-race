@@ -290,7 +290,7 @@ describe('the turns of a run', () => {
       kind: 'accuse',
       shortfall: { motive: { held: false, offered: false, drawn: false }, evidence: { held: false } },
     });
-    expect(Object.keys(turn ?? {}).sort()).toEqual(['day', 'kind', 'minute', 'shortfall', 'turn']);
+    expect(Object.keys(turn ?? {}).sort()).toEqual(['day', 'file', 'kind', 'minute', 'shortfall', 'turn']);
   });
 
   it('show an accusation of the wrong person as made, and nothing of what it lacked', () => {
@@ -309,6 +309,76 @@ describe('the turns of a run', () => {
     run = resolution.run;
 
     expect(viewTurns(run, log)[0]).toMatchObject({ kind: 'accuse', shortfall: null });
+  });
+});
+
+describe('the closed file of a finished run, in the turns', () => {
+  const accused = (
+    culpritId: string,
+    found: readonly string[] = [],
+  ): { run: DetectiveRunState; log: RunLog } => {
+    const run = { ...startRun(cheeseCase(), 'closed-file'), foundClueIds: [...found] };
+    const intent: Intent = { kind: 'accuse', culpritId, motiveInsightId: null, evidenceClueIds: [] };
+    const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
+    if (!resolution.ok) throw new Error(`Refused: ${resolution.refusal.code}`);
+    return { run: resolution.run, log: recordResolution([], run, intent, resolution) };
+  };
+  const fileOf = (run: DetectiveRunState, log: RunLog) => {
+    const [turn] = viewTurns(run, log);
+    if (turn?.kind !== 'accuse' || !turn.file) throw new Error('No file.');
+    return turn.file;
+  };
+
+  it('names the culprit, the place and the people of the course, in the order it happened', () => {
+    const { run, log } = accused('baker');
+    const file = fileOf(run, log);
+
+    expect(file).toMatchObject({ verdict: 'unproven', culprit: 'Orla Brenn', place: 'Cheese stall' });
+    expect(file.course.map(({ atMinute, actor, place }) => [atMinute, actor, place])).toEqual([
+      [100, 'Orla Brenn', 'Storage cellar'],
+      [120, 'Orla Brenn', 'Cheese stall'],
+      [120, 'Gustav Holm', 'Market square'],
+    ]);
+  });
+
+  it('lists the clues never found, with the place they lay in', () => {
+    const { run, log } = accused('baker');
+    const { missed } = fileOf(run, log);
+
+    expect(missed.length).toBeGreaterThan(0);
+    expect(missed.every(({ place, description }) => place.length > 0 && description.length > 0)).toBe(true);
+  });
+
+  it('lists the false clue that led astray, by its number, for a wrong accusation', () => {
+    const { run, log } = accused('rival', ['blue-glove']);
+    const file = fileOf(run, log);
+
+    expect(file.verdict).toBe('wrong');
+    expect(file.misled).toHaveLength(1);
+    expect(file.misled[0]?.description).toContain('blue glove');
+    expect(file.misled[0]?.number).toMatch(/-01$/);
+    expect(file.missed).toEqual([]);
+  });
+
+  it('keeps the truth and shows no course for a log written before the epilogue', () => {
+    const { run, log } = accused('baker');
+    const [entry] = log;
+    if (entry?.outcome.kind !== 'accuse') throw new Error('Expected an accusation.');
+    const { epilogue, ...old } = entry.outcome;
+    expect(epilogue).toBeDefined();
+
+    const file = fileOf(run, [{ ...entry, outcome: old }]);
+
+    expect(file).toMatchObject({ culprit: 'Orla Brenn', course: [], missed: [], misled: [] });
+  });
+
+  it('names a person the case does not list by the id, rather than failing on a damaged log', () => {
+    const { run, log } = accused('baker');
+    const [entry] = log;
+    if (entry?.outcome.kind !== 'accuse') throw new Error('Expected an accusation.');
+    const outcome = { ...entry.outcome, truth: { ...entry.outcome.truth, culpritId: 'ghost' } };
+
+    expect(fileOf(run, [{ ...entry, outcome }]).culprit).toBe('ghost');
   });
 });
 

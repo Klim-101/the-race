@@ -13,8 +13,28 @@ export interface TabText {
     readonly clues: string;
     readonly chronicle: string;
     readonly hero: string;
+    /** The closed file, which exists only once the run is over. */
+    readonly file: string;
   };
   readonly nav: string;
+  /** The closed file of a finished run: the truth, the course of the crime, the pinned clues and the empty cards. */
+  readonly closedFile: {
+    readonly title: string;
+    readonly verdicts: Readonly<Record<string, string>>;
+    readonly culprit: string;
+    readonly motive: string;
+    readonly method: string;
+    readonly place: string;
+    readonly course: string;
+    readonly pinned: string;
+    readonly noneFound: string;
+    /** A found clue that was a false trail the accusation followed. */
+    readonly misled: string;
+    /** The clues of the nearest chain that were never found: the heading, the tag and the kinds of obstacle. */
+    readonly missed: string;
+    readonly neverFound: string;
+    readonly obstacles: Readonly<Record<string, string>>;
+  };
   /** The header over every tab: the turn, the day, the time left, and the hero in words and never in numbers. */
   readonly header: {
     /** One turn ({n}) and the day ({day}, {total}, {time}). */
