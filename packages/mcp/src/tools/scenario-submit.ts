@@ -156,7 +156,7 @@ export const scenarioSubmit = defineTool({
     'and the result is just {"accepted":true}: stop and answer "accepted". If it is not, the result lists ' +
     'the issues (code, path, message), most important first, and how many attempts are left: fix exactly ' +
     'those and submit the whole case again. At most three submissions are allowed; after that the result ' +
-    'has "final":true and the run reports a failure, so stop and answer "failed: <reason>". An accepted ' +
+    'has "final":true (with the issues of that last rejection) and the run reports a failure, so stop and answer "failed: <reason>". An accepted ' +
     'case can never be replaced. Never repeat a submission that was accepted.',
   inputSchema: z.object({
     case: z.union([z.string().max(MAX_CASE_TEXT_LENGTH), z.record(z.string(), z.unknown())]),
@@ -246,7 +246,10 @@ export const scenarioSubmit = defineTool({
         { ...pending, attempts, failed: attemptsLeft === 0 },
         context.saveFs,
       );
-      if (attemptsLeft === 0) return { accepted: false, attemptsLeft, final: true, reason: FINAL_REASON };
-      return { accepted: false, attemptsLeft, ...compactIssues(result.issues) };
+      // The last rejection keeps its issues too: without them a run that failed cannot be told why.
+      const issues = compactIssues(result.issues);
+      if (attemptsLeft === 0)
+        return { accepted: false, attemptsLeft, final: true, reason: FINAL_REASON, ...issues };
+      return { accepted: false, attemptsLeft, ...issues };
     }),
 });

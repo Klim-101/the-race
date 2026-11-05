@@ -576,6 +576,10 @@ describe('scenario_submit', () => {
     const third = await submit(call, bad);
     expect(third.body).toMatchObject({ accepted: false, attemptsLeft: 0, final: true });
     expect(third.body.reason).toMatch(/three attempts/);
+    // The last rejection says why, like the ones before it: otherwise a failed run cannot be diagnosed.
+    const lastIssues = third.body.issues as readonly { readonly code: string }[];
+    expect(lastIssues.length).toBeGreaterThan(0);
+    expect(typeof third.body.moreIssues).toBe('number');
     expect((await loadPending(SAVE_DIR, fs))?.failed).toBe(true);
     // Even a good case is too late now.
     const fourth = await submit(call, readCase('goose-of-elmwick.en.json'));
