@@ -11,6 +11,9 @@ import type { DetectiveRunState, SuspectMood } from './run-state.js';
 /** The first ruleset in which a suspect has a state, a shown clue can confirm or implicate, and a conclusion can be put. */
 export const TALKS_RULESET_VERSION = 15;
 
+/** From this ruleset a show that only confirms what a suspect has already given up is refused, unspent. */
+export const STALE_SHOWS_RULESET_VERSION = 26;
+
 export const SUSPECT_MOODS = ['calm', 'shaken', 'cornered', 'broken'] as const;
 export type SuspectMoodWord = (typeof SUSPECT_MOODS)[number];
 export const MAX_MOOD_STEP = SUSPECT_MOODS.length - 1;

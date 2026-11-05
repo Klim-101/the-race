@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 25;
+var RULESET_VERSION = 26;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -35899,6 +35899,7 @@ function deedKey(deed) {
 
 // packages/engine/src/detective/suspect-mood.ts
 var TALKS_RULESET_VERSION = 15;
+var STALE_SHOWS_RULESET_VERSION = 26;
 var SUSPECT_MOODS = ["calm", "shaken", "cornered", "broken"];
 var MAX_MOOD_STEP = SUSPECT_MOODS.length - 1;
 var SHAKEN_EASE = 2;
@@ -37307,6 +37308,7 @@ function brokenLies(run, suspect, clueIds, insightIds) {
     return byInsight || lie.brokenBy.some((clueId) => clueIds.includes(clueId)) ? [{ lie, byInsight }] : [];
   });
 }
+var fellBy = (lie, kind, id) => (kind === "clue" ? lie.brokenBy : lie.brokenByInsights ?? []).includes(id);
 function isAbout(detectiveCase, clueId, suspectId) {
   const clue = detectiveCase.clues.find(({ id }) => id === clueId);
   return clue !== void 0 && [...clue.about ?? [], ...clue.pointsTo].includes(suspectId);
@@ -37348,6 +37350,17 @@ function resolveInterrogate(run, intent, rng) {
   const rules = APPROACH_RULES[intent.approach];
   const mood = moodOf(run, suspect.id);
   const breakable = brokenLies(run, suspect, shown2, putInsights);
+  const confirming = (kind, id) => suspect.lies.some((lie) => run.concededLieIds.includes(lie.id) && fellBy(lie, kind, id));
+  const offered = [
+    ...shown2.map((id) => confirming("clue", id)),
+    ...putInsights.map((id) => confirming("insight", id))
+  ];
+  if (run.rulesetVersion >= STALE_SHOWS_RULESET_VERSION && breakable.length === 0 && offered.length > 0 && offered.every(Boolean)) {
+    return refuse(
+      "nothing-new",
+      `"${suspect.id}" has already given up everything that is shown; it changes nothing.`
+    );
+  }
   const eased = breakable.reduce(
     (total, { byInsight }) => total + rules.easePerBrokenLie * (byInsight ? INSIGHT_EASE_FACTOR : 1),
     0
@@ -37377,7 +37390,6 @@ function resolveInterrogate(run, intent, rng) {
   if (result.critical === "success" && intent.approach === "social") reputationChange += CHARM_REPUTATION;
   if (reputationChange < 0) consequences.push("reputation-lost");
   const minutes2 = INTERROGATE_MINUTES + (result.success ? 0 : FAILED_INTERROGATION_MINUTES);
-  const fellBy = (lie, kind, id) => (kind === "clue" ? lie.brokenBy : lie.brokenByInsights ?? []).includes(id);
   const effectOfShown = (kind, id, implicates) => effectOf(
     fallen.some((lie) => fellBy(lie, kind, id)),
     suspect.lies.some((lie) => run.concededLieIds.includes(lie.id) && fellBy(lie, kind, id)),
@@ -54262,7 +54274,9 @@ var accuse2 = defineTool({
   inputSchema: external_exports.object({
     turn: TurnSchema,
     culpritId: EntityIdSchema,
-    motiveInsightId: EntityIdSchema.nullable(),
+    // A host that has not loaded the tool's schema sends every argument as a string, and "null" is a valid id to
+    // the schema: no insight has that id, so it is read for what the caller meant, no motive.
+    motiveInsightId: external_exports.union([external_exports.null(), external_exports.literal("null").transform(() => null), EntityIdSchema]),
     evidenceClueIds: external_exports.array(EntityIdSchema)
   }),
   outputSchema: TurnResultSchema,
