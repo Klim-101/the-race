@@ -54600,12 +54600,15 @@ var newsBrief = defineTool({
 var RECENT_RUNS = 5;
 var profileView = defineTool({
   name: "profile_view",
-  description: "The player's profile: how many runs they have played, how they ended (won, lost for each reason, given up), days and clues over all of them, the longest run, the streak of wins, `earned` (the tool slots and the hidden trait slots the next hero has, which win after win open up), and the last few runs with the hero, the case title and how it ended. Only runs that are over are in it, so it never touches the case in play. Call it once at the end of a run, after the closing scene, for one line of the hero's tally in the narrator's voice, or when the player asks how they are doing. Changes nothing. The profile is a local file and nothing in it leaves the machine.",
+  description: "The player's profile: how many runs they have played, how they ended (won, lost for each reason, given up), days and clues over all of them, the longest run, the streak of wins, `earned` (the tool slots and the hidden trait slots the next hero has, which win after win open up; it counts the run that has just ended, so after a win it is one more than the hero who played it had), and the last few runs withthe hero, the case title and how it ended. Only runs that are over are in it, so it never touches the case in play. Call it once at the end of a run, after the closing scene, for one line of the hero's tally in the narrator's voice, or when the player asks how they are doing. Changes nothing. The profile is a local file and nothing in it leaves the machine.",
   inputSchema: external_exports.object({}),
   outputSchema: external_exports.object({
     stats: external_exports.looseObject({ runs: external_exports.int(), won: external_exports.int(), winRate: external_exports.int() }),
     reasons: external_exports.array(external_exports.string()),
-    /** What the runs have earned the next hero: tool slots in the suitcase and hidden trait slots. */
+    /**
+     * What the runs have earned the next hero: tool slots in the suitcase and hidden trait slots. It counts every run
+     * that is over, the last one too, so the hero who just played had one tool slot fewer after a win.
+     */
     earned: external_exports.object({ toolSlots: external_exports.int(), traitSlots: external_exports.int() }),
     recent: external_exports.array(
       external_exports.object({
@@ -54789,7 +54792,7 @@ async function stateOf2(context2) {
 }
 var runView = defineTool({
   name: "run_view",
-  description: 'Shows where things stand, as far as the player may know. Changes nothing, so it is safe to call at any time: at the start of a session to resume, and whenever you need the state. With a run, the result is its public view: `status` (active, won, lost or gave-up), `endReason` once it is over, `turn` (the number the state-changing tools expect), the place, the clues and insights found, the suspects (name and persona only), the clock and the hero. It never holds the truth, the culprit or an unrevealed trait. With no run, `status` is "awaiting-hero" (run_new was called: ask the player to make a hero), "awaiting-case" (the hero exists: run the case generator) or "no-run" (offer a new run; when it has `unreadableSaves`, an earlier save could not be read and was left alone: say so in one plain line, it blocks nothing). Do not call it again right after a tool whose result you have not yet narrated. Once, after the saves were moved into the game folder, the result also has `savesMoved` (`from`, `to`): tell the player in one plain line, out of the fiction, that their saves now live in `to`.',
+  description: 'Shows where things stand, as far as the player may know. Changes nothing, so it is safe to call at any time: at the start of a session to resume, and whenever you need the state. With a run, the result is its public view: `status` (active, won, lost or gave-up), `endReason` once it is over, `turn` (the number the state-changing tools expect), the place, the clues and insights found, the suspects (name and persona only), the clock and the hero (`toolSlots.used` counts only the pieces of the kit with `suitcase: true`; the phone and what the trade of the hero gave take no slot). It never holds the truth, the culprit or an unrevealed trait. With no run, `status` is "awaiting-hero" (run_new was called: ask the player to make a hero), "awaiting-case" (the hero exists: run the case generator) or "no-run" (offer a new run; when it has `unreadableSaves`, an earlier save could not be read and was left alone: say so in one plain line, it blocks nothing). Do not call it again right after a tool whose result you have not yet narrated. Once, after the saves were moved into the game folder, the result also has `savesMoved` (`from`, `to`): tell the player in one plain line, out of the fiction, that their saves now live in `to`.',
   inputSchema: external_exports.object({}),
   outputSchema: external_exports.looseObject({ status: external_exports.string() }),
   handler: async (_input, context2) => {
