@@ -161,6 +161,7 @@ export type RefusalCode =
   | 'clue-not-found'
   | 'insight-not-found'
   | 'suspect-closed'
+  | 'nothing-new'
   | 'not-available'
   | 'no-venue'
   | 'venue-closed'
