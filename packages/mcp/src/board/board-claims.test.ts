@@ -113,7 +113,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
 
 const person = (
   claims: { day: number; text: string; broken: { clueIds: string[] } | null }[],
-  statements: { day: number; kind: 'alibi' | 'conceded' | 'secret'; text: string }[] = [],
+  statements: { day: number; kind: 'alibi' | 'conceded' | 'secret'; text: string; refuted?: true }[] = [],
 ) => ({
   suspects: [
     {
@@ -192,5 +192,30 @@ describe('what a suspect claims, on the suspects tab', () => {
     const tab = tabOf(viewOf({ ...person([{ day: 1, text: 'Я пеку.', broken: null }]), locale: 'ru' }));
 
     expect(tab).toContain('Что они утверждают');
+  });
+});
+
+describe('an alibi that a fallen lie has taken away, on the suspects tab', () => {
+  const statements = [
+    { day: 1, kind: 'alibi' as const, text: 'I was at the oven all evening.', refuted: true as const },
+    { day: 1, kind: 'conceded' as const, text: 'I went down to the mill at nine.' },
+  ];
+
+  it('is struck through and marked, beside what the person says now', () => {
+    const tab = tabOf(viewOf(person([], statements)));
+
+    expect(tab).toContain('<s>I was at the oven all evening.</s>');
+    expect(tab).toContain('no longer stands');
+    expect(tab).toContain('I went down to the mill at nine.');
+  });
+
+  it('stands as it was said while nothing has taken it away', () => {
+    const tab = tabOf(
+      viewOf(person([], [{ day: 1, kind: 'alibi', text: 'I was at the oven all evening.' }])),
+    );
+
+    expect(tab).toContain('I was at the oven all evening.');
+    expect(tab).not.toContain('<s>I was at the oven all evening.</s>');
+    expect(tab).not.toContain('no longer stands');
   });
 });

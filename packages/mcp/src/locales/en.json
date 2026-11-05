@@ -123,6 +123,7 @@
       "claims": "What they claim",
       "mood": "Mood",
       "lieFell": "a lie that fell",
+      "alibiRefuted": "no longer stands",
       "brokenBy": "broken by",
       "shown": "Shown to them",
       "noneShown": "Nothing shown yet.",

@@ -477,3 +477,52 @@ describe('over many seeds', () => {
     }
   });
 });
+
+describe('the alibi, once the lie it rests on has fallen', () => {
+  const marked = () =>
+    atBaker({
+      edit: (detectiveCase) => {
+        const lie = detectiveCase.suspects
+          .find(({ id }) => id === 'baker')
+          ?.lies.find(({ id }) => id === 'baker-asleep');
+        if (lie) lie.replacesAlibi = true;
+      },
+    });
+  const alibiOf = (run: DetectiveRunState) =>
+    viewRun(run)
+      .suspects.find(({ id }) => id === 'baker')
+      ?.statements.filter(({ kind }) => kind === 'alibi');
+
+  it('is told as said while the lie stands, and marked refuted when it falls, the admission beside it', () => {
+    const first = interrogation(ask(marked(), 'baker', 'social', [], dice(20)));
+    expect(alibiOf(first.run)).toEqual([expect.objectContaining({ kind: 'alibi' })]);
+    expect(alibiOf(first.run)?.[0]).not.toHaveProperty('refuted');
+
+    const fallen = interrogation(ask(first.run, 'baker', 'social', ['cart-tracks'], dice(20)));
+
+    expect(alibiOf(fallen.run)?.[0]).toMatchObject({ refuted: true });
+    const said = viewRun(fallen.run).suspects.find(({ id }) => id === 'baker')?.statements ?? [];
+    expect(said.map(({ kind }) => kind)).toEqual(expect.arrayContaining(['alibi', 'conceded']));
+  });
+
+  it('stays when a clue breaks other lies of the suspect but not the one it rests on', () => {
+    const fallen = interrogation(ask(marked(), 'baker', 'social', ['flour-crumbs'], dice(20)));
+
+    expect(fallen.run.concededLieIds).toEqual(['baker-alone']);
+    expect(alibiOf(fallen.run)?.[0]).not.toHaveProperty('refuted');
+  });
+
+  it('is refuted once, however many lies fall with it', () => {
+    const fallen = interrogation(ask(marked(), 'baker', 'social', ['cart-tracks', 'flour-crumbs'], dice(20)));
+
+    expect(fallen.run.concededLieIds).toHaveLength(2);
+    expect(alibiOf(fallen.run)).toHaveLength(1);
+    expect(alibiOf(fallen.run)?.[0]).toMatchObject({ refuted: true });
+  });
+
+  it('is never refuted in a case that marks no lie', () => {
+    const fallen = interrogation(ask(atBaker(), 'baker', 'social', ['cart-tracks'], dice(20)));
+
+    expect(alibiOf(fallen.run)?.[0]).not.toHaveProperty('refuted');
+  });
+});

@@ -34468,7 +34468,13 @@ var LieSchema = external_exports.object({
    */
   after: EntityIdSchema.optional(),
   /** A clue the suspect hands over, as testimony, when this lie falls. */
-  gives: EntityIdSchema.optional()
+  gives: EntityIdSchema.optional(),
+  /**
+   * Set on the lie the suspect's alibi rests on: when it falls the alibi no longer stands, and the notebook shows it
+   * refuted beside what the suspect now says. At most one lie of a suspect carries it. Optional, so that the cases of
+   * before it keep their seal.
+   */
+  replacesAlibi: external_exports.boolean().optional()
 });
 var ReactionSchema = external_exports.object({
   clueId: EntityIdSchema,
@@ -36327,6 +36333,9 @@ var DetectiveRunStateSchema = external_exports.object({
   );
   known("revealedTraitIds", run.revealedTraitIds, new Set(run.traits.map(({ id }) => id)));
 });
+function alibiRefuted(run, suspect) {
+  return suspect.lies.some((lie) => lie.replacesAlibi === true && run.concededLieIds.includes(lie.id));
+}
 function createDetectiveRun(input2) {
   return DetectiveRunStateSchema.parse({
     schemaVersion: RUN_SCHEMA_VERSION,
@@ -36844,7 +36853,12 @@ function viewRun(run) {
         talksAgain: talksAgainOf(run, suspect.id),
         cleared: isCleared(run, suspect.id),
         claims: viewClaims(run, detectiveCase, suspect.id),
-        statements: run.statements.filter(({ suspectId }) => suspectId === suspect.id).map(({ day, kind, text }) => ({ day, kind, text }))
+        statements: run.statements.filter(({ suspectId }) => suspectId === suspect.id).map(({ day, kind, text }) => ({
+          day,
+          kind,
+          text,
+          ...kind === "alibi" && alibiRefuted(run, suspect) ? { refuted: true } : {}
+        }))
       };
     }),
     clues: detectiveCase.clues.filter(({ id }) => run.foundClueIds.includes(id)).map(({ id, locationId, description, sightingOf }) => ({
@@ -39683,6 +39697,7 @@ function checkLies(detectiveCase, obtainable, requireTies = false, requireAdmiss
   return [
     ...unbreakable,
     ...checkChains(detectiveCase),
+    ...checkAlibiLies(detectiveCase),
     ...requireTies ? checkTies(detectiveCase) : [],
     ...requireAdmissions ? checkAdmissions(detectiveCase) : [],
     ...requireClaims ? checkTrueClaims(detectiveCase) : []
@@ -39720,6 +39735,18 @@ function checkChains(detectiveCase) {
       ];
     })
   );
+}
+function checkAlibiLies(detectiveCase) {
+  return detectiveCase.suspects.flatMap((suspect, suspectIndex) => {
+    const replacing = suspect.lies.filter((lie) => lie.replacesAlibi === true);
+    return replacing.length <= 1 ? [] : [
+      {
+        code: "alibi-replaced-twice",
+        path: `suspects[${String(suspectIndex)}].lies`,
+        message: `"${suspect.id}" has ${String(replacing.length)} lies marked "replacesAlibi"; only the lie the alibi rests on carries it.`
+      }
+    ];
+  });
 }
 function checkAdmissions(detectiveCase) {
   return detectiveCase.suspects.flatMap(
@@ -51788,6 +51815,7 @@ var en_default3 = {
       claims: "What they claim",
       mood: "Mood",
       lieFell: "a lie that fell",
+      alibiRefuted: "no longer stands",
       brokenBy: "broken by",
       shown: "Shown to them",
       noneShown: "Nothing shown yet.",
@@ -52305,6 +52333,7 @@ var ru_default2 = {
       claims: "\u0427\u0442\u043E \u043E\u043D\u0438 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0430\u044E\u0442",
       mood: "\u041D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u0435",
       lieFell: "\u0440\u0443\u0445\u043D\u0443\u0432\u0448\u0430\u044F \u043B\u043E\u0436\u044C",
+      alibiRefuted: "\u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435 \u0434\u0435\u0440\u0436\u0438\u0442\u0441\u044F",
       brokenBy: "\u043E\u043F\u0440\u043E\u0432\u0435\u0440\u0433\u043D\u0443\u0442\u043E",
       shown: "\u0427\u0442\u043E \u0435\u043C\u0443 \u043F\u043E\u043A\u0430\u0437\u0430\u043B\u0438",
       noneShown: "\u041F\u043E\u043A\u0430 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u043E.",
@@ -53695,7 +53724,7 @@ function said(view, suspect, text) {
   const days = [...new Set(suspect.statements.map(({ day }) => day))];
   return days.map((day) => {
     const lines = suspect.statements.filter((statement) => statement.day === day).map(
-      ({ kind, text: line }) => kind === "conceded" && suspect.claims.length > 0 ? `<p class="statement"><span class="tag">${e(t.kinds[kind])} \xB7 ${e(t.lieFell)}</span><br>${e(line)}</p>` : kind === "conceded" ? `<p class="statement fell"><span class="tag">${e(t.kinds[kind])} \xB7 ${e(t.lieFell)}</span><br><s>${e(line)}</s>${breakers.length === 0 ? "" : `<br><span class="tag">${e(t.brokenBy)}:</span> ${breakers.map((id) => chip(view, id, "", "breaks-lie")).join(" ")}`}</p>` : `<p class="statement"><span class="tag">${e(t.kinds[kind])}</span><br>${e(line)}</p>`
+      ({ kind, text: line, refuted }) => kind === "alibi" && refuted === true ? `<p class="statement fell"><span class="tag">${e(t.kinds[kind])} \xB7 ${e(t.alibiRefuted)}</span><br><s>${e(line)}</s></p>` : kind === "conceded" && suspect.claims.length > 0 ? `<p class="statement"><span class="tag">${e(t.kinds[kind])} \xB7 ${e(t.lieFell)}</span><br>${e(line)}</p>` : kind === "conceded" ? `<p class="statement fell"><span class="tag">${e(t.kinds[kind])} \xB7 ${e(t.lieFell)}</span><br><s>${e(line)}</s>${breakers.length === 0 ? "" : `<br><span class="tag">${e(t.brokenBy)}:</span> ${breakers.map((id) => chip(view, id, "", "breaks-lie")).join(" ")}`}</p>` : `<p class="statement"><span class="tag">${e(t.kinds[kind])}</span><br>${e(line)}</p>`
     );
     return `<div class="day"><span class="tag">${e(t.day)} ${String(day)}</span>
 ${lines.join("\n")}</div>`;
@@ -55006,6 +55035,7 @@ var ISSUE_PRIORITY = {
   "clue-not-tied": 9.05,
   "lie-without-admission": 9.06,
   "lie-chain-broken": 9.07,
+  "alibi-replaced-twice": 9.075,
   "witness-saw-the-crime": 18.5,
   "chain-without-deduction": 17.5,
   "culprit-cleared": 17.6,

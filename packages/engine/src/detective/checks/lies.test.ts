@@ -95,3 +95,26 @@ describe('a lie that a conclusion can break', () => {
     ]);
   });
 });
+
+describe('the lie an alibi rests on', () => {
+  const marking = (marks: boolean[]): CaseIssueCode[] => {
+    const detectiveCase = buildCheeseCase();
+    const baker = detectiveCase.suspects[0];
+    if (baker === undefined) throw new Error('No baker.');
+    baker.lies = marks.map((replacesAlibi, index) => ({
+      id: `lie-${String(index)}`,
+      statement: 'I was at home.',
+      admission: 'I went out.',
+      brokenBy: ['cart-tracks'],
+      ...(replacesAlibi ? { replacesAlibi } : {}),
+    }));
+    return issueCodes(detectiveCase);
+  };
+
+  it('is one lie of a suspect at most', () => {
+    expect(marking([true])).toEqual([]);
+    expect(marking([false, true, false])).toEqual([]);
+    expect(marking([])).toEqual([]);
+    expect(marking([true, true])).toEqual(['alibi-replaced-twice']);
+  });
+});
