@@ -7,9 +7,15 @@ import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { intentOf } from '../../test/fixtures/ordinary-play.js';
 import { createRng, type Rng } from '../dice.js';
 import { resolveIntent } from './actions.js';
-import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
+import {
+  DetectiveCaseSchema,
+  MIN_RANDOM_EVENTS,
+  promisedEventsOf,
+  type DetectiveCase,
+} from './case-schema.js';
 import {
   EVERY_DAY_RULESET_VERSION,
+  FEWER_EVENTS_RULESET_VERSION,
   drawDayEvents,
   drawEvents,
   drawOwedDayEvent,
@@ -190,23 +196,95 @@ describe('the pool a generated case must bring', () => {
     return raw;
   };
   const codes = (raw: unknown) => {
-    const result = validateCase(raw, context(3));
+    const result = validateCase(raw, context(MIN_RANDOM_EVENTS));
     return result.isValid ? [] : result.issues.map(({ code }) => code);
   };
 
-  it('has an event for every day of the case, and at least three', () => {
-    const five = Array.from({ length: 5 }, (_, index) => event(`event-${String(index)}`));
+  it('has the events its run is promised, and at least four', () => {
+    const ten = Array.from({ length: 10 }, (_, index) => event(`event-${String(index)}`));
 
-    expect(codes(caseWith(5, five))).toEqual([]);
-    expect(codes(caseWith(5, five.slice(0, 4)))).toEqual(['too-few-random-events']);
-    expect(codes(caseWith(3, five.slice(0, 3)))).toEqual([]);
+    expect(codes(caseWith(3, ten.slice(0, 4)))).toEqual([]);
+    expect(codes(caseWith(3, ten.slice(0, 3)))).toEqual(['too-few-random-events']);
+    expect(codes(caseWith(5, ten.slice(0, 4)))).toEqual([]);
+    expect(codes(caseWith(10, ten.slice(0, 4)))).toEqual([]);
+    expect(codes(caseWith(10, ten.slice(0, 3)))).toEqual(['too-few-random-events']);
+  });
+
+  it('promises one event a day to a short run, and a third of the days (three at least) to a longer one', () => {
+    expect([1, 2, 3].map(promisedEventsOf)).toEqual([1, 2, 3]);
+    expect([4, 5, 6, 7, 8, 9, 10].map(promisedEventsOf)).toEqual([3, 3, 3, 3, 3, 3, 4]);
   });
 
   it('has an event that may happen on each day, by its window', () => {
-    const early = ['a', 'b', 'c'].map((id) => event(id, 1, 1));
+    const early = ['a', 'b', 'c', 'd'].map((id) => event(id, 1, 1));
 
     expect(codes(caseWith(3, early))).toEqual(['random-events-miss-a-day']);
-    expect(codes(caseWith(3, [event('a', 1, 1), event('b', 2, 2), event('c', 3, null)]))).toEqual([]);
+    expect(codes(caseWith(3, [event('a', 1, 1), event('b', 2, 2), event('c', 3, null), event('d')]))).toEqual(
+      [],
+    );
+  });
+});
+
+describe('the events of a long run', () => {
+  const pace =
+    (days: number, count = 6) =>
+    (minute: number, day: number, drawn = 0) => {
+      const base = at(runWith(count, FEWER_EVENTS_RULESET_VERSION, days), day, minute);
+      return {
+        ...base,
+        drawnEvents: Array.from({ length: drawn }, (_, index) => ({
+          eventId: `event-${String(index)}`,
+          day: 1,
+          phase: 'night' as const,
+        })),
+      };
+    };
+  const ten = pace(10);
+
+  it('is not promised to every day: a day on the pace is left to chance, and misses on a miss', () => {
+    const before = ten(17 * 60, 1);
+    expect(drawDayEvents(at(before, 1, 18 * 60 + 5), before.clock, scripted(MISS)).events).toHaveLength(1);
+
+    const ahead = ten(17 * 60, 2, 1);
+    expect(drawDayEvents(at(ahead, 2, 18 * 60 + 5), ahead.clock, scripted(1, 1)).events).toEqual([]);
+  });
+
+  it('is promised when the run is behind its pace, even against the dice', () => {
+    const behind = ten(17 * 60, 5, 1);
+    const drawn = drawDayEvents(at(behind, 5, 18 * 60 + 5), behind.clock, scripted(MISS, MISS));
+
+    expect(drawn.events).toHaveLength(1);
+  });
+
+  it('never runs ahead of the pace by chance, and stops at what the run is promised', () => {
+    const ahead = ten(11 * 60, 1, 1);
+    expect(drawDayEvents(at(ahead, 1, 13 * 60), ahead.clock, scripted(1, 1)).events).toEqual([]);
+
+    const all = ten(8 * 60, 10, 4);
+    expect(drawEvents(all, scripted(1, 1, 1, 1)).events).toEqual([]);
+  });
+
+  it('owes a day that is cut short an event only when the run is behind its pace', () => {
+    expect(drawOwedDayEvent(ten(13 * 60, 5, 1), scripted(1, 1)).events).toHaveLength(1);
+    expect(drawOwedDayEvent(ten(13 * 60, 5, 2), scripted(1, 1)).events).toEqual([]);
+  });
+
+  it('keeps the pool for the events still owed, and stays as it was in a ruleset before', () => {
+    const tight = pace(10, 4)(8 * 60, 2, 1);
+    expect(drawEvents(tight, scripted(1, 1, 1, 1)).events).toHaveLength(0);
+
+    const older = { ...ten(17 * 60, 2, 1), rulesetVersion: FEWER_EVENTS_RULESET_VERSION - 1 };
+    expect(drawDayEvents(at(older, 2, 18 * 60 + 5), older.clock, scripted(MISS, MISS)).events).toHaveLength(
+      1,
+    );
+  });
+
+  it('keeps a short run promised one event a day, in the new ruleset too', () => {
+    const short = pace(3)(17 * 60, 2, 2);
+
+    expect(drawDayEvents(at(short, 2, 18 * 60 + 5), short.clock, scripted(MISS, MISS)).events).toHaveLength(
+      1,
+    );
   });
 });
 

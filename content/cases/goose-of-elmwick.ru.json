@@ -638,6 +638,21 @@
       "duration": {
         "kind": "instant"
       }
+    },
+    {
+      "id": "fountain-hiccup",
+      "description": "Фонтан на площади кашляет, фыркает и обдаёт скамейки, и весь Элмвик сходится на том, что виноват гусь.",
+      "weight": 2,
+      "fromDay": 1,
+      "effect": {
+        "kind": "flavor"
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
     }
   ]
 }

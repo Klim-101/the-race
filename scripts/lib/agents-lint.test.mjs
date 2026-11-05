@@ -104,7 +104,7 @@ describe('frontmatter', () => {
 
   it('plugin.json carries the canonical metadata', () => {
     const plugin = JSON.parse(read(join(AGENTS, 'plugin.json')));
-    expect(plugin).toMatchObject({ name: 'the-race', version: '0.63.0', license: 'Apache-2.0' });
+    expect(plugin).toMatchObject({ name: 'the-race', version: '0.64.0', license: 'Apache-2.0' });
     expect(plugin.description).toBeTruthy();
     expect(plugin.author.name).toBeTruthy();
     expect(plugin.keywords.length).toBeGreaterThan(0);
@@ -333,7 +333,7 @@ describe('the events of a turn', () => {
 
   it('has the generator bring a pool of events, which the engine requires', () => {
     expect(generator).toMatch(
-      /\*\*randomEvents\*\* \(\*\*required\*\*: at least three and \*\*at least as many as the case has days\*\*/,
+      /\*\*randomEvents\*\* \(\*\*required\*\*: at least four, and \*\*at least as many as the run is promised\*\*/,
     );
   });
 

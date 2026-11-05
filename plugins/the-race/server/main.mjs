@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 26;
+var RULESET_VERSION = 27;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -34857,7 +34857,12 @@ var RANDOM_EVENT_CONDITIONS = ["shaken", "exhausted"];
 var MAX_RANDOM_EVENT_MINUTES = 120;
 var MAX_RANDOM_EVENT_NERVES = 2;
 var MAX_RANDOM_EVENTS = 40;
-var MIN_RANDOM_EVENTS = 3;
+var MIN_RANDOM_EVENTS = 4;
+var EVERY_DAY_EVENT_MAX_DAYS = 3;
+var MIN_PROMISED_EVENTS = 3;
+function promisedEventsOf(days) {
+  return days <= EVERY_DAY_EVENT_MAX_DAYS ? days : Math.max(MIN_PROMISED_EVENTS, Math.ceil(days / 3));
+}
 var RandomEventEffectSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("flavor") }),
   external_exports.object({ kind: external_exports.literal("location-closes"), locationId: EntityIdSchema }),
@@ -35668,6 +35673,7 @@ var EVENT_SLOTS_PER_DRAW = 2;
 var BASE_EVENT_CHANCE_PERCENT = 35;
 var DAY_EVENTS_RULESET_VERSION = 6;
 var EVERY_DAY_RULESET_VERSION = 10;
+var FEWER_EVENTS_RULESET_VERSION = 27;
 var DAY_EVENT_MARKS = [12 * 60, 18 * 60];
 var DAY_EVENT_CHANCE_PERCENT = 25;
 var DEADLINE_CHANCE_GROWTH_PERCENT = 15;
@@ -35786,12 +35792,26 @@ function drawEvents(run, rng) {
 function daysLeftOf(run) {
   return Math.max(1, run.case.clock.days - run.clock.day + 1);
 }
+function isPaced(run) {
+  return run.rulesetVersion >= FEWER_EVENTS_RULESET_VERSION && run.case.clock.days > EVERY_DAY_EVENT_MAX_DAYS;
+}
+function paceTargetOf(run) {
+  const { days } = run.case.clock;
+  return Math.ceil(promisedEventsOf(days) * Math.min(run.clock.day, days) / days);
+}
+function owedOf(run) {
+  return isPaced(run) ? Math.max(0, promisedEventsOf(run.case.clock.days) - run.drawnEvents.length) : daysLeftOf(run);
+}
 function eventsLeftOf(run) {
   const drawn = new Set(run.drawnEvents.map(({ eventId }) => eventId));
   return poolOf(run).filter(({ id }) => !drawn.has(id)).length;
 }
 function dayEventToday(run) {
   return run.drawnEvents.some(({ day, phase }) => day === run.clock.day && phase === "day");
+}
+function isEventDue(run) {
+  if (dayEventToday(run)) return false;
+  return !isPaced(run) || run.drawnEvents.length < paceTargetOf(run);
 }
 function drawDayEvents(run, before, rng) {
   const sameDay = run.clock.day === before.day;
@@ -35803,7 +35823,7 @@ function drawDayEvents(run, before, rng) {
   return { ...drawn, run: { ...drawn.run, rngState: rng.state() } };
 }
 function drawOwedDayEvent(run, rng) {
-  if (run.rulesetVersion < EVERY_DAY_RULESET_VERSION || dayEventToday(run)) return { run, events: [] };
+  if (run.rulesetVersion < EVERY_DAY_RULESET_VERSION || !isEventDue(run)) return { run, events: [] };
   const drawn = drawSlots(run, rng, 1, DAY_EVENT_CHANCE_PERCENT, "day", true);
   return { ...drawn, run: { ...drawn.run, rngState: rng.state() } };
 }
@@ -35814,8 +35834,10 @@ function drawSlots(run, rng, slots, baseChance, phase, promiseLast = false) {
   const reserving = run.rulesetVersion >= EVERY_DAY_RULESET_VERSION;
   for (let slot = 0; slot < slots; slot += 1) {
     if (poolOf(current).length === 0) break;
-    const owed = promiseLast && slot === slots - 1 && !dayEventToday(current);
-    const spare = eventsLeftOf(current) - daysLeftOf(current);
+    const owed = promiseLast && slot === slots - 1 && isEventDue(current);
+    if (reserving && !owed && isPaced(current) && current.drawnEvents.length >= paceTargetOf(current))
+      continue;
+    const spare = eventsLeftOf(current) - owedOf(current);
     if (reserving && phase === "night" && spare < 1) break;
     if (reserving && phase === "day" && !owed && spare < 0) continue;
     const chance = owed ? 100 : baseChance + Math.round(pressureOf(current) * DEADLINE_CHANCE_GROWTH_PERCENT);
@@ -40419,12 +40441,12 @@ function checkRandomEvents(detectiveCase, hero, traits, locale, minEvents) {
   };
   const issues = [];
   const pool = detectiveCase.randomEvents ?? [];
-  const needed = minEvents > 0 ? Math.max(minEvents, days) : 0;
+  const needed = minEvents > 0 ? Math.max(minEvents, promisedEventsOf(days)) : 0;
   if (pool.length < needed) {
     issues.push({
       code: "too-few-random-events",
       path: "randomEvents",
-      message: `The case needs at least ${String(needed)} random events (as many as it has days, and not fewer than ${String(minEvents)}), with fromDay and untilDay spread over its days; it has ${String(pool.length)}.`
+      message: `The case needs at least ${String(needed)} random events (the events its ${String(days)} days promise, and not fewer than ${String(minEvents)}), with fromDay and untilDay spread over its days; it has ${String(pool.length)}.`
     });
   }
   if (needed > 0 && pool.length > 0) {
