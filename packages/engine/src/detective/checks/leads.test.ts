@@ -69,6 +69,24 @@ describe('a lead that can be earned', () => {
   });
 });
 
+describe('a lead that does not say whether it is false', () => {
+  it('is a true lead: the field defaults to false', () => {
+    const detectiveCase = buildLaneCase();
+    const [first] = detectiveCase.leads as Loose[];
+    delete first?.isFalse;
+
+    const result = validateCase(detectiveCase, {
+      hero: buildHero(),
+      traits: [],
+      locale: 'en',
+      realNames: [],
+    });
+
+    expect(result.isValid).toBe(true);
+    expect(result.isValid && result.detectiveCase.leads?.[0]?.isFalse).toBe(false);
+  });
+});
+
 describe('a rumour and a study', () => {
   it('can be earned by asking the locals of a place within reach', () => {
     expect(issueCodes(buildLaneCase({ kind: 'locals', locationId: 'market-square' }))).toEqual([]);
