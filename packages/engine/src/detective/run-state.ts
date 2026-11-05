@@ -959,6 +959,8 @@ export interface DetectiveRunView {
     readonly window: { readonly fromMinute: number; readonly untilMinute: number } | null;
     /** Whether the hour of the day lets the hero follow it now. */
     readonly openNow: boolean;
+    /** Followed to the end: it opens something, and every place it opens has been visited and every part searched. */
+    readonly done: boolean;
     readonly opens: readonly {
       readonly kind: 'place' | 'part';
       readonly id: string;
@@ -1116,13 +1118,8 @@ function viewLeads(run: DetectiveRunState): DetectiveRunView['leads'] {
   return run.earnedLeads.flatMap(({ leadId, source }) =>
     leads
       .filter(({ id }) => id === leadId)
-      .map(({ id, reason, window }) => ({
-        id,
-        reason,
-        window: window ?? null,
-        source: source === undefined ? null : sourceOf(run, source),
-        openNow: isLeadOpen(run, id),
-        opens: [
+      .map(({ id, reason, window }) => {
+        const opens = [
           ...locations
             .filter(({ requiresLead }) => requiresLead === id)
             .map((place) => ({ kind: 'place' as const, id: place.id, name: place.name })),
@@ -1131,8 +1128,21 @@ function viewLeads(run: DetectiveRunState): DetectiveRunView['leads'] {
               .filter(({ requiresLead }) => requiresLead === id)
               .map((part) => ({ kind: 'part' as const, id: part.id, name: part.name })),
           ),
-        ],
-      })),
+        ];
+        const reached = ({ kind, id: openedId }: (typeof opens)[number]): boolean =>
+          kind === 'place'
+            ? run.visitedLocationIds.includes(openedId)
+            : run.searchedParts.some(({ partId }) => partId === openedId);
+        return {
+          id,
+          reason,
+          window: window ?? null,
+          source: source === undefined ? null : sourceOf(run, source),
+          openNow: isLeadOpen(run, id),
+          done: opens.length > 0 && opens.every(reached),
+          opens,
+        };
+      }),
   );
 }
 

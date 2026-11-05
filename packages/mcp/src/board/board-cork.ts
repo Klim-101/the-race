@@ -178,12 +178,15 @@ export function renderCork(view: DetectiveRunView, board: BoardText, text: TabTe
   const leadCards = view.leads.map((lead, index) => {
     const y = cardsTop + index * ROW_STEP;
     const opens = lead.opens.map(({ name }) => name).join(', ');
-    const status = !lead.openNow
-      ? text.leadPins.shutNow
-      : lead.opens.length === 0
-        ? text.leadPins.opensNothing
-        : text.leadPins.followNow;
-    const state = !lead.openNow ? ' shut' : lead.opens.length === 0 ? ' idle' : '';
+    // A lead followed to the end is told as such before the hour of its window, which no longer matters.
+    const status = lead.done
+      ? text.leadPins.doneNow
+      : !lead.openNow
+        ? text.leadPins.shutNow
+        : lead.opens.length === 0
+          ? text.leadPins.opensNothing
+          : text.leadPins.followNow;
+    const state = lead.done ? ' done' : !lead.openNow ? ' shut' : lead.opens.length === 0 ? ' idle' : '';
     const pinLines = [
       ...wrap(lead.reason, LINE_LENGTH, 2).map((line) => ({ cls: 'line', line })),
       { cls: '', line: truncate(sourceLine(lead), LEAD_LINE) },

@@ -67,6 +67,7 @@ export interface TabText {
     readonly opensNothing: string;
     readonly followNow: string;
     readonly shutNow: string;
+    readonly doneNow: string;
     /** What earned a lead: {n} a clue number, {name} a person, {place} a place, {tool} a tool. */
     readonly from: Record<
       'clue' | 'study' | 'studyWith' | 'talk' | 'lie' | 'deduction' | 'locals' | 'unknown',

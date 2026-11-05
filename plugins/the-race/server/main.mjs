@@ -36620,19 +36620,24 @@ function viewLeads(run) {
   const { locations } = run.case;
   const leads = run.case.leads ?? [];
   return run.earnedLeads.flatMap(
-    ({ leadId, source }) => leads.filter(({ id }) => id === leadId).map(({ id, reason, window }) => ({
-      id,
-      reason,
-      window: window ?? null,
-      source: source === void 0 ? null : sourceOf(run, source),
-      openNow: isLeadOpen(run, id),
-      opens: [
+    ({ leadId, source }) => leads.filter(({ id }) => id === leadId).map(({ id, reason, window }) => {
+      const opens = [
         ...locations.filter(({ requiresLead }) => requiresLead === id).map((place) => ({ kind: "place", id: place.id, name: place.name })),
         ...locations.flatMap(
           ({ parts }) => (parts ?? []).filter(({ requiresLead }) => requiresLead === id).map((part) => ({ kind: "part", id: part.id, name: part.name }))
         )
-      ]
-    }))
+      ];
+      const reached = ({ kind, id: openedId2 }) => kind === "place" ? run.visitedLocationIds.includes(openedId2) : run.searchedParts.some(({ partId }) => partId === openedId2);
+      return {
+        id,
+        reason,
+        window: window ?? null,
+        source: source === void 0 ? null : sourceOf(run, source),
+        openNow: isLeadOpen(run, id),
+        done: opens.length > 0 && opens.every(reached),
+        opens
+      };
+    })
   );
 }
 function buildingHeads(locations, ids) {
@@ -51892,6 +51897,7 @@ var en_default3 = {
       opensNothing: "has opened nothing yet",
       followNow: "can be followed now",
       shutNow: "shut at this hour",
+      doneNow: "followed to the end",
       from: {
         clue: "from clue {n}",
         study: "from studying {n}",
@@ -52408,6 +52414,7 @@ var ru_default2 = {
       opensNothing: "\u043F\u043E\u043A\u0430 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043E\u0442\u043A\u0440\u044B\u043B\u0430",
       followNow: "\u043C\u043E\u0436\u043D\u043E \u0438\u0434\u0442\u0438 \u043F\u043E \u043D\u0435\u0439 \u0441\u0435\u0439\u0447\u0430\u0441",
       shutNow: "\u0432 \u044D\u0442\u043E\u0442 \u0447\u0430\u0441 \u0437\u0430\u043A\u0440\u044B\u0442\u0430",
+      doneNow: "\u043E\u0442\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u0430",
       from: {
         clue: "\u0438\u0437 \u0443\u043B\u0438\u043A\u0438 {n}",
         study: "\u0438\u0437 \u0438\u0437\u0443\u0447\u0435\u043D\u0438\u044F {n}",
@@ -52908,8 +52915,8 @@ function renderCork(view, board, text) {
   const leadCards = view.leads.map((lead, index) => {
     const y = cardsTop + index * ROW_STEP;
     const opens = lead.opens.map(({ name }) => name).join(", ");
-    const status = !lead.openNow ? text.leadPins.shutNow : lead.opens.length === 0 ? text.leadPins.opensNothing : text.leadPins.followNow;
-    const state = !lead.openNow ? " shut" : lead.opens.length === 0 ? " idle" : "";
+    const status = lead.done ? text.leadPins.doneNow : !lead.openNow ? text.leadPins.shutNow : lead.opens.length === 0 ? text.leadPins.opensNothing : text.leadPins.followNow;
+    const state = lead.done ? " done" : !lead.openNow ? " shut" : lead.opens.length === 0 ? " idle" : "";
     const pinLines = [
       ...wrap(lead.reason, LINE_LENGTH, 2).map((line) => ({ cls: "line", line })),
       { cls: "", line: truncate(sourceLine(lead), LEAD_LINE) },
@@ -53655,6 +53662,8 @@ svg.board .lead-pin.idle .paper{stroke-dasharray:5 3}
 svg.board .lead-pin.idle text.status{fill:#6b6354}
 svg.board .lead-pin.shut .paper{fill:#dcd9d2;stroke:#a39e92;stroke-dasharray:5 3}
 svg.board .lead-pin.shut text.status{fill:#b26a00}
+svg.board .lead-pin.done .paper{fill:#e3e0d8;stroke:#a39e92}
+svg.board .lead-pin.done text.status{fill:#6b6354}
 svg.board .thread.earned{stroke:#2f7a4a;stroke-width:2;stroke-dasharray:8 4}
 svg.board .pin{fill:#c0392b;stroke:#7b1f14;stroke-width:1.5}
 svg.board .thread{fill:none;stroke-linecap:round}

@@ -141,6 +141,8 @@ svg.board .lead-pin.idle .paper{stroke-dasharray:5 3}
 svg.board .lead-pin.idle text.status{fill:#6b6354}
 svg.board .lead-pin.shut .paper{fill:#dcd9d2;stroke:#a39e92;stroke-dasharray:5 3}
 svg.board .lead-pin.shut text.status{fill:#b26a00}
+svg.board .lead-pin.done .paper{fill:#e3e0d8;stroke:#a39e92}
+svg.board .lead-pin.done text.status{fill:#6b6354}
 svg.board .thread.earned{stroke:#2f7a4a;stroke-width:2;stroke-dasharray:8 4}
 svg.board .pin{fill:#c0392b;stroke:#7b1f14;stroke-width:1.5}
 svg.board .thread{fill:none;stroke-linecap:round}
