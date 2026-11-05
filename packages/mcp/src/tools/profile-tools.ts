@@ -14,7 +14,7 @@ export const profileView = defineTool({
   name: 'profile_view',
   description:
     "The player's profile: how many runs they have played, how they ended (won, lost for each reason, given " +
-    'up), days and clues over all of them, the longest run, the streak of wins, `earned` (the tool slots and the hidden trait slots the next hero has, which win after win open up), and the last few runs with ' +
+    'up), days and clues over all of them, the longest run, the streak of wins, `earned` (the tool slots and the hidden trait slots the next hero has, which win after win open up; it counts the run that has just ended, so after a win it is one more than the hero who played it had), and the last few runs with' +
     'the hero, the case title and how it ended. Only runs that are over are in it, so it never touches the ' +
     "case in play. Call it once at the end of a run, after the closing scene, for one line of the hero's " +
     "tally in the narrator's voice, or when the player asks how they are doing. Changes nothing. The profile " +
@@ -23,7 +23,10 @@ export const profileView = defineTool({
   outputSchema: z.object({
     stats: z.looseObject({ runs: z.int(), won: z.int(), winRate: z.int() }),
     reasons: z.array(z.string()),
-    /** What the runs have earned the next hero: tool slots in the suitcase and hidden trait slots. */
+    /**
+     * What the runs have earned the next hero: tool slots in the suitcase and hidden trait slots. It counts every run
+     * that is over, the last one too, so the hero who just played had one tool slot fewer after a win.
+     */
     earned: z.object({ toolSlots: z.int(), traitSlots: z.int() }),
     recent: z.array(
       z.object({
