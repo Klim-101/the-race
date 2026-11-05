@@ -6,6 +6,7 @@ import type { Rng } from '../dice.js';
 import { statusOfEndReason } from '../run.js';
 import { clueNumber } from './clue-number.js';
 import { EntityIdSchema, type Truth } from './case-schema.js';
+import { epilogueOf, type Epilogue } from './epilogue.js';
 import { GARBLED_REFUSAL_MESSAGE, anyGarbled } from './fatigue.js';
 import {
   addInsight,
@@ -123,6 +124,8 @@ export interface AccusationOutcome {
   readonly evidenceComplete: boolean;
   /** Only for `unproven`: what the proof lacked. */
   readonly shortfall?: Shortfall;
+  /** What the closing story is told from: the course of the crime and, by verdict, what was missed or misled. */
+  readonly epilogue: Epilogue;
   readonly truth: Pick<Truth, 'culpritId' | 'motive' | 'method' | 'crimeLocationId'>;
 }
 
@@ -308,6 +311,7 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
       motiveRight,
       evidenceComplete,
       ...(shortfall === undefined ? {} : { shortfall }),
+      epilogue: epilogueOf(run, culpritId, shortfall),
       truth: {
         culpritId: truth.culpritId,
         motive: truth.motive,

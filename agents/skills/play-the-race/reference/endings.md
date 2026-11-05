@@ -10,6 +10,16 @@ Tell the ending as a short closing scene in the hero's own thoughts (first perso
 
 For `accuse` the verdict word and the truth come first, as the skill says; the scene then follows the reason below.
 
+## The closing story of an accusation
+
+After `accuse` the scene is a short detective story, told from the `epilogue` and the `truth` of the outcome and from nothing else. The player has just learned how the case really went, so tell it as a story that makes the next case worth starting, not as a report. The shape depends on the verdict:
+
+- **`unproven`**: the night with the notebook. Start with what really happened (`course`, in order, as the hero now sees it), then where the hero's trail broke off, then the thing walked past: each clue in `missed`, told in full: what it said, the place it lay in, and how it could have been had. The `obstacle` names the kind of thing that stood in the way (a lock, the dark, a soft thing, a trace, a seal, a screen); a clue with no `partId` was there for the asking or a talk. A clue that was found and left out is told from the `shortfall`. End on what the hero would do first, were the file open: a thought, not a promise.
+- **`wrong`**: the culprit's own story, from `course` and the truth, beginning at the moment the hero went the other way. Name the false clue that led there (`misled`, by its `number`) and what it really was. The hero is let go, as the table below says.
+- **`proven`**: short, a few sentences of `course` as the hero finally hears it, and the credit. There is no `missed` to tell.
+
+Rules for all three: six to ten sentences, the hero's voice, the case's tone. Every fact comes from the outcome; invent no person, clue, place or motive, and never explain a gap by something that is not in it. An empty `missed` or `misled` is told as nothing missing, not filled in. No real names. Do not blame the player, and let the hero leave as the table below says.
+
 ## What each reason means
 
 | `endReason`       | What happened                                                 | How the hero leaves                                                             |

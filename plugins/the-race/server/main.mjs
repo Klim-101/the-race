@@ -37605,6 +37605,34 @@ function askBonusOf(run, toolId) {
   return item === void 0 || bonus === void 0 ? void 0 : { item, bonus };
 }
 
+// packages/engine/src/detective/epilogue.ts
+function epilogueOf(run, accusedId, shortfall) {
+  const { truth, clues, locations } = run.case;
+  const course = truth.timeline.toSorted((a, b) => a.atMinute - b.atMinute);
+  const neverFound = new Set(
+    (shortfall?.evidence.clues ?? []).filter(({ state }) => state === "never-found").map(({ clueId }) => clueId)
+  );
+  const missed = clues.filter(({ id }) => neverFound.has(id)).map((clue) => {
+    const place = locations.find(({ id }) => id === clue.locationId);
+    const part = place?.parts?.find(({ holds }) => holds === clue.id);
+    return {
+      clueId: clue.id,
+      description: clue.description,
+      locationId: clue.locationId,
+      partId: part?.id ?? null,
+      obstacle: part?.obstacle ?? null
+    };
+  });
+  const misled = accusedId === truth.culpritId ? [] : clues.filter(
+    ({ id, isRedHerring, pointsTo }) => isRedHerring && pointsTo.includes(accusedId) && run.foundClueIds.includes(id)
+  ).map(({ id, description }) => ({
+    clueId: id,
+    description,
+    number: clueNumber(run.hero.name, run.foundClueIds.indexOf(id))
+  }));
+  return { course, missed, misled };
+}
+
 // packages/engine/src/detective/verdict.ts
 var DeduceIntentSchema = external_exports.object({
   kind: external_exports.literal("deduce"),
@@ -37747,6 +37775,7 @@ function accuse(run, input2, rng) {
       motiveRight,
       evidenceComplete,
       ...shortfall === void 0 ? {} : { shortfall },
+      epilogue: epilogueOf(run, culpritId, shortfall),
       truth: {
         culpritId: truth.culpritId,
         motive: truth.motive,
@@ -38537,6 +38566,27 @@ var OutcomeSchema = external_exports.union([
           })
         )
       })
+    }).optional(),
+    // Optional: a log written before the epilogue existed has none.
+    epilogue: external_exports.object({
+      course: external_exports.array(
+        external_exports.object({
+          atMinute: external_exports.int().min(0),
+          actorId: EntityIdSchema,
+          locationId: EntityIdSchema,
+          action: external_exports.string()
+        })
+      ),
+      missed: external_exports.array(
+        external_exports.object({
+          clueId: EntityIdSchema,
+          description: external_exports.string(),
+          locationId: EntityIdSchema,
+          partId: EntityIdSchema.nullable(),
+          obstacle: ObstacleKindSchema.nullable()
+        })
+      ),
+      misled: external_exports.array(external_exports.object({ clueId: EntityIdSchema, description: external_exports.string(), number: external_exports.string() }))
     }).optional(),
     truth: external_exports.object({
       culpritId: EntityIdSchema,
@@ -54193,7 +54243,7 @@ async function playIntent(context2, turn, intent) {
 // packages/mcp/src/tools/accuse.ts
 var accuse2 = defineTool({
   name: "accuse",
-  description: 'The final accusation, and it ends the run for good: it cannot be undone. `culpritId` is a suspect from run_view, `motiveInsightId` the id of an insight the hero has made as the motive (or null for none) and `evidenceClueIds` the found clues laid out as proof. Call it only after the player has confirmed these three choices; never to test a theory. The fields are exactly `turn`, `culpritId`, `motiveInsightId` and `evidenceClueIds`, and they are easy to confuse with the neighbouring tools: `culpritId` is not `suspectId`, `motiveInsightId` is not `insightId`, `evidenceClueIds` is not `clueIds`; `turn` is a number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with "stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, place): the run is over, so this is the only place the truth is ever shown. For "unproven" it also has a `shortfall`: what the motive and the evidence lacked, clue by clue. Tell it as the closing scene and add nothing the outcome does not contain.',
+  description: 'The final accusation, and it ends the run for good: it cannot be undone. `culpritId` is a suspect from run_view, `motiveInsightId` the id of an insight the hero has made as the motive (or null for none) and `evidenceClueIds` the found clues laid out as proof. Call it only after the player has confirmed these three choices; never to test a theory. The fields are exactly `turn`, `culpritId`, `motiveInsightId` and `evidenceClueIds`, and they are easy to confuse with the neighbouring tools: `culpritId` is not `suspectId`, `motiveInsightId` is not `insightId`, `evidenceClueIds` is not `clueIds`; `turn` is a number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with "stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, place): the run is over, so this is the only place the truth is ever shown. For "unproven" it also has a `shortfall`: what the motive and the evidence lacked, clue by clue. Every verdict also has an `epilogue`: the true `course` of the crime in order, the clues `missed` (never found, with their place, part and obstacle) and the false clues that `misled` the hero. Tell it as the closing story, in the form endings.md gives for the verdict, and add nothing the outcome does not contain.',
   inputSchema: external_exports.object({
     turn: TurnSchema,
     culpritId: EntityIdSchema,

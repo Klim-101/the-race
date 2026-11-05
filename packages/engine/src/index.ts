@@ -29,6 +29,7 @@ export * from './detective/run-state.js';
 export * from './detective/actions.js';
 export * from './detective/interrogation.js';
 export * from './detective/verdict.js';
+export * from './detective/epilogue.js';
 export * from './detective/witnesses.js';
 export * from './detective/fatigue.js';
 export * from './detective/clock.js';
