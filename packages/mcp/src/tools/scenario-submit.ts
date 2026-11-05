@@ -24,6 +24,7 @@ import { clearPending, savePending } from '../pending-run.js';
 import { recordsOrNone } from '../profile.js';
 import { describeSighting } from '../sighting-text.js';
 import { requireWorld } from '../world.js';
+import { keepStats } from '../stats.js';
 import { MAX_CASE_ATTEMPTS, openPendingRun } from './generator-brief.js';
 
 /** What a generator is told at most: a long list of issues helps nobody. */
@@ -230,6 +231,7 @@ export const scenarioSubmit = defineTool({
         // The news the run was made from stays with it, so that it can be read back on its own.
         const news = await seedsOfRun(context);
         if (news !== undefined) await saveRunSeeds(context.saveDir, runId, news, context.saveFs);
+        await keepStats(context);
         await clearPending(context.saveDir, context.saveFs);
         return { accepted: true };
       }
