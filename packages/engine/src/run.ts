@@ -28,8 +28,10 @@ export const RUN_SCHEMA_VERSION = 2;
  * 21: a suspect makes claims at the first talk that the hero can see, and later ones as lies fall (see `claims.ts`).
  * 22: what a witness tells is a clue the hero holds, to show, link and lay out as proof (see `witnesses.ts`).
  * 23: a world event can set the weather of its day, so the news and the road agree (see `weather.ts`).
+ * 24: the hazards of the climate make a bad day of the road harder: a longer walk and mishaps of their own (see
+ * `road.ts`).
  */
-export const RULESET_VERSION = 23;
+export const RULESET_VERSION = 24;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;
