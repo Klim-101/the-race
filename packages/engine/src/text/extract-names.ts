@@ -11,10 +11,22 @@ import { transliterate } from './transliterate.js';
 // is still a name when it stands capitalised in the middle of a sentence: a needless rejection is cheaper
 // than a real name that reaches the player.
 
+/**
+ * The edition of the rules that decide which words are names. A list of names kept on disk was made by one
+ * edition; when the rules change, bump this, so that a list made by an older one is thrown away and made again
+ * and does not go on blocking words the new rules let through.
+ */
+export const NAME_RULES_EDITION = 2;
+
 const TOKEN = /[\p{L}][\p{L}\p{M}'’-]*/gu;
+const TRAILING_MARKS = ["'", '’', '-'];
 const BREAKS_SENTENCE = /[.!?…:;«»"“”()[\]—–\n]/u;
 const MIN_NAME_LENGTH = 2;
 const MAX_RUN_PARTS = 4;
+// A headline of at least this many words after the first, of which this share stand capitalised, is written in
+// Title Case ("Man Shocked As Dog Barks At Mailman"): there a capital says nothing of a name.
+const MIN_TITLE_CASE_WORDS = 6;
+const TITLE_CASE_SHARE = 0.8;
 
 // Stems of the verbs that follow a speaker in a headline.
 const SPEECH_VERB =
@@ -31,6 +43,16 @@ const NOT_NAMES = new Set(
     'президент министр премьер канцлер король королева мэр губернатор сенатор судья генерал полковник ' +
     'капитан министерство банк университет компания группа город республика государство совет ' +
     'комитет суд агентство управление полиция партия союз ' +
+    'agreement treaty accord pact summit commission authority administration ' +
+    // Function words: a feed's summary may run two sentences together with no full stop between them, and the
+    // first word of the second ("The African National Congress") then stands in the middle of what looks like
+    // one run. These are words of the language and no name alone, in the languages of the shipped feeds.
+    'the an on in at as of to for by with from into onto over under about after before during between among ' +
+    'against and or but nor so yet if than that this these those there here then who whom whose which what when ' +
+    'where why how while although because since until ' +
+    'der die das den dem des ein eine einen einem und oder aber mit von zu im am auf für nicht ' +
+    'el la los las un una unos unas y o pero con por para del al en que ' +
+    'соглашение договор саммит комиссия администрация ' +
     'he she it they we you i он она оно они мы вы я ' +
     'gdp ceo cfo ai it tv pr ok vat ввп ии жкх ндс сми ит тв дтп чп'
   ).split(' '),
@@ -44,13 +66,23 @@ interface Piece {
   readonly joined: boolean;
 }
 
+/**
+ * The word without the hyphens and apostrophes at its end. A loop and not a pattern such as `/[-']+$/`, which backtracks
+ * in time quadratic in the length of a token made of many of them (the text is a feed, which is untrusted).
+ */
+function withoutTrailingMarks(word: string): string {
+  let end = word.length;
+  while (end > 0 && TRAILING_MARKS.includes(word.charAt(end - 1))) end -= 1;
+  return word.slice(0, end);
+}
+
 function piecesOf(text: string): Piece[] {
   const pieces: Piece[] = [];
   const normalized = text.normalize('NFKC');
   let previousEnd = 0;
   for (const match of normalized.matchAll(TOKEN)) {
     const gap = normalized.slice(previousEnd, match.index);
-    const word = match[0].replace(/[-'’]+$/u, '');
+    const word = withoutTrailingMarks(match[0]);
     pieces.push({
       word,
       opens: pieces.length === 0 || BREAKS_SENTENCE.test(gap),
@@ -65,6 +97,19 @@ const isCapitalised = (word: string): boolean => /^\p{Lu}/u.test(word);
 const isAcronym = (word: string): boolean =>
   word.length >= 2 && word === word.toUpperCase() && /\p{L}/u.test(word);
 
+/**
+ * Whether the text is in Title Case. Every word of it would be taken for a name, and the real names of the day
+ * would hold "as", "at", "newsroom" and "independent", which no case could be written without. Only acronyms
+ * ("UK") are taken from such a text; a name that stands in one and nowhere else is missed, which the dictionary
+ * of the world and the validator's other checks have to catch.
+ */
+function isTitleCase(pieces: readonly Piece[]): boolean {
+  const rest = pieces.slice(1);
+  if (rest.length < MIN_TITLE_CASE_WORDS) return false;
+  const capitalised = rest.filter(({ word }) => isCapitalised(word) && !isAcronym(word)).length;
+  return capitalised / rest.length >= TITLE_CASE_SHARE;
+}
+
 function continuesRun(piece: Piece | undefined): boolean {
   return piece?.joined === true && isCapitalised(piece.word) && !isAcronym(piece.word);
 }
@@ -73,14 +118,36 @@ function isName(word: string): boolean {
   return word.length >= MIN_NAME_LENGTH && !NOT_NAMES.has(word.toLowerCase());
 }
 
-function namesInText(text: string): string[] {
-  const names: string[] = [];
+/**
+ * A name found in a text. A name is `solid` when it stands whole: a phrase, a single capitalised word or an
+ * acronym. The parts of a longer run are not, because a part is often only a common word ("National" of a
+ * party): see `extractRealNames`.
+ */
+interface Found {
+  readonly name: string;
+  readonly solid: boolean;
+}
+
+// A run of up to this many words, none of them the head of an office, reads as a person or a thing named by
+// a person ("Beau Lamarre-Condon", "Pope Francis"): its first words are given names, which point at no one.
+const MAX_PERSON_WORDS = 3;
+
+function namesInText(text: string): Found[] {
+  const found: Found[] = [];
   const pieces = piecesOf(text);
+  const solid = (name: string): Found => ({ name, solid: true });
+  if (isTitleCase(pieces)) {
+    return pieces
+      .map(({ word }) => word)
+      .filter(isAcronym)
+      .filter(isName)
+      .map(solid);
+  }
   let resumeAt = 0;
   for (const [at, first] of pieces.entries()) {
     if (at < resumeAt || !isCapitalised(first.word)) continue;
     if (isAcronym(first.word)) {
-      names.push(first.word);
+      found.push(solid(first.word));
       continue;
     }
     // A run: capitalised, not shouted, and only a space from the one before.
@@ -91,21 +158,43 @@ function namesInText(text: string): string[] {
     // A capitalised word that opens a sentence may be nothing but its first word ("Сегодня Москва"): unless
     // a verb of speech follows the run, it is not taken for a name.
     const words = pieces.slice(first.opens && !speaks ? at + 1 : at, end).map(({ word }) => word);
-    if (words.length > 0) {
-      names.push(words.join(' '), ...(words.length > 1 ? words.slice(0, MAX_RUN_PARTS) : []));
-    }
+    if (words.length === 0) continue;
+    found.push(solid(words.join(' ')));
+    if (words.length === 1) continue;
+    // The parts of a run. A short run of words that are all names reads as a person, whose given names point at
+    // no one, so only the last word is a name of its own; any other run gives its first words, as before.
+    const person = words.length <= MAX_PERSON_WORDS && words.every((word) => isName(word));
+    const parts = person ? words.slice(-1) : words.slice(0, MAX_RUN_PARTS);
+    for (const part of parts) found.push({ name: part, solid: false });
   }
-  return names.filter(isName);
+  return found.filter(({ name }) => isName(name));
+}
+
+/** The words of a text that stand in lower case: ordinary words, whatever they are used for elsewhere. */
+function plainWordsOf(text: string): string[] {
+  const plain: string[] = [];
+  for (const match of text.normalize('NFKC').matchAll(TOKEN)) {
+    const word = withoutTrailingMarks(match[0]);
+    if (word === word.toLowerCase()) plain.push(word);
+  }
+  return plain;
 }
 
 /**
  * The proper names of some source texts (headlines and their summaries), in Russian or English, each with
  * the likely spellings of it in the other script. Sorted and without repeats: the same texts always give the
  * same list. Case endings are left to the real-name check, which matches a name by its stem.
+ *
+ * A part of a longer name is dropped when the same texts use it as an ordinary word in lower case ("national",
+ * "congress"): the name as a whole, and a word that stands capitalised by itself, are always kept.
  */
 export function extractRealNames(texts: readonly string[]): string[] {
-  const found = texts.flatMap(namesInText);
-  const names = new Set(found.map((name) => name.toLowerCase()));
-  for (const name of found) for (const spelling of transliterate(name)) names.add(spelling);
+  const plain = new Set(texts.flatMap(plainWordsOf));
+  const kept = texts
+    .flatMap(namesInText)
+    .filter(({ name, solid }) => solid || !plain.has(name.toLowerCase()))
+    .map(({ name }) => name);
+  const names = new Set(kept.map((name) => name.toLowerCase()));
+  for (const name of kept) for (const spelling of transliterate(name)) names.add(spelling);
   return [...names].filter(isName).sort();
 }
