@@ -34,7 +34,7 @@ export const runView = defineTool({
     'time: at the start of a session to resume, and whenever you need the state. With a run, the result is ' +
     'its public view: `status` (active, won, lost or gave-up), `endReason` once it is over, `turn` (the ' +
     'number the state-changing tools expect), the place, the clues and insights found, the suspects (name ' +
-    'and persona only), the clock and the hero. It never holds the truth, the culprit or an unrevealed ' +
+    'and persona only), the clock and the hero (`toolSlots.used` counts only the pieces of the kit with `suitcase: true`; the phone and what the trade of the hero gave take no slot). It never holds the truth, the culprit or an unrevealed ' +
     'trait. With no run, `status` is "awaiting-hero" (run_new was called: ask the player to make a hero), ' +
     '"awaiting-case" (the hero exists: run the case generator) or "no-run" (offer a new run; when it has ' +
     '`unreadableSaves`, an earlier save could not be read and was left alone: say so in one plain line, it blocks nothing). Do not call ' +
