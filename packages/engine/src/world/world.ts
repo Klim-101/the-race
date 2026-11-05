@@ -104,8 +104,10 @@ function slugOf(english: string): string {
  * Whether two names are one name, up to case and ending ("Россия", "России"). A name that merely contains
  * another is a different one: "Банк России" is not Russia.
  */
+// Two names of the world are near-equal when one takes a few letters more ("Valdmark", "Valdmarks"), in any script.
+const LOOSE = { looseEndings: true } as const;
 const touches = (a: string, b: string): boolean =>
-  replaceRealName(a, b, '').trim() === '' || replaceRealName(b, a, '').trim() === '';
+  replaceRealName(a, b, '', LOOSE).trim() === '' || replaceRealName(b, a, '', LOOSE).trim() === '';
 
 /**
  * Adds an entity to the dictionary, or says why not. Pure: the world that comes back is a new one, and the

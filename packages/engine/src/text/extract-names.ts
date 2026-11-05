@@ -15,6 +15,10 @@ const TOKEN = /[\p{L}][\p{L}\p{M}'’-]*/gu;
 const BREAKS_SENTENCE = /[.!?…:;«»"“”()[\]—–\n]/u;
 const MIN_NAME_LENGTH = 2;
 const MAX_RUN_PARTS = 4;
+// A headline of at least this many words after the first, of which this share stand capitalised, is written in
+// Title Case ("Man Shocked As Dog Barks At Mailman"): there a capital says nothing of a name.
+const MIN_TITLE_CASE_WORDS = 6;
+const TITLE_CASE_SHARE = 0.8;
 
 // Stems of the verbs that follow a speaker in a headline.
 const SPEECH_VERB =
@@ -31,6 +35,8 @@ const NOT_NAMES = new Set(
     'президент министр премьер канцлер король королева мэр губернатор сенатор судья генерал полковник ' +
     'капитан министерство банк университет компания группа город республика государство совет ' +
     'комитет суд агентство управление полиция партия союз ' +
+    'agreement treaty accord pact summit commission authority administration ' +
+    'соглашение договор саммит комиссия администрация ' +
     'he she it they we you i он она оно они мы вы я ' +
     'gdp ceo cfo ai it tv pr ok vat ввп ии жкх ндс сми ит тв дтп чп'
   ).split(' '),
@@ -65,6 +71,19 @@ const isCapitalised = (word: string): boolean => /^\p{Lu}/u.test(word);
 const isAcronym = (word: string): boolean =>
   word.length >= 2 && word === word.toUpperCase() && /\p{L}/u.test(word);
 
+/**
+ * Whether the text is in Title Case. Every word of it would be taken for a name, and the real names of the day
+ * would hold "as", "at", "newsroom" and "independent", which no case could be written without. Only acronyms
+ * ("UK") are taken from such a text; a name that stands in one and nowhere else is missed, which the dictionary
+ * of the world and the validator's other checks have to catch.
+ */
+function isTitleCase(pieces: readonly Piece[]): boolean {
+  const rest = pieces.slice(1);
+  if (rest.length < MIN_TITLE_CASE_WORDS) return false;
+  const capitalised = rest.filter(({ word }) => isCapitalised(word) && !isAcronym(word)).length;
+  return capitalised / rest.length >= TITLE_CASE_SHARE;
+}
+
 function continuesRun(piece: Piece | undefined): boolean {
   return piece?.joined === true && isCapitalised(piece.word) && !isAcronym(piece.word);
 }
@@ -76,6 +95,11 @@ function isName(word: string): boolean {
 function namesInText(text: string): string[] {
   const names: string[] = [];
   const pieces = piecesOf(text);
+  if (isTitleCase(pieces))
+    return pieces
+      .map(({ word }) => word)
+      .filter(isAcronym)
+      .filter(isName);
   let resumeAt = 0;
   for (const [at, first] of pieces.entries()) {
     if (at < resumeAt || !isCapitalised(first.word)) continue;
