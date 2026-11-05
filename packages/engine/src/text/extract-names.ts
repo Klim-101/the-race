@@ -100,19 +100,36 @@ function isName(word: string): boolean {
   return word.length >= MIN_NAME_LENGTH && !NOT_NAMES.has(word.toLowerCase());
 }
 
-function namesInText(text: string): string[] {
-  const names: string[] = [];
+/**
+ * A name found in a text. A name is `solid` when it stands whole: a phrase, a single capitalised word or an
+ * acronym. The parts of a longer run are not, because a part is often only a common word ("National" of a
+ * party): see `extractRealNames`.
+ */
+interface Found {
+  readonly name: string;
+  readonly solid: boolean;
+}
+
+// A run of up to this many words, none of them the head of an office, reads as a person or a thing named by
+// a person ("Beau Lamarre-Condon", "Pope Francis"): its first words are given names, which point at no one.
+const MAX_PERSON_WORDS = 3;
+
+function namesInText(text: string): Found[] {
+  const found: Found[] = [];
   const pieces = piecesOf(text);
-  if (isTitleCase(pieces))
+  const solid = (name: string): Found => ({ name, solid: true });
+  if (isTitleCase(pieces)) {
     return pieces
       .map(({ word }) => word)
       .filter(isAcronym)
-      .filter(isName);
+      .filter(isName)
+      .map(solid);
+  }
   let resumeAt = 0;
   for (const [at, first] of pieces.entries()) {
     if (at < resumeAt || !isCapitalised(first.word)) continue;
     if (isAcronym(first.word)) {
-      names.push(first.word);
+      found.push(solid(first.word));
       continue;
     }
     // A run: capitalised, not shouted, and only a space from the one before.
@@ -123,21 +140,43 @@ function namesInText(text: string): string[] {
     // A capitalised word that opens a sentence may be nothing but its first word ("Сегодня Москва"): unless
     // a verb of speech follows the run, it is not taken for a name.
     const words = pieces.slice(first.opens && !speaks ? at + 1 : at, end).map(({ word }) => word);
-    if (words.length > 0) {
-      names.push(words.join(' '), ...(words.length > 1 ? words.slice(0, MAX_RUN_PARTS) : []));
-    }
+    if (words.length === 0) continue;
+    found.push(solid(words.join(' ')));
+    if (words.length === 1) continue;
+    // The parts of a run. A short run of words that are all names reads as a person, whose given names point at
+    // no one, so only the last word is a name of its own; any other run gives its first words, as before.
+    const person = words.length <= MAX_PERSON_WORDS && words.every((word) => isName(word));
+    const parts = person ? words.slice(-1) : words.slice(0, MAX_RUN_PARTS);
+    for (const part of parts) found.push({ name: part, solid: false });
   }
-  return names.filter(isName);
+  return found.filter(({ name }) => isName(name));
+}
+
+/** The words of a text that stand in lower case: ordinary words, whatever they are used for elsewhere. */
+function plainWordsOf(text: string): string[] {
+  const plain: string[] = [];
+  for (const match of text.normalize('NFKC').matchAll(TOKEN)) {
+    const word = match[0].replace(/[-'’]+$/u, '');
+    if (word === word.toLowerCase()) plain.push(word);
+  }
+  return plain;
 }
 
 /**
  * The proper names of some source texts (headlines and their summaries), in Russian or English, each with
  * the likely spellings of it in the other script. Sorted and without repeats: the same texts always give the
  * same list. Case endings are left to the real-name check, which matches a name by its stem.
+ *
+ * A part of a longer name is dropped when the same texts use it as an ordinary word in lower case ("national",
+ * "congress"): the name as a whole, and a word that stands capitalised by itself, are always kept.
  */
 export function extractRealNames(texts: readonly string[]): string[] {
-  const found = texts.flatMap(namesInText);
-  const names = new Set(found.map((name) => name.toLowerCase()));
-  for (const name of found) for (const spelling of transliterate(name)) names.add(spelling);
+  const plain = new Set(texts.flatMap(plainWordsOf));
+  const kept = texts
+    .flatMap(namesInText)
+    .filter(({ name, solid }) => solid || !plain.has(name.toLowerCase()))
+    .map(({ name }) => name);
+  const names = new Set(kept.map((name) => name.toLowerCase()));
+  for (const name of kept) for (const spelling of transliterate(name)) names.add(spelling);
   return [...names].filter(isName).sort();
 }

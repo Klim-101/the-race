@@ -39425,16 +39425,19 @@ function continuesRun(piece) {
 function isName(word) {
   return word.length >= MIN_NAME_LENGTH && !NOT_NAMES.has(word.toLowerCase());
 }
+var MAX_PERSON_WORDS = 3;
 function namesInText(text) {
-  const names = [];
+  const found = [];
   const pieces = piecesOf(text);
-  if (isTitleCase(pieces))
-    return pieces.map(({ word }) => word).filter(isAcronym).filter(isName);
+  const solid = (name) => ({ name, solid: true });
+  if (isTitleCase(pieces)) {
+    return pieces.map(({ word }) => word).filter(isAcronym).filter(isName).map(solid);
+  }
   let resumeAt = 0;
   for (const [at3, first] of pieces.entries()) {
     if (at3 < resumeAt || !isCapitalised(first.word)) continue;
     if (isAcronym(first.word)) {
-      names.push(first.word);
+      found.push(solid(first.word));
       continue;
     }
     let end = at3 + 1;
@@ -39442,16 +39445,28 @@ function namesInText(text) {
     resumeAt = end;
     const speaks = SPEECH_VERB.test((pieces[end]?.word ?? "").toLowerCase());
     const words = pieces.slice(first.opens && !speaks ? at3 + 1 : at3, end).map(({ word }) => word);
-    if (words.length > 0) {
-      names.push(words.join(" "), ...words.length > 1 ? words.slice(0, MAX_RUN_PARTS) : []);
-    }
+    if (words.length === 0) continue;
+    found.push(solid(words.join(" ")));
+    if (words.length === 1) continue;
+    const person = words.length <= MAX_PERSON_WORDS && words.every((word) => isName(word));
+    const parts = person ? words.slice(-1) : words.slice(0, MAX_RUN_PARTS);
+    for (const part of parts) found.push({ name: part, solid: false });
   }
-  return names.filter(isName);
+  return found.filter(({ name }) => isName(name));
+}
+function plainWordsOf(text) {
+  const plain2 = [];
+  for (const match of text.normalize("NFKC").matchAll(TOKEN)) {
+    const word = match[0].replace(/[-'’]+$/u, "");
+    if (word === word.toLowerCase()) plain2.push(word);
+  }
+  return plain2;
 }
 function extractRealNames(texts) {
-  const found = texts.flatMap(namesInText);
-  const names = new Set(found.map((name) => name.toLowerCase()));
-  for (const name of found) for (const spelling of transliterate(name)) names.add(spelling);
+  const plain2 = new Set(texts.flatMap(plainWordsOf));
+  const kept = texts.flatMap(namesInText).filter(({ name, solid }) => solid || !plain2.has(name.toLowerCase())).map(({ name }) => name);
+  const names = new Set(kept.map((name) => name.toLowerCase()));
+  for (const name of kept) for (const spelling of transliterate(name)) names.add(spelling);
   return [...names].filter(isName).sort();
 }
 
