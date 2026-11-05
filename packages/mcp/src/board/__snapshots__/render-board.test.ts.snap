@@ -89,12 +89,49 @@ exports[`the hero tab > shows the detective, how they hold up and what they carr
 <ul><li><span class="warn">reputation is low: people will not open up</span></li></ul>
 </div>
 <h3>Kit</h3>
-<ul><li>phone</li><li>lock picks <span class="warn">(lost)</span></li><li>fingerprint powder <span class="tag">left: 2</span></li><li>test kit <span class="warn">(used up)</span></li><li>pocket knife <span class="warn">(broken)</span></li></ul>
-<h3>Supplies</h3>
-<ul><li>coffee ×2</li></ul>
+<h4>In the pockets</h4>
+<ul><li>phone<br><span class="tag">gets past: dark</span></li><li>lock picks <span class="warn">(lost)</span><br><span class="tag">gets past: locked</span></li><li>fingerprint powder <span class="tag">left: 2</span><br><span class="tag">gets past: a faint trace</span></li><li>test kit <span class="warn">(used up)</span><br><span class="tag">gets past: a faint trace</span></li><li>pocket knife <span class="warn">(broken)</span><br><span class="tag">gets past: soft cover</span></li><li>coffee ×2 <span class="tag">/ 2</span></li></ul>
+<h4>The suitcase: 0 of 1 slots</h4>
+<div class="slots">
+<div class="card slot empty-card"><span class="empty">a free slot</span></div>
+</div>
 <h3>On its way</h3><ul><li>coffee: -1 sleep debt <span class="tag">in 30 min</span></li><li>a drink: +2 nerves <span class="tag">at night</span></li></ul>
 <h3>Known traits</h3>
 <ul><li>a night owl</li><li>an-unlisted-trait</li></ul>
+<p class="tag">Still hidden: 2</p>
+
+"
+`;
+
+exports[`the kit in the hero tab > lays out the pockets, the suitcase with its slots taken and free, and what each piece gets past 1`] = `
+"
+<h2>Hero and kit</h2>
+<div class="card">
+<p><strong>Mira</strong></p>
+<p class="tag">Was once: a police officer</p>
+<p>Skills: perception: 4, reasoning: 3</p>
+</div>
+<h3>Condition</h3>
+<div class="card">
+<p class="meter"><span>Reputation</span> <meter min="0" max="10" value="7">7</meter> <span class="tag">7 / 10</span></p>
+<p class="meter"><span>Nerves</span> <meter min="0" max="10" value="8">8</meter> <span class="tag">8 / 10</span></p>
+<p class="meter"><span>Sleep debt</span> <meter min="0" max="10" value="1">1</meter> <span class="tag">1 / 10</span></p>
+<p>Now:</p>
+<p class="empty">nothing in particular</p>
+
+</div>
+<h3>Kit</h3>
+<h4>In the pockets</h4>
+<ul><li>phone<br><span class="tag">gets past: dark</span></li><li>coffee ×1 <span class="tag">/ 2</span></li></ul>
+<h4>The suitcase: 2 of 3 slots</h4>
+<div class="slots">
+<div class="card slot">crowbar <span class="warn">not within the law</span><br><span class="tag">gets past: locked, sealed</span></div>
+<div class="card slot">fingerprint powder <span class="tag">left: 1</span><br><span class="tag">gets past: a faint trace</span></div>
+<div class="card slot empty-card"><span class="empty">a free slot</span></div>
+</div>
+
+<h3>Known traits</h3>
+<p class="empty">None revealed yet.</p>
 <p class="tag">Still hidden: 2</p>
 
 "

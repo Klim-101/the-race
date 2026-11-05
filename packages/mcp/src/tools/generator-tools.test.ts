@@ -11,7 +11,7 @@ import {
   type NewsSeed,
   type Trait,
 } from '@the-race/engine';
-import { runFiles, saveSeedsForDay, type SaveFs } from '@the-race/saves';
+import { loadRunSeeds, runFiles, saveSeedsForDay, type SaveFs } from '@the-race/saves';
 import { afterEach, describe, expect, it } from 'vitest';
 import { TEST_PROFILE_DIR, offlineNews } from '../../test/fake-context.js';
 import { loadTheRun, newestRunId } from '../../test/game.js';
@@ -383,6 +383,34 @@ describe('scenario_submit', () => {
     expect(loaded.ok && loaded.run.inspiration).toEqual(inspiration);
     expect((await call('run_view', {})).body.inspiration).toEqual(inspiration);
     expect((await call('run_view', {})).text).not.toContain(SEED.headlineIds[0]);
+  });
+
+  it('copies the seeds the run was made from, with the day and the real names, into the folder of the run', async () => {
+    const fs = memoryFs();
+    await saveSeedsForDay(SAVE_DIR, '2026-10-31', { seeds: [SEED], realNames: ['norway'] }, fs);
+    const { call } = await start(pendingRun({ locale: 'en' }), fs);
+    await call('generator_brief', {});
+
+    await submit(call, readCase('goose-of-elmwick.en.json'));
+
+    const loaded = await loadTheRun(SAVE_DIR, fs);
+    if (!loaded.ok || loaded.run.runId === undefined) throw new Error('The run did not load.');
+    expect(await loadRunSeeds(SAVE_DIR, loaded.run.runId, fs)).toEqual({
+      schemaVersion: 1,
+      day: '2026-10-31',
+      seeds: [SEED],
+      realNames: ['norway'],
+    });
+  });
+
+  it('keeps no seeds in the folder of a run made when no day had been extracted', async () => {
+    const { fs, call } = await start(pendingRun({ locale: 'en' }));
+
+    await submit(call, readCase('goose-of-elmwick.en.json'));
+
+    const loaded = await loadTheRun(SAVE_DIR, fs);
+    if (!loaded.ok || loaded.run.runId === undefined) throw new Error('The run did not load.');
+    expect(await loadRunSeeds(SAVE_DIR, loaded.run.runId, fs)).toBeUndefined();
   });
 
   it('keeps nothing of the news when there was no seed', async () => {

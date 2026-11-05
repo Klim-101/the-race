@@ -4,6 +4,7 @@
 import { MAX_REPUTATION, type DetectiveRunView } from '@the-race/engine';
 import type { BoardText } from './board-text.js';
 import { escapeHtml } from './escape-html.js';
+import { renderKit } from './board-kit.js';
 import { NOTHING_NEW, type Fresh } from './board-new.js';
 import { named, type TabText } from './tab-text.js';
 
@@ -63,25 +64,6 @@ export function renderHero(
     view.warnings.length === 0
       ? ''
       : list(view.warnings.map((id) => `<span class="warn">${e(named(t.warningNames, id))}</span>`));
-  const kit =
-    view.kit.length === 0
-      ? `<p class="empty">${e(t.nothing)}</p>`
-      : list(
-          view.kit.map(
-            ({ id, state, charges }) =>
-              `${e(named(t.gear, id))}${
-                state === 'owned'
-                  ? charges === null
-                    ? ''
-                    : ` <span class="tag">${e(t.chargesLeft.replace('{n}', String(charges)))}</span>`
-                  : ` <span class="warn">(${e(named({ lost: t.lost, spent: t.spent, broken: t.broken }, state))})</span>`
-              }${fresh.tools.has(id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ''}`,
-          ),
-        );
-  const supplies =
-    view.supplies.length === 0
-      ? `<p class="empty">${e(t.nothing)}</p>`
-      : list(view.supplies.map(({ id, count }) => `${e(named(t.consumables, id))} ×${String(count)}`));
   const pending =
     view.pending.length === 0
       ? ''
@@ -118,11 +100,7 @@ ${meter(t.sleepDebt, condition.sleepDebt, condition.maxSleepDebt)}
 ${conditions}
 ${warnings}
 </div>
-<h3>${e(t.kit)}</h3>
-${kit}
-<h3>${e(t.supplies)}</h3>
-${supplies}
-${pending}
+${renderKit(view, text, fresh)}${pending}
 <h3>${e(t.traits)}</h3>
 ${traits}
 <p class="tag">${e(t.hidden)}: ${String(view.hiddenTraitCount)}</p>
