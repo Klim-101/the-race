@@ -39847,6 +39847,26 @@ function checkClearing(detectiveCase, obtainable, required2) {
       });
     }
   });
+  const pointedAt = new Set(detectiveCase.clues.flatMap((clue) => clue.isRedHerring ? clue.pointsTo : []));
+  detectiveCase.suspects.forEach((suspect, index) => {
+    if (suspect.id === culpritId || !pointedAt.has(suspect.id)) return;
+    const threaded = clearing(suspect.id).some(
+      (deduction) => suspect.lies.some(
+        (lie) => lie.admission !== void 0 && [...lie.brokenBy, ...lie.gives === void 0 ? [] : [lie.gives]].some(
+          (clueId) => deduction.clueIds.includes(clueId)
+        )
+      ) || suspect.lies.some(
+        (lie) => lie.admission !== void 0 && (lie.brokenByInsights ?? []).includes(deduction.id)
+      )
+    );
+    if (!threaded) {
+      issues.push({
+        code: "red-herring-without-thread",
+        path: `suspects[${String(index)}]`,
+        message: `A red herring points at "${suspect.id}", so a lie of theirs, with an "admission" (what they hid and why), must be broken by a clue of the deduction that clears them, or by that deduction put to them.`
+      });
+    }
+  });
   return issues;
 }
 
@@ -55178,6 +55198,7 @@ var ISSUE_PRIORITY = {
   "reaction-names-trait": 17.66,
   "suspect-cannot-be-cleared": 17.7,
   "red-herring-unexplained": 17.8,
+  "red-herring-without-thread": 17.85,
   "unearnable-lead": 9.1,
   "unused-lead": 9.1,
   "false-lead-holds-clue": 9.1,

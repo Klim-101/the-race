@@ -47,6 +47,7 @@ export type CaseIssueCode =
   | 'reaction-names-trait'
   | 'suspect-cannot-be-cleared'
   | 'red-herring-unexplained'
+  | 'red-herring-without-thread'
   | 'hidden-start'
   | 'unused-lead'
   | 'unearnable-lead'

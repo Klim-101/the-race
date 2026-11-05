@@ -21,6 +21,17 @@ function buildClearingCase(edit: (detectiveCase: DetectiveCase) => void = () => 
     key.isRedHerring = true;
     key.pointsTo = ['mayor'];
   }
+  // What each of them hid, and why: the thread a red herring owes the suspect it points at.
+  const rival = detectiveCase.suspects.find(({ id }) => id === 'rival');
+  const rivalLie = rival?.lies[0];
+  if (rivalLie !== undefined) rivalLie.admission = 'I came to taste the cheese, not to steal it.';
+  const mayor = detectiveCase.suspects.find(({ id }) => id === 'mayor');
+  mayor?.lies.push({
+    id: 'mayor-dinner',
+    statement: 'I never touched the cellar key.',
+    admission: 'I lent the key to the buyer and was ashamed to say so.',
+    brokenBy: ['cellar-key'],
+  });
   detectiveCase.deductions.push(
     {
       id: 'cleared-rival',
@@ -149,9 +160,73 @@ describe('the validator and clearing', () => {
     const detectiveCase = buildClearingCase((built) => {
       const deduction = built.deductions.find(({ id }) => id === 'cleared-mayor');
       if (deduction !== undefined) deduction.clueIds = ['cart-tracks', 'oven-receipt'];
+      // The thread is by the conclusion put to the mayor, so that only the herring is left unexplained.
+      const lie = built.suspects.find(({ id }) => id === 'mayor')?.lies[0];
+      if (lie !== undefined) lie.brokenByInsights = ['cleared-mayor'];
     });
 
     expect(codes(detectiveCase)).toEqual(['red-herring-unexplained']);
+  });
+
+  describe('the thread of a suspect a red herring points at', () => {
+    const mayorLie = (built: DetectiveCase) => {
+      const lie = built.suspects.find(({ id }) => id === 'mayor')?.lies[0];
+      if (lie === undefined) throw new Error('No lie.');
+      return lie;
+    };
+
+    it('is a lie, broken by a clue of the clearing conclusion, with an admission', () => {
+      expect(codes(buildClearingCase())).toEqual([]);
+    });
+
+    it('is missing when the suspect has no lie to be caught in', () => {
+      const detectiveCase = buildClearingCase((built) => {
+        const mayor = built.suspects.find(({ id }) => id === 'mayor');
+        if (mayor !== undefined) mayor.lies = [];
+      });
+
+      expect(codes(detectiveCase)).toEqual(['red-herring-without-thread']);
+    });
+
+    it('is missing when the lie has no admission, or is broken by nothing of the clearing conclusion', () => {
+      const bare = buildClearingCase((built) => {
+        delete mayorLie(built).admission;
+      });
+      const apart = buildClearingCase((built) => {
+        const lie = mayorLie(built);
+        lie.brokenBy = ['oven-receipt'];
+      });
+
+      expect(codes(bare)).toContain('red-herring-without-thread');
+      expect(codes(apart)).toEqual(['red-herring-without-thread']);
+    });
+
+    it('may come by testimony the lie gives, or by the conclusion put to the suspect', () => {
+      const gives = buildClearingCase((built) => {
+        const lie = mayorLie(built);
+        lie.brokenBy = ['oven-receipt'];
+        lie.gives = 'cellar-key';
+      });
+      const insight = buildClearingCase((built) => {
+        const lie = mayorLie(built);
+        lie.brokenBy = ['oven-receipt'];
+        lie.brokenByInsights = ['cleared-mayor'];
+      });
+
+      expect(codes(gives)).toEqual([]);
+      expect(codes(insight)).toEqual([]);
+    });
+
+    it('is asked of nobody else: not the culprit, not a suspect no red herring points at', () => {
+      const detectiveCase = buildClearingCase((built) => {
+        const key = built.clues.find(({ id }) => id === 'cellar-key');
+        if (key !== undefined) key.isRedHerring = false;
+        const mayor = built.suspects.find(({ id }) => id === 'mayor');
+        if (mayor !== undefined) mayor.lies = [];
+      });
+
+      expect(codes(detectiveCase)).toEqual([]);
+    });
   });
 
   it('lets a red herring that points at no one, or at the culprit, go unexplained', () => {

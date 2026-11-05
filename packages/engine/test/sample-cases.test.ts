@@ -187,6 +187,19 @@ describe('sample cases', () => {
       expect(locations.some(({ exposure }) => exposure === 'indoor')).toBe(true);
     });
 
+    it('clears every innocent suspect and gives each one a red herring points at a thread of their own', () => {
+      const result = validateCase(json, {
+        hero: HEROES[0]!,
+        traits: [],
+        locale,
+        realNames: REAL_NAMES,
+        requireAdmissions: true,
+        requireClearing: true,
+      });
+
+      expect(result).toMatchObject({ isValid: true });
+    });
+
     describe.each(HEROES)('for hero $name', (hero) => {
       it.each(TRAIT_SETS)('is solvable with $label', ({ traits }) => {
         const result = validateCase(json, { hero, traits, locale, realNames: REAL_NAMES });
