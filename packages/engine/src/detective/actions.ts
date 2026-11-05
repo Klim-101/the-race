@@ -34,6 +34,7 @@ import {
   sceneSituations,
   type Revealed,
 } from './trait-reveal.js';
+import { locationScene } from './trait-scenes.js';
 import { isLeadEarned, isLeadOpen, isPlaceKnown } from './leads.js';
 import { risks, unlawfulRisk, type Risk } from './risk.js';
 import { DETECTIVE_NERVES } from './archetype.js';
@@ -446,7 +447,7 @@ function resolveSearchPart(
   let cleared = true;
   let blundered = false;
   if (rules.check !== null) {
-    const attempt = roll(run, rng, rules.check, location.situations);
+    const attempt = roll(run, rng, rules.check, locationScene(run, location));
     felt.push(...attempt.felt);
     revealed.push(...attempt.revealed);
     details.push({ subject: { kind: 'part', id: part.id }, result: attempt.result });
@@ -532,7 +533,7 @@ function searchPartForClue(
       found = clue;
       details.push({ subject, result: 'auto' });
     } else {
-      const situations: TraitTrigger[] = [...location.situations, ...clue.situations];
+      const situations: TraitTrigger[] = [...locationScene(run, location), ...clue.situations];
       const { result, felt: moved, revealed: acted } = roll(run, rng, clue.discovery, situations);
       felt.push(...moved);
       revealed.push(...acted);
@@ -599,7 +600,7 @@ function resolveSearch(
   const found: Clue[] = [];
 
   for (const clue of hidden) {
-    const situations: TraitTrigger[] = [...location.situations, ...clue.situations];
+    const situations: TraitTrigger[] = [...locationScene(run, location), ...clue.situations];
     if (reinspection) situations.push('reinspection');
     const subject = { kind: 'clue', id: clue.id } as const;
     const scene = sceneSituations(run, situations);
@@ -696,7 +697,11 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
         }
         break;
       case 'skill': {
-        const { result, felt: moved, revealed: acted } = roll(run, rng, access.check, destination.situations);
+        const {
+          result,
+          felt: moved,
+          revealed: acted,
+        } = roll(run, rng, access.check, locationScene(run, destination));
         felt.push(...moved);
         revealed.push(...acted);
         results.push(result);
@@ -849,7 +854,7 @@ function resolveAsk(run: DetectiveRunState, rng: Rng, intent: Extract<Intent, { 
       skill: 'contacts',
       difficulty: ASK_DIFFICULTY - (helper?.bonus ?? 0) - (named ? WITNESS_NAMED_EASE : 0),
     },
-    location.situations,
+    locationScene(run, location),
   );
   const { result } = attempt;
   const worndown = helper === undefined ? run : wearTool(run, helper.item.id, false);
@@ -917,7 +922,7 @@ function resolveStudy(
   }
   const { item, rules } = choice;
   const location = locationById(run.case, run.locationId);
-  const attempt = roll(run, rng, rules.study, location.situations);
+  const attempt = roll(run, rng, rules.study, locationScene(run, location));
   const { result } = attempt;
   const used = worn(item, result.critical === 'failure');
   const worndown = wearTool(run, item.id, result.critical === 'failure');

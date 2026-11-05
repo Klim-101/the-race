@@ -15,6 +15,7 @@ import {
   type SuspectMoodWord,
 } from './suspect-mood.js';
 import { actingReveals, sceneSituations } from './trait-reveal.js';
+import { locationScene } from './trait-scenes.js';
 import { z } from 'zod';
 import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
 import { collectModifier } from '../modifiers.js';
@@ -246,7 +247,7 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
   const difficulty = Math.max(MIN_INTERROGATION_DIFFICULTY, rules.difficulty - eased - shaken);
   const situations = sceneSituations(run, [
     'interrogation' as const,
-    ...run.case.locations.flatMap(({ id, situations }) => (id === run.locationId ? situations : [])),
+    ...run.case.locations.flatMap((place) => (place.id === run.locationId ? locationScene(run, place) : [])),
   ]);
   const result: SkillCheckResult = rollCheck(
     rng,

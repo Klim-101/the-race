@@ -364,7 +364,10 @@ describe('what the view leaks', () => {
           expect(text).not.toContain(truth.motive);
           expect(text).not.toContain(truth.method);
           for (const entry of truth.timeline) expect(text).not.toContain(entry.action);
-          for (const trait of HIDDEN_TRAITS) expect(text).not.toContain(`"${trait.id}"`);
+          // A trait the hero has shown is open to the narrator; only the ones not yet revealed must stay out.
+          for (const trait of HIDDEN_TRAITS) {
+            if (!run.revealedTraitIds.includes(trait.id)) expect(text).not.toContain(`"${trait.id}"`);
+          }
           for (const statement of stillHolding(run)) expect(text).not.toContain(statement);
           // No place the hero has not seen from a visited one is on the map, and none is more than a name.
           const known = new Set(view.map.places.map(({ id }) => id));

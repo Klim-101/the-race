@@ -55,6 +55,7 @@ import {
 } from './case-schema.js';
 import { suitcaseOf } from './suitcase.js';
 import { VENUE_RULESET_VERSION, sitsLeft } from './venue.js';
+import { TraitSceneSchema, drawTraitScenes } from './trait-scenes.js';
 import { MAX_TOOL_SLOTS, START_TOOL_SLOTS } from '../progress.js';
 import { isLeadEarned, isLeadOpen, isPlaceKnown, leadsEarnedBy } from './leads.js';
 import { SUSPECT_MOODS, isClosed, moodOf, moodWord } from './suspect-mood.js';
@@ -258,6 +259,8 @@ export const DetectiveRunStateSchema = z
     sightings: z.array(SightingRecordSchema).default([]),
     /** What the hero has done with the clues, for the board: where each was found, to whom it was shown, the links tried. */
     history: RunHistorySchema.default(() => emptyHistory()),
+    /** Scenes the engine added to places for the hero's traits (see `trait-scenes.ts`). Old saves have none. */
+    traitScenes: z.array(TraitSceneSchema).default([]),
     /** The pattern of news the case grew from, when it grew from one. Old saves have none. */
     inspiration: InspirationSchema.nullable().default(null),
   })
@@ -346,6 +349,11 @@ export const DetectiveRunStateSchema = z
         message: 'A piece of gear is in the kit at most once.',
       });
     }
+    known(
+      'traitScenes',
+      run.traitScenes.map(({ locationId }) => locationId),
+      locationIds,
+    );
     known('revealedTraitIds', run.revealedTraitIds, new Set(run.traits.map(({ id }) => id)));
   });
 export type DetectiveRunState = z.infer<typeof DetectiveRunStateSchema>;
@@ -418,6 +426,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     claims: [],
     sightings: [],
     history: emptyHistory(),
+    traitScenes: drawTraitScenes(input.case, input.traits, input.seed),
     inspiration: input.inspiration ?? null,
   });
 }
