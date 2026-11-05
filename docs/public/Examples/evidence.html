@@ -1,0 +1,1010 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="turn" content="50">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-NE9mp7HkMr70AYgY0lpDeb2ShnyzEhbgfg1XXgEthqs='">
+<title>Evidence board: The Fee That Was Never Filed</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4efe6;--card:#fffdf8;--ink:#2a2622;--muted:#7a7066;--line:#ddd3c3;--accent:#8a3b2a;--warn:#b26a00;--soft:#efe6d6;--paper:#fffef6;--paper-ink:#2a2622;--paper-tag:#7a6a58;--paper-rule:rgba(70,110,180,.22);--margin:#c2574a;--red:#b3261e;--blue:#2b5fa3;--shadow:rgba(0,0,0,.18);--parch:#efe3c4;--parch-edge:#b9a678;--street:#f8f1dd;--roof:#d6c298;--hatch:#9c8656}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1917;--card:#252220;--ink:#ece4d8;--muted:#a09484;--line:#3a3430;--accent:#e08a70;--warn:#e0a040;--soft:#312c28;--paper:#2a2622;--paper-ink:#ece4d8;--paper-tag:#a8998a;--paper-rule:rgba(140,170,220,.16);--margin:#d9786a;--red:#f08a80;--blue:#8ab4f0;--shadow:rgba(0,0,0,.5);--parch:#2b2619;--parch-edge:#5a4d33;--street:#3d3524;--roof:#4a3f29;--hatch:#7a6a45}}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 16px 48px;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,'Times New Roman',serif;overflow-wrap:anywhere}
+main{max-width:1040px;margin:0 auto}
+h1{margin:0 0 4px;font-size:1.8rem}
+.head{border-bottom:2px solid var(--line);margin:0 0 12px;padding:0 0 8px}
+.head .meta{margin:0 0 4px}
+.fresh{margin:6px 0 0;padding:6px 12px;background:var(--paper);color:var(--paper-ink);border-left:3px double var(--margin);box-shadow:1px 2px 4px var(--shadow);font-family:'Segoe Print','Bradley Hand',Georgia,serif}
+.fresh ul{margin:2px 0 0}
+.new{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;background:var(--margin);color:var(--card);font:700 11px/1.6 system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;vertical-align:middle}
+h2{margin:28px 0 12px;font-size:1.1rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h3{margin:22px 0 8px;font-size:1rem;color:var(--accent)}
+.meta{color:var(--muted);margin:0 0 16px}
+.premise{border-left:3px solid var(--accent);padding-left:12px;margin:16px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 16px;margin:0 0 10px}
+.card p{margin:4px 0}
+.tag{font:12px/1.2 system-ui,sans-serif;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.warn{color:var(--warn);font:14px/1.4 system-ui,sans-serif}
+ul{padding-left:20px;margin:6px 0}
+.empty{color:var(--muted);font-style:italic}
+.note{font:13px/1.4 system-ui,sans-serif;color:var(--muted);margin:6px 0}
+nav.tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;margin:0 -2px}
+nav.tabs a{flex:0 0 auto;padding:6px 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);text-decoration:none;font:14px/1.3 system-ui,sans-serif;white-space:nowrap}
+.tab{display:none}
+.tab:target{display:block}
+main:not(:has(.tab:target)) #board{display:block}
+main:not(:has(.tab:target)) nav a[href="#board"]{background:var(--accent);color:var(--card);border-color:var(--accent)}
+main:has(#board:target) nav a[href="#board"]{background:var(--accent);color:var(--card);border-color:var(--accent)}
+main:has(#suspects:target) nav a[href="#suspects"]{background:var(--accent);color:var(--card);border-color:var(--accent)}
+main:has(#clues:target) nav a[href="#clues"]{background:var(--accent);color:var(--card);border-color:var(--accent)}
+main:has(#map:target) nav a[href="#map"]{background:var(--accent);color:var(--card);border-color:var(--accent)}
+main:has(#chronicle:target) nav a[href="#chronicle"]{background:var(--accent);color:var(--card);border-color:var(--accent)}
+main:has(#hero:target) nav a[href="#hero"]{background:var(--accent);color:var(--card);border-color:var(--accent)}
+@supports not selector(:has(*)){.tab{display:block}nav.tabs{display:none}}
+.graph{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--card);padding:6px}
+svg{display:block;width:100%;height:auto;font:13px system-ui,sans-serif}
+svg text{fill:var(--ink)}
+.paper-map{background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--hatch) 22%,transparent) 0 1px,transparent 1px 7px),var(--parch);border-color:var(--parch-edge);box-shadow:inset 0 0 40px rgba(120,90,40,.25)}
+svg.map .lane{fill:none;stroke:var(--street);stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
+svg.map .lane.across{stroke-dasharray:1 10;stroke-width:6}
+svg.map .street rect{fill:var(--street);stroke:var(--ink);stroke-width:1.5}
+svg.map .street.unvisited rect{stroke-dasharray:6 4}
+svg.map .street.current rect{stroke:var(--accent);stroke-width:3}
+svg.map .block .walls{fill:var(--roof);stroke:var(--ink);stroke-width:1.8}
+svg.map .block .roof{fill:none;stroke:var(--ink);stroke-width:1}
+svg.map .block.unvisited .walls{fill:var(--parch);stroke-dasharray:5 3}
+svg.map .block.current .walls{stroke:var(--accent);stroke-width:3.5}
+svg.map .door{stroke:var(--ink);stroke-width:2.5}
+svg.map .name{font-weight:600;font-size:11px}
+svg.map .street .name{font-size:12px}
+svg.map .block .state{font-size:10px;fill:var(--muted)}
+svg.map .here circle{fill:var(--accent);stroke:var(--card);stroke-width:1.5}
+svg.map .here .dot{fill:var(--card);stroke:none}
+svg.map .elsewhere{font:italic 12px Georgia,serif;fill:var(--muted)}
+svg.map .sign.locked rect{fill:var(--warn);stroke:var(--ink);stroke-width:1}
+svg.map .sign.locked path{fill:none;stroke:var(--ink);stroke-width:1.6}
+svg.map .sign.closed circle{fill:var(--red)}
+svg.map .sign.closed path{stroke:#fff;stroke-width:2}
+svg.map .lead-mark circle{fill:var(--card);stroke:var(--accent);stroke-width:1.5}
+svg.map .lead-mark text{fill:var(--accent);font-weight:700}
+svg.map .compass circle{fill:none;stroke:var(--ink);stroke-width:1.5}
+svg.map .compass .needle{fill:var(--ink)}
+svg.map .compass .south{fill:none;stroke:var(--ink);stroke-width:1}
+svg.map .compass text{font:700 12px Georgia,serif}
+.badge{fill:var(--accent)}
+.badge-n{fill:var(--card);font-size:12px;font-weight:700}
+.statement{margin:4px 0}
+meter{width:9em;vertical-align:middle}
+.meter span:first-child{display:inline-block;min-width:7em}
+.cork{border:10px solid #6b4a2b;border-radius:4px;background-color:#b88a5a;background-image:radial-gradient(rgba(60,35,10,.28) 1px,transparent 1.5px),radial-gradient(rgba(255,235,200,.22) 1px,transparent 1.5px);background-size:9px 9px,13px 13px;background-position:0 0,4px 6px;box-shadow:inset 0 0 18px rgba(0,0,0,.35);overflow-x:auto}
+svg.board{display:block;width:100%;min-width:640px;height:auto;font:13px 'Segoe Print','Bradley Hand','Comic Sans MS',cursive,system-ui}
+svg.board .paper{fill:#fffdf4;stroke:#d6c9a8;stroke-width:1;filter:drop-shadow(2px 3px 2px rgba(0,0,0,.35))}
+svg.board .print{fill:#cfc6b2}
+svg.board .card-pin.sighting .paper{fill:#dfe8ea;stroke:#7a8a90;stroke-dasharray:5 3}
+.card.sighting{border-left:4px solid #7a8a90}
+.witness-tag{font-style:italic}
+svg.board .photo.cleared .paper,svg.board .photo.cleared .print{opacity:.55}
+svg.board .photo.cleared .initial{opacity:.4}
+.reaction{font-style:italic;color:#4a4338}
+.reaction::before{content:"“"}
+.reaction::after{content:"”"}
+.cleared-tag{color:#2f6a3a;font-weight:700}
+.card.suspect.cleared{opacity:.85}
+svg.board .initial{font:700 44px Georgia,serif;fill:#6b6354}
+svg.board .line{fill:#2a2622}
+svg.board .num{font:700 13px system-ui,sans-serif;fill:#8a3b2a;letter-spacing:.04em}
+svg.board .caption{fill:#2a2622;paint-order:stroke;stroke:#f1e1c0;stroke-width:3px;stroke-linejoin:round}
+svg.board .where text{font-size:11px;fill:#6b4a2b}
+svg.board .garbled .paper{stroke-dasharray:5 3;stroke:#b26a00}
+svg.board .lead-pin .paper{fill:#e8f1f8;stroke:#9db8d6;stroke-width:1;filter:drop-shadow(2px 3px 2px rgba(0,0,0,.35))}
+svg.board .lead-pin .num{font:700 12px system-ui,sans-serif;fill:#2b5fa3;letter-spacing:.08em}
+svg.board .lead-pin text{fill:#2a2622;font-size:11px}
+svg.board .lead-pin text.line{font-size:13px}
+svg.board .lead-pin text.status{fill:#2f6a3a;font-weight:700}
+svg.board .lead-pin.idle .paper{stroke-dasharray:5 3}
+svg.board .lead-pin.idle text.status{fill:#6b6354}
+svg.board .lead-pin.shut .paper{fill:#dcd9d2;stroke:#a39e92;stroke-dasharray:5 3}
+svg.board .lead-pin.shut text.status{fill:#b26a00}
+svg.board .lead-pin.done .paper{fill:#e3e0d8;stroke:#a39e92}
+svg.board .lead-pin.done text.status{fill:#6b6354}
+svg.board .thread.earned{stroke:#2f7a4a;stroke-width:2;stroke-dasharray:8 4}
+svg.board .pin{fill:#c0392b;stroke:#7b1f14;stroke-width:1.5}
+svg.board .thread{fill:none;stroke-linecap:round}
+svg.board .thread.made{stroke:#b3261e;stroke-width:2.5}
+svg.board .thread.cold{stroke:#b3261e;stroke-width:1.5;stroke-dasharray:3 6;opacity:.7}
+svg.board .thread.shown{stroke:#2b5fa3;stroke-width:2}
+svg.board .thread.shown.plain{stroke-dasharray:2 5}
+[data-pick]{cursor:pointer}
+[data-pick]:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+main[data-sel] [data-rel]{opacity:.3;transition:opacity .15s}
+/* A dimmed card keeps its paper opaque, so the thread behind it never shows through its text. */
+main[data-sel] svg.board g[data-rel]{opacity:1;filter:grayscale(.7) brightness(.7)}
+.cork-wrap{position:relative}
+.opened{--note:#fff3a8;--note-ink:#2a2622;--note-tag:#7a6a3a;--note-rule:rgba(70,110,180,.3);display:none;position:absolute;left:50%;top:16px;transform:translateX(-50%) rotate(-1deg);width:min(460px,92%);z-index:3;padding:34px 20px 16px 24px;background-color:var(--note);background-image:linear-gradient(to bottom,transparent 25px,var(--note-rule) 26px);background-size:100% 26px;color:var(--note-ink);border-left:3px double var(--margin);border-radius:2px 2px 6px 2px;box-shadow:2px 3px 3px rgba(0,0,0,.25),0 12px 28px var(--shadow);cursor:pointer;font-family:'Segoe Print','Bradley Hand',Georgia,serif;font-size:14px;line-height:26px}
+.opened::before{content:'';position:absolute;top:-4px;left:50%;width:84px;height:20px;transform:translateX(-50%) rotate(2deg);background:rgba(255,255,255,.45);box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.opened p{margin:0}
+.opened .tag{color:var(--note-tag);font-size:12px;line-height:26px}
+.opened .whole{font-size:1.1em}
+.opened .note{color:var(--note-tag);line-height:26px;margin:0}
+.opened ul.tried .result{color:#b3261e}
+.opened .num{color:#8a3b2a}
+.opened:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.opened ul.tried{margin:0}
+.opened ul.tried li{margin:0;padding:0 0 0 8px;background:none;color:var(--note-ink);box-shadow:none;border-left:2px solid var(--margin)}
+.num{font:700 12px system-ui,sans-serif;letter-spacing:.04em;color:var(--margin)}
+details{margin:4px 0 0}
+details summary{cursor:pointer;font:12px system-ui,sans-serif;color:var(--paper-tag)}
+details p{margin:4px 0}
+.notebook{max-width:640px;margin-left:auto;margin-right:auto}
+.notebook .card{background-color:var(--paper);background-image:linear-gradient(to bottom,transparent 27px,var(--paper-rule) 28px);background-size:100% 28px;border:0;border-left:3px double var(--margin);border-radius:2px;font-family:'Segoe Print','Bradley Hand',Georgia,serif;line-height:28px;padding:0 14px 0 18px;color:var(--paper-ink);box-shadow:1px 2px 4px var(--shadow)}
+.notebook .card p{margin:0}
+.notebook .tag,.notebook h3{font-family:system-ui,sans-serif;line-height:28px;margin:0}
+.notebook .tag{color:var(--paper-tag)}
+.notebook h3{color:var(--margin)}
+.notebook .card strong{font-size:1.1em}
+.notebook .warn{line-height:28px}
+.shown-line{display:block}
+.effect{font:12px system-ui,sans-serif;color:var(--blue)}
+.notebook .card .source{display:block;padding-left:12px;border-left:2px solid var(--paper-rule)}
+ul.tried{list-style:none;padding:0;margin:0 0 10px}
+ul.tried li{margin:0 0 8px;padding:6px 14px 6px 18px;border-left:3px double var(--margin);background:var(--paper);color:var(--paper-ink);box-shadow:1px 2px 4px var(--shadow)}
+ul.tried .result{font:12px system-ui,sans-serif;color:var(--red);text-transform:uppercase;letter-spacing:.05em}
+ul.tried .tag{color:var(--paper-tag)}
+[hidden]{display:none!important}
+.plan{display:none;margin:12px 0;padding:8px 10px;border:1px solid var(--parch-edge);border-radius:6px;background:var(--card)}
+.plan:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+svg.plan-svg{display:block;width:100%;height:auto;font:12px system-ui,sans-serif}
+svg.plan-svg text{fill:var(--ink)}
+svg.plan-svg .room .walls{fill:var(--roof);stroke:var(--ink);stroke-width:1.8}
+svg.plan-svg .room.unvisited .walls{fill:var(--parch);stroke-dasharray:5 3}
+svg.plan-svg .room.current .walls{stroke:var(--accent);stroke-width:3.5}
+svg.plan-svg .room-name{font-weight:700;font-size:13px}
+svg.plan-svg .part-name{font-weight:600}
+svg.plan-svg .part-state{font-size:11px;fill:var(--muted)}
+svg.plan-svg .door-way line{stroke:var(--ink);stroke-width:2;stroke-dasharray:4 3}
+svg.plan-svg .door-way rect{fill:var(--street);stroke:var(--ink);stroke-width:1.5}
+svg.plan-svg .mark circle{fill:var(--card);stroke:var(--ink);stroke-width:1.5}
+svg.plan-svg .mark.done circle{fill:#2f6a3a;stroke:#2f6a3a}
+svg.plan-svg .mark.done path{fill:none;stroke:#fff;stroke-width:2}
+svg.plan-svg .mark.open .dot{fill:var(--ink);stroke:none}
+svg.plan-svg .mark.shut circle{stroke:var(--warn);stroke-width:2}
+svg.plan-svg .mark text{font-size:11px;fill:var(--ink)}
+svg.plan-svg .sign.locked rect{fill:var(--warn);stroke:var(--ink);stroke-width:1}
+svg.plan-svg .sign.locked path{fill:none;stroke:var(--ink);stroke-width:1.6}
+svg.plan-svg .clue-chip text{font-weight:700;fill:var(--accent);cursor:pointer;text-decoration:underline}
+svg.plan-svg .here-dot{fill:var(--accent)}
+svg.plan-svg .lead-mark circle{fill:var(--card);stroke:var(--accent);stroke-width:1.5}
+svg.plan-svg .lead-mark text{fill:var(--accent);font-weight:700}
+details.day-strip{margin:0 0 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);padding:6px 10px}
+details.day-strip>summary{cursor:pointer;font:600 14px system-ui,sans-serif;color:var(--accent)}
+svg.strip{display:block;width:100%;min-width:720px;height:auto;font:11px system-ui,sans-serif}
+svg.strip text{fill:var(--ink)}
+svg.strip .night-shade{fill:var(--soft)}
+svg.strip .night-label,svg.strip .hour{fill:var(--muted)}
+svg.strip .tick{stroke:var(--line);stroke-width:1}
+svg.strip .time-left{fill:var(--accent)}
+svg.strip .now{stroke:var(--accent);stroke-width:2;stroke-dasharray:3 3}
+svg.strip .turn .bar{fill:var(--paper);stroke:var(--muted);stroke-width:1.5}
+svg.strip .turn .end{fill:var(--card);stroke:var(--muted);stroke-width:1.5}
+svg.strip .turn .symbol{font:700 12px system-ui,sans-serif}
+svg.strip .turn.k-move .bar{fill:#dbe7f3}
+svg.strip .turn.k-look .bar,svg.strip .turn.k-search .bar{fill:#e8e2c8}
+svg.strip .turn.k-talk .bar,svg.strip .turn.k-ask .bar{fill:#f1d9d3}
+svg.strip .turn.k-deduce .bar,svg.strip .turn.k-study .bar,svg.strip .turn.k-reread .bar{fill:#dcebd6}
+svg.strip .turn.k-rest .bar,svg.strip .turn.k-sit .bar{fill:#e1dcef}
+svg.strip .turn.held .detention{fill:var(--red);opacity:.55}
+svg.strip .turn.held .bar{stroke:var(--red);stroke-width:2.5}
+svg.strip .turn.crossed .bar{stroke-dasharray:6 3}
+svg.strip .turn.night-after .end{stroke:var(--accent);stroke-width:3}
+svg.strip .lead-hours{fill:#2b5fa3;opacity:.7}
+svg.strip .lead-band.shut .lead-hours{fill:var(--muted)}
+svg.strip .flag path{fill:var(--accent);stroke:var(--accent)}
+.day-turns{list-style:none;padding:0;margin:6px 0 0}
+.day-turns li{padding:2px 8px;border-left:3px double var(--margin)}
+.suspect .who{display:flex;gap:12px;align-items:center}
+.suspect .who p{margin:0}
+svg.portrait{flex:0 0 56px;width:56px;height:56px;font:700 22px Georgia,serif}
+svg.portrait circle:first-child{fill:var(--tone,#c9b99b)}
+svg.portrait .head,svg.portrait .body{fill:rgba(0,0,0,.28)}
+svg.portrait text{fill:#fffdf4}
+svg.portrait.p0{--tone:#8a3b2a}svg.portrait.p1{--tone:#2b5fa3}svg.portrait.p2{--tone:#5a7a3a}svg.portrait.p3{--tone:#7a5a8a}svg.portrait.p4{--tone:#b26a00}svg.portrait.p5{--tone:#3a7a7a}
+.gauge{display:inline-flex;gap:3px;vertical-align:middle}
+.gauge .step{width:18px;height:8px;border-radius:2px;background:var(--line)}
+.gauge.mood-shaken .on{background:var(--warn)}
+.gauge.mood-cornered .on{background:var(--margin)}
+.gauge.mood-broken .on{background:var(--red)}
+.gauge.mood-calm .on{background:var(--blue)}
+.statement.fell s{color:var(--muted)}
+.day{margin:0 0 6px}
+.chips{margin:0}
+.chip{display:inline-block;margin:2px 4px 2px 0;padding:0 8px;border-radius:999px;border:1px solid currentColor;font:12px/22px system-ui,sans-serif;cursor:pointer}
+.chip.fx-breaks-lie{color:var(--red)}
+.chip.fx-confirms{color:var(--blue)}
+.chip.fx-implicates{color:var(--warn)}
+.chip.fx-no-effect{color:var(--muted)}
+.filters{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:0 0 12px;font:13px system-ui,sans-serif}
+.filters select,.filters input[type=search]{font:inherit}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.grid .card{margin:0}
+.clue-card .text{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ways a{color:var(--accent)}
+@media (max-width:560px){body{padding:16px}h1{font-size:1.5rem}}
+@media print{body{background:#fff;color:#000}.opened{display:none!important}.tab{display:block!important}nav.tabs{display:none}.card,.graph,.cork{break-inside:avoid}}
+
+main[data-sel="clue:counterfoil-book"][data-sel] [data-rel~="clue:counterfoil-book"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="clue:counterfoil-book"][data-sel] [data-rel~="clue:counterfoil-book"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="clue:counterfoil-book"][data-sel] [data-rel~="clue:counterfoil-book"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="clue:desk-stamp"][data-sel] [data-rel~="clue:desk-stamp"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="clue:desk-stamp"][data-sel] [data-rel~="clue:desk-stamp"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="clue:desk-stamp"][data-sel] [data-rel~="clue:desk-stamp"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="clue:account-form"][data-sel] [data-rel~="clue:account-form"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="clue:account-form"][data-sel] [data-rel~="clue:account-form"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="clue:account-form"][data-sel] [data-rel~="clue:account-form"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="clue:notary-stamp"][data-sel] [data-rel~="clue:notary-stamp"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="clue:notary-stamp"][data-sel] [data-rel~="clue:notary-stamp"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="clue:notary-stamp"][data-sel] [data-rel~="clue:notary-stamp"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="clue:editor-receipt"][data-sel] [data-rel~="clue:editor-receipt"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="clue:editor-receipt"][data-sel] [data-rel~="clue:editor-receipt"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="clue:editor-receipt"][data-sel] [data-rel~="clue:editor-receipt"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="clue:printer-notice"][data-sel] [data-rel~="clue:printer-notice"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="clue:printer-notice"][data-sel] [data-rel~="clue:printer-notice"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="clue:printer-notice"][data-sel] [data-rel~="clue:printer-notice"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="suspect:jorund"][data-sel] [data-rel~="suspect:jorund"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="suspect:jorund"][data-sel] [data-rel~="suspect:jorund"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="suspect:jorund"][data-sel] [data-rel~="suspect:jorund"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="suspect:ilvane"][data-sel] [data-rel~="suspect:ilvane"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="suspect:ilvane"][data-sel] [data-rel~="suspect:ilvane"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="suspect:ilvane"][data-sel] [data-rel~="suspect:ilvane"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="suspect:dunstan"][data-sel] [data-rel~="suspect:dunstan"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="suspect:dunstan"][data-sel] [data-rel~="suspect:dunstan"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="suspect:dunstan"][data-sel] [data-rel~="suspect:dunstan"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="suspect:maelis"][data-sel] [data-rel~="suspect:maelis"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="suspect:maelis"][data-sel] [data-rel~="suspect:maelis"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="suspect:maelis"][data-sel] [data-rel~="suspect:maelis"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="place:court-square"][data-sel] [data-rel~="place:court-square"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="place:court-square"][data-sel] [data-rel~="place:court-square"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="place:court-square"][data-sel] [data-rel~="place:court-square"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="place:licensing-lobby"][data-sel] [data-rel~="place:licensing-lobby"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="place:licensing-lobby"][data-sel] [data-rel~="place:licensing-lobby"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="place:licensing-lobby"][data-sel] [data-rel~="place:licensing-lobby"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="place:records-room"][data-sel] [data-rel~="place:records-room"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="place:records-room"][data-sel] [data-rel~="place:records-room"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="place:records-room"][data-sel] [data-rel~="place:records-room"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="place:riverside-bank"][data-sel] [data-rel~="place:riverside-bank"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="place:riverside-bank"][data-sel] [data-rel~="place:riverside-bank"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="place:riverside-bank"][data-sel] [data-rel~="place:riverside-bank"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="place:lantern-lane"][data-sel] [data-rel~="place:lantern-lane"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="place:lantern-lane"][data-sel] [data-rel~="place:lantern-lane"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="place:lantern-lane"][data-sel] [data-rel~="place:lantern-lane"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="place:notary-office"][data-sel] [data-rel~="place:notary-office"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="place:notary-office"][data-sel] [data-rel~="place:notary-office"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="place:notary-office"][data-sel] [data-rel~="place:notary-office"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="place:teahouse"][data-sel] [data-rel~="place:teahouse"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="place:teahouse"][data-sel] [data-rel~="place:teahouse"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="place:teahouse"][data-sel] [data-rel~="place:teahouse"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="place:canal-yard"][data-sel] [data-rel~="place:canal-yard"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="place:canal-yard"][data-sel] [data-rel~="place:canal-yard"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="place:canal-yard"][data-sel] [data-rel~="place:canal-yard"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="place:newsroom"][data-sel] [data-rel~="place:newsroom"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="place:newsroom"][data-sel] [data-rel~="place:newsroom"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="place:newsroom"][data-sel] [data-rel~="place:newsroom"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-open="counterfoil-book"] #open-counterfoil-book{display:block}
+main[data-open="desk-stamp"] #open-desk-stamp{display:block}
+main[data-open="account-form"] #open-account-form{display:block}
+main[data-open="notary-stamp"] #open-notary-stamp{display:block}
+main[data-open="editor-receipt"] #open-editor-receipt{display:block}
+main[data-open="printer-notice"] #open-printer-notice{display:block}
+main[data-sel="clue:counterfoil-book"] #card-counterfoil-book .text{display:block;overflow:visible}
+main[data-sel="clue:desk-stamp"] #card-desk-stamp .text{display:block;overflow:visible}
+main[data-sel="clue:account-form"] #card-account-form .text{display:block;overflow:visible}
+main[data-sel="clue:notary-stamp"] #card-notary-stamp .text{display:block;overflow:visible}
+main[data-sel="clue:editor-receipt"] #card-editor-receipt .text{display:block;overflow:visible}
+main[data-sel="clue:printer-notice"] #card-printer-notice .text{display:block;overflow:visible}
+main[data-sel="turn:1"][data-sel] [data-rel~="turn:1"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:1"][data-sel] [data-rel~="turn:1"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:1"][data-sel] [data-rel~="turn:1"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:1"][data-sel] [data-pick="place:riverside-bank"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:1"][data-sel] [data-pick="place:riverside-bank"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:1"][data-sel] [data-pick="place:riverside-bank"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:2"][data-sel] [data-rel~="turn:2"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:2"][data-sel] [data-rel~="turn:2"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:2"][data-sel] [data-rel~="turn:2"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:2"][data-sel] [data-pick="place:riverside-bank"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:2"][data-sel] [data-pick="place:riverside-bank"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:2"][data-sel] [data-pick="place:riverside-bank"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:2"][data-sel] [data-pick="suspect:maelis"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:2"][data-sel] [data-pick="suspect:maelis"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:2"][data-sel] [data-pick="suspect:maelis"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:3"][data-sel] [data-rel~="turn:3"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:3"][data-sel] [data-rel~="turn:3"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:3"][data-sel] [data-rel~="turn:3"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:3"][data-sel] [data-pick="place:court-square"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:3"][data-sel] [data-pick="place:court-square"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:3"][data-sel] [data-pick="place:court-square"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:4"][data-sel] [data-rel~="turn:4"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:4"][data-sel] [data-rel~="turn:4"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:4"][data-sel] [data-rel~="turn:4"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:4"][data-sel] [data-pick="place:licensing-lobby"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:4"][data-sel] [data-pick="place:licensing-lobby"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:4"][data-sel] [data-pick="place:licensing-lobby"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:5"][data-sel] [data-rel~="turn:5"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:5"][data-sel] [data-rel~="turn:5"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:5"][data-sel] [data-rel~="turn:5"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:5"][data-sel] [data-pick="clue:desk-stamp"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:5"][data-sel] [data-pick="clue:desk-stamp"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:5"][data-sel] [data-pick="clue:desk-stamp"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:5"][data-sel] [data-pick="clue:account-form"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:5"][data-sel] [data-pick="clue:account-form"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:5"][data-sel] [data-pick="clue:account-form"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:5"][data-sel] [data-pick="place:licensing-lobby"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:5"][data-sel] [data-pick="place:licensing-lobby"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:5"][data-sel] [data-pick="place:licensing-lobby"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:5"][data-sel] [data-pick="suspect:jorund"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:5"][data-sel] [data-pick="suspect:jorund"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:5"][data-sel] [data-pick="suspect:jorund"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:6"][data-sel] [data-rel~="turn:6"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:6"][data-sel] [data-rel~="turn:6"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:6"][data-sel] [data-rel~="turn:6"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:6"][data-sel] [data-pick="place:records-room"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:6"][data-sel] [data-pick="place:records-room"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:6"][data-sel] [data-pick="place:records-room"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:7"][data-sel] [data-rel~="turn:7"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:7"][data-sel] [data-rel~="turn:7"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:7"][data-sel] [data-rel~="turn:7"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:7"][data-sel] [data-pick="place:records-room"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:7"][data-sel] [data-pick="place:records-room"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:7"][data-sel] [data-pick="place:records-room"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:8"][data-sel] [data-rel~="turn:8"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:8"][data-sel] [data-rel~="turn:8"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:8"][data-sel] [data-rel~="turn:8"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:8"][data-sel] [data-pick="clue:counterfoil-book"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:8"][data-sel] [data-pick="clue:counterfoil-book"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:8"][data-sel] [data-pick="clue:counterfoil-book"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:8"][data-sel] [data-pick="place:records-room"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:8"][data-sel] [data-pick="place:records-room"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:8"][data-sel] [data-pick="place:records-room"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:9"][data-sel] [data-rel~="turn:9"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:9"][data-sel] [data-rel~="turn:9"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:9"][data-sel] [data-rel~="turn:9"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:9"][data-sel] [data-pick="place:records-room"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:9"][data-sel] [data-pick="place:records-room"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:9"][data-sel] [data-pick="place:records-room"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:10"][data-sel] [data-rel~="turn:10"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:10"][data-sel] [data-rel~="turn:10"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:10"][data-sel] [data-rel~="turn:10"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:10"][data-sel] [data-pick="place:records-room"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:10"][data-sel] [data-pick="place:records-room"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:10"][data-sel] [data-pick="place:records-room"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:11"][data-sel] [data-rel~="turn:11"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:11"][data-sel] [data-rel~="turn:11"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:11"][data-sel] [data-rel~="turn:11"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:11"][data-sel] [data-pick="place:licensing-lobby"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:11"][data-sel] [data-pick="place:licensing-lobby"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:11"][data-sel] [data-pick="place:licensing-lobby"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:12"][data-sel] [data-rel~="turn:12"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:12"][data-sel] [data-rel~="turn:12"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:12"][data-sel] [data-rel~="turn:12"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:12"][data-sel] [data-pick="place:court-square"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:12"][data-sel] [data-pick="place:court-square"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:12"][data-sel] [data-pick="place:court-square"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:13"][data-sel] [data-rel~="turn:13"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:13"][data-sel] [data-rel~="turn:13"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:13"][data-sel] [data-rel~="turn:13"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:13"][data-sel] [data-pick="place:lantern-lane"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:13"][data-sel] [data-pick="place:lantern-lane"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:13"][data-sel] [data-pick="place:lantern-lane"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:14"][data-sel] [data-rel~="turn:14"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:14"][data-sel] [data-rel~="turn:14"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:14"][data-sel] [data-rel~="turn:14"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:14"][data-sel] [data-pick="place:notary-office"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:14"][data-sel] [data-pick="place:notary-office"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:14"][data-sel] [data-pick="place:notary-office"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:15"][data-sel] [data-rel~="turn:15"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:15"][data-sel] [data-rel~="turn:15"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:15"][data-sel] [data-rel~="turn:15"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:15"][data-sel] [data-pick="clue:counterfoil-book"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:15"][data-sel] [data-pick="clue:counterfoil-book"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:15"][data-sel] [data-pick="clue:counterfoil-book"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:15"][data-sel] [data-pick="place:notary-office"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:15"][data-sel] [data-pick="place:notary-office"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:15"][data-sel] [data-pick="place:notary-office"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:15"][data-sel] [data-pick="suspect:dunstan"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:15"][data-sel] [data-pick="suspect:dunstan"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:15"][data-sel] [data-pick="suspect:dunstan"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:16"][data-sel] [data-rel~="turn:16"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:16"][data-sel] [data-rel~="turn:16"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:16"][data-sel] [data-rel~="turn:16"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:16"][data-sel] [data-pick="clue:notary-stamp"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:16"][data-sel] [data-pick="clue:notary-stamp"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:16"][data-sel] [data-pick="clue:notary-stamp"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:16"][data-sel] [data-pick="place:notary-office"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:16"][data-sel] [data-pick="place:notary-office"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:16"][data-sel] [data-pick="place:notary-office"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:17"][data-sel] [data-rel~="turn:17"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:17"][data-sel] [data-rel~="turn:17"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:17"][data-sel] [data-rel~="turn:17"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:17"][data-sel] [data-pick="place:notary-office"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:17"][data-sel] [data-pick="place:notary-office"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:17"][data-sel] [data-pick="place:notary-office"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:18"][data-sel] [data-rel~="turn:18"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:18"][data-sel] [data-rel~="turn:18"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:18"][data-sel] [data-rel~="turn:18"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:18"][data-sel] [data-pick="place:lantern-lane"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:18"][data-sel] [data-pick="place:lantern-lane"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:18"][data-sel] [data-pick="place:lantern-lane"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:19"][data-sel] [data-rel~="turn:19"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:19"][data-sel] [data-rel~="turn:19"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:19"][data-sel] [data-rel~="turn:19"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:19"][data-sel] [data-pick="place:teahouse"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:19"][data-sel] [data-pick="place:teahouse"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:19"][data-sel] [data-pick="place:teahouse"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:20"][data-sel] [data-rel~="turn:20"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:20"][data-sel] [data-rel~="turn:20"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:20"][data-sel] [data-rel~="turn:20"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:20"][data-sel] [data-pick="place:teahouse"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:20"][data-sel] [data-pick="place:teahouse"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:20"][data-sel] [data-pick="place:teahouse"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:21"][data-sel] [data-rel~="turn:21"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:21"][data-sel] [data-rel~="turn:21"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:21"][data-sel] [data-rel~="turn:21"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:21"][data-sel] [data-pick="place:teahouse"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:21"][data-sel] [data-pick="place:teahouse"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:21"][data-sel] [data-pick="place:teahouse"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:22"][data-sel] [data-rel~="turn:22"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:22"][data-sel] [data-rel~="turn:22"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:22"][data-sel] [data-rel~="turn:22"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:22"][data-sel] [data-pick="place:lantern-lane"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:22"][data-sel] [data-pick="place:lantern-lane"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:22"][data-sel] [data-pick="place:lantern-lane"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:23"][data-sel] [data-rel~="turn:23"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:23"][data-sel] [data-rel~="turn:23"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:23"][data-sel] [data-rel~="turn:23"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:23"][data-sel] [data-pick="place:court-square"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:23"][data-sel] [data-pick="place:court-square"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:23"][data-sel] [data-pick="place:court-square"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:24"][data-sel] [data-rel~="turn:24"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:24"][data-sel] [data-rel~="turn:24"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:24"][data-sel] [data-rel~="turn:24"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:24"][data-sel] [data-pick="place:canal-yard"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:24"][data-sel] [data-pick="place:canal-yard"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:24"][data-sel] [data-pick="place:canal-yard"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:25"][data-sel] [data-rel~="turn:25"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:25"][data-sel] [data-rel~="turn:25"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:25"][data-sel] [data-rel~="turn:25"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:25"][data-sel] [data-pick="place:canal-yard"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:25"][data-sel] [data-pick="place:canal-yard"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:25"][data-sel] [data-pick="place:canal-yard"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:26"][data-sel] [data-rel~="turn:26"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:26"][data-sel] [data-rel~="turn:26"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:26"][data-sel] [data-rel~="turn:26"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:26"][data-sel] [data-pick="place:newsroom"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:26"][data-sel] [data-pick="place:newsroom"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:26"][data-sel] [data-pick="place:newsroom"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:27"][data-sel] [data-rel~="turn:27"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:27"][data-sel] [data-rel~="turn:27"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:27"][data-sel] [data-rel~="turn:27"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:27"][data-sel] [data-pick="clue:editor-receipt"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:27"][data-sel] [data-pick="clue:editor-receipt"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:27"][data-sel] [data-pick="clue:editor-receipt"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:27"][data-sel] [data-pick="clue:printer-notice"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:27"][data-sel] [data-pick="clue:printer-notice"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:27"][data-sel] [data-pick="clue:printer-notice"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:27"][data-sel] [data-pick="place:newsroom"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:27"][data-sel] [data-pick="place:newsroom"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:27"][data-sel] [data-pick="place:newsroom"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:28"][data-sel] [data-rel~="turn:28"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:28"][data-sel] [data-rel~="turn:28"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:28"][data-sel] [data-rel~="turn:28"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:28"][data-sel] [data-pick="clue:editor-receipt"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:28"][data-sel] [data-pick="clue:editor-receipt"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:28"][data-sel] [data-pick="clue:editor-receipt"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:28"][data-sel] [data-pick="place:newsroom"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:28"][data-sel] [data-pick="place:newsroom"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:28"][data-sel] [data-pick="place:newsroom"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:28"][data-sel] [data-pick="suspect:ilvane"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:28"][data-sel] [data-pick="suspect:ilvane"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:28"][data-sel] [data-pick="suspect:ilvane"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:29"][data-sel] [data-rel~="turn:29"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:29"][data-sel] [data-rel~="turn:29"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:29"][data-sel] [data-rel~="turn:29"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:29"][data-sel] [data-pick="place:newsroom"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:29"][data-sel] [data-pick="place:newsroom"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:29"][data-sel] [data-pick="place:newsroom"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:30"][data-sel] [data-rel~="turn:30"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:30"][data-sel] [data-rel~="turn:30"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:30"][data-sel] [data-rel~="turn:30"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:30"][data-sel] [data-pick="place:newsroom"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:30"][data-sel] [data-pick="place:newsroom"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:30"][data-sel] [data-pick="place:newsroom"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:31"][data-sel] [data-rel~="turn:31"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:31"][data-sel] [data-rel~="turn:31"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:31"][data-sel] [data-rel~="turn:31"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:31"][data-sel] [data-pick="place:newsroom"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:31"][data-sel] [data-pick="place:newsroom"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:31"][data-sel] [data-pick="place:newsroom"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:32"][data-sel] [data-rel~="turn:32"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:32"][data-sel] [data-rel~="turn:32"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:32"][data-sel] [data-rel~="turn:32"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:32"][data-sel] [data-pick="place:newsroom"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:32"][data-sel] [data-pick="place:newsroom"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:32"][data-sel] [data-pick="place:newsroom"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:33"][data-sel] [data-rel~="turn:33"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:33"][data-sel] [data-rel~="turn:33"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:33"][data-sel] [data-rel~="turn:33"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:33"][data-sel] [data-pick="place:canal-yard"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:33"][data-sel] [data-pick="place:canal-yard"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:33"][data-sel] [data-pick="place:canal-yard"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:34"][data-sel] [data-rel~="turn:34"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:34"][data-sel] [data-rel~="turn:34"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:34"][data-sel] [data-rel~="turn:34"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:34"][data-sel] [data-pick="place:court-square"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:34"][data-sel] [data-pick="place:court-square"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:34"][data-sel] [data-pick="place:court-square"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:35"][data-sel] [data-rel~="turn:35"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:35"][data-sel] [data-rel~="turn:35"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:35"][data-sel] [data-rel~="turn:35"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:35"][data-sel] [data-pick="place:lantern-lane"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:35"][data-sel] [data-pick="place:lantern-lane"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:35"][data-sel] [data-pick="place:lantern-lane"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:36"][data-sel] [data-rel~="turn:36"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:36"][data-sel] [data-rel~="turn:36"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:36"][data-sel] [data-rel~="turn:36"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:36"][data-sel] [data-pick="place:notary-office"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:36"][data-sel] [data-pick="place:notary-office"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:36"][data-sel] [data-pick="place:notary-office"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:37"][data-sel] [data-rel~="turn:37"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:37"][data-sel] [data-rel~="turn:37"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:37"][data-sel] [data-rel~="turn:37"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:37"][data-sel] [data-pick="clue:editor-receipt"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:37"][data-sel] [data-pick="clue:editor-receipt"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:37"][data-sel] [data-pick="clue:editor-receipt"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:37"][data-sel] [data-pick="clue:notary-stamp"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:37"][data-sel] [data-pick="clue:notary-stamp"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:37"][data-sel] [data-pick="clue:notary-stamp"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:37"][data-sel] [data-pick="place:notary-office"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:37"][data-sel] [data-pick="place:notary-office"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:37"][data-sel] [data-pick="place:notary-office"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:37"][data-sel] [data-pick="suspect:dunstan"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:37"][data-sel] [data-pick="suspect:dunstan"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:37"][data-sel] [data-pick="suspect:dunstan"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:38"][data-sel] [data-rel~="turn:38"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:38"][data-sel] [data-rel~="turn:38"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:38"][data-sel] [data-rel~="turn:38"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:38"][data-sel] [data-pick="place:notary-office"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:38"][data-sel] [data-pick="place:notary-office"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:38"][data-sel] [data-pick="place:notary-office"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:39"][data-sel] [data-rel~="turn:39"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:39"][data-sel] [data-rel~="turn:39"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:39"][data-sel] [data-rel~="turn:39"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:39"][data-sel] [data-pick="place:lantern-lane"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:39"][data-sel] [data-pick="place:lantern-lane"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:39"][data-sel] [data-pick="place:lantern-lane"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:40"][data-sel] [data-rel~="turn:40"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:40"][data-sel] [data-rel~="turn:40"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:40"][data-sel] [data-rel~="turn:40"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:40"][data-sel] [data-pick="place:court-square"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:40"][data-sel] [data-pick="place:court-square"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:40"][data-sel] [data-pick="place:court-square"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:41"][data-sel] [data-rel~="turn:41"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:41"][data-sel] [data-rel~="turn:41"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:41"][data-sel] [data-rel~="turn:41"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:41"][data-sel] [data-pick="place:licensing-lobby"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:41"][data-sel] [data-pick="place:licensing-lobby"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:41"][data-sel] [data-pick="place:licensing-lobby"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:42"][data-sel] [data-rel~="turn:42"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:42"][data-sel] [data-rel~="turn:42"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:42"][data-sel] [data-rel~="turn:42"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:42"][data-sel] [data-pick="clue:counterfoil-book"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:42"][data-sel] [data-pick="clue:counterfoil-book"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:42"][data-sel] [data-pick="clue:counterfoil-book"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:42"][data-sel] [data-pick="clue:editor-receipt"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:42"][data-sel] [data-pick="clue:editor-receipt"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:42"][data-sel] [data-pick="clue:editor-receipt"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:42"][data-sel] [data-pick="place:licensing-lobby"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:42"][data-sel] [data-pick="place:licensing-lobby"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:42"][data-sel] [data-pick="place:licensing-lobby"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:42"][data-sel] [data-pick="suspect:jorund"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:42"][data-sel] [data-pick="suspect:jorund"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:42"][data-sel] [data-pick="suspect:jorund"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:43"][data-sel] [data-rel~="turn:43"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:43"][data-sel] [data-rel~="turn:43"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:43"][data-sel] [data-rel~="turn:43"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:43"][data-sel] [data-pick="place:licensing-lobby"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:43"][data-sel] [data-pick="place:licensing-lobby"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:43"][data-sel] [data-pick="place:licensing-lobby"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:44"][data-sel] [data-rel~="turn:44"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:44"][data-sel] [data-rel~="turn:44"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:44"][data-sel] [data-rel~="turn:44"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:44"][data-sel] [data-pick="place:records-room"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:44"][data-sel] [data-pick="place:records-room"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:44"][data-sel] [data-pick="place:records-room"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:45"][data-sel] [data-rel~="turn:45"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:45"][data-sel] [data-rel~="turn:45"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:45"][data-sel] [data-rel~="turn:45"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:45"][data-sel] [data-pick="place:records-room"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:45"][data-sel] [data-pick="place:records-room"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:45"][data-sel] [data-pick="place:records-room"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:46"][data-sel] [data-rel~="turn:46"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:46"][data-sel] [data-rel~="turn:46"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:46"][data-sel] [data-rel~="turn:46"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:46"][data-sel] [data-pick="place:licensing-lobby"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:46"][data-sel] [data-pick="place:licensing-lobby"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:46"][data-sel] [data-pick="place:licensing-lobby"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:47"][data-sel] [data-rel~="turn:47"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:47"][data-sel] [data-rel~="turn:47"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:47"][data-sel] [data-rel~="turn:47"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:47"][data-sel] [data-pick="place:court-square"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:47"][data-sel] [data-pick="place:court-square"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:47"][data-sel] [data-pick="place:court-square"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:48"][data-sel] [data-rel~="turn:48"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:48"][data-sel] [data-rel~="turn:48"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:48"][data-sel] [data-rel~="turn:48"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:48"][data-sel] [data-pick="place:riverside-bank"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:48"][data-sel] [data-pick="place:riverside-bank"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:48"][data-sel] [data-pick="place:riverside-bank"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:49"][data-sel] [data-rel~="turn:49"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:49"][data-sel] [data-rel~="turn:49"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:49"][data-sel] [data-rel~="turn:49"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:49"][data-sel] [data-pick="clue:account-form"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:49"][data-sel] [data-pick="clue:account-form"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:49"][data-sel] [data-pick="clue:account-form"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:49"][data-sel] [data-pick="place:riverside-bank"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:49"][data-sel] [data-pick="place:riverside-bank"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:49"][data-sel] [data-pick="place:riverside-bank"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:49"][data-sel] [data-pick="suspect:maelis"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:49"][data-sel] [data-pick="suspect:maelis"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:49"][data-sel] [data-pick="suspect:maelis"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:50"][data-sel] [data-rel~="turn:50"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:50"][data-sel] [data-rel~="turn:50"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:50"][data-sel] [data-rel~="turn:50"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-sel="turn:50"][data-sel] [data-pick="place:riverside-bank"][data-rel]{opacity:1;filter:none;outline:2px solid var(--accent);outline-offset:2px}
+main[data-sel="turn:50"][data-sel] [data-pick="place:riverside-bank"][data-rel] > rect{stroke:var(--accent);stroke-width:3}
+main[data-sel="turn:50"][data-sel] [data-pick="place:riverside-bank"][data-rel]:is(path,line){stroke-width:4;outline:0}
+main[data-open="plan-licensing-lobby"] #open-plan-licensing-lobby{display:block}
+main[data-open="plan-riverside-bank"] #open-plan-riverside-bank{display:block}
+main[data-open="plan-notary-office"] #open-plan-notary-office{display:block}
+main[data-open="plan-teahouse"] #open-plan-teahouse{display:block}
+main[data-open="plan-newsroom"] #open-plan-newsroom{display:block}</style>
+</head>
+<body>
+<main>
+<header class="head">
+<h1>The Fee That Was Never Filed</h1>
+<p class="meta">Turn 50 · Day 2 of 3, 14:35 · lost · Detective: Quinn Tindall</p>
+<p class="meta">Working time left: <strong>25 h 25 min</strong> · Condition: nerves frayed, rested, ill-equipped, name in doubt</p>
+</header>
+<p class="premise">In Tosora a court has fined the editor Ilvane Marrick for running a news website without a publication licence and sealed her newsroom. She swears she paid the licence fee. The Office of Publication Licences has no record of it and, asked where a licence is actually obtained, gives three different answers. Quinn Tindall is sent to find where the money went.</p>
+<p class="meta">Now at: <strong>Riverside Savings Bank</strong></p>
+<nav class="tabs" aria-label="Sections of the board"><a href="#board">Board</a><a href="#suspects">Suspects</a><a href="#clues">Clues and links</a><a href="#map">Map</a><a href="#chronicle">Chronicle</a><a href="#hero">Hero and kit</a></nav>
+<section class="tab" id="board">
+<h2>Corkboard</h2>
+<p class="note">Click a clue, a person or a place to light up what ties to it. Click it again, or press Esc, to clear.</p>
+<div class="cork-wrap"><div class="cork"><svg class="board" viewBox="0 0 990 602" role="group" aria-label="Corkboard"><path class="thread cold" d="M373 226 L129 226" data-rel="clue:desk-stamp clue:counterfoil-book"/><path class="thread cold" d="M129 226 L861 226" data-rel="clue:counterfoil-book clue:notary-stamp"/><path class="thread cold" d="M129 402 L129 226" data-rel="clue:editor-receipt clue:counterfoil-book"/><path class="thread cold" d="M129 402 L861 226" data-rel="clue:editor-receipt clue:notary-stamp"/><path class="thread cold" d="M373 226 L617 226" data-rel="clue:desk-stamp clue:account-form"/><path class="thread cold" d="M373 226 L129 402" data-rel="clue:desk-stamp clue:editor-receipt"/><path class="thread cold" d="M617 226 L129 226" data-rel="clue:account-form clue:counterfoil-book"/><path class="thread shown plain" d="M373 226 C373 156 279 240 279 170" data-rel="clue:desk-stamp suspect:jorund"/><path class="thread shown plain" d="M617 226 C617 156 279 240 279 170" data-rel="clue:account-form suspect:jorund"/><path class="thread shown plain" d="M129 226 C129 156 567 240 567 170" data-rel="clue:counterfoil-book suspect:dunstan"/><path class="thread shown breaks" d="M129 402 C129 332 423 240 423 170" data-rel="clue:editor-receipt suspect:ilvane"/><path class="thread shown plain" d="M129 402 C129 332 567 240 567 170" data-rel="clue:editor-receipt suspect:dunstan"/><path class="thread shown plain" d="M861 226 C861 156 567 240 567 170" data-rel="clue:notary-stamp suspect:dunstan"/><path class="thread shown plain" d="M129 226 C129 156 279 240 279 170" data-rel="clue:counterfoil-book suspect:jorund"/><path class="thread shown breaks" d="M129 402 C129 332 279 240 279 170" data-rel="clue:editor-receipt suspect:jorund"/><path class="thread shown breaks" d="M617 226 C617 156 711 240 711 170" data-rel="clue:account-form suspect:maelis"/><g class="photo" data-pick="suspect:jorund" data-rel="suspect:jorund place:licensing-lobby clue:desk-stamp clue:account-form clue:counterfoil-book clue:editor-receipt" tabindex="0" role="button" aria-label="Jorund Pelmaree"><title>Jorund Pelmaree</title><rect class="paper" x="227" y="24" width="104" height="104" rx="3"/><rect class="print" x="235" y="32" width="88" height="88" rx="2"/><text class="initial" x="279" y="90" text-anchor="middle">J</text><text class="caption" x="279" y="146" text-anchor="middle">Jorund Pelmaree</text><circle class="pin" cx="279" cy="24" r="6"/></g><g class="photo" data-pick="suspect:ilvane" data-rel="suspect:ilvane place:newsroom clue:editor-receipt" tabindex="0" role="button" aria-label="Ilvane Marrick"><title>Ilvane Marrick</title><rect class="paper" x="371" y="24" width="104" height="104" rx="3"/><rect class="print" x="379" y="32" width="88" height="88" rx="2"/><text class="initial" x="423" y="90" text-anchor="middle">I</text><text class="caption" x="423" y="146" text-anchor="middle">Ilvane Marrick</text><circle class="pin" cx="423" cy="24" r="6"/></g><g class="photo" data-pick="suspect:dunstan" data-rel="suspect:dunstan place:notary-office clue:counterfoil-book clue:editor-receipt clue:notary-stamp" tabindex="0" role="button" aria-label="Dunstan Veilhoek"><title>Dunstan Veilhoek</title><rect class="paper" x="515" y="24" width="104" height="104" rx="3"/><rect class="print" x="523" y="32" width="88" height="88" rx="2"/><text class="initial" x="567" y="90" text-anchor="middle">D</text><text class="caption" x="567" y="146" text-anchor="middle">Dunstan Veilhoek</text><circle class="pin" cx="567" cy="24" r="6"/></g><g class="photo" data-pick="suspect:maelis" data-rel="suspect:maelis place:riverside-bank clue:account-form" tabindex="0" role="button" aria-label="Maelis Fenwarden"><title>Maelis Fenwarden</title><rect class="paper" x="659" y="24" width="104" height="104" rx="3"/><rect class="print" x="667" y="32" width="88" height="88" rx="2"/><text class="initial" x="711" y="90" text-anchor="middle">M</text><text class="caption" x="711" y="146" text-anchor="middle">Maelis Fenwarden</text><circle class="pin" cx="711" cy="24" r="6"/></g><g class="card-pin" transform="rotate(-2.1 129 293)" data-pick="clue:counterfoil-book" data-rel="clue:counterfoil-book place:records-room suspect:dunstan suspect:jorund" tabindex="0" role="button" aria-controls="open-counterfoil-book" data-open="counterfoil-book" aria-label="TINDALL-03: In the waste basket lies a receipt book with fourteen counterfoils stamped &#39;Facilitation …"><title>In the waste basket lies a receipt book with fourteen counterfoils stamped &#39;Facilitation Desk - Fees Received&#39;, each for 400, each initialled J.P. in the corner. The last pages are cut out.</title><rect class="paper" x="24" y="226" width="210" height="134" rx="3"/><text class="num" x="36" y="252">TINDALL-03</text><text class="line" x="36" y="272">In the waste basket</text><text class="line" x="36" y="289">lies a receipt book</text><text class="line" x="36" y="306">with fourteen …</text><g class="where" data-pick="place:records-room" data-rel="place:records-room clue:counterfoil-book"><text x="36" y="346">found at Records Room · turn 8</text></g><circle class="pin" cx="129" cy="226" r="6"/></g><g class="card-pin" transform="rotate(-0.7 373 293)" data-pick="clue:desk-stamp" data-rel="clue:desk-stamp place:riverside-bank suspect:jorund" tabindex="0" role="button" aria-controls="open-desk-stamp" data-open="desk-stamp" aria-label="TINDALL-01: In the locked drawer of the registrar&#39;s desk lies a rubber stamp reading &#39;Facilitation De…"><title>In the locked drawer of the registrar&#39;s desk lies a rubber stamp reading &#39;Facilitation Desk - Fees Received&#39;, its pad wet with blue ink.</title><rect class="paper" x="268" y="226" width="210" height="134" rx="3"/><text class="num" x="280" y="252">TINDALL-01</text><text class="line" x="280" y="272">In the locked drawer</text><text class="line" x="280" y="289">of the registrar&#39;s</text><text class="line" x="280" y="306">desk lies a rubber …</text><g class="where" data-pick="place:records-room" data-rel="place:records-room clue:counterfoil-book"><text x="280" y="346">found at Records Room · turn 2</text></g><circle class="pin" cx="373" cy="226" r="6"/></g><g class="card-pin" transform="rotate(0.7 617 293)" data-pick="clue:account-form" data-rel="clue:account-form place:riverside-bank suspect:jorund suspect:maelis" tabindex="0" role="button" aria-controls="open-account-form" data-open="account-form" aria-label="TINDALL-02: The opening form for an account called &#39;Facilitation Desk Fund&#39; is signed by teller Maeli…"><title>The opening form for an account called &#39;Facilitation Desk Fund&#39; is signed by teller Maelis Fenwarden, with J. Pelmaree as sole signatory and the address of the Pelmaree Ferry Company.</title><rect class="paper" x="512" y="226" width="210" height="134" rx="3"/><text class="num" x="524" y="252">TINDALL-02</text><text class="line" x="524" y="272">The opening form for</text><text class="line" x="524" y="289">an account called</text><text class="line" x="524" y="306">&#39;Facilitation Desk …</text><g class="where" data-pick="place:riverside-bank" data-rel="place:riverside-bank suspect:maelis clue:desk-stamp clue:account-form"><text x="524" y="332">found at Riverside Savings</text><text x="524" y="346">Bank · turn 2</text></g><circle class="pin" cx="617" cy="226" r="6"/></g><g class="card-pin" transform="rotate(2.1 861 293)" data-pick="clue:notary-stamp" data-rel="clue:notary-stamp place:notary-office suspect:dunstan" tabindex="0" role="button" aria-controls="open-notary-stamp" data-open="notary-stamp" aria-label="TINDALL-04: The notary&#39;s stamp case holds a stamp reading &#39;Signature witnessed, contents not examined…"><title>The notary&#39;s stamp case holds a stamp reading &#39;Signature witnessed, contents not examined&#39;, with ink traces matching the mark on fourteen receipts.</title><rect class="paper" x="756" y="226" width="210" height="134" rx="3"/><text class="num" x="768" y="252">TINDALL-04</text><text class="line" x="768" y="272">The notary&#39;s stamp</text><text class="line" x="768" y="289">case holds a stamp</text><text class="line" x="768" y="306">reading &#39;Signature …</text><g class="where" data-pick="place:notary-office" data-rel="place:notary-office suspect:dunstan clue:notary-stamp"><text x="768" y="332">found at Notary Office · turn</text><text x="768" y="346">16</text></g><circle class="pin" cx="861" cy="226" r="6"/></g><g class="card-pin" transform="rotate(-1.4 129 469)" data-pick="clue:editor-receipt" data-rel="clue:editor-receipt place:newsroom suspect:ilvane suspect:dunstan suspect:jorund" tabindex="0" role="button" aria-controls="open-editor-receipt" data-open="editor-receipt" aria-label="TINDALL-05: Ilvane Marrick&#39;s carbon in the desk tray is a counterfoil stamped &#39;Facilitation Desk - Fe…"><title>Ilvane Marrick&#39;s carbon in the desk tray is a counterfoil stamped &#39;Facilitation Desk - Fees Received&#39;, for 400, dated three weeks before the hearing and initialled J.P.</title><rect class="paper" x="24" y="402" width="210" height="134" rx="3"/><text class="num" x="36" y="428">TINDALL-05</text><text class="line" x="36" y="448">Ilvane Marrick&#39;s</text><text class="line" x="36" y="465">carbon in the desk</text><text class="line" x="36" y="482">tray is a counterfoil…</text><g class="where" data-pick="place:newsroom" data-rel="place:newsroom suspect:ilvane clue:editor-receipt clue:printer-notice"><text x="36" y="508">found at The Marrick Newsroom</text><text x="36" y="522">· turn 27</text></g><circle class="pin" cx="129" cy="402" r="6"/></g><g class="card-pin" transform="rotate(-0.0 373 469)" data-pick="clue:printer-notice" data-rel="clue:printer-notice place:newsroom" tabindex="0" role="button" aria-controls="open-printer-notice" data-open="printer-notice" aria-label="TINDALL-06: An overdue invoice from the printer for 1,900 is spiked on the desk, marked &#39;final notice…"><title>An overdue invoice from the printer for 1,900 is spiked on the desk, marked &#39;final notice&#39;.</title><rect class="paper" x="268" y="402" width="210" height="134" rx="3"/><text class="num" x="280" y="428">TINDALL-06</text><text class="line" x="280" y="448">An overdue invoice</text><text class="line" x="280" y="465">from the printer for</text><text class="line" x="280" y="482">1,900 is spiked on th…</text><g class="where" data-pick="place:newsroom" data-rel="place:newsroom suspect:ilvane clue:editor-receipt clue:printer-notice"><text x="280" y="508">found at The Marrick Newsroom</text><text x="280" y="522">· turn 27</text></g><circle class="pin" cx="373" cy="402" r="6"/></g></svg></div>
+<div class="opened" id="open-counterfoil-book" role="dialog" aria-label="TINDALL-03" tabindex="-1">
+<p class="tag">TINDALL-03</p>
+<p class="whole">In the waste basket lies a receipt book with fourteen counterfoils stamped &#39;Facilitation Desk - Fees Received&#39;, each for 400, each initialled J.P. in the corner. The last pages are cut out.</p>
+<p class="tag">found at Records Room · turn 8</p>
+<p class="tag">Shown to: Dunstan Veilhoek (no effect), Jorund Pelmaree (bore on them)</p>
+<p class="tag">Links it took part in:</p>
+<ul class="tried"><li>TINDALL-01 + TINDALL-03 <span class="result">led nowhere</span> <span class="tag">turn 10</span></li>
+<li>TINDALL-03 + TINDALL-04 <span class="result">led nowhere</span> <span class="tag">turn 17</span></li>
+<li>TINDALL-05 + TINDALL-03 <span class="result">led nowhere</span> <span class="tag">turn 29</span></li>
+<li>TINDALL-02 + TINDALL-03 <span class="result">led nowhere</span> <span class="tag">turn 43</span></li></ul>
+<p class="note">Click again, or press Esc, to put it back.</p>
+</div>
+<div class="opened" id="open-desk-stamp" role="dialog" aria-label="TINDALL-01" tabindex="-1">
+<p class="tag">TINDALL-01</p>
+<p class="whole">In the locked drawer of the registrar&#39;s desk lies a rubber stamp reading &#39;Facilitation Desk - Fees Received&#39;, its pad wet with blue ink.</p>
+<p class="tag">found at Riverside Savings Bank · turn 2</p>
+<p class="tag">Shown to: Jorund Pelmaree (bore on them)</p>
+<p class="tag">Links it took part in:</p>
+<ul class="tried"><li>TINDALL-01 + TINDALL-03 <span class="result">led nowhere</span> <span class="tag">turn 10</span></li>
+<li>TINDALL-01 + TINDALL-02 <span class="result">led nowhere</span> <span class="tag">turn 31</span></li>
+<li>TINDALL-01 + TINDALL-05 <span class="result">led nowhere</span> <span class="tag">turn 32</span></li></ul>
+<p class="note">Click again, or press Esc, to put it back.</p>
+</div>
+<div class="opened" id="open-account-form" role="dialog" aria-label="TINDALL-02" tabindex="-1">
+<p class="tag">TINDALL-02</p>
+<p class="whole">The opening form for an account called &#39;Facilitation Desk Fund&#39; is signed by teller Maelis Fenwarden, with J. Pelmaree as sole signatory and the address of the Pelmaree Ferry Company.</p>
+<p class="tag">found at Riverside Savings Bank · turn 2</p>
+<p class="tag">Shown to: Jorund Pelmaree (bore on them), Maelis Fenwarden (broke a lie)</p>
+<p class="tag">Links it took part in:</p>
+<ul class="tried"><li>TINDALL-01 + TINDALL-02 <span class="result">led nowhere</span> <span class="tag">turn 31</span></li>
+<li>TINDALL-02 + TINDALL-03 <span class="result">led nowhere</span> <span class="tag">turn 43</span></li></ul>
+<p class="note">Click again, or press Esc, to put it back.</p>
+</div>
+<div class="opened" id="open-notary-stamp" role="dialog" aria-label="TINDALL-04" tabindex="-1">
+<p class="tag">TINDALL-04</p>
+<p class="whole">The notary&#39;s stamp case holds a stamp reading &#39;Signature witnessed, contents not examined&#39;, with ink traces matching the mark on fourteen receipts.</p>
+<p class="tag">found at Notary Office · turn 16</p>
+<p class="tag">Shown to: Dunstan Veilhoek (bore on them)</p>
+<p class="tag">Links it took part in:</p>
+<ul class="tried"><li>TINDALL-03 + TINDALL-04 <span class="result">led nowhere</span> <span class="tag">turn 17</span></li>
+<li>TINDALL-05 + TINDALL-04 <span class="result">led nowhere</span> <span class="tag">turn 30</span></li></ul>
+<p class="note">Click again, or press Esc, to put it back.</p>
+</div>
+<div class="opened" id="open-editor-receipt" role="dialog" aria-label="TINDALL-05" tabindex="-1">
+<p class="tag">TINDALL-05</p>
+<p class="whole">Ilvane Marrick&#39;s carbon in the desk tray is a counterfoil stamped &#39;Facilitation Desk - Fees Received&#39;, for 400, dated three weeks before the hearing and initialled J.P.</p>
+<p class="tag">found at The Marrick Newsroom · turn 27</p>
+<p class="tag">Shown to: Ilvane Marrick (broke a lie), Dunstan Veilhoek (no effect), Jorund Pelmaree (broke a lie)</p>
+<p class="tag">Links it took part in:</p>
+<ul class="tried"><li>TINDALL-05 + TINDALL-03 <span class="result">led nowhere</span> <span class="tag">turn 29</span></li>
+<li>TINDALL-05 + TINDALL-04 <span class="result">led nowhere</span> <span class="tag">turn 30</span></li>
+<li>TINDALL-01 + TINDALL-05 <span class="result">led nowhere</span> <span class="tag">turn 32</span></li></ul>
+<p class="note">Click again, or press Esc, to put it back.</p>
+</div>
+<div class="opened" id="open-printer-notice" role="dialog" aria-label="TINDALL-06" tabindex="-1">
+<p class="tag">TINDALL-06</p>
+<p class="whole">An overdue invoice from the printer for 1,900 is spiked on the desk, marked &#39;final notice&#39;.</p>
+<p class="tag">found at The Marrick Newsroom · turn 27</p>
+<p class="tag">Shown to: not shown to anyone yet</p>
+<p class="tag">Links it took part in: none yet</p>
+<p class="note">Click again, or press Esc, to put it back.</p>
+</div></div>
+<p class="note">Red thread: a link tried. Blue thread: a clue shown to a person.</p>
+</section>
+<section class="tab notebook" id="suspects">
+<h2>The cast</h2>
+<div class="card suspect" data-pick="suspect:jorund" data-rel="suspect:jorund place:licensing-lobby clue:desk-stamp clue:account-form clue:counterfoil-book clue:editor-receipt" tabindex="0" role="button">
+<div class="who"><svg class="portrait p4" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27"/><circle class="head" cx="28" cy="21" r="9"/><path class="body" d="M10 52c1-12 8-18 18-18s17 6 18 18z"/><text x="28" y="25" text-anchor="middle">J</text></svg><div><strong>Jorund Pelmaree</strong>
+<p>The deputy registrar: neat, soft-voiced, always helpful and always slightly in a hurry.</p>
+<p class="tag">Last seen: Licensing Office Lobby</p>
+<p><span class="gauge mood-shaken" role="img" aria-label="shaken"><span class="step on"></span><span class="step on"></span><span class="step"></span><span class="step"></span></span> <span class="tag">Mood: shaken</span></p></div></div>
+<h3>What they claim</h3>
+<p class="claim"><span class="tag">day 1</span> I have kept the licence register for eleven years.</p>
+<p class="claim"><span class="tag">day 1</span> Autumn is our busiest season for renewals.</p>
+<p class="claim"><span class="tag">day 1</span> I often walk the long way home past the square.</p>
+<p class="claim fell"><span class="tag">day 1 · a lie that fell</span><br><s>The Office knows no agents&#39; desk. Fees are taken at counter two and nowhere else.</s><br><span class="tag">broken by:</span> <span class="chip fx-breaks-lie" data-pick="clue:editor-receipt" data-rel="clue:editor-receipt place:newsroom suspect:ilvane suspect:dunstan suspect:jorund" tabindex="0" role="button"><span class="num">TINDALL-05</span> </span></p>
+<p class="claim"><span class="tag">day 1</span> I locked the records room at six and went home by tram. I never came back that evening.</p>
+<h3>What they said</h3>
+<div class="day"><span class="tag">day 1</span>
+<p class="statement"><span class="tag">alibi</span><br>He says he locked up at six and went home by tram.</p></div>
+<div class="day"><span class="tag">day 2</span>
+<p class="statement"><span class="tag">gave ground · a lie that fell</span><br>There was a desk. I called it a convenience for people who could not queue. I took the fees there myself.</p></div>
+<h3>Shown to them</h3>
+<p class="chips"><span class="chip fx-implicates" data-pick="clue:desk-stamp" data-rel="clue:desk-stamp place:riverside-bank suspect:jorund" tabindex="0" role="button"><span class="num">TINDALL-01</span> bore on them · turn 5</span> <span class="reaction">A stamp in a drawer is not a crime. It is an old souvenir.</span> <span class="chip fx-implicates" data-pick="clue:account-form" data-rel="clue:account-form place:riverside-bank suspect:jorund suspect:maelis" tabindex="0" role="button"><span class="num">TINDALL-02</span> bore on them · turn 5</span> <span class="reaction">My brother asked me to sign for him. A family favour, nothing more.</span> <span class="chip fx-implicates" data-pick="clue:counterfoil-book" data-rel="clue:counterfoil-book place:records-room suspect:dunstan suspect:jorund" tabindex="0" role="button"><span class="num">TINDALL-03</span> bore on them · turn 42</span> <span class="reaction">Waste paper. Anyone can drop a book in a basket, and my initials are common.</span> <span class="chip fx-breaks-lie" data-pick="clue:editor-receipt" data-rel="clue:editor-receipt place:newsroom suspect:ilvane suspect:dunstan suspect:jorund" tabindex="0" role="button"><span class="num">TINDALL-05</span> broke a lie · turn 42</span></p>
+</div>
+<div class="card suspect" data-pick="suspect:ilvane" data-rel="suspect:ilvane place:newsroom clue:editor-receipt" tabindex="0" role="button">
+<div class="who"><svg class="portrait p3" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27"/><circle class="head" cx="28" cy="21" r="9"/><path class="body" d="M10 52c1-12 8-18 18-18s17 6 18 18z"/><text x="28" y="25" text-anchor="middle">I</text></svg><div><strong>Ilvane Marrick</strong>
+<p>The fined editor: tired, proud and furious, with ink on her cuffs.</p>
+<p class="tag">Last seen: The Marrick Newsroom</p>
+<p><span class="gauge mood-shaken" role="img" aria-label="shaken"><span class="step on"></span><span class="step on"></span><span class="step"></span><span class="step"></span></span> <span class="tag">Mood: shaken</span></p></div></div>
+<h3>What they claim</h3>
+<p class="claim"><span class="tag">day 1</span> The court has sealed my door.</p>
+<p class="claim"><span class="tag">day 1</span> I have edited this paper for nine years.</p>
+<p class="claim"><span class="tag">day 1</span> I pay my bills, even if late.</p>
+<p class="claim fell"><span class="tag">day 1 · a lie that fell</span><br><s>I paid at the Licensing Office counter and was handed a proper receipt.</s><br><span class="tag">broken by:</span> <span class="chip fx-breaks-lie" data-pick="clue:editor-receipt" data-rel="clue:editor-receipt place:newsroom suspect:ilvane suspect:dunstan suspect:jorund" tabindex="0" role="button"><span class="num">TINDALL-05</span> </span></p>
+<h3>What they said</h3>
+<div class="day"><span class="tag">day 1</span>
+<p class="statement"><span class="tag">alibi</span><br>She was in the newsroom through the evening, alone.</p>
+<p class="statement"><span class="tag">gave ground · a lie that fell</span><br>I paid at a back desk in Lantern Lane because the man there said it was faster. He gave me this stamped counterfoil.</p></div>
+<h3>Shown to them</h3>
+<p class="chips"><span class="chip fx-breaks-lie" data-pick="clue:editor-receipt" data-rel="clue:editor-receipt place:newsroom suspect:ilvane suspect:dunstan suspect:jorund" tabindex="0" role="button"><span class="num">TINDALL-05</span> broke a lie · turn 28</span></p>
+</div>
+<div class="card suspect" data-pick="suspect:dunstan" data-rel="suspect:dunstan place:notary-office clue:counterfoil-book clue:editor-receipt clue:notary-stamp" tabindex="0" role="button">
+<div class="who"><svg class="portrait p3" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27"/><circle class="head" cx="28" cy="21" r="9"/><path class="body" d="M10 52c1-12 8-18 18-18s17 6 18 18z"/><text x="28" y="25" text-anchor="middle">D</text></svg><div><strong>Dunstan Veilhoek</strong>
+<p>A careful notary, polite to the point of evasion, wary of any suggestion of negligence.</p>
+<p class="tag">Last seen: Notary Office</p>
+<p><span class="gauge mood-calm" role="img" aria-label="calm"><span class="step on"></span><span class="step"></span><span class="step"></span><span class="step"></span></span> <span class="tag">Mood: calm</span></p></div></div>
+<h3>What they claim</h3>
+<p class="claim"><span class="tag">day 1</span> My office is open late on Thursdays.</p>
+<p class="claim"><span class="tag">day 1</span> I have never let any room to anyone from the Licensing Office.</p>
+<p class="claim"><span class="tag">day 1</span> I have been a notary for twenty years.</p>
+<p class="claim"><span class="tag">day 1</span> I stamp signatures, not contents.</p>
+<h3>What they said</h3>
+<div class="day"><span class="tag">day 1</span>
+<p class="statement"><span class="tag">alibi</span><br>He was in his office until late, alone.</p></div>
+<h3>Shown to them</h3>
+<p class="chips"><span class="chip fx-no-effect" data-pick="clue:counterfoil-book" data-rel="clue:counterfoil-book place:records-room suspect:dunstan suspect:jorund" tabindex="0" role="button"><span class="num">TINDALL-03</span> no effect · turn 15</span> <span class="chip fx-no-effect" data-pick="clue:editor-receipt" data-rel="clue:editor-receipt place:newsroom suspect:ilvane suspect:dunstan suspect:jorund" tabindex="0" role="button"><span class="num">TINDALL-05</span> no effect · turn 37</span> <span class="chip fx-implicates" data-pick="clue:notary-stamp" data-rel="clue:notary-stamp place:notary-office suspect:dunstan" tabindex="0" role="button"><span class="num">TINDALL-04</span> bore on them · turn 37</span> <span class="reaction">My stamp says what it says. I witness signatures, not what people sign.</span></p>
+</div>
+<div class="card suspect" data-pick="suspect:maelis" data-rel="suspect:maelis place:riverside-bank clue:account-form" tabindex="0" role="button">
+<div class="who"><svg class="portrait p5" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27"/><circle class="head" cx="28" cy="21" r="9"/><path class="body" d="M10 52c1-12 8-18 18-18s17 6 18 18z"/><text x="28" y="25" text-anchor="middle">M</text></svg><div><strong>Maelis Fenwarden</strong>
+<p>A young teller, anxious and eager to please, who dreads her supervisor.</p>
+<p class="tag">Last seen: right here</p>
+<p><span class="gauge mood-shaken" role="img" aria-label="shaken"><span class="step on"></span><span class="step on"></span><span class="step"></span><span class="step"></span></span> <span class="tag">Mood: shaken</span></p></div></div>
+<h3>What they claim</h3>
+<p class="claim"><span class="tag">day 1</span> I have been a teller for three years.</p>
+<p class="claim fell"><span class="tag">day 1 · a lie that fell</span><br><s>I only open ordinary savings accounts.</s><br><span class="tag">broken by:</span> <span class="chip fx-breaks-lie" data-pick="clue:account-form" data-rel="clue:account-form place:riverside-bank suspect:jorund suspect:maelis" tabindex="0" role="button"><span class="num">TINDALL-02</span> </span></p>
+<p class="claim"><span class="tag">day 1</span> My cousin sometimes takes me to lunch.</p>
+<p class="claim"><span class="tag">day 1</span> I close my drawer at five exactly.</p>
+<h3>What they said</h3>
+<div class="day"><span class="tag">day 1</span>
+<p class="statement"><span class="tag">alibi</span><br>She left the bank at five and was at home.</p></div>
+<div class="day"><span class="tag">day 2</span>
+<p class="statement"><span class="tag">gave ground · a lie that fell</span><br>I opened one for my cousin without asking what it was for. I should have asked.</p></div>
+<h3>Shown to them</h3>
+<p class="chips"><span class="chip fx-breaks-lie" data-pick="clue:account-form" data-rel="clue:account-form place:riverside-bank suspect:jorund suspect:maelis" tabindex="0" role="button"><span class="num">TINDALL-02</span> broke a lie · turn 49</span></p>
+</div>
+</section>
+<section class="tab notebook" id="clues">
+<h2>Links</h2>
+<p class="card"><strong>Links still to be made:</strong> 6 × a link of 2</p>
+
+<h2>Links tried</h2>
+<ul class="tried"><li data-rel="clue:desk-stamp clue:counterfoil-book"><span class="num">TINDALL-01</span> + <span class="num">TINDALL-03</span> <span class="result">led nowhere</span> <span class="tag">turn 10</span>
+<details><summary>Full text</summary><p><span class="num">TINDALL-01</span> In the locked drawer of the registrar&#39;s desk lies a rubber stamp reading &#39;Facilitation Desk - Fees Received&#39;, its pad wet with blue ink.</p><p><span class="num">TINDALL-03</span> In the waste basket lies a receipt book with fourteen counterfoils stamped &#39;Facilitation Desk - Fees Received&#39;, each for 400, each initialled J.P. in the corner. The last pages are cut out.</p></details></li>
+<li data-rel="clue:counterfoil-book clue:notary-stamp"><span class="num">TINDALL-03</span> + <span class="num">TINDALL-04</span> <span class="result">led nowhere</span> <span class="tag">turn 17</span>
+<details><summary>Full text</summary><p><span class="num">TINDALL-03</span> In the waste basket lies a receipt book with fourteen counterfoils stamped &#39;Facilitation Desk - Fees Received&#39;, each for 400, each initialled J.P. in the corner. The last pages are cut out.</p><p><span class="num">TINDALL-04</span> The notary&#39;s stamp case holds a stamp reading &#39;Signature witnessed, contents not examined&#39;, with ink traces matching the mark on fourteen receipts.</p></details></li>
+<li data-rel="clue:editor-receipt clue:counterfoil-book"><span class="num">TINDALL-05</span> + <span class="num">TINDALL-03</span> <span class="result">led nowhere</span> <span class="tag">turn 29</span>
+<details><summary>Full text</summary><p><span class="num">TINDALL-05</span> Ilvane Marrick&#39;s carbon in the desk tray is a counterfoil stamped &#39;Facilitation Desk - Fees Received&#39;, for 400, dated three weeks before the hearing and initialled J.P.</p><p><span class="num">TINDALL-03</span> In the waste basket lies a receipt book with fourteen counterfoils stamped &#39;Facilitation Desk - Fees Received&#39;, each for 400, each initialled J.P. in the corner. The last pages are cut out.</p></details></li>
+<li data-rel="clue:editor-receipt clue:notary-stamp"><span class="num">TINDALL-05</span> + <span class="num">TINDALL-04</span> <span class="result">led nowhere</span> <span class="tag">turn 30</span>
+<details><summary>Full text</summary><p><span class="num">TINDALL-05</span> Ilvane Marrick&#39;s carbon in the desk tray is a counterfoil stamped &#39;Facilitation Desk - Fees Received&#39;, for 400, dated three weeks before the hearing and initialled J.P.</p><p><span class="num">TINDALL-04</span> The notary&#39;s stamp case holds a stamp reading &#39;Signature witnessed, contents not examined&#39;, with ink traces matching the mark on fourteen receipts.</p></details></li>
+<li data-rel="clue:desk-stamp clue:account-form"><span class="num">TINDALL-01</span> + <span class="num">TINDALL-02</span> <span class="result">led nowhere</span> <span class="tag">turn 31</span>
+<details><summary>Full text</summary><p><span class="num">TINDALL-01</span> In the locked drawer of the registrar&#39;s desk lies a rubber stamp reading &#39;Facilitation Desk - Fees Received&#39;, its pad wet with blue ink.</p><p><span class="num">TINDALL-02</span> The opening form for an account called &#39;Facilitation Desk Fund&#39; is signed by teller Maelis Fenwarden, with J. Pelmaree as sole signatory and the address of the Pelmaree Ferry Company.</p></details></li>
+<li data-rel="clue:desk-stamp clue:editor-receipt"><span class="num">TINDALL-01</span> + <span class="num">TINDALL-05</span> <span class="result">led nowhere</span> <span class="tag">turn 32</span>
+<details><summary>Full text</summary><p><span class="num">TINDALL-01</span> In the locked drawer of the registrar&#39;s desk lies a rubber stamp reading &#39;Facilitation Desk - Fees Received&#39;, its pad wet with blue ink.</p><p><span class="num">TINDALL-05</span> Ilvane Marrick&#39;s carbon in the desk tray is a counterfoil stamped &#39;Facilitation Desk - Fees Received&#39;, for 400, dated three weeks before the hearing and initialled J.P.</p></details></li>
+<li data-rel="clue:account-form clue:counterfoil-book"><span class="num">TINDALL-02</span> + <span class="num">TINDALL-03</span> <span class="result">led nowhere</span> <span class="tag">turn 43</span>
+<details><summary>Full text</summary><p><span class="num">TINDALL-02</span> The opening form for an account called &#39;Facilitation Desk Fund&#39; is signed by teller Maelis Fenwarden, with J. Pelmaree as sole signatory and the address of the Pelmaree Ferry Company.</p><p><span class="num">TINDALL-03</span> In the waste basket lies a receipt book with fourteen counterfoils stamped &#39;Facilitation Desk - Fees Received&#39;, each for 400, each initialled J.P. in the corner. The last pages are cut out.</p></details></li></ul>
+<h2>Evidence (6)</h2>
+<div class="filters" role="search" aria-label="Filter the clues">
+<label>Found at <select id="f-place"><option value="">any</option><option value="records-room">Records Room</option><option value="riverside-bank">Riverside Savings Bank</option><option value="notary-office">Notary Office</option><option value="newsroom">The Marrick Newsroom</option></select></label>
+<label>Shown to <select id="f-suspect"><option value="">any</option><option value="jorund">Jorund Pelmaree</option><option value="ilvane">Ilvane Marrick</option><option value="dunstan">Dunstan Veilhoek</option><option value="maelis">Maelis Fenwarden</option></select></label>
+<label><input type="checkbox" id="f-garbled"> to be read again</label>
+<label><input type="checkbox" id="f-unused"> not yet used in a link</label>
+<label>Number <input type="search" id="f-number" placeholder="such as TINDALL-03" size="12"></label>
+</div>
+<div class="grid"><div class="card clue-card" id="card-counterfoil-book" data-pick="clue:counterfoil-book" data-rel="clue:counterfoil-book place:records-room suspect:dunstan suspect:jorund" data-place="records-room" data-shown="dunstan jorund" data-garbled="0" data-unused="0" data-number="TINDALL-03" tabindex="0" role="button">
+<span class="tag"><span class="num">TINDALL-03</span> · found at Records Room · turn 8</span>
+<p class="text">In the waste basket lies a receipt book with fourteen counterfoils stamped &#39;Facilitation Desk - Fees Received&#39;, each for 400, each initialled J.P. in the corner. The last pages are cut out.</p>
+<p class="tag">Shown to: Dunstan Veilhoek (no effect), Jorund Pelmaree (bore on them)</p>
+<p class="tag">used in 4 links: TINDALL-01 + TINDALL-03; TINDALL-03 + TINDALL-04; TINDALL-05 + TINDALL-03; TINDALL-02 + TINDALL-03</p>
+<p class="tag ways"><a href="#board">On the corkboard</a> · <a href="#map">On the map</a></p>
+</div>
+<div class="card clue-card" id="card-desk-stamp" data-pick="clue:desk-stamp" data-rel="clue:desk-stamp place:riverside-bank suspect:jorund" data-place="riverside-bank" data-shown="jorund" data-garbled="0" data-unused="0" data-number="TINDALL-01" tabindex="0" role="button">
+<span class="tag"><span class="num">TINDALL-01</span> · found at Riverside Savings Bank · turn 2</span>
+<p class="text">In the locked drawer of the registrar&#39;s desk lies a rubber stamp reading &#39;Facilitation Desk - Fees Received&#39;, its pad wet with blue ink.</p>
+<p class="tag">Shown to: Jorund Pelmaree (bore on them)</p>
+<p class="tag">used in 3 links: TINDALL-01 + TINDALL-03; TINDALL-01 + TINDALL-02; TINDALL-01 + TINDALL-05</p>
+<p class="tag ways"><a href="#board">On the corkboard</a> · <a href="#map">On the map</a></p>
+</div>
+<div class="card clue-card" id="card-account-form" data-pick="clue:account-form" data-rel="clue:account-form place:riverside-bank suspect:jorund suspect:maelis" data-place="riverside-bank" data-shown="jorund maelis" data-garbled="0" data-unused="0" data-number="TINDALL-02" tabindex="0" role="button">
+<span class="tag"><span class="num">TINDALL-02</span> · found at Riverside Savings Bank · turn 2</span>
+<p class="text">The opening form for an account called &#39;Facilitation Desk Fund&#39; is signed by teller Maelis Fenwarden, with J. Pelmaree as sole signatory and the address of the Pelmaree Ferry Company.</p>
+<p class="tag">Shown to: Jorund Pelmaree (bore on them), Maelis Fenwarden (broke a lie)</p>
+<p class="tag">used in 2 links: TINDALL-01 + TINDALL-02; TINDALL-02 + TINDALL-03</p>
+<p class="tag ways"><a href="#board">On the corkboard</a> · <a href="#map">On the map</a></p>
+</div>
+<div class="card clue-card" id="card-notary-stamp" data-pick="clue:notary-stamp" data-rel="clue:notary-stamp place:notary-office suspect:dunstan" data-place="notary-office" data-shown="dunstan" data-garbled="0" data-unused="0" data-number="TINDALL-04" tabindex="0" role="button">
+<span class="tag"><span class="num">TINDALL-04</span> · found at Notary Office · turn 16</span>
+<p class="text">The notary&#39;s stamp case holds a stamp reading &#39;Signature witnessed, contents not examined&#39;, with ink traces matching the mark on fourteen receipts.</p>
+<p class="tag">Shown to: Dunstan Veilhoek (bore on them)</p>
+<p class="tag">used in 2 links: TINDALL-03 + TINDALL-04; TINDALL-05 + TINDALL-04</p>
+<p class="tag ways"><a href="#board">On the corkboard</a> · <a href="#map">On the map</a></p>
+</div>
+<div class="card clue-card" id="card-editor-receipt" data-pick="clue:editor-receipt" data-rel="clue:editor-receipt place:newsroom suspect:ilvane suspect:dunstan suspect:jorund" data-place="newsroom" data-shown="ilvane dunstan jorund" data-garbled="0" data-unused="0" data-number="TINDALL-05" tabindex="0" role="button">
+<span class="tag"><span class="num">TINDALL-05</span> · found at The Marrick Newsroom · turn 27</span>
+<p class="text">Ilvane Marrick&#39;s carbon in the desk tray is a counterfoil stamped &#39;Facilitation Desk - Fees Received&#39;, for 400, dated three weeks before the hearing and initialled J.P.</p>
+<p class="tag">Shown to: Ilvane Marrick (broke a lie), Dunstan Veilhoek (no effect), Jorund Pelmaree (broke a lie)</p>
+<p class="tag">used in 3 links: TINDALL-05 + TINDALL-03; TINDALL-05 + TINDALL-04; TINDALL-01 + TINDALL-05</p>
+<p class="tag ways"><a href="#board">On the corkboard</a> · <a href="#map">On the map</a></p>
+</div>
+<div class="card clue-card" id="card-printer-notice" data-pick="clue:printer-notice" data-rel="clue:printer-notice place:newsroom" data-place="newsroom" data-shown="" data-garbled="0" data-unused="1" data-number="TINDALL-06" tabindex="0" role="button">
+<span class="tag"><span class="num">TINDALL-06</span> · found at The Marrick Newsroom · turn 27</span>
+<p class="text">An overdue invoice from the printer for 1,900 is spiked on the desk, marked &#39;final notice&#39;.</p>
+<p class="tag">Shown to: not shown to anyone yet</p>
+<p class="tag">not used in any link</p>
+<p class="tag ways"><a href="#board">On the corkboard</a> · <a href="#map">On the map</a></p>
+</div></div>
+<p class="empty" id="clue-none" hidden>No clue fits.</p>
+<h2>Conclusions (0)</h2>
+<p class="empty">No conclusions yet. Do try to have one.</p>
+</section>
+<section class="tab" id="map">
+<h2>Known places</h2>
+<div class="graph paper-map"><svg class="map" viewBox="0 0 456 348" role="img" aria-label="Known places" style="min-width:456px"><g class="compass" transform="translate(412 54)"><circle r="20"/><path class="needle" d="M0 -16l5 16h-10z"/><path d="M0 16l5 -16h-10z" class="south"/><text y="-27" text-anchor="middle">N</text></g><g class="lanes"><path class="lane walked" d="M200 109 H228 V109 H256"/><path class="lane walked" d="M200 109 H228 V309 H256"/></g><g class="street visited" data-pick="place:court-square" data-rel="place:court-square" tabindex="0" role="button"><title>Court Square</title><rect x="24" y="94" width="176" height="30" rx="7"/><text class="name" x="112" y="113" text-anchor="middle">Court Square</text></g><g class="street visited" data-pick="place:lantern-lane" data-rel="place:lantern-lane" tabindex="0" role="button"><title>Lantern Lane</title><rect x="256" y="94" width="176" height="30" rx="7"/><text class="name" x="344" y="113" text-anchor="middle">Lantern Lane</text></g><g class="street visited" data-pick="place:canal-yard" data-rel="place:canal-yard" tabindex="0" role="button"><title>Canal Yard</title><rect x="256" y="294" width="176" height="30" rx="7"/><text class="name" x="344" y="313" text-anchor="middle">Canal Yard</text></g><line class="door" x1="66" y1="80" x2="66" y2="94"/><g class="block visited" data-pick="place:licensing-lobby" data-rel="place:licensing-lobby suspect:jorund place:records-room clue:counterfoil-book" tabindex="0" role="button" data-open="plan-licensing-lobby" aria-controls="open-plan-licensing-lobby"><title>Licensing Office Lobby, Records Room</title><rect class="walls" x="24" y="24" width="84" height="56" rx="3"/><path class="roof" d="M24 34h84"/><text class="name" x="66" y="50" text-anchor="middle">Licensing</text><text class="name" x="66" y="62" text-anchor="middle">Office Lobby</text><text class="state" x="66" y="75" text-anchor="middle">2 rooms</text><g class="badge-wrap"><circle class="badge" cx="108" cy="24" r="11"><title>clues found here: 2</title></circle><text class="badge-n" x="108" y="28" text-anchor="middle">2</text></g></g><line class="door" x1="66" y1="124" x2="66" y2="138"/><g class="block visited current" data-pick="place:riverside-bank" data-rel="place:riverside-bank suspect:maelis clue:desk-stamp clue:account-form" tabindex="0" role="button" data-open="plan-riverside-bank" aria-controls="open-plan-riverside-bank"><title>Riverside Savings Bank (you are here)</title><rect class="walls" x="24" y="138" width="84" height="56" rx="3"/><path class="roof" d="M24 148h84"/><text class="name" x="66" y="164" text-anchor="middle">Riverside</text><text class="name" x="66" y="176" text-anchor="middle">Savings Bank</text><text class="state" x="66" y="189" text-anchor="middle"></text><g class="here" transform="translate(34 184)"><title>you are here</title><circle r="6"/><circle r="2.2" class="dot"/></g><g class="badge-wrap"><circle class="badge" cx="108" cy="138" r="11"><title>clues found here: 1</title></circle><text class="badge-n" x="108" y="142" text-anchor="middle">1</text></g></g><line class="door" x1="298" y1="80" x2="298" y2="94"/><g class="block visited" data-pick="place:notary-office" data-rel="place:notary-office suspect:dunstan clue:notary-stamp" tabindex="0" role="button" data-open="plan-notary-office" aria-controls="open-plan-notary-office"><title>Notary Office</title><rect class="walls" x="256" y="24" width="84" height="56" rx="3"/><path class="roof" d="M256 34h84"/><text class="name" x="298" y="50" text-anchor="middle">Notary Office</text><text class="state" x="298" y="75" text-anchor="middle"></text><g class="badge-wrap"><circle class="badge" cx="340" cy="24" r="11"><title>clues found here: 1</title></circle><text class="badge-n" x="340" y="28" text-anchor="middle">1</text></g></g><line class="door" x1="298" y1="124" x2="298" y2="138"/><g class="block visited" data-pick="place:teahouse" data-rel="place:teahouse" tabindex="0" role="button" data-open="plan-teahouse" aria-controls="open-plan-teahouse"><title>Lamplight Teahouse</title><rect class="walls" x="256" y="138" width="84" height="56" rx="3"/><path class="roof" d="M256 148h84"/><text class="name" x="298" y="164" text-anchor="middle">Lamplight</text><text class="name" x="298" y="176" text-anchor="middle">Teahouse</text><text class="state" x="298" y="189" text-anchor="middle"></text></g><line class="door" x1="298" y1="280" x2="298" y2="294"/><g class="block visited" data-pick="place:newsroom" data-rel="place:newsroom suspect:ilvane clue:editor-receipt clue:printer-notice" tabindex="0" role="button" data-open="plan-newsroom" aria-controls="open-plan-newsroom"><title>The Marrick Newsroom</title><rect class="walls" x="256" y="224" width="84" height="56" rx="3"/><path class="roof" d="M256 234h84"/><text class="name" x="298" y="250" text-anchor="middle">The Marrick</text><text class="name" x="298" y="262" text-anchor="middle">Newsroom</text><text class="state" x="298" y="275" text-anchor="middle"></text><g class="badge-wrap"><circle class="badge" cx="340" cy="224" r="11"><title>clues found here: 2</title></circle><text class="badge-n" x="340" y="228" text-anchor="middle">2</text></g></g></svg></div>
+<p class="tag">Streets and squares are the open ground; a block is a building, with all its known rooms in it. The red pin and outline are where you are. Only what the detective has seen is on the map.</p>
+<div class="plan" id="open-plan-licensing-lobby" role="dialog" aria-label="Plan of Licensing Office Lobby" tabindex="-1">
+<p class="tag">Plan of Licensing Office Lobby · Opens onto: Court Square</p>
+<div class="graph paper-map"><svg class="plan-svg" viewBox="0 0 604 180" role="img" aria-label="Plan of Licensing Office Lobby" style="min-width:520px"><g class="doors"><g class="door-way"><title>door between Licensing Office Lobby and Records Room</title><line x1="266" y1="54" x2="338" y2="90"/><rect x="297" y="64" width="10" height="16" rx="2"/></g></g><g class="room visited" data-rel="place:licensing-lobby suspect:jorund"><title>Licensing Office Lobby</title><rect class="walls" x="14" y="14" width="252" height="80" rx="4"/><text class="room-name" x="28" y="36">Licensing Office Lobby</text><text class="part-state" x="28" y="68">nothing noticed here yet</text></g><g class="room visited" data-rel="place:records-room clue:counterfoil-book"><title>Records Room</title><rect class="walls" x="338" y="14" width="252" height="152" rx="4"/><text class="room-name" x="352" y="36">Records Room</text><g class="part searched"><title>Waste basket: searched · gave</title><g class="mark done" transform="translate(358 62)"><circle r="9"/><path d="M-4 0l3 3l5 -6"/></g><text class="part-name" x="376" y="60">Waste basket</text><text class="part-state" x="376" y="77">searched · gave</text><g class="clue-chip" data-pick="clue:counterfoil-book" data-rel="clue:counterfoil-book place:records-room suspect:dunstan suspect:jorund" tabindex="0" role="button"><text x="488" y="77">TINDALL-03</text></g></g><g class="part trace"><title>Register binding: a faint trace · tool in the kit: fingerprint powder</title><g class="mark shut" transform="translate(358 98)"><circle r="9"/><text y="4" text-anchor="middle">∴</text></g><text class="part-name" x="376" y="96">Register binding</text><text class="part-state" x="376" y="113">a faint trace · tool in the kit: finger…</text></g><g class="part searched locked"><title>Clerk&#39;s desk drawer: searched · gave</title><g class="mark done" transform="translate(358 134)"><circle r="9"/><path d="M-4 0l3 3l5 -6"/></g><text class="part-name" x="376" y="132">Clerk&#39;s desk drawer</text><text class="part-state" x="376" y="149">searched · gave</text><g class="clue-chip" data-pick="clue:desk-stamp" data-rel="clue:desk-stamp place:riverside-bank suspect:jorund" tabindex="0" role="button"><text x="488" y="149">TINDALL-01</text></g></g></g></svg></div>
+<p class="note">Click the building again, or press Esc, to put the plan away.</p>
+</div>
+<div class="plan" id="open-plan-riverside-bank" role="dialog" aria-label="Plan of Riverside Savings Bank" tabindex="-1">
+<p class="tag">Plan of Riverside Savings Bank · Opens onto: Court Square</p>
+<div class="graph paper-map"><svg class="plan-svg" viewBox="0 0 280 108" role="img" aria-label="Plan of Riverside Savings Bank" style="min-width:280px"><g class="doors"></g><g class="room visited current" data-rel="place:riverside-bank suspect:maelis clue:desk-stamp clue:account-form"><title>Riverside Savings Bank</title><rect class="walls" x="14" y="14" width="252" height="80" rx="4"/><text class="room-name" x="28" y="36">Riverside Savings Bank</text><circle class="here-dot" cx="250" cy="30" r="5"/><text class="part-state" x="28" y="68">nothing noticed here yet</text></g></svg></div>
+<p class="note">Click the building again, or press Esc, to put the plan away.</p>
+</div>
+<div class="plan" id="open-plan-notary-office" role="dialog" aria-label="Plan of Notary Office" tabindex="-1">
+<p class="tag">Plan of Notary Office · Opens onto: Lantern Lane</p>
+<div class="graph paper-map"><svg class="plan-svg" viewBox="0 0 280 108" role="img" aria-label="Plan of Notary Office" style="min-width:280px"><g class="doors"></g><g class="room visited" data-rel="place:notary-office suspect:dunstan clue:notary-stamp"><title>Notary Office</title><rect class="walls" x="14" y="14" width="252" height="80" rx="4"/><text class="room-name" x="28" y="36">Notary Office</text><g class="part searched"><title>Notary stamp case: searched · gave</title><g class="mark done" transform="translate(34 62)"><circle r="9"/><path d="M-4 0l3 3l5 -6"/></g><text class="part-name" x="52" y="60">Notary stamp case</text><text class="part-state" x="52" y="77">searched · gave</text><g class="clue-chip" data-pick="clue:notary-stamp" data-rel="clue:notary-stamp place:notary-office suspect:dunstan" tabindex="0" role="button"><text x="164" y="77">TINDALL-04</text></g></g></g></svg></div>
+<p class="note">Click the building again, or press Esc, to put the plan away.</p>
+</div>
+<div class="plan" id="open-plan-teahouse" role="dialog" aria-label="Plan of Lamplight Teahouse" tabindex="-1">
+<p class="tag">Plan of Lamplight Teahouse · Opens onto: Lantern Lane</p>
+<div class="graph paper-map"><svg class="plan-svg" viewBox="0 0 280 108" role="img" aria-label="Plan of Lamplight Teahouse" style="min-width:280px"><g class="doors"></g><g class="room visited" data-rel="place:teahouse"><title>Lamplight Teahouse</title><rect class="walls" x="14" y="14" width="252" height="80" rx="4"/><text class="room-name" x="28" y="36">Lamplight Teahouse</text><text class="part-state" x="28" y="68">nothing noticed here yet</text></g></svg></div>
+<p class="note">Click the building again, or press Esc, to put the plan away.</p>
+</div>
+<div class="plan" id="open-plan-newsroom" role="dialog" aria-label="Plan of The Marrick Newsroom" tabindex="-1">
+<p class="tag">Plan of The Marrick Newsroom · Opens onto: Canal Yard</p>
+<div class="graph paper-map"><svg class="plan-svg" viewBox="0 0 280 144" role="img" aria-label="Plan of The Marrick Newsroom" style="min-width:280px"><g class="doors"></g><g class="room visited" data-rel="place:newsroom suspect:ilvane clue:editor-receipt clue:printer-notice"><title>The Marrick Newsroom</title><rect class="walls" x="14" y="14" width="252" height="116" rx="4"/><text class="room-name" x="28" y="36">The Marrick Newsroom</text><g class="part searched"><title>Editor&#39;s desk tray: searched · gave</title><g class="mark done" transform="translate(34 62)"><circle r="9"/><path d="M-4 0l3 3l5 -6"/></g><text class="part-name" x="52" y="60">Editor&#39;s desk tray</text><text class="part-state" x="52" y="77">searched · gave</text><g class="clue-chip" data-pick="clue:editor-receipt" data-rel="clue:editor-receipt place:newsroom suspect:ilvane suspect:dunstan suspect:jorund" tabindex="0" role="button"><text x="164" y="77">TINDALL-05</text></g></g><g class="part searched"><title>Invoice spike: searched · gave</title><g class="mark done" transform="translate(34 98)"><circle r="9"/><path d="M-4 0l3 3l5 -6"/></g><text class="part-name" x="52" y="96">Invoice spike</text><text class="part-state" x="52" y="113">searched · gave</text><g class="clue-chip" data-pick="clue:printer-notice" data-rel="clue:printer-notice place:newsroom" tabindex="0" role="button"><text x="164" y="113">TINDALL-06</text></g></g></g></svg></div>
+<p class="note">Click the building again, or press Esc, to put the plan away.</p>
+</div>
+<h2>Meanwhile, in the Draft</h2>
+<ul><li>A storm rolls over Tosora and the canal rises, so everyone talks of the weather.</li>
+<li>A damp night brings little sleep and a heavy morning.</li>
+<li>Lanterns go up early along the lane for the harvest evening.</li></ul>
+</section>
+<section class="tab" id="chronicle">
+<h2>Chronicle</h2>
+<div class="card">
+<p>Now: Day 2 / 3, 14:35</p>
+<p>Working time left: <strong>25 h 25 min</strong></p>
+<p>Weather today: storms</p>
+</div>
+<div class="card">
+<h3>How the proof fell short</h3>
+<p>No motive was put forward, and the conclusion that explains it was never drawn.</p>
+<p>The chain of proof that came nearest, clue by clue:</p>
+<ul><li><span class="tag">never found</span> The after-hours key book shows the records room key taken out at 20:25 on the evening before the hearing and returned at 20:50, initialled J.P.</li><li><span class="tag">laid out</span> TINDALL-03: In the waste basket lies a receipt book with fourteen counterfoils stamped &#39;Facilitation Desk - Fees Received&#39;, each for 400, each initialled J.P. in the corner. The last pages are cut out.</li></ul>
+</div>
+<h3>The days</h3>
+<p class="note">Each bar is a turn, laid on the hours of its day, with its symbol where it ended. The night is shaded. Click a turn to light what it touched.</p>
+<details class="day-strip">
+<summary>Day 1</summary>
+<div class="graph"><svg class="strip" viewBox="0 0 960 91" role="group" aria-label="Day 1"><rect class="night-shade" x="36" y="34" width="304" height="34"/><text class="night-label" x="188" y="28" text-anchor="middle">night</text><line class="tick" x1="36" y1="34" x2="36" y2="68"/><text class="hour" x="36" y="82" text-anchor="middle">00</text><line class="tick" x1="150" y1="34" x2="150" y2="68"/><text class="hour" x="150" y="82" text-anchor="middle">03</text><line class="tick" x1="264" y1="34" x2="264" y2="68"/><text class="hour" x="264" y="82" text-anchor="middle">06</text><line class="tick" x1="378" y1="34" x2="378" y2="68"/><text class="hour" x="378" y="82" text-anchor="middle">09</text><line class="tick" x1="492" y1="34" x2="492" y2="68"/><text class="hour" x="492" y="82" text-anchor="middle">12</text><line class="tick" x1="606" y1="34" x2="606" y2="68"/><text class="hour" x="606" y="82" text-anchor="middle">15</text><line class="tick" x1="720" y1="34" x2="720" y2="68"/><text class="hour" x="720" y="82" text-anchor="middle">18</text><line class="tick" x1="834" y1="34" x2="834" y2="68"/><text class="hour" x="834" y="82" text-anchor="middle">21</text><line class="tick" x1="948" y1="34" x2="948" y2="68"/><text class="hour" x="948" y="82" text-anchor="middle">24</text><g class="flag" tabindex="0"><title>In the world: A damp night brings little sleep and a heavy morning.</title><path d="M340 32 v-22 l12 6 l-12 6"/></g><g class="turn k-move" data-pick="turn:1" data-rel="turn:1" tabindex="0" role="button" aria-label="walk: Went to Riverside Savings Bank"><title>walk: Went to Riverside Savings Bank</title><rect class="bar" x="340" y="40" width="13" height="22" rx="3"/><circle class="end" cx="353" cy="51" r="9"/><text class="symbol" x="353" y="55" text-anchor="middle">→</text></g><g class="turn k-talk" data-pick="turn:2" data-rel="turn:2" tabindex="0" role="button" aria-label="talk: Questioned Maelis Fenwarden, in a friendly way, showing 0 clues"><title>talk: Questioned Maelis Fenwarden, in a friendly way, showing 0 clues</title><rect class="bar" x="353" y="40" width="13" height="22" rx="3"/><circle class="end" cx="365" cy="51" r="9"/><text class="symbol" x="365" y="55" text-anchor="middle">“</text></g><g class="turn k-move" data-pick="turn:3" data-rel="turn:3" tabindex="0" role="button" aria-label="walk: Went to Court Square"><title>walk: Went to Court Square</title><rect class="bar" x="365" y="40" width="13" height="22" rx="3"/><circle class="end" cx="378" cy="51" r="9"/><text class="symbol" x="378" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:4" data-rel="turn:4" tabindex="0" role="button" aria-label="walk: Went to Licensing Office Lobby"><title>walk: Went to Licensing Office Lobby</title><rect class="bar" x="378" y="40" width="13" height="22" rx="3"/><circle class="end" cx="391" cy="51" r="9"/><text class="symbol" x="391" y="55" text-anchor="middle">→</text></g><g class="turn k-talk" data-pick="turn:5" data-rel="turn:5" tabindex="0" role="button" aria-label="talk: Questioned Jorund Pelmaree, with pressure, showing 2 clues"><title>talk: Questioned Jorund Pelmaree, with pressure, showing 2 clues</title><rect class="bar" x="391" y="40" width="19" height="22" rx="3"/><circle class="end" cx="410" cy="51" r="9"/><text class="symbol" x="410" y="55" text-anchor="middle">“</text></g><g class="turn k-move" data-pick="turn:6" data-rel="turn:6" tabindex="0" role="button" aria-label="walk: Went to Records Room"><title>walk: Went to Records Room</title><rect class="bar" x="410" y="40" width="10" height="22" rx="3"/><circle class="end" cx="419" cy="51" r="9"/><text class="symbol" x="419" y="55" text-anchor="middle">→</text></g><g class="turn k-look" data-pick="turn:7" data-rel="turn:7" tabindex="0" role="button" aria-label="look around: Looked around: found 0"><title>look around: Looked around: found 0</title><rect class="bar" x="419" y="40" width="6" height="22" rx="3"/><circle class="end" cx="426" cy="51" r="9"/><text class="symbol" x="426" y="55" text-anchor="middle">◎</text></g><g class="turn k-search" data-pick="turn:8" data-rel="turn:8" tabindex="0" role="button" aria-label="search: Searched the place: found 1"><title>search: Searched the place: found 1</title><rect class="bar" x="426" y="40" width="13" height="22" rx="3"/><circle class="end" cx="438" cy="51" r="9"/><text class="symbol" x="438" y="55" text-anchor="middle">⌕</text></g><g class="turn k-search" data-pick="turn:9" data-rel="turn:9" tabindex="0" role="button" aria-label="search: Searched the place: found 0"><title>search: Searched the place: found 0</title><rect class="bar" x="438" y="40" width="19" height="22" rx="3"/><circle class="end" cx="457" cy="51" r="9"/><text class="symbol" x="457" y="55" text-anchor="middle">⌕</text></g><g class="turn k-deduce" data-pick="turn:10" data-rel="turn:10" tabindex="0" role="button" aria-label="reasoning: Linked clues that led nowhere"><title>reasoning: Linked clues that led nowhere</title><rect class="bar" x="457" y="40" width="13" height="22" rx="3"/><circle class="end" cx="470" cy="51" r="9"/><text class="symbol" x="470" y="55" text-anchor="middle">∴</text></g><g class="turn k-move" data-pick="turn:11" data-rel="turn:11" tabindex="0" role="button" aria-label="walk: Went to Licensing Office Lobby"><title>walk: Went to Licensing Office Lobby</title><rect class="bar" x="470" y="40" width="10" height="22" rx="3"/><circle class="end" cx="479" cy="51" r="9"/><text class="symbol" x="479" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:12" data-rel="turn:12" tabindex="0" role="button" aria-label="walk: Went to Court Square"><title>walk: Went to Court Square</title><rect class="bar" x="479" y="40" width="13" height="22" rx="3"/><circle class="end" cx="492" cy="51" r="9"/><text class="symbol" x="492" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:13" data-rel="turn:13" tabindex="0" role="button" aria-label="walk: Went to Lantern Lane"><title>walk: Went to Lantern Lane</title><rect class="bar" x="492" y="40" width="13" height="22" rx="3"/><circle class="end" cx="505" cy="51" r="9"/><text class="symbol" x="505" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:14" data-rel="turn:14" tabindex="0" role="button" aria-label="walk: Went to Notary Office"><title>walk: Went to Notary Office</title><rect class="bar" x="505" y="40" width="13" height="22" rx="3"/><circle class="end" cx="517" cy="51" r="9"/><text class="symbol" x="517" y="55" text-anchor="middle">→</text></g><g class="turn k-talk" data-pick="turn:15" data-rel="turn:15" tabindex="0" role="button" aria-label="talk: Questioned Dunstan Veilhoek, in a friendly way, showing 1 clues"><title>talk: Questioned Dunstan Veilhoek, in a friendly way, showing 1 clues</title><rect class="bar" x="517" y="40" width="19" height="22" rx="3"/><circle class="end" cx="536" cy="51" r="9"/><text class="symbol" x="536" y="55" text-anchor="middle">“</text></g><g class="turn k-look" data-pick="turn:16" data-rel="turn:16" tabindex="0" role="button" aria-label="look around: Looked around: found 1"><title>look around: Looked around: found 1</title><rect class="bar" x="536" y="40" width="6" height="22" rx="3"/><circle class="end" cx="543" cy="51" r="9"/><text class="symbol" x="543" y="55" text-anchor="middle">◎</text></g><g class="turn k-deduce" data-pick="turn:17" data-rel="turn:17" tabindex="0" role="button" aria-label="reasoning: Linked clues that led nowhere"><title>reasoning: Linked clues that led nowhere</title><rect class="bar" x="543" y="40" width="13" height="22" rx="3"/><circle class="end" cx="555" cy="51" r="9"/><text class="symbol" x="555" y="55" text-anchor="middle">∴</text></g><g class="turn k-move" data-pick="turn:18" data-rel="turn:18" tabindex="0" role="button" aria-label="walk: Went to Lantern Lane"><title>walk: Went to Lantern Lane</title><rect class="bar" x="555" y="40" width="13" height="22" rx="3"/><circle class="end" cx="568" cy="51" r="9"/><text class="symbol" x="568" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:19" data-rel="turn:19" tabindex="0" role="button" aria-label="walk: Went to Lamplight Teahouse"><title>walk: Went to Lamplight Teahouse</title><rect class="bar" x="568" y="40" width="13" height="22" rx="3"/><circle class="end" cx="581" cy="51" r="9"/><text class="symbol" x="581" y="55" text-anchor="middle">→</text></g><g class="turn k-sit" data-pick="turn:20" data-rel="turn:20" tabindex="0" role="button" aria-label="sit down: Sat down for a while: nerves back by 1"><title>sit down: Sat down for a while: nerves back by 1</title><rect class="bar" x="581" y="40" width="25" height="22" rx="3"/><circle class="end" cx="606" cy="51" r="9"/><text class="symbol" x="606" y="55" text-anchor="middle">≈</text></g><g class="turn k-look" data-pick="turn:21" data-rel="turn:21" tabindex="0" role="button" aria-label="look around: Looked around: found 0"><title>look around: Looked around: found 0</title><rect class="bar" x="606" y="40" width="4" height="22" rx="3"/><circle class="end" cx="610" cy="51" r="9"/><text class="symbol" x="610" y="55" text-anchor="middle">◎</text></g><g class="turn k-move" data-pick="turn:22" data-rel="turn:22" tabindex="0" role="button" aria-label="walk: Went to Lantern Lane"><title>walk: Went to Lantern Lane</title><rect class="bar" x="609" y="40" width="13" height="22" rx="3"/><circle class="end" cx="622" cy="51" r="9"/><text class="symbol" x="622" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:23" data-rel="turn:23" tabindex="0" role="button" aria-label="walk: Went to Court Square"><title>walk: Went to Court Square</title><rect class="bar" x="622" y="40" width="13" height="22" rx="3"/><circle class="end" cx="635" cy="51" r="9"/><text class="symbol" x="635" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:24" data-rel="turn:24" tabindex="0" role="button" aria-label="walk: Went to Canal Yard"><title>walk: Went to Canal Yard</title><rect class="bar" x="635" y="40" width="13" height="22" rx="3"/><circle class="end" cx="647" cy="51" r="9"/><text class="symbol" x="647" y="55" text-anchor="middle">→</text></g><g class="turn k-look" data-pick="turn:25" data-rel="turn:25" tabindex="0" role="button" aria-label="look around: Looked around: found 0"><title>look around: Looked around: found 0</title><rect class="bar" x="647" y="40" width="4" height="22" rx="3"/><circle class="end" cx="651" cy="51" r="9"/><text class="symbol" x="651" y="55" text-anchor="middle">◎</text></g><g class="turn k-move" data-pick="turn:26" data-rel="turn:26" tabindex="0" role="button" aria-label="walk: Went to The Marrick Newsroom"><title>walk: Went to The Marrick Newsroom</title><rect class="bar" x="650" y="40" width="13" height="22" rx="3"/><circle class="end" cx="663" cy="51" r="9"/><text class="symbol" x="663" y="55" text-anchor="middle">→</text></g><g class="turn k-look" data-pick="turn:27" data-rel="turn:27" tabindex="0" role="button" aria-label="look around: Looked around: found 2"><title>look around: Looked around: found 2</title><rect class="bar" x="663" y="40" width="6" height="22" rx="3"/><circle class="end" cx="669" cy="51" r="9"/><text class="symbol" x="669" y="55" text-anchor="middle">◎</text></g><g class="turn k-talk" data-pick="turn:28" data-rel="turn:28" tabindex="0" role="button" aria-label="talk: Questioned Ilvane Marrick, in a friendly way, showing 1 clues"><title>talk: Questioned Ilvane Marrick, in a friendly way, showing 1 clues</title><rect class="bar" x="669" y="40" width="13" height="22" rx="3"/><circle class="end" cx="682" cy="51" r="9"/><text class="symbol" x="682" y="55" text-anchor="middle">“</text></g><g class="turn k-deduce" data-pick="turn:29" data-rel="turn:29" tabindex="0" role="button" aria-label="reasoning: Linked clues that led nowhere"><title>reasoning: Linked clues that led nowhere</title><rect class="bar" x="682" y="40" width="13" height="22" rx="3"/><circle class="end" cx="695" cy="51" r="9"/><text class="symbol" x="695" y="55" text-anchor="middle">∴</text></g><g class="turn k-deduce" data-pick="turn:30" data-rel="turn:30" tabindex="0" role="button" aria-label="reasoning: Linked clues that led nowhere"><title>reasoning: Linked clues that led nowhere</title><rect class="bar" x="695" y="40" width="13" height="22" rx="3"/><circle class="end" cx="707" cy="51" r="9"/><text class="symbol" x="707" y="55" text-anchor="middle">∴</text></g><g class="turn k-deduce" data-pick="turn:31" data-rel="turn:31" tabindex="0" role="button" aria-label="reasoning: Linked clues that led nowhere"><title>reasoning: Linked clues that led nowhere</title><rect class="bar" x="707" y="40" width="13" height="22" rx="3"/><circle class="end" cx="720" cy="51" r="9"/><text class="symbol" x="720" y="55" text-anchor="middle">∴</text></g><g class="turn k-deduce" data-pick="turn:32" data-rel="turn:32" tabindex="0" role="button" aria-label="reasoning: Linked clues that led nowhere"><title>reasoning: Linked clues that led nowhere</title><rect class="bar" x="720" y="40" width="13" height="22" rx="3"/><circle class="end" cx="733" cy="51" r="9"/><text class="symbol" x="733" y="55" text-anchor="middle">∴</text></g><g class="turn k-move" data-pick="turn:33" data-rel="turn:33" tabindex="0" role="button" aria-label="walk: Went to Canal Yard"><title>walk: Went to Canal Yard</title><rect class="bar" x="733" y="40" width="13" height="22" rx="3"/><circle class="end" cx="745" cy="51" r="9"/><text class="symbol" x="745" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:34" data-rel="turn:34" tabindex="0" role="button" aria-label="walk: Went to Court Square"><title>walk: Went to Court Square</title><rect class="bar" x="745" y="40" width="13" height="22" rx="3"/><circle class="end" cx="758" cy="51" r="9"/><text class="symbol" x="758" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:35" data-rel="turn:35" tabindex="0" role="button" aria-label="walk: Went to Lantern Lane"><title>walk: Went to Lantern Lane</title><rect class="bar" x="758" y="40" width="13" height="22" rx="3"/><circle class="end" cx="771" cy="51" r="9"/><text class="symbol" x="771" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:36" data-rel="turn:36" tabindex="0" role="button" aria-label="walk: Went to Notary Office"><title>walk: Went to Notary Office</title><rect class="bar" x="771" y="40" width="13" height="22" rx="3"/><circle class="end" cx="783" cy="51" r="9"/><text class="symbol" x="783" y="55" text-anchor="middle">→</text></g><g class="turn k-talk" data-pick="turn:37" data-rel="turn:37" tabindex="0" role="button" aria-label="talk: Questioned Dunstan Veilhoek, with pressure, showing 2 clues"><title>talk: Questioned Dunstan Veilhoek, with pressure, showing 2 clues</title><rect class="bar" x="783" y="40" width="19" height="22" rx="3"/><circle class="end" cx="802" cy="51" r="9"/><text class="symbol" x="802" y="55" text-anchor="middle">“</text></g><g class="turn k-rest night-after" data-pick="turn:38" data-rel="turn:38" tabindex="0" role="button" aria-label="rest: Rested for the night (the night followed)"><title>rest: Rested for the night (the night followed)</title><rect class="bar" x="802" y="40" width="146" height="22" rx="3"/><circle class="end" cx="948" cy="51" r="9"/><text class="symbol" x="948" y="55" text-anchor="middle">☾</text></g></svg></div>
+<ol class="day-turns"><li data-pick="turn:1" data-rel="turn:1" tabindex="0" role="button"><span class="tag">08:20</span> Went to Riverside Savings Bank</li><li data-pick="turn:2" data-rel="turn:2" tabindex="0" role="button"><span class="tag">08:40</span> Questioned Maelis Fenwarden, in a friendly way, showing 0 clues</li><li data-pick="turn:3" data-rel="turn:3" tabindex="0" role="button"><span class="tag">09:00</span> Went to Court Square</li><li data-pick="turn:4" data-rel="turn:4" tabindex="0" role="button"><span class="tag">09:20</span> Went to Licensing Office Lobby</li><li data-pick="turn:5" data-rel="turn:5" tabindex="0" role="button"><span class="tag">09:50</span> Questioned Jorund Pelmaree, with pressure, showing 2 clues</li><li data-pick="turn:6" data-rel="turn:6" tabindex="0" role="button"><span class="tag">10:05</span> Went to Records Room</li><li data-pick="turn:7" data-rel="turn:7" tabindex="0" role="button"><span class="tag">10:15</span> Looked around: found 0</li><li data-pick="turn:8" data-rel="turn:8" tabindex="0" role="button"><span class="tag">10:35</span> Searched the place: found 1</li><li data-pick="turn:9" data-rel="turn:9" tabindex="0" role="button"><span class="tag">11:05</span> Searched the place: found 0</li><li data-pick="turn:10" data-rel="turn:10" tabindex="0" role="button"><span class="tag">11:25</span> Linked clues that led nowhere</li><li data-pick="turn:11" data-rel="turn:11" tabindex="0" role="button"><span class="tag">11:40</span> Went to Licensing Office Lobby</li><li data-pick="turn:12" data-rel="turn:12" tabindex="0" role="button"><span class="tag">12:00</span> Went to Court Square</li><li data-pick="turn:13" data-rel="turn:13" tabindex="0" role="button"><span class="tag">12:20</span> Went to Lantern Lane</li><li data-pick="turn:14" data-rel="turn:14" tabindex="0" role="button"><span class="tag">12:40</span> Went to Notary Office</li><li data-pick="turn:15" data-rel="turn:15" tabindex="0" role="button"><span class="tag">13:10</span> Questioned Dunstan Veilhoek, in a friendly way, showing 1 clues</li><li data-pick="turn:16" data-rel="turn:16" tabindex="0" role="button"><span class="tag">13:20</span> Looked around: found 1</li><li data-pick="turn:17" data-rel="turn:17" tabindex="0" role="button"><span class="tag">13:40</span> Linked clues that led nowhere</li><li data-pick="turn:18" data-rel="turn:18" tabindex="0" role="button"><span class="tag">14:00</span> Went to Lantern Lane</li><li data-pick="turn:19" data-rel="turn:19" tabindex="0" role="button"><span class="tag">14:20</span> Went to Lamplight Teahouse</li><li data-pick="turn:20" data-rel="turn:20" tabindex="0" role="button"><span class="tag">15:00</span> Sat down for a while: nerves back by 1</li><li data-pick="turn:21" data-rel="turn:21" tabindex="0" role="button"><span class="tag">15:05</span> Looked around: found 0</li><li data-pick="turn:22" data-rel="turn:22" tabindex="0" role="button"><span class="tag">15:25</span> Went to Lantern Lane</li><li data-pick="turn:23" data-rel="turn:23" tabindex="0" role="button"><span class="tag">15:45</span> Went to Court Square</li><li data-pick="turn:24" data-rel="turn:24" tabindex="0" role="button"><span class="tag">16:05</span> Went to Canal Yard</li><li data-pick="turn:25" data-rel="turn:25" tabindex="0" role="button"><span class="tag">16:10</span> Looked around: found 0</li><li data-pick="turn:26" data-rel="turn:26" tabindex="0" role="button"><span class="tag">16:30</span> Went to The Marrick Newsroom</li><li data-pick="turn:27" data-rel="turn:27" tabindex="0" role="button"><span class="tag">16:40</span> Looked around: found 2</li><li data-pick="turn:28" data-rel="turn:28" tabindex="0" role="button"><span class="tag">17:00</span> Questioned Ilvane Marrick, in a friendly way, showing 1 clues</li><li data-pick="turn:29" data-rel="turn:29" tabindex="0" role="button"><span class="tag">17:20</span> Linked clues that led nowhere</li><li data-pick="turn:30" data-rel="turn:30" tabindex="0" role="button"><span class="tag">17:40</span> Linked clues that led nowhere</li><li data-pick="turn:31" data-rel="turn:31" tabindex="0" role="button"><span class="tag">18:00</span> Linked clues that led nowhere</li><li data-pick="turn:32" data-rel="turn:32" tabindex="0" role="button"><span class="tag">18:20</span> Linked clues that led nowhere</li><li data-pick="turn:33" data-rel="turn:33" tabindex="0" role="button"><span class="tag">18:40</span> Went to Canal Yard</li><li data-pick="turn:34" data-rel="turn:34" tabindex="0" role="button"><span class="tag">19:00</span> Went to Court Square</li><li data-pick="turn:35" data-rel="turn:35" tabindex="0" role="button"><span class="tag">19:20</span> Went to Lantern Lane</li><li data-pick="turn:36" data-rel="turn:36" tabindex="0" role="button"><span class="tag">19:40</span> Went to Notary Office</li><li data-pick="turn:37" data-rel="turn:37" tabindex="0" role="button"><span class="tag">20:10</span> Questioned Dunstan Veilhoek, with pressure, showing 2 clues</li><li data-pick="turn:38" data-rel="turn:38" tabindex="0" role="button"><span class="tag">09:00</span> Rested for the night</li></ol>
+</details>
+<details class="day-strip" open>
+<summary>Day 2 · today</summary>
+<div class="graph"><svg class="strip" viewBox="0 0 960 91" role="group" aria-label="Day 2"><rect class="night-shade" x="36" y="34" width="304" height="34"/><text class="night-label" x="188" y="28" text-anchor="middle">night</text><line class="tick" x1="36" y1="34" x2="36" y2="68"/><text class="hour" x="36" y="82" text-anchor="middle">00</text><line class="tick" x1="150" y1="34" x2="150" y2="68"/><text class="hour" x="150" y="82" text-anchor="middle">03</text><line class="tick" x1="264" y1="34" x2="264" y2="68"/><text class="hour" x="264" y="82" text-anchor="middle">06</text><line class="tick" x1="378" y1="34" x2="378" y2="68"/><text class="hour" x="378" y="82" text-anchor="middle">09</text><line class="tick" x1="492" y1="34" x2="492" y2="68"/><text class="hour" x="492" y="82" text-anchor="middle">12</text><line class="tick" x1="606" y1="34" x2="606" y2="68"/><text class="hour" x="606" y="82" text-anchor="middle">15</text><line class="tick" x1="720" y1="34" x2="720" y2="68"/><text class="hour" x="720" y="82" text-anchor="middle">18</text><line class="tick" x1="834" y1="34" x2="834" y2="68"/><text class="hour" x="834" y="82" text-anchor="middle">21</text><line class="tick" x1="948" y1="34" x2="948" y2="68"/><text class="hour" x="948" y="82" text-anchor="middle">24</text><rect class="time-left" x="590" y="8" width="358" height="6"><title>Working time left today</title></rect><line class="now" x1="590" y1="30" x2="590" y2="72"/><g class="flag" tabindex="0"><title>In the world: A storm rolls over Tosora and the canal rises, so everyone talks of the weather.</title><path d="M340 32 v-22 l12 6 l-12 6"/></g><g class="flag" tabindex="0"><title>In the world: Lanterns go up early along the lane for the harvest evening.</title><path d="M354 32 v-22 l12 6 l-12 6"/></g><g class="turn k-move" data-pick="turn:39" data-rel="turn:39" tabindex="0" role="button" aria-label="walk: Went to Lantern Lane"><title>walk: Went to Lantern Lane</title><rect class="bar" x="378" y="40" width="22" height="22" rx="3"/><circle class="end" cx="400" cy="51" r="9"/><text class="symbol" x="400" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:40" data-rel="turn:40" tabindex="0" role="button" aria-label="walk: Went to Court Square"><title>walk: Went to Court Square</title><rect class="bar" x="400" y="40" width="22" height="22" rx="3"/><circle class="end" cx="422" cy="51" r="9"/><text class="symbol" x="422" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:41" data-rel="turn:41" tabindex="0" role="button" aria-label="walk: Went to Licensing Office Lobby"><title>walk: Went to Licensing Office Lobby</title><rect class="bar" x="422" y="40" width="29" height="22" rx="3"/><circle class="end" cx="451" cy="51" r="9"/><text class="symbol" x="451" y="55" text-anchor="middle">→</text></g><g class="turn k-talk" data-pick="turn:42" data-rel="turn:42" tabindex="0" role="button" aria-label="talk: Questioned Jorund Pelmaree, with pressure, showing 2 clues"><title>talk: Questioned Jorund Pelmaree, with pressure, showing 2 clues</title><rect class="bar" x="451" y="40" width="19" height="22" rx="3"/><circle class="end" cx="470" cy="51" r="9"/><text class="symbol" x="470" y="55" text-anchor="middle">“</text></g><g class="turn k-deduce" data-pick="turn:43" data-rel="turn:43" tabindex="0" role="button" aria-label="reasoning: Linked clues that led nowhere"><title>reasoning: Linked clues that led nowhere</title><rect class="bar" x="470" y="40" width="13" height="22" rx="3"/><circle class="end" cx="483" cy="51" r="9"/><text class="symbol" x="483" y="55" text-anchor="middle">∴</text></g><g class="turn k-move" data-pick="turn:44" data-rel="turn:44" tabindex="0" role="button" aria-label="walk: Went to Records Room"><title>walk: Went to Records Room</title><rect class="bar" x="483" y="40" width="10" height="22" rx="3"/><circle class="end" cx="492" cy="51" r="9"/><text class="symbol" x="492" y="55" text-anchor="middle">→</text></g><g class="turn k-search" data-pick="turn:45" data-rel="turn:45" tabindex="0" role="button" aria-label="search: Searched the place: found 0"><title>search: Searched the place: found 0</title><rect class="bar" x="492" y="40" width="22" height="22" rx="3"/><circle class="end" cx="514" cy="51" r="9"/><text class="symbol" x="514" y="55" text-anchor="middle">⌕</text></g><g class="turn k-move" data-pick="turn:46" data-rel="turn:46" tabindex="0" role="button" aria-label="walk: Went to Licensing Office Lobby"><title>walk: Went to Licensing Office Lobby</title><rect class="bar" x="514" y="40" width="9" height="22" rx="3"/><circle class="end" cx="524" cy="51" r="9"/><text class="symbol" x="524" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:47" data-rel="turn:47" tabindex="0" role="button" aria-label="walk: Went to Court Square"><title>walk: Went to Court Square</title><rect class="bar" x="524" y="40" width="22" height="22" rx="3"/><circle class="end" cx="546" cy="51" r="9"/><text class="symbol" x="546" y="55" text-anchor="middle">→</text></g><g class="turn k-move" data-pick="turn:48" data-rel="turn:48" tabindex="0" role="button" aria-label="walk: Went to Riverside Savings Bank"><title>walk: Went to Riverside Savings Bank</title><rect class="bar" x="546" y="40" width="32" height="22" rx="3"/><circle class="end" cx="578" cy="51" r="9"/><text class="symbol" x="578" y="55" text-anchor="middle">→</text></g><g class="turn k-talk" data-pick="turn:49" data-rel="turn:49" tabindex="0" role="button" aria-label="talk: Questioned Maelis Fenwarden, with pressure, showing 1 clues"><title>talk: Questioned Maelis Fenwarden, with pressure, showing 1 clues</title><rect class="bar" x="578" y="40" width="13" height="22" rx="3"/><circle class="end" cx="590" cy="51" r="9"/><text class="symbol" x="590" y="55" text-anchor="middle">“</text></g><g class="turn k-accuse" data-pick="turn:50" data-rel="turn:50" tabindex="0" role="button" aria-label="accusation: Made the accusation"><title>accusation: Made the accusation</title><rect class="bar" x="590" y="40" width="4" height="22" rx="3"/><circle class="end" cx="594" cy="51" r="9"/><text class="symbol" x="594" y="55" text-anchor="middle">!</text></g></svg></div>
+<ol class="day-turns"><li data-pick="turn:39" data-rel="turn:39" tabindex="0" role="button"><span class="tag">09:35</span> Went to Lantern Lane</li><li data-pick="turn:40" data-rel="turn:40" tabindex="0" role="button"><span class="tag">10:10</span> Went to Court Square</li><li data-pick="turn:41" data-rel="turn:41" tabindex="0" role="button"><span class="tag">10:55</span> Went to Licensing Office Lobby</li><li data-pick="turn:42" data-rel="turn:42" tabindex="0" role="button"><span class="tag">11:25</span> Questioned Jorund Pelmaree, with pressure, showing 2 clues</li><li data-pick="turn:43" data-rel="turn:43" tabindex="0" role="button"><span class="tag">11:45</span> Linked clues that led nowhere</li><li data-pick="turn:44" data-rel="turn:44" tabindex="0" role="button"><span class="tag">12:00</span> Went to Records Room</li><li data-pick="turn:45" data-rel="turn:45" tabindex="0" role="button"><span class="tag">12:35</span> Searched the place: found 0</li><li data-pick="turn:46" data-rel="turn:46" tabindex="0" role="button"><span class="tag">12:50</span> Went to Licensing Office Lobby</li><li data-pick="turn:47" data-rel="turn:47" tabindex="0" role="button"><span class="tag">13:25</span> Went to Court Square</li><li data-pick="turn:48" data-rel="turn:48" tabindex="0" role="button"><span class="tag">14:15</span> Went to Riverside Savings Bank</li><li data-pick="turn:49" data-rel="turn:49" tabindex="0" role="button"><span class="tag">14:35</span> Questioned Maelis Fenwarden, with pressure, showing 1 clues</li><li data-pick="turn:50" data-rel="turn:50" tabindex="0" role="button"><span class="tag">14:35</span> Made the accusation</li></ol>
+</details>
+<h3>What in the news the case grew from</h3>
+<p><span class="tag">A scandal</span> A court fines an editor over an unlicensed website and shuts her newsroom, and the licensing office cannot say where one is actually obtained.</p>
+<h3>What has happened in the world</h3>
+<ul><li><span class="tag">Day 1</span> A damp night brings little sleep and a heavy morning.</li><li><span class="tag">Day 2</span> A storm rolls over Tosora and the canal rises, so everyone talks of the weather.</li><li><span class="tag">Day 2</span> Lanterns go up early along the lane for the harvest evening.</li></ul>
+<h3>Leads</h3>
+<p class="empty">No leads yet.</p>
+<h3>Still open</h3>
+<p class="empty">Every door tried, everyone asked. Suspicious.</p>
+</section>
+<section class="tab" id="hero">
+<h2>Hero and kit</h2>
+<div class="card">
+<p><strong>Quinn Tindall</strong></p>
+<p class="tag">Was once: a police officer · Situation: retired · Character: feeling low</p>
+<p>Gift: Brooding sees more: reasoning comes easier at night.</p>
+<p>Cost: Dull senses: details are easier to miss.</p>
+<p>Skills: perception: 2, reasoning: 2, social: 2, pressure: 3, tech: 0, contacts: 1</p>
+</div>
+<h3>Condition</h3>
+<div class="card">
+<p class="meter"><span>Reputation</span> <meter min="0" max="10" value="6">6</meter> <span class="tag">6 / 10</span></p>
+<p class="meter"><span>Nerves</span> <meter min="0" max="10" value="2">2</meter> <span class="tag">2 / 10</span></p>
+<p class="meter"><span>Sleep debt</span> <meter min="0" max="10" value="0">0</meter> <span class="tag">0 / 10</span></p>
+<p>Now:</p>
+<ul><li>ill-equipped <span class="tag">2485 min left</span></li></ul>
+<ul><li><span class="warn">nerves are frayed: everything is a little harder</span></li><li><span class="warn">nerves are at the limit: hands slip and notes come out garbled</span></li></ul>
+</div>
+<h3>Kit</h3>
+<ul><li>phone</li><li>notebook</li><li>fingerprint powder <span class="tag">left: 2</span></li><li>crowbar</li><li>test kit <span class="tag">left: 1</span></li></ul>
+<h3>Supplies</h3>
+<ul><li>coffee ×1</li></ul>
+
+<h3>Known traits</h3>
+<ul><li>reads people</li><li>in debt</li></ul>
+<p class="tag">Still hidden: 3</p>
+<h3>Climate</h3>
+<div class="card">
+<p>The case is set in: <strong>Tosora</strong></p>
+<p class="tag">Zone: subtropical</p>
+<p>Seasons:</p>
+<ul><li>winter: mild</li><li>summer: humid</li><li>autumn: storms</li></ul>
+<p>Weather to plan around: heavy rain, heatwaves</p>
+</div>
+</section>
+</main>
+<script>(function(){var m=document.querySelector('main');if(!m)return;var back=null;
+function shut(restore){if(m.getAttribute('data-open')===null)return;m.removeAttribute('data-open');if(restore&&back&&back.focus)back.focus();back=null}
+function pick(t){if(m.getAttribute('data-sel')===t){m.removeAttribute('data-sel')}else{m.setAttribute('data-sel',t)}}
+function show(el){var id=el.getAttribute('data-open');if(!id){shut(false);return}if(m.getAttribute('data-open')===id){shut(true);return}m.setAttribute('data-open',id);back=el;var card=document.getElementById('open-'+id);if(card&&card.focus)card.focus()}
+function choose(el){pick(el.getAttribute('data-pick'));if(el.closest&&el.closest('.plan'))return;show(el)}
+document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('.opened')){m.removeAttribute('data-sel');shut(true);return}if(t.closest&&t.closest('nav.tabs')){shut(false);return}var el=t.closest&&t.closest('[data-pick]');if(el&&t.closest('a')){m.setAttribute('data-sel',el.getAttribute('data-pick'));return}if(el){choose(el)}else if(!(t.closest&&(t.closest('a')||t.closest('.filters')||t.closest('.plan')))){m.removeAttribute('data-sel');shut(false)}});
+function fit(c,v){var g=function(n){return c.getAttribute('data-'+n)||''};return(!v.p||g('place')===v.p)&&(!v.s||(' '+g('shown')+' ').indexOf(' '+v.s+' ')>=0)&&(!v.g||g('garbled')==='1')&&(!v.u||g('unused')==='1')&&(!v.q||g('number').toLowerCase().indexOf(v.q)>=0)}
+function filter(){var f=function(i){return document.getElementById(i)};if(!f('f-place'))return;var v={p:f('f-place').value,s:f('f-suspect').value,g:f('f-garbled').checked,u:f('f-unused').checked,q:f('f-number').value.trim().toLowerCase()};var cards=document.querySelectorAll('.clue-card'),n=0;for(var i=0;i<cards.length;i++){var ok=fit(cards[i],v);cards[i].hidden=!ok;if(ok)n++}var none=f('clue-none');if(none)none.hidden=n>0}
+document.addEventListener('input',filter);document.addEventListener('change',filter);
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){m.removeAttribute('data-sel');shut(true);return}if(e.key==='Enter'||e.key===' '){var el=e.target.closest&&e.target.closest('[data-pick]');if(el){e.preventDefault();choose(el)}}});
+})();</script>
+</body>
+</html>

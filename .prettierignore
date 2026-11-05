@@ -6,3 +6,6 @@ dev/private
 
 # Generated from agents/ by scripts/generate-plugin.mjs; it is compared byte for byte, not reformatted.
 plugins/the-race
+
+# A board as the game wrote it: an example, not a source file
+docs/public/Examples/

@@ -9,35 +9,52 @@ _The world changed overnight. Run._
 [![CI](https://github.com/Klim-101/the-race/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Klim-101/the-race/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-24-339933?logo=nodedotjs&logoColor=white)](.node-version)
-[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.base.json)
-[![Engine coverage](https://img.shields.io/badge/engine%20coverage-100%25-brightgreen.svg)](vitest.config.ts)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](.github/workflows/ci.yml)
 [![Status: alpha](https://img.shields.io/badge/status-alpha-yellow.svg)](docs/public/ROADMAP.md)
-[![Conventional Commits](https://img.shields.io/badge/commits-conventional-fe5196.svg)](https://www.conventionalcommits.org)
 
 </div>
 
-A text roguelike that runs inside [Claude Code](https://claude.com/claude-code) on your own subscription. Every run is one hero in a **mirror world** rebuilt from today's world news: the conflicts are real, the names are fictional. The hero dies for good. Tomorrow the world is different.
+A detective game with one rule that most detective games avoid: **the narrator is not allowed to know who did it.**
 
-> **Status: alpha.** The detective run is playable from the tavern to the final accusation inside Claude Code, in Russian or English, on a case built from the day's news. Rules and saves may still change between versions. The hall of fallen heroes, legacy between runs and further archetypes are still ahead. See the [roadmap](docs/public/ROADMAP.md).
+the RACE is a text roguelike that runs inside [Claude Code](https://claude.com/claude-code), on your own subscription. Each day's headlines are rebuilt into a case in a **mirror world**: the conflicts are real, the names are not. A handful of suspects, most of whom lie about something, and exactly one of whom did it. Your Claude Code plays the narrator. A piece of plain code that has never met a language model decides what is true.
 
-### What is ready
+> **Status: alpha.** One full detective run is playable, from the tavern to the final accusation, in English or Russian. Rules and saves may still change between versions. See [what to expect](#what-to-expect).
 
-- **The engine.** Seeded dice, skills and hidden traits that show themselves in play, a clock with world events, weather and small mishaps on the road, interrogation, deductions and a verdict. Deterministic, with 100% test coverage.
-- **A full detective run.** Suspects with secrets and lies, clues and false trails, and several ways to solve a case. A run ends in an accusation, the end of the days, a breakdown or giving up, and the story is told as the hero's own thoughts.
-- **Searching by piece.** A place is not searched whole: a quick look shows its parts (a desk, a cabinet, a bin, a safe) and what lies in the open, and a thorough search takes one part at a time. Some parts have an obstacle: locked, dark, soft, a fine trace, sealed, digital.
-- **Leads.** A place may be unknown until something names it: a clue found, a talk that goes well, a lie that falls or a conclusion drawn earns a lead, and the map shows only what the hero has a reason to know. A lead may hold only at certain hours, and may be false.
-- **A kit of tools.** The hero starts with a phone and one tool drawn from the seed, leaning towards who they were: a lockpick, a magnifier, a knife, a test kit, a UV lamp, fingerprint powder, a crowbar and more. Each gets past its own kind of obstacle with a roll, some wear out or break, and a tool that is not lawful risks being seen: a lost name, frayed nerves, and the police holding the hero for hours.
-- **Talks that react.** A shown clue can break a lie, confirm one that has already fallen or bear on the suspect, and a conclusion the hero has drawn can be put to them as a question. Each fallen lie pushes a suspect through calm, shaken, cornered and broken, which changes the next talk; a pressure with nothing behind it shuts the suspect up for a while.
-- **The tavern.** Three heroes are offered per run, built from twenty backgrounds and six life states, with rumours of the day.
-- **News and the mirror world.** Headlines from RSS feeds are cleaned, turned into seeds and rebuilt with fictional names. Real names are rejected and recent tragedies are filtered out.
-- **Saves and a profile.** A run resumes in a new session; a local profile keeps the tally of finished runs.
-- **The evidence board.** A browser page with a map, a corkboard of clues and links, notebooks and a chronicle.
-- **The Claude Code plugin.** Local MCP server with typed tools, the narrator, an isolated case generator, a HUD, and Russian and English texts.
+## How a round goes
+
+1. **The tavern.** The narrator tells you what the town is talking about today (the day's news, retold in the mirror world), and three people offer themselves as your detective (a pharmacist, a schoolteacher and a translator, say). You pick one. Every hero carries traits you cannot see and did not choose; you find out who you are by playing.
+2. **The case.** A separate agent, in a context of its own, turns one of the day's seeds into a case and hands it straight to the engine. The engine checks that the case can be solved by anyone, whatever their kit and traits, before the run begins. You get a premise, a cast and a clock.
+3. **The investigation.** You walk a small town, glance round a room, then search one thing at a time: a desk, a cabinet, a bin, a safe. You talk to suspects, show them what you found, and watch lies fall. You link clues into conclusions. The board in your browser keeps the corkboard, the map and the notes.
+4. **The accusation.** You name the culprit, the motive and the evidence. The engine rules: proven, unproven or wrong. Only then does the story tell you what really happened.
+5. **The tally.** The run is written into a local profile. A win opens more tool slots for the next hero.
+
+You play by picking from a short list of moves or by saying what you want in your own words. Either way, one action goes to the engine, the engine rolls the dice, and the narrator tells you what came of it.
+
+**A real example.** One English-language playtest started from the tavern rumour of an editor fined for running a news site without a licence, with a licensing office that could not say where one is obtained. It became _The Fee That Was Never Filed_, a case in the invented town of Tosora: the editor swears she paid, the office has no record of it, and the detective, a retired police officer who is low on nerve and quick to lean on people, is sent to find where the money went. Four suspects, a licensing office with a records room, a bank, a notary, a teahouse, a canal yard and a sealed newsroom, three days of autumn storms.
+
+The run ended in the way a run can: the detective named the right culprit, but with no conclusion drawn for the motive and one key clue never found (the engine called it _unproven_). The evidence board it left behind, with the map, the suspects and every clue in the order it was found, is in [`docs/public/Examples/evidence.html`](docs/public/Examples/evidence.html). Download it and open it in a browser.
+
+## What makes it different
+
+- **The truth lives in code.** A model tends to agree with the player, which is a poor quality in a detective story. So dice, hidden traits, the sealed solution and the verdict belong to a deterministic engine. The narrator gets only what you are allowed to know, and a hook refuses any tool call that names the saves.
+- **The plot is tonight's news.** Headlines are cleaned, turned into abstract seeds and rebuilt with invented names. The substance stays, the names change, real names are rejected by the engine and recent tragedies never become a plot.
+- **You are not a spreadsheet.** Long days, rough luck and hard conversations leave a mark on the hero, and the story shows it. Weather and the road cost time and nerve, and an icy day is worse than a rainy one. A tool that is not quite lawful may get you noticed.
+
+## What to expect
+
+This is an alpha, and it says so.
+
+- **One archetype.** Only the detective is playable. The survivor and the trader are on the [roadmap](docs/public/ROADMAP.md), not in the game.
+- **Claude Code only.** Other agent hosts are out of scope; see [Scope](#scope).
+- **A hero lives one case.** The hero never dies: a run ends with a verdict, the end of the days, a breakdown or giving up, and that hero is not played again. A hall of fallen heroes and legacy between runs are planned and not built.
+- **Cases are written by a model.** The engine can prove that a case is solvable, fair and free of real names. It cannot prove that it is any good. Some will be better than others.
+- **It spends your usage.** The case is written by a subagent, which takes a few minutes, and the narration is your Claude Code session. Nothing here is billed by the project: there is no server, no account and no API key.
+- **The news may not arrive.** Headlines come from public RSS feeds. If they cannot be reached the run still starts, just without the day's news, and says so.
+- **Things move.** Rules and saves may change between versions.
 
 ## Getting started
 
-You need [Claude Code](https://claude.com/claude-code) on your own subscription and [Node.js](https://nodejs.org) 24 (the current LTS) or newer, except 25, with npm 11 (it comes with Node 24). There is nothing else to sign up for: no account, no API key.
+You need [Claude Code](https://claude.com/claude-code) on your own subscription and [Node.js](https://nodejs.org) 24 (the current LTS) or newer, except 25, with npm 11 (it comes with Node 24). There is nothing else to sign up for.
 
 1. **Install the plugin.** In a terminal, in any folder:
 
@@ -65,34 +82,13 @@ You need [Claude Code](https://claude.com/claude-code) on your own subscription 
    claude plugin update the-race@the-race
    ```
 
-   Then start a new Claude Code session, because the server is loaded once per session.
+   Then start a new Claude Code session, because the server is loaded once per session. To check which build a session runs, ask the narrator to call `server_info`: it reports the plugin's version and the version of the rules.
 
-The game is played in **your language**: the narrator answers in the language you write in (Russian and English are supported), and you describe what you do in your own words. Headlines are fetched from public feeds; if they cannot be reached, the run still starts, just without the day's news. More on the plugin, the game folder and the HUD: [PLUGIN.md](docs/public/PLUGIN.md).
-
-## The idea
-
-**The news is the seed of the day.** Today's run cannot be played tomorrow, because the world has moved on with the headlines.
-
-- **One hero, one life.** You pick from three heroes in a tavern, spend your skill points, and head out. Death is permanent; the next hero starts in a different world.
-- **A mirror world.** A stock-market crash becomes a crash on the exchange of a country that does not exist, caused by a company that is not real. The substance stays, the names change. Real names are rejected by the engine, and recent tragedies never become a plot.
-- **Hidden traits.** Every hero carries traits you cannot see and did not choose. You find out who you are by playing.
-- **A hero is more than numbers.** Long days, rough luck and hard conversations leave a mark, and the story shows it.
-- **Play in your own words.** You describe what you do in free text. The agent turns it into an action, the engine rolls the dice, the agent tells you what happened.
-- **The world remembers.** Fallen heroes leave notes and a reputation behind for the ones who come after.
-
-### The first archetype: the detective
-
-A headline like _"Exchange halted after a sudden crash"_ turns into a case: who profited from the panic? Each case has suspects with secrets and lies, a town of places to search piece by piece, clues (some of them false trails), leads that open the places you did not know of, and a clock ticking on world events drawn from the news. Tone ranges from a serious insider-trading hunt to a comic one, where a trading bot has fallen in love with a meme coin.
-
-Later archetypes: the **survivor** leading a group through a crisis, and the **trader** building a fortune in a market shaped by the news.
-
-## Scope
-
-the RACE targets **Claude Code only**. Support for other agent hosts, Codex included, is explicitly **out of scope** and is not on the roadmap. The engine is plain TypeScript with no host dependency, so a fork that adds another host is welcome and is allowed by the license; it will not be maintained here.
+The language of a run (Russian or English) is the one you start it in, and it stays for that run. Headlines are fetched from public feeds. More on the plugin, the game folder and the HUD: [PLUGIN.md](docs/public/PLUGIN.md).
 
 ## How it works
 
-The model tends to agree with the player, and in a roguelike with permadeath that kills the tension. So the truth lives in code, not in the model.
+The model tends to agree with the player, and in a game about catching liars that kills the tension. So the truth lives in code, not in the model.
 
 |                | The engine (code, deterministic)                                | The agent (your Claude Code session)             |
 | -------------- | --------------------------------------------------------------- | ------------------------------------------------ |
@@ -104,8 +100,13 @@ The model tends to agree with the player, and in a roguelike with permadeath tha
 - The case is generated by a separate subagent in its own context and handed straight to the engine. The narrator only gets the public view through typed tools, so it cannot give the culprit away.
 - Every run is reproducible: the same seed and the same choices give the same result, and a run is saved locally so it can be resumed in a new session.
 - Headlines come from RSS feeds and are treated as untrusted input. Only titles and short summaries are read, never full articles.
+- The engine is plain TypeScript, deterministic, and held at 100% test coverage.
 
 **No servers, no API keys, no model calls from the code.** Everything runs on your own subscription, and a CI check keeps LLM SDKs out of the dependency tree.
+
+## Scope
+
+the RACE targets **Claude Code only**. Support for other agent hosts, Codex included, is explicitly **out of scope** and is not on the roadmap. The engine is plain TypeScript with no host dependency, so a fork that adds another host is welcome and is allowed by the license; it will not be maintained here.
 
 ## Project layout
 
@@ -136,23 +137,9 @@ scripts           Repository checks (LLM SDK denylist, license allowlist)
 
 Details and live progress: [ROADMAP.md](docs/public/ROADMAP.md) and the [project board](https://github.com/users/Klim-101/projects/3).
 
-## Development
+## Contributing
 
-You need Node.js 24 (see [.node-version](.node-version)); 25 is not supported, because the test runner skips odd releases, and npm must be 11 or newer, which Node 24 brings. The local gate is the same one CI runs on Linux, macOS and Windows:
-
-```sh
-npm ci
-npm run lint            # LLM SDK denylist, ESLint (incl. SPDX headers), Prettier
-npm run typecheck
-npm run test:coverage   # the engine stays at 100% coverage
-npm run build
-npm run bundle:check    # the server bundled into the plugin is current (npm run bundle rewrites it)
-npm run licenses:check  # runtime dependency licenses against the allowlist
-```
-
-The plugin in `plugins/` is generated: after changing `agents/` run `npm run generate`, and after changing the engine or the server run `npm run bundle`; CI fails when either is stale.
-
-CI also scans for secrets (gitleaks), checks pull request titles (Conventional Commits) and the DCO sign-off on every commit (`git commit -s`), and lints workflows (actionlint, zizmor).
+Want to change something? [CONTRIBUTING.md](CONTRIBUTING.md) has the short version and [AGENTS.md](AGENTS.md) the working agreement, including the boundaries that are decisions and not preferences.
 
 ## License
 
