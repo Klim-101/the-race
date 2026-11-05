@@ -37,6 +37,55 @@ describe('extractRealNames and a headline in Title Case', () => {
     for (const word of ['the', 'on', 'die', 'und', 'der']) expect(names).not.toContain(word);
   });
 
+  it('cuts the hyphens and apostrophes off the end of a word, however many, without slowing down', () => {
+    expect(extractRealNames(["Talks with Norway-' stalled", 'Talks with Norway’’ stalled'])).toEqual(
+      expect.arrayContaining(['norway']),
+    );
+
+    const started = Date.now();
+    const names = extractRealNames([`Talks with Norway${"'-".repeat(50_000)} stalled`]);
+
+    expect(names).toContain('norway');
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
+  it('takes the whole name of a person and the last word, and not the given name that points at no one', () => {
+    const names = extractRealNames([
+      'Beau Lamarre-Condon tells court he deleted a phone',
+      'Talks with Pope Francis stalled',
+    ]);
+
+    expect(names).toEqual(
+      expect.arrayContaining(['beau lamarre-condon', 'lamarre-condon', 'pope francis', 'francis']),
+    );
+    expect(names).not.toContain('beau');
+    expect(names).not.toContain('pope');
+  });
+
+  it('keeps the first word of a run that is not a person: a place, or a name of four words or more', () => {
+    const names = extractRealNames([
+      'Ten years of the Paris Agreement: has the world kept its promises?',
+      'Talks with Alpha Beta Gamma Delta Omega failed',
+    ]);
+
+    expect(names).toEqual(expect.arrayContaining(['paris', 'alpha', 'beta', 'gamma', 'delta']));
+  });
+
+  it('lets go of a part of a name that the same texts use as an ordinary word, and keeps a word that stands alone', () => {
+    const names = extractRealNames([
+      'Talks with the African National Congress stalled',
+      'A national mood and the congress hall',
+    ]);
+
+    expect(names).toContain('african national congress');
+    expect(names).not.toContain('congress');
+    expect(names).not.toContain('national');
+    // Capitalised by itself in the middle of a sentence, it is a name whatever else the texts say.
+    expect(extractRealNames(['Aid blocked by Congress on Monday', 'the congress hall'])).toContain(
+      'congress',
+    );
+  });
+
   it('does not take the generic head of a name for a name: the Paris Agreement is not "agreement"', () => {
     const names = extractRealNames(['Ten years of the Paris Agreement: has the world kept its promises?']);
 

@@ -39386,6 +39386,7 @@ function tavernFeed(seeds, context2, runSeed, max = TAVERN_FEED_LENGTH) {
 
 // packages/engine/src/text/extract-names.ts
 var TOKEN = /[\p{L}][\p{L}\p{M}'’-]*/gu;
+var TRAILING_MARKS = ["'", "\u2019", "-"];
 var BREAKS_SENTENCE = /[.!?…:;«»"“”()[\]—–\n]/u;
 var MIN_NAME_LENGTH = 2;
 var MAX_RUN_PARTS = 4;
@@ -39395,13 +39396,18 @@ var SPEECH_VERB = /^(?:заяв|сообщ|назвал|призв|пообещ|
 var NOT_NAMES = new Set(
   "monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october november december mr mrs ms dr sir president minister prime chancellor king queen mayor governor senator judge general colonel captain minister ministry bank university company group city republic state council committee court agency office department police party union \u043F\u0440\u0435\u0437\u0438\u0434\u0435\u043D\u0442 \u043C\u0438\u043D\u0438\u0441\u0442\u0440 \u043F\u0440\u0435\u043C\u044C\u0435\u0440 \u043A\u0430\u043D\u0446\u043B\u0435\u0440 \u043A\u043E\u0440\u043E\u043B\u044C \u043A\u043E\u0440\u043E\u043B\u0435\u0432\u0430 \u043C\u044D\u0440 \u0433\u0443\u0431\u0435\u0440\u043D\u0430\u0442\u043E\u0440 \u0441\u0435\u043D\u0430\u0442\u043E\u0440 \u0441\u0443\u0434\u044C\u044F \u0433\u0435\u043D\u0435\u0440\u0430\u043B \u043F\u043E\u043B\u043A\u043E\u0432\u043D\u0438\u043A \u043A\u0430\u043F\u0438\u0442\u0430\u043D \u043C\u0438\u043D\u0438\u0441\u0442\u0435\u0440\u0441\u0442\u0432\u043E \u0431\u0430\u043D\u043A \u0443\u043D\u0438\u0432\u0435\u0440\u0441\u0438\u0442\u0435\u0442 \u043A\u043E\u043C\u043F\u0430\u043D\u0438\u044F \u0433\u0440\u0443\u043F\u043F\u0430 \u0433\u043E\u0440\u043E\u0434 \u0440\u0435\u0441\u043F\u0443\u0431\u043B\u0438\u043A\u0430 \u0433\u043E\u0441\u0443\u0434\u0430\u0440\u0441\u0442\u0432\u043E \u0441\u043E\u0432\u0435\u0442 \u043A\u043E\u043C\u0438\u0442\u0435\u0442 \u0441\u0443\u0434 \u0430\u0433\u0435\u043D\u0442\u0441\u0442\u0432\u043E \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0435 \u043F\u043E\u043B\u0438\u0446\u0438\u044F \u043F\u0430\u0440\u0442\u0438\u044F \u0441\u043E\u044E\u0437 agreement treaty accord pact summit commission authority administration the an on in at as of to for by with from into onto over under about after before during between among against and or but nor so yet if than that this these those there here then who whom whose which what when where why how while although because since until der die das den dem des ein eine einen einem und oder aber mit von zu im am auf f\xFCr nicht el la los las un una unos unas y o pero con por para del al en que \u0441\u043E\u0433\u043B\u0430\u0448\u0435\u043D\u0438\u0435 \u0434\u043E\u0433\u043E\u0432\u043E\u0440 \u0441\u0430\u043C\u043C\u0438\u0442 \u043A\u043E\u043C\u0438\u0441\u0441\u0438\u044F \u0430\u0434\u043C\u0438\u043D\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044F he she it they we you i \u043E\u043D \u043E\u043D\u0430 \u043E\u043D\u043E \u043E\u043D\u0438 \u043C\u044B \u0432\u044B \u044F gdp ceo cfo ai it tv pr ok vat \u0432\u0432\u043F \u0438\u0438 \u0436\u043A\u0445 \u043D\u0434\u0441 \u0441\u043C\u0438 \u0438\u0442 \u0442\u0432 \u0434\u0442\u043F \u0447\u043F".split(" ")
 );
+function withoutTrailingMarks(word) {
+  let end = word.length;
+  while (end > 0 && TRAILING_MARKS.includes(word.charAt(end - 1))) end -= 1;
+  return word.slice(0, end);
+}
 function piecesOf(text) {
   const pieces = [];
   const normalized = text.normalize("NFKC");
   let previousEnd = 0;
   for (const match of normalized.matchAll(TOKEN)) {
     const gap = normalized.slice(previousEnd, match.index);
-    const word = match[0].replace(/[-'’]+$/u, "");
+    const word = withoutTrailingMarks(match[0]);
     pieces.push({
       word,
       opens: pieces.length === 0 || BREAKS_SENTENCE.test(gap),
@@ -39425,16 +39431,19 @@ function continuesRun(piece) {
 function isName(word) {
   return word.length >= MIN_NAME_LENGTH && !NOT_NAMES.has(word.toLowerCase());
 }
+var MAX_PERSON_WORDS = 3;
 function namesInText(text) {
-  const names = [];
+  const found = [];
   const pieces = piecesOf(text);
-  if (isTitleCase(pieces))
-    return pieces.map(({ word }) => word).filter(isAcronym).filter(isName);
+  const solid = (name) => ({ name, solid: true });
+  if (isTitleCase(pieces)) {
+    return pieces.map(({ word }) => word).filter(isAcronym).filter(isName).map(solid);
+  }
   let resumeAt = 0;
   for (const [at3, first] of pieces.entries()) {
     if (at3 < resumeAt || !isCapitalised(first.word)) continue;
     if (isAcronym(first.word)) {
-      names.push(first.word);
+      found.push(solid(first.word));
       continue;
     }
     let end = at3 + 1;
@@ -39442,16 +39451,28 @@ function namesInText(text) {
     resumeAt = end;
     const speaks = SPEECH_VERB.test((pieces[end]?.word ?? "").toLowerCase());
     const words = pieces.slice(first.opens && !speaks ? at3 + 1 : at3, end).map(({ word }) => word);
-    if (words.length > 0) {
-      names.push(words.join(" "), ...words.length > 1 ? words.slice(0, MAX_RUN_PARTS) : []);
-    }
+    if (words.length === 0) continue;
+    found.push(solid(words.join(" ")));
+    if (words.length === 1) continue;
+    const person = words.length <= MAX_PERSON_WORDS && words.every((word) => isName(word));
+    const parts = person ? words.slice(-1) : words.slice(0, MAX_RUN_PARTS);
+    for (const part of parts) found.push({ name: part, solid: false });
   }
-  return names.filter(isName);
+  return found.filter(({ name }) => isName(name));
+}
+function plainWordsOf(text) {
+  const plain2 = [];
+  for (const match of text.normalize("NFKC").matchAll(TOKEN)) {
+    const word = withoutTrailingMarks(match[0]);
+    if (word === word.toLowerCase()) plain2.push(word);
+  }
+  return plain2;
 }
 function extractRealNames(texts) {
-  const found = texts.flatMap(namesInText);
-  const names = new Set(found.map((name) => name.toLowerCase()));
-  for (const name of found) for (const spelling of transliterate(name)) names.add(spelling);
+  const plain2 = new Set(texts.flatMap(plainWordsOf));
+  const kept = texts.flatMap(namesInText).filter(({ name, solid }) => solid || !plain2.has(name.toLowerCase())).map(({ name }) => name);
+  const names = new Set(kept.map((name) => name.toLowerCase()));
+  for (const name of kept) for (const spelling of transliterate(name)) names.add(spelling);
   return [...names].filter(isName).sort();
 }
 
