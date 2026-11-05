@@ -279,6 +279,14 @@ export interface TabText {
     readonly minutes: string;
     readonly warnings: string;
     readonly kit: string;
+    /** The pockets, the suitcase ({used} of {total} slots) and a slot nothing is in. */
+    readonly pockets: string;
+    readonly suitcase: string;
+    readonly freeSlot: string;
+    /** A piece that is not within the law, what it gets past, and the heading of the tool for each part noticed. */
+    readonly unlawful: string;
+    readonly getsPast: string;
+    readonly forParts: string;
     readonly lost: string;
     /** A tool that is used up or broken, and the uses left of one that is used up ({n}). */
     readonly spent: string;

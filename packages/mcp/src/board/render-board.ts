@@ -65,6 +65,8 @@ h3{margin:22px 0 8px;font-size:1rem;color:var(--accent)}
 .premise{border-left:3px solid var(--accent);padding-left:12px;margin:16px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 16px;margin:0 0 10px}
 .empty-card{border-style:dashed;background:transparent}
+.slots{display:flex;flex-wrap:wrap;gap:10px}
+.slot{margin:0;min-width:150px}
 .led-astray{border-left:4px solid var(--warn)}
 .course{padding-left:1.4em}
 .card p{margin:4px 0}
