@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 23;
+var RULESET_VERSION = 24;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -35120,6 +35120,17 @@ var WEATHER_MINUTES = {
   storms: 15
 };
 var EVENT_WEATHER_RULESET_VERSION = 23;
+var HAZARD_RULESET_VERSION = 24;
+var HAZARD_WEATHERS = {
+  blizzard: ["snow"],
+  ice: ["frost", "snow"],
+  "heavy-rain": ["cold-rain", "storms"],
+  heatwave: ["hot", "dry-heat"],
+  drought: ["dry-heat"],
+  gale: ["windy", "storms"],
+  fog: ["fog"],
+  "dust-wind": ["windy", "dry-heat"]
+};
 var isActive = (run) => run.rulesetVersion >= ROAD_RULESET_VERSION;
 function at2(items, index) {
   return items[index];
@@ -35138,6 +35149,10 @@ function weatherOfDay(run, day) {
   if (roll2 <= 6) return at2(seasons, index).weather;
   if (roll2 <= 8) return "mild";
   return at2(seasons, (index + 1) % seasons.length).weather;
+}
+function hazardOfDay(run, weather) {
+  if (run.rulesetVersion < HAZARD_RULESET_VERSION || run.setting === null) return void 0;
+  return run.setting.climate.hazards.find((hazard) => HAZARD_WEATHERS[hazard].includes(weather));
 }
 
 // packages/engine/src/text/real-names.ts
@@ -37419,6 +37434,8 @@ function resolveInterrogate(run, intent, rng) {
 var BAD_WEATHER_MINUTES = 10;
 var MISHAP_CHANCE = 8;
 var BAD_WEATHER_MISHAP_CHANCE = 15;
+var HAZARD_EXTRA_MINUTES = 5;
+var HAZARD_MISHAP_CHANCE = 25;
 var ROAD_MISHAPS = [
   { id: "wrong-turn", minutes: 15 },
   { id: "missed-bus", minutes: 20 },
@@ -37433,14 +37450,31 @@ var ROAD_MISHAPS = [
   { id: "heat-and-no-shade", weather: ["hot", "dry-heat", "humid"], condition: "exhausted" },
   { id: "shaken-by-a-bicycle-bell", condition: "shaken" }
 ];
+var HAZARD_MISHAPS = [
+  { id: "slip-and-fall", hazard: "ice", minutes: 15, nerves: 1 },
+  { id: "drift-in-the-way", hazard: "blizzard", minutes: 20 },
+  { id: "caught-in-a-downpour", hazard: "heavy-rain", minutes: 15, nerves: 1 },
+  { id: "dizzy-in-the-heat", hazard: "heatwave", minutes: 10, condition: "exhausted" },
+  { id: "dust-and-thirst", hazard: "drought", condition: "exhausted" },
+  { id: "gale-takes-the-papers", hazard: "gale", minutes: 15, nerves: 1 },
+  { id: "fog-so-thick-it-hums", hazard: "fog", minutes: 20 },
+  { id: "dust-in-the-eyes", hazard: "dust-wind", minutes: 10, nerves: 1 }
+];
 var isOutdoor = (location) => location.exposure !== "indoor";
 function walk(run, from, to, rng) {
   if (!isActive(run) || !(isOutdoor(from) || isOutdoor(to))) return { extraMinutes: 0 };
   const weather = weatherOfDay(run, run.clock.day);
-  const extraMinutes = weather === void 0 ? 0 : WEATHER_MINUTES[weather];
+  const hazard = weather === void 0 ? void 0 : hazardOfDay(run, weather);
+  const extraMinutes = (weather === void 0 ? 0 : WEATHER_MINUTES[weather]) + (hazard === void 0 ? 0 : HAZARD_EXTRA_MINUTES);
   const bad = extraMinutes >= BAD_WEATHER_MINUTES;
-  const base = weather === void 0 ? {} : { weather };
-  if (rng.roll(100) > (bad ? BAD_WEATHER_MISHAP_CHANCE : MISHAP_CHANCE)) return { ...base, extraMinutes };
+  const base = {
+    ...weather === void 0 ? {} : { weather },
+    ...hazard === void 0 ? {} : { hazard }
+  };
+  const chance = hazard !== void 0 ? HAZARD_MISHAP_CHANCE : bad ? BAD_WEATHER_MISHAP_CHANCE : MISHAP_CHANCE;
+  if (rng.roll(100) > chance) return { ...base, extraMinutes };
+  const own2 = hazard === void 0 || rng.roll(2) !== 1 ? void 0 : HAZARD_MISHAPS.find((m) => m.hazard === hazard);
+  if (own2 !== void 0) return { ...base, extraMinutes, mishap: own2 };
   const fitting = ROAD_MISHAPS.filter(
     (mishap) => mishap.weather === void 0 || weather !== void 0 && mishap.weather.includes(weather)
   );
@@ -38044,6 +38078,7 @@ function resolveMove(run, rng, locationId) {
       minutes: minutes2,
       consequences,
       ...road.weather === void 0 ? {} : { weather: road.weather },
+      ...road.hazard === void 0 ? {} : { hazard: road.hazard },
       ...road.mishap === void 0 ? {} : { roadMishap: road.mishap.id }
     },
     details,

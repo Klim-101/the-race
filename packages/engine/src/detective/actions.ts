@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { assertNever } from '../assert-never.js';
 import { endReasonOfMeters } from '../meters.js';
 import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
-import type { Weather } from '../world/climate.js';
+import type { Hazard, Weather } from '../world/climate.js';
 import { collectModifier } from '../modifiers.js';
 import { distinctFelt, feltModifier, feltShield, type SignalFelt } from '../signals.js';
 import { hasAutoDiscover, type TraitTrigger } from '../traits.js';
@@ -214,6 +214,8 @@ export type Outcome = (
       readonly consequences: readonly Consequence[];
       /** The weather of a walk out of doors, which made it slower by the minutes it adds (see `road.ts`). */
       readonly weather?: Weather;
+      /** The hazard of the country that the weather brought out on this walk, when one did. */
+      readonly hazard?: Hazard;
       /** The small, comic thing that happened on the road, by id, if one did. */
       readonly roadMishap?: string;
     }
@@ -729,6 +731,7 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
       minutes,
       consequences,
       ...(road.weather === undefined ? {} : { weather: road.weather }),
+      ...(road.hazard === undefined ? {} : { hazard: road.hazard }),
       ...(road.mishap === undefined ? {} : { roadMishap: road.mishap.id }),
     },
     details,

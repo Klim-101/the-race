@@ -11,6 +11,7 @@ import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { CONDITION_IDS } from './condition.js';
 import {
   BAD_WEATHER_MISHAP_CHANCE,
+  HAZARD_EXTRA_MINUTES,
   MISHAP_CHANCE,
   ROAD_MISHAPS,
   applyMishap,
@@ -22,6 +23,7 @@ import {
   EVENT_WEATHER_RULESET_VERSION,
   ROAD_RULESET_VERSION,
   WEATHER_MINUTES,
+  hazardOfDay,
   weatherOfDay,
 } from './weather.js';
 
@@ -201,7 +203,10 @@ describe('a move on the road', () => {
       const result = moveOutdoors(run, scripted(100));
 
       expect(result.outcome).toMatchObject({ kind: 'move', entered: true, weather });
-      expect((result.outcome as { minutes: number }).minutes).toBe(15 + WEATHER_MINUTES[weather]);
+      const hazard = hazardOfDay(run, weather);
+      expect((result.outcome as { minutes: number }).minutes).toBe(
+        15 + WEATHER_MINUTES[weather] + (hazard === undefined ? 0 : HAZARD_EXTRA_MINUTES),
+      );
     }
   });
 
