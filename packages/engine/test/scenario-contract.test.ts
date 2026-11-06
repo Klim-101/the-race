@@ -92,11 +92,6 @@ describe('the detective scenario', () => {
     for (const code of shared) expect(DETECTIVE_SCENARIO.issueOrder).toContain(code);
   });
 
-  it('tells the generator the rules of a case, in two stages, whatever the language of the run', () => {
-    expect(DETECTIVE_SCENARIO.briefRules('en')).toMatch(/in two stages: first a frame/);
-    expect(DETECTIVE_SCENARIO.briefRules('ru')).toBe(DETECTIVE_SCENARIO.briefRules('en'));
-  });
-
   describe('choosing a theme', () => {
     it('gives the seed and a crime type that the seed allows, the same on every call', () => {
       const first = DETECTIVE_SCENARIO.chooseTheme([SEED], HERO, 'seed-1');
@@ -253,7 +248,6 @@ interface ToyRun {
 const TOY: ScenarioKind<Toy, ToyRun, string> = {
   themes: ['storm', 'famine'],
   issueOrder: [...SHARED_ISSUE_CODES, 'no-steps'],
-  briefRules: (locale) => `Write the steps in ${locale}.`,
   chooseTheme: (seeds) => {
     const [seed] = seeds;
     return seed && { seed, theme: 'storm' };
@@ -323,7 +317,6 @@ describe('an archetype that is not the detective', () => {
     expect(registered.themes).toEqual(['storm', 'famine']);
     expect(TOY.chooseTheme([SEED], HERO, 'seed-1')).toEqual({ seed: SEED, theme: 'storm' });
     expect(TOY.chooseTheme([], HERO, 'seed-1')).toBeUndefined();
-    expect(TOY.briefRules('ru')).toBe('Write the steps in ru.');
   });
 
   it('goes through the frame, the patch and the start of a run, driven by what knows nothing of its case', () => {

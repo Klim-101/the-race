@@ -1272,18 +1272,30 @@ describe('scenario_submit', () => {
       });
     });
 
+    it("holds the facts of the run and no rules: the rules of a case are the generator's instructions", async () => {
+      const { call } = await start(pendingRun());
+
+      const brief = await call('generator_brief', {});
+
+      expect(Object.keys(brief.body).sort()).toEqual([
+        'attemptsLeft',
+        'frameAttemptsLeft',
+        'hero',
+        'locale',
+        'mirrorWorld',
+        'seed',
+        'seedIsUntrusted',
+        'setting',
+        'theme',
+        'tone',
+      ]);
+      expect(brief.body).not.toHaveProperty('schemaRules');
+    });
+
     it('refuses the brief once the frames are used up', async () => {
       const { call } = await start(pendingRun({ frameAttempts: 3 }));
 
       expect(errorCode(await call('generator_brief', {}))).toBe('case-failed');
-    });
-
-    it('is told in the schema rules that a case is written in two stages', async () => {
-      const { call } = await start(pendingRun());
-
-      expect(String((await call('generator_brief', {})).body.schemaRules)).toMatch(
-        /in two stages: first a frame/,
-      );
     });
   });
 
