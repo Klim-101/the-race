@@ -6,6 +6,7 @@ import { buildCheeseCase, buildHero } from '../../../test/fixtures/cheese-case.j
 import type { CaseIssueCode } from '../case-issue.js';
 import { DetectiveCaseSchema, type DetectiveCase } from '../case-schema.js';
 import { validateCase } from '../case-validator.js';
+import { LEGACY_RULES } from '../case-rules.js';
 import { checkObservations, conclusionMarkerIn } from './observations.js';
 
 function withDescription(description: string, locale: 'en' | 'ru' = 'en'): DetectiveCase {
@@ -22,7 +23,7 @@ function codes(detectiveCase: DetectiveCase, requireObservations = true): CaseIs
     traits: [],
     locale: 'en',
     realNames: [],
-    requireObservations,
+    rules: { ...LEGACY_RULES, observations: requireObservations },
   });
   return result.isValid ? [] : result.issues.map(({ code }) => code);
 }

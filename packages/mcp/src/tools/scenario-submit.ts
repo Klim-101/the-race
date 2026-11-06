@@ -3,9 +3,7 @@
 
 import {
   EMPTY_RUN_LOG,
-  MIN_RANDOM_EVENTS,
-  GENERATED_DAYS,
-  GENERATED_MAP,
+  GENERATED_RULES,
   createDetectiveRun,
   deriveSightingClues,
   toolSlotsOf,
@@ -284,17 +282,7 @@ export const scenarioSubmit = defineTool({
         hero,
         traits: pending.traits,
         locale: pending.locale,
-        minRandomEvents: MIN_RANDOM_EVENTS,
-        map: GENERATED_MAP,
-        days: GENERATED_DAYS,
-        requireParts: true,
-        requireTies: true,
-        requireAdmissions: true,
-        requireLinkable: true,
-        requireClearing: true,
-        requireClaims: true,
-        requirePublicLife: true,
-        requireObservations: true,
+        rules: GENERATED_RULES,
         // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
         realNames: [
           ...new Set([...worldRealNames(world), ...((await seedsOfRun(context))?.realNames ?? [])]),

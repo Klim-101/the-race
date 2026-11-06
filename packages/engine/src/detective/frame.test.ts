@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { applyPatch, toJsonPointer, type PatchOp } from '../json-patch.js';
+import { LEGACY_RULES } from './case-rules.js';
 import { DetectiveCaseSchema } from './case-schema.js';
 import { validateCase, type CaseValidationContext } from './case-validator.js';
 import { collectNarrativeTexts } from './checks/texts.js';
@@ -176,7 +177,7 @@ describe('a frame in the validator', () => {
       detectiveCase.suspects[0]!.alibi = 'Все должны всем.';
       return detectiveCase;
     };
-    const full = { requireObservations: true, realNames: ['Norway'] };
+    const full = { rules: { ...LEGACY_RULES, observations: true }, realNames: ['Norway'] };
 
     it('is judged when the case is complete: names, language and what a clue claims to mean', () => {
       expect(codesOf(withTexts(), context(full)).sort()).toEqual([

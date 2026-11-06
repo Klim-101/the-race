@@ -7,6 +7,7 @@ import { createRng } from '../dice.js';
 import type { CaseIssueCode } from './case-issue.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { validateCase } from './case-validator.js';
+import { LEGACY_RULES } from './case-rules.js';
 import { createDetectiveRun, viewRun, type DetectiveRunState } from './run-state.js';
 import { deduce } from './verdict.js';
 
@@ -115,7 +116,7 @@ describe('the validator and clearing', () => {
       traits: [],
       locale: 'en',
       realNames: [],
-      requireClearing,
+      rules: { ...LEGACY_RULES, clearing: requireClearing },
     });
     return result.isValid ? [] : result.issues.map(({ code }) => code);
   }

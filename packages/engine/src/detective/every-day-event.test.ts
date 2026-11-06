@@ -24,6 +24,7 @@ import {
 import { createDetectiveRun, type DetectiveRunState } from './run-state.js';
 import { isSolvable } from './solvability.js';
 import { validateCase } from './case-validator.js';
+import { LEGACY_RULES } from './case-rules.js';
 
 const event = (id: string, fromDay = 1, untilDay: number | null = null) => ({
   id,
@@ -187,7 +188,7 @@ describe('the pool a generated case must bring', () => {
     traits: [],
     locale: 'en' as const,
     realNames: [],
-    minRandomEvents,
+    rules: { ...LEGACY_RULES, minRandomEvents },
   });
   const caseWith = (days: number, events: readonly Record<string, unknown>[]) => {
     const raw = buildCheeseCase();

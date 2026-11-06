@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../../test/fixtures/cheese-case.js';
 import type { CaseIssue } from '../case-issue.js';
 import { validateCase } from '../case-validator.js';
+import { LEGACY_RULES } from '../case-rules.js';
 
 type CheeseCase = ReturnType<typeof buildCheeseCase>;
 
@@ -14,7 +15,7 @@ function issuesOf(detectiveCase: CheeseCase, requireLinkable = true): CaseIssue[
     traits: [],
     locale: 'en',
     realNames: [],
-    requireLinkable,
+    rules: { ...LEGACY_RULES, linkable: requireLinkable },
   });
   return result.isValid ? [] : [...result.issues];
 }

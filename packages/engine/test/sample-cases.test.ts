@@ -4,6 +4,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { DetectiveHero } from '../src/detective/archetype.js';
+import { LEGACY_RULES } from '../src/detective/case-rules.js';
 import { GENERATED_MAP } from '../src/detective/checks/map-shape.js';
 import { validateCase } from '../src/detective/case-validator.js';
 import { DETECTIVE_TRAITS } from '../src/detective/traits.js';
@@ -176,9 +177,7 @@ describe('sample cases', () => {
         traits: [],
         locale,
         realNames: REAL_NAMES,
-        map: GENERATED_MAP,
-        requireParts: true,
-        requireTies: true,
+        rules: { ...LEGACY_RULES, map: GENERATED_MAP, parts: true, ties: true },
       });
 
       expect(result).toMatchObject({ isValid: true });
@@ -193,8 +192,7 @@ describe('sample cases', () => {
         traits: [],
         locale,
         realNames: REAL_NAMES,
-        requireAdmissions: true,
-        requireClearing: true,
+        rules: { ...LEGACY_RULES, admissions: true, clearing: true },
       });
 
       expect(result).toMatchObject({ isValid: true });

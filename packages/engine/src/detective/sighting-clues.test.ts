@@ -7,6 +7,7 @@ import { createRng, D20_SIDES, type Rng } from '../dice.js';
 import { resolveIntent, type Resolved } from './actions.js';
 import type { CaseIssueCode } from './case-issue.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
+import { LEGACY_RULES } from './case-rules.js';
 import { validateCase } from './case-validator.js';
 import { createDetectiveRun, viewRun, type DetectiveRunState } from './run-state.js';
 import { accuse, deduce } from './verdict.js';
@@ -305,7 +306,7 @@ describe('the validator and the clues a witness gives', () => {
       traits: [],
       locale: 'en',
       realNames: [],
-      requireParts,
+      rules: { ...LEGACY_RULES, parts: requireParts },
     });
     return result.isValid ? ([] as CaseIssueCode[]) : result.issues;
   }

@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../../test/fixtures/cheese-case.js';
 import type { CaseIssueCode } from '../case-issue.js';
+import { LEGACY_RULES } from '../case-rules.js';
 import { validateCase, type CaseValidationContext } from '../case-validator.js';
 
 type Part = Record<string, unknown>;
@@ -45,7 +46,14 @@ const partsOf = (detectiveCase: ReturnType<typeof buildPartedCase>, placeId: str
   detectiveCase.locations.find(({ id }) => id === placeId)?.parts as Part[];
 
 function context(overrides: Partial<CaseValidationContext> = {}): CaseValidationContext {
-  return { hero: buildHero(), traits: [], locale: 'en', realNames: [], requireParts: true, ...overrides };
+  return {
+    hero: buildHero(),
+    traits: [],
+    locale: 'en',
+    realNames: [],
+    rules: { ...LEGACY_RULES, parts: true },
+    ...overrides,
+  };
 }
 
 function issueCodes(input: unknown, validationContext = context()): CaseIssueCode[] {
@@ -59,7 +67,7 @@ describe('the parts of a place', () => {
   });
 
   it('accepts a case without parts when they are not required, as before the parts', () => {
-    expect(issueCodes(buildCheeseCase(), context({ requireParts: false }))).toEqual([]);
+    expect(issueCodes(buildCheeseCase(), context({ rules: LEGACY_RULES }))).toEqual([]);
     const withoutTheOption = { hero: buildHero(), traits: [], locale: 'en', realNames: [] } as const;
     expect(issueCodes(buildCheeseCase(), withoutTheOption)).toEqual([]);
   });

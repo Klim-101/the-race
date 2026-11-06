@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../../test/fixtures/cheese-case.js';
 import type { CaseIssueCode } from '../case-issue.js';
 import { validateCase } from '../case-validator.js';
+import { LEGACY_RULES } from '../case-rules.js';
 
 type Loose = Record<string, unknown>;
 
@@ -14,7 +15,7 @@ function issueCodes(input: unknown, requireTies = true): CaseIssueCode[] {
     traits: [],
     locale: 'en',
     realNames: [],
-    requireTies,
+    rules: { ...LEGACY_RULES, ties: requireTies },
   });
   return result.isValid ? [] : result.issues.map((issue) => issue.code);
 }

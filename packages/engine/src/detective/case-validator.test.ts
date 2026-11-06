@@ -7,6 +7,7 @@ import type { DetectiveHero } from './archetype.js';
 import { DETECTIVE_TRAITS } from './traits.js';
 import type { Trait } from '../traits.js';
 import type { CaseIssueCode } from './case-issue.js';
+import { LEGACY_RULES } from './case-rules.js';
 import { MIN_RANDOM_EVENTS } from './case-schema.js';
 import { validateCase, type CaseValidationContext } from './case-validator.js';
 
@@ -512,7 +513,10 @@ describe('the pool of random events a generated case must bring', () => {
   it('rejects a case with fewer events than the minimum, and says how many it has', () => {
     for (const count of [0, 1, 2, 3]) {
       const detectiveCase = { ...buildCheeseCase(), randomEvents: pool(count) };
-      const result = validateCase(detectiveCase, context({ minRandomEvents: MIN_RANDOM_EVENTS }));
+      const result = validateCase(
+        detectiveCase,
+        context({ rules: { ...LEGACY_RULES, minRandomEvents: MIN_RANDOM_EVENTS } }),
+      );
 
       expect(result).toMatchObject({
         isValid: false,
@@ -523,14 +527,19 @@ describe('the pool of random events a generated case must bring', () => {
   });
 
   it('rejects a case without any pool at all', () => {
-    expect(issueCodes(buildCheeseCase(), context({ minRandomEvents: MIN_RANDOM_EVENTS }))).toEqual([
-      'too-few-random-events',
-    ]);
+    expect(
+      issueCodes(
+        buildCheeseCase(),
+        context({ rules: { ...LEGACY_RULES, minRandomEvents: MIN_RANDOM_EVENTS } }),
+      ),
+    ).toEqual(['too-few-random-events']);
   });
 
   it('accepts a case with the minimum', () => {
     const detectiveCase = { ...buildCheeseCase(), randomEvents: pool(MIN_RANDOM_EVENTS) };
 
-    expect(issueCodes(detectiveCase, context({ minRandomEvents: MIN_RANDOM_EVENTS }))).toEqual([]);
+    expect(
+      issueCodes(detectiveCase, context({ rules: { ...LEGACY_RULES, minRandomEvents: MIN_RANDOM_EVENTS } })),
+    ).toEqual([]);
   });
 });

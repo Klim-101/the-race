@@ -8,6 +8,7 @@ import { resolveIntent } from './actions.js';
 import type { CaseIssueCode } from './case-issue.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { validateCase } from './case-validator.js';
+import { LEGACY_RULES } from './case-rules.js';
 import { CLAIMS_RULESET_VERSION, followUpClaims, openingClaims } from './claims.js';
 import { createDetectiveRun, DetectiveRunStateSchema, viewRun, type DetectiveRunState } from './run-state.js';
 
@@ -204,7 +205,7 @@ describe('the validator and the claims', () => {
       traits: [],
       locale: 'en',
       realNames: [],
-      requireClaims,
+      rules: { ...LEGACY_RULES, claims: requireClaims },
     });
     return result.isValid ? [] : result.issues.map(({ code }) => code);
   }
