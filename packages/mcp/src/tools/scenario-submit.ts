@@ -25,7 +25,7 @@ import { clearPending, savePending } from '../pending-run.js';
 import { recordsOrNone } from '../profile.js';
 import { describeSighting } from '../sighting-text.js';
 import { requireWorld } from '../world.js';
-import { keepStats } from '../stats.js';
+import { keepGenerationLog, keepStats } from '../stats.js';
 import { MAX_CASE_ATTEMPTS, openPendingRun } from './generator-brief.js';
 
 /** What a generator is told at most: a long list of issues helps nobody. */
@@ -109,12 +109,20 @@ function clip(text: string, length: number): string {
   return text.length <= length ? text : `${text.slice(0, length - 1)}…`;
 }
 
+const mostImportantFirst = (issues: readonly CaseIssue[]): CaseIssue[] =>
+  [...issues].sort((a, b) => priorityOf(a) - priorityOf(b));
+
+/** The distinct codes of all the issues, the most fundamental first: what the log keeps, and never a message. */
+export function codesOf(issues: readonly CaseIssue[]): string[] {
+  return [...new Set(mostImportantFirst(issues).map(({ code }) => code))];
+}
+
 /** Most important first, capped, and each one short. Array.sort is stable, so ties keep the engine's order. */
 export function compactIssues(issues: readonly CaseIssue[]): {
   issues: { code: string; path: string; message: string }[];
   moreIssues: number;
 } {
-  const shown = [...issues].sort((a, b) => priorityOf(a) - priorityOf(b)).slice(0, MAX_ISSUES);
+  const shown = mostImportantFirst(issues).slice(0, MAX_ISSUES);
   return {
     issues: shown.map(({ code, path, message }) => ({
       code,
@@ -177,6 +185,19 @@ export const scenarioSubmit = defineTool({
       }
 
       const world = await requireWorld(context);
+      // The seed the brief gave the generator: the same choice from the same news, hero and seed.
+      const chosen = chooseSeed(await toldSeedsOfRun(context, pending.seed), {
+        background: hero.background,
+        runSeed: pending.seed,
+      });
+      const logged = {
+        date: context.today(),
+        seed: pending.seed,
+        locale: pending.locale,
+        theme: chosen?.crimeType ?? pending.theme,
+        archetype: hero.archetype,
+        attempt: pending.attempts + 1,
+      };
       // The clues in which witnesses tell what they saw are made here, with words in the language of the case: the
       // generator names them (`seen-<witness>-<suspect>`) and writes no text for them. A case that does not parse is
       // left as it is, and the validator reports it.
@@ -207,11 +228,6 @@ export const scenarioSubmit = defineTool({
       });
 
       if (result.isValid) {
-        // The seed the brief gave the generator: the same choice from the same news, hero and seed.
-        const chosen = chooseSeed(await toldSeedsOfRun(context, pending.seed), {
-          background: hero.background,
-          runSeed: pending.seed,
-        });
         // The run's id and folder, made now: the date and time it starts and the seed.
         const runId = makeRunId(context.now(), pending.seed);
         // The run continues the dice the hero was made with: the pending record holds their state.
@@ -234,6 +250,7 @@ export const scenarioSubmit = defineTool({
         // The news the run was made from stays with it, so that it can be read back on its own.
         const news = await seedsOfRun(context);
         if (news !== undefined) await saveRunSeeds(context.saveDir, runId, news, context.saveFs);
+        await keepGenerationLog(context, { ...logged, outcome: 'accepted', codes: [], issues: 0 });
         await keepStats(context);
         await clearPending(context.saveDir, context.saveFs);
         return { accepted: true };
@@ -246,10 +263,19 @@ export const scenarioSubmit = defineTool({
         { ...pending, attempts, failed: attemptsLeft === 0 },
         context.saveFs,
       );
+      await keepGenerationLog(context, {
+        ...logged,
+        outcome: attemptsLeft === 0 ? 'final' : 'rejected',
+        codes: codesOf(result.issues),
+        issues: result.issues.length,
+      });
       // The last rejection keeps its issues too: without them a run that failed cannot be told why.
       const issues = compactIssues(result.issues);
-      if (attemptsLeft === 0)
+      if (attemptsLeft === 0) {
+        // A run left without a case is an end of a kind: the page of statistics tells it at once.
+        await keepStats(context);
         return { accepted: false, attemptsLeft, final: true, reason: FINAL_REASON, ...issues };
+      }
       return { accepted: false, attemptsLeft, ...issues };
     }),
 });

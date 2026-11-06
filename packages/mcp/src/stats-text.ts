@@ -29,4 +29,17 @@ export interface StatsText {
   readonly results: Readonly<Record<RunResult, string>>;
   /** How a run ended, by the id of the reason; an id without a word is shown as it is. */
   readonly reasons: Readonly<Record<string, string>>;
+  /** The part of the page about the cases the generator wrote (see `generation-log.ts` in the saves). */
+  readonly generation: {
+    readonly title: string;
+    readonly none: string;
+    readonly accepted: string;
+    readonly failed: string;
+    readonly share: string;
+    readonly attempt: string;
+    readonly acceptedOnIt: string;
+    readonly mostOften: string;
+    readonly code: string;
+    readonly rejections: string;
+  };
 }

@@ -43,6 +43,19 @@ export {
   type RunStatsEntry,
   type RunsStats,
 } from './runs-stats.js';
+export {
+  GENERATION_LOG_FILE,
+  GENERATION_OUTCOMES,
+  GenerationEntrySchema,
+  GenerationStatsSchema,
+  MAX_LOG_ENTRIES,
+  appendGenerationEntry,
+  generationLogFile,
+  loadGenerationLog,
+  summarizeGeneration,
+  type GenerationEntry,
+  type GenerationStats,
+} from './generation-log.js';
 export { buildResumeSummary, RESUME_LABELS, type ResumeLabels } from './resume-summary.js';
 export {
   loadSeeds,

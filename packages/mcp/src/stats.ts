@@ -2,7 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { basename, dirname, join, relative, sep } from 'node:path';
-import { collectRunsStats, replaceFile, runBoardFile } from '@the-race/saves';
+import {
+  appendGenerationEntry,
+  collectRunsStats,
+  loadGenerationLog,
+  replaceFile,
+  runBoardFile,
+  summarizeGeneration,
+  type GenerationEntry,
+} from '@the-race/saves';
 import type { ServerContext } from './context.js';
 import { renderStatsPage } from './stats-page.js';
 
@@ -17,18 +25,35 @@ export const statsDirOf = (saveDir: string): string =>
   basename(saveDir) === 'saves' ? dirname(saveDir) : saveDir;
 
 /**
- * Writes `stats.json` and `stats.html` from the runs on disk. Both are replaced whole. Throws when the folder
- * cannot be written.
+ * Writes `stats.json` and `stats.html` from the runs on disk and the log of the cases the generator submitted. Both
+ * are replaced whole. Throws when the folder cannot be written.
  */
 export async function writeStats(context: ServerContext): Promise<void> {
   const directory = statsDirOf(context.saveDir);
   const stats = await collectRunsStats(context.saveDir, context.today(), context.saveFs);
-  const page = renderStatsPage(stats, (runId) =>
+  const generation = summarizeGeneration(await loadGenerationLog(directory, context.saveFs));
+  const page = renderStatsPage(stats, generation, (runId) =>
     relative(directory, runBoardFile(context.saveDir, runId)).split(sep).join('/'),
   );
   await context.saveFs.mkdir(directory);
-  await replaceFile(context.saveFs, join(directory, STATS_JSON), `${JSON.stringify(stats, null, 2)}\n`);
+  await replaceFile(
+    context.saveFs,
+    join(directory, STATS_JSON),
+    `${JSON.stringify({ ...stats, generation }, null, 2)}\n`,
+  );
   await replaceFile(context.saveFs, join(directory, STATS_PAGE), page);
+}
+
+/**
+ * Adds what the engine said to a submitted case to the log in the game folder. It is a record for the player, so a
+ * failure to write it never costs the submission: the entry is dropped.
+ */
+export async function keepGenerationLog(context: ServerContext, entry: GenerationEntry): Promise<void> {
+  try {
+    await appendGenerationEntry(statsDirOf(context.saveDir), entry, context.saveFs);
+  } catch {
+    // See above: nothing to do and nothing to tell.
+  }
 }
 
 /**
