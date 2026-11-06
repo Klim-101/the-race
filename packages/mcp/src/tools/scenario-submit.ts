@@ -14,14 +14,20 @@ import {
   toolSlotsOf,
   validateCase,
   worldRealNames,
+  PatchOpSchema,
+  applyPatch,
+  toJsonPointer,
   type CaseIssue,
   type CaseIssueCode,
+  type CaseValidationResult,
+  type PatchOp,
 } from '@the-race/engine';
 import { makeRunId, saveRun, saveRunSeeds } from '@the-race/saves';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
 import { seedsOfRun, toldSeedsOfRun } from '../news.js';
-import { clearPending, savePending } from '../pending-run.js';
+import { clearPending, savePending, type PendingRun } from '../pending-run.js';
+import { ToolFailure } from '../tool-error.js';
 import { recordsOrNone } from '../profile.js';
 import { describeSighting } from '../sighting-text.js';
 import { requireWorld } from '../world.js';
@@ -37,6 +43,8 @@ const MAX_CASE_TEXT_LENGTH = 400_000;
 
 /** The most fundamental problems first (a lower number): a case that does not parse has nothing else to fix yet. */
 const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
+  // A patch that did not apply leaves nothing else to judge.
+  'patch-failed': -1,
   schema: 0,
   'duplicate-id': 1,
   'unknown-reference': 2,
@@ -117,7 +125,10 @@ export function codesOf(issues: readonly CaseIssue[]): string[] {
   return [...new Set(mostImportantFirst(issues).map(({ code }) => code))];
 }
 
-/** Most important first, capped, and each one short. Array.sort is stable, so ties keep the engine's order. */
+/**
+ * Most important first, capped, and each one short. Array.sort is stable, so ties keep the engine's order. A path is
+ * a JSON Pointer, so that the generator can patch the very place it is told about.
+ */
 export function compactIssues(issues: readonly CaseIssue[]): {
   issues: { code: string; path: string; message: string }[];
   moreIssues: number;
@@ -126,14 +137,14 @@ export function compactIssues(issues: readonly CaseIssue[]): {
   return {
     issues: shown.map(({ code, path, message }) => ({
       code,
-      path: clip(path, MAX_PATH_LENGTH),
+      path: clip(toJsonPointer(path), MAX_PATH_LENGTH),
       message: clip(message, MAX_MESSAGE_LENGTH),
     })),
     moreIssues: issues.length - shown.length,
   };
 }
 
-function readCase(input: string | Record<string, unknown>): unknown {
+function readCase(input: string | Record<string, unknown> | undefined): unknown {
   if (typeof input !== 'string') return input;
   try {
     return JSON.parse(input);
@@ -156,18 +167,80 @@ function serialized<T>(task: () => Promise<T>): Promise<T> {
 
 const FINAL_REASON = 'All three attempts were used and the engine accepted none of the cases.';
 
+export const SUBMIT_ERROR_CODES = { caseOrPatch: 'case-or-patch' } as const;
+
+/** At most this many operations in one patch; a fix that needs more is a case to send again. */
+const MAX_PATCH_OPERATIONS = 200;
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+type Submission = { readonly submitted: unknown } | { readonly issue: CaseIssue };
+
+/**
+ * The clues in which witnesses tell what they saw are made here, with words in the language of the case: the generator
+ * names them (`seen-<witness>-<suspect>`) and writes no text for them. They are added after the clues it wrote, so the
+ * paths of the issues stay the places of its own text. A case that does not parse is left as it is, and the validator
+ * reports it.
+ */
+function withSightings(submitted: unknown): unknown {
+  const parsed = DetectiveCaseSchema.safeParse(submitted);
+  return parsed.success ? deriveSightingClues(parsed.data, describeSighting(parsed.data.locale)) : submitted;
+}
+
+/**
+ * What was submitted: the case the generator wrote, or the last case with the patch applied. A patch that has no case
+ * to go on or does not apply is an issue, and it costs an attempt like any rejection.
+ */
+function readSubmission(
+  input: {
+    readonly case?: string | Record<string, unknown> | undefined;
+    readonly patch?: readonly PatchOp[] | undefined;
+  },
+  lastCase: Record<string, unknown> | undefined,
+): Submission {
+  if (input.patch === undefined) return { submitted: readCase(input.case) };
+  const failed = (path: string, message: string): Submission => ({
+    issue: { code: 'patch-failed', path, message },
+  });
+  if (lastCase === undefined) {
+    return failed('patch', 'There is no earlier case to patch: send the whole case as `case`.');
+  }
+  const applied = applyPatch(lastCase, input.patch);
+  if (applied.ok) return { submitted: applied.document };
+  return failed(
+    `patch[${String(applied.index)}]`,
+    `The operation "${applied.operation.op} ${applied.operation.path}" does not apply: ${applied.reason}. ` +
+      'Nothing was changed; fix the operation or send the whole case as `case`.',
+  );
+}
+
+/** The pending run with the case a patch goes on from; a final failure keeps none, so the file stays small. */
+function withLastCase(pending: PendingRun, lastCase: Record<string, unknown> | undefined): PendingRun {
+  const next: PendingRun = { ...pending };
+  delete next.lastCase;
+  return lastCase === undefined ? next : { ...next, lastCase };
+}
+
 export const scenarioSubmit = defineTool({
   name: 'scenario_submit',
   description:
-    'For the case generator only. Submits one complete case, as JSON text or as an object, to the engine. ' +
+    'For the case generator only. Submits one case to the engine, in one of two forms, never both: `case`, ' +
+    'one complete case as JSON text or as an object (the first submission), or `patch`, a list of operations ' +
+    'on the last case you submitted (every later one). A patch is JSON Patch limited to `add`, `replace` and ' +
+    '`remove` on JSON Pointers, such as {"op":"replace","path":"/clues/3/description","value":"..."}; all of ' +
+    'its operations apply or none does, and a patch costs an attempt like a case. ' +
     "The engine validates it for this run's hero. If it is accepted the engine seals it and starts the run, " +
     'and the result is just {"accepted":true}: stop and answer "accepted". If it is not, the result lists ' +
-    'the issues (code, path, message), most important first, and how many attempts are left: fix exactly ' +
-    'those and submit the whole case again. At most three submissions are allowed; after that the result ' +
+    'the issues (code, path, message), most important first, and how many attempts are left. The path of ' +
+    'an issue is a JSON Pointer to the place to fix: fix exactly those with a patch, which is far shorter ' +
+    'than the case, and send the whole case again only when the fix needs more than a patch can say. ' +
+    'At most three submissions are allowed; after that the result ' +
     'has "final":true (with the issues of that last rejection) and the run reports a failure, so stop and answer "failed: <reason>". An accepted ' +
     'case can never be replaced. Never repeat a submission that was accepted.',
   inputSchema: z.object({
-    case: z.union([z.string().max(MAX_CASE_TEXT_LENGTH), z.record(z.string(), z.unknown())]),
+    case: z.union([z.string().max(MAX_CASE_TEXT_LENGTH), z.record(z.string(), z.unknown())]).optional(),
+    patch: z.array(PatchOpSchema).min(1).max(MAX_PATCH_OPERATIONS).optional(),
   }),
   outputSchema: z.object({
     accepted: z.boolean(),
@@ -184,6 +257,15 @@ export const scenarioSubmit = defineTool({
         return { accepted: false, attemptsLeft: 0, final: true, reason: FINAL_REASON };
       }
 
+      // Not a submission at all, so it costs no attempt: the form is wrong, not the case.
+      if ((input.case === undefined) === (input.patch === undefined)) {
+        throw new ToolFailure({
+          code: SUBMIT_ERROR_CODES.caseOrPatch,
+          message: 'Send exactly one of `case` (the whole case) and `patch` (operations on your last case).',
+          remediation: 'Submit again with one of them. No attempt was used.',
+        });
+      }
+
       const world = await requireWorld(context);
       // The seed the brief gave the generator: the same choice from the same news, hero and seed.
       const chosen = chooseSeed(await toldSeedsOfRun(context, pending.seed), {
@@ -198,34 +280,30 @@ export const scenarioSubmit = defineTool({
         archetype: hero.archetype,
         attempt: pending.attempts + 1,
       };
-      // The clues in which witnesses tell what they saw are made here, with words in the language of the case: the
-      // generator names them (`seen-<witness>-<suspect>`) and writes no text for them. A case that does not parse is
-      // left as it is, and the validator reports it.
-      const submitted = readCase(input.case);
-      const parsed = DetectiveCaseSchema.safeParse(submitted);
-      const candidate = parsed.success
-        ? deriveSightingClues(parsed.data, describeSighting(parsed.data.locale))
-        : submitted;
-      const result = validateCase(candidate, {
-        hero,
-        traits: pending.traits,
-        locale: pending.locale,
-        minRandomEvents: MIN_RANDOM_EVENTS,
-        map: GENERATED_MAP,
-        days: GENERATED_DAYS,
-        requireParts: true,
-        requireTies: true,
-        requireAdmissions: true,
-        requireLinkable: true,
-        requireClearing: true,
-        requireClaims: true,
-        requirePublicLife: true,
-        requireObservations: true,
-        // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
-        realNames: [
-          ...new Set([...worldRealNames(world), ...((await seedsOfRun(context))?.realNames ?? [])]),
-        ],
-      });
+      const submission = readSubmission(input, pending.lastCase);
+      const result: CaseValidationResult =
+        'issue' in submission
+          ? { isValid: false, issues: [submission.issue] }
+          : validateCase(withSightings(submission.submitted), {
+              hero,
+              traits: pending.traits,
+              locale: pending.locale,
+              minRandomEvents: MIN_RANDOM_EVENTS,
+              map: GENERATED_MAP,
+              days: GENERATED_DAYS,
+              requireParts: true,
+              requireTies: true,
+              requireAdmissions: true,
+              requireLinkable: true,
+              requireClearing: true,
+              requireClaims: true,
+              requirePublicLife: true,
+              requireObservations: true,
+              // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
+              realNames: [
+                ...new Set([...worldRealNames(world), ...((await seedsOfRun(context))?.realNames ?? [])]),
+              ],
+            });
 
       if (result.isValid) {
         // The run's id and folder, made now: the date and time it starts and the seed.
@@ -258,9 +336,16 @@ export const scenarioSubmit = defineTool({
 
       const attempts = pending.attempts + 1;
       const attemptsLeft = MAX_CASE_ATTEMPTS - attempts;
+      // The next patch goes on from this case, or from the one before when this was not a JSON object (or a patch
+      // that did not apply); after the last attempt there is no next one.
+      const goesOn =
+        'issue' in submission || !isObject(submission.submitted) ? pending.lastCase : submission.submitted;
       await savePending(
         context.saveDir,
-        { ...pending, attempts, failed: attemptsLeft === 0 },
+        withLastCase(
+          { ...pending, attempts, failed: attemptsLeft === 0 },
+          attemptsLeft === 0 ? undefined : goesOn,
+        ),
         context.saveFs,
       );
       await keepGenerationLog(context, {

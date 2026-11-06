@@ -8,6 +8,7 @@ export * from './assemble-hero.js';
 export * from './dice.js';
 export { assertNever } from './assert-never.js';
 export { canonicalJson, sha256Hex } from './canonical-json.js';
+export { PatchOpSchema, applyPatch, toJsonPointer, type PatchOp, type PatchResult } from './json-patch.js';
 export * from './traits.js';
 export * from './meters.js';
 export * from './modifiers.js';

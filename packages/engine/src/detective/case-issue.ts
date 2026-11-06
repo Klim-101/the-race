@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export type CaseIssueCode =
+  | 'patch-failed'
   | 'schema'
   | 'duplicate-id'
   | 'unknown-reference'

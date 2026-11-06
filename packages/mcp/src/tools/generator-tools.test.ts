@@ -574,7 +574,19 @@ describe('scenario_submit', () => {
     expect(issues[0]?.path).toHaveLength(120);
     expect(issues[0]?.path.endsWith('…')).toBe(true);
     expect(issues[0]?.message).toHaveLength(240);
-    expect(issues[1]).toEqual({ code: 'unreachable-location', path: 'locations[0]', message: 'short' });
+    expect(issues[1]).toEqual({ code: 'unreachable-location', path: '/locations/0', message: 'short' });
+  });
+
+  it('gives the path of an issue as a JSON Pointer, whichever way the engine wrote it', () => {
+    const at = (path: string) => ({ code: 'unreachable-location', path, message: 'm' }) as const;
+
+    expect(
+      compactIssues([
+        at('clues[3].description'),
+        at('locations.2.id'),
+        at('solution.evidenceChains'),
+      ]).issues.map(({ path }) => path),
+    ).toEqual(['/clues/3/description', '/locations/2/id', '/solution/evidenceChains']);
   });
 
   it('lists the distinct codes of all the issues, the most fundamental first', () => {
@@ -616,6 +628,185 @@ describe('scenario_submit', () => {
     expect(results.filter((result) => result.body.accepted === true)).toHaveLength(1);
     expect(results.filter((result) => result.isError)).toHaveLength(2);
     expect((await loadTheRun(SAVE_DIR, fs)).ok).toBe(true);
+  });
+
+  describe('a patch', () => {
+    const sample = () => readCase('goose-of-elmwick.en.json');
+    const broken = () => ({ ...sample(), crimeType: 'nope' });
+    const fix = (value: unknown = sample().crimeType) => [{ op: 'replace', path: '/crimeType', value }];
+    const patch = (call: (n: string, a: unknown) => Promise<Called>, operations: unknown) =>
+      call('scenario_submit', { patch: operations });
+
+    it('fixes the issue it is told about, at the path it is told, and the run starts from the patched case', async () => {
+      const { fs, call } = await start(pendingRun());
+      const first = await submit(call, broken());
+      expect(first.body.issues).toEqual([expect.objectContaining({ code: 'schema', path: '/crimeType' })]);
+
+      const second = await patch(call, fix());
+
+      expect(second.body).toEqual({ accepted: true });
+      const loaded = await loadTheRun(SAVE_DIR, fs);
+      expect(loaded.ok && loaded.run.case.title).toBe(sample().title);
+      expect(fs.files.has(pendingFile(SAVE_DIR))).toBe(false);
+    });
+
+    it('goes on from the case the last patch made, not from the first one sent', async () => {
+      const { call } = await start(pendingRun());
+      await submit(call, broken());
+
+      const stillBad = await patch(call, [...fix(), { op: 'replace', path: '/title', value: 5 }]);
+      expect(stillBad.body).toMatchObject({ accepted: false, attemptsLeft: 1 });
+      expect(stillBad.body.issues).toEqual([expect.objectContaining({ path: '/title' })]);
+
+      // The crime type was fixed by the patch before, so only the title is left to fix.
+      expect((await patch(call, [{ op: 'replace', path: '/title', value: 'The Goose' }])).body).toEqual({
+        accepted: true,
+      });
+    });
+
+    it('costs an attempt, and is a final rejection when it was the last', async () => {
+      const { fs, call } = await start(pendingRun());
+      await submit(call, broken());
+
+      expect((await patch(call, fix('still-nope'))).body).toMatchObject({ attemptsLeft: 1 });
+      const third = await patch(call, fix('nope-again'));
+
+      expect(third.body).toMatchObject({ accepted: false, attemptsLeft: 0, final: true });
+      expect((await loadPending(SAVE_DIR, fs))?.failed).toBe(true);
+      expect(third.body.issues).toEqual([expect.objectContaining({ path: '/crimeType' })]);
+    });
+
+    it('is an issue of its own, and costs an attempt, when there is no earlier case to go on from', async () => {
+      const { fs, call } = await start(pendingRun());
+
+      const result = await patch(call, fix());
+
+      expect(result.body).toMatchObject({
+        accepted: false,
+        attemptsLeft: 2,
+        issues: [{ code: 'patch-failed', path: '/patch' }],
+      });
+      const [issue] = result.body.issues as { message: string }[];
+      expect(issue?.message).toContain('no earlier case');
+      expect((await loadPending(SAVE_DIR, fs))?.attempts).toBe(1);
+    });
+
+    it('names the operation that does not apply, applies none of them and keeps the case it was to go on from', async () => {
+      const { fs, call } = await start(pendingRun());
+      await submit(call, broken());
+
+      const result = await patch(call, [...fix(), { op: 'remove', path: '/no/such/place' }]);
+
+      expect(result.body).toMatchObject({
+        accepted: false,
+        attemptsLeft: 1,
+        issues: [{ code: 'patch-failed', path: '/patch/1' }],
+      });
+      const [issue] = result.body.issues as { message: string }[];
+      expect(issue?.message).toContain('"remove /no/such/place" does not apply');
+      expect((await loadPending(SAVE_DIR, fs))?.lastCase).toEqual(broken());
+      // Nothing was applied, so the first operation still has to be made: the same patch, mended, is accepted.
+      expect((await patch(call, fix())).body).toEqual({ accepted: true });
+    });
+
+    it('is refused without costing an attempt when both a case and a patch are sent, or neither', async () => {
+      const { fs, call } = await start(pendingRun());
+      await submit(call, broken());
+
+      const both = await call('scenario_submit', { case: sample(), patch: fix() });
+      const neither = await call('scenario_submit', {});
+
+      expect(errorCode(both)).toBe('case-or-patch');
+      expect(errorCode(neither)).toBe('case-or-patch');
+      expect((await loadPending(SAVE_DIR, fs))?.attempts).toBe(1);
+    });
+
+    it('is refused as invalid input when it is empty, too long, or not made of the three operations', async () => {
+      const { fs, call } = await start(pendingRun());
+      await submit(call, broken());
+      const many = Array.from({ length: 201 }, () => fix()[0]);
+
+      for (const bad of [
+        [],
+        many,
+        [{ op: 'move', from: '/a', path: '/b' }],
+        [{ op: 'add', path: '/a' }],
+        'text',
+      ])
+        expect((await patch(call, bad)).isError).toBe(true);
+
+      expect((await loadPending(SAVE_DIR, fs))?.attempts).toBe(1);
+    });
+
+    it('is refused once a case is accepted, like a case, and changes nothing', async () => {
+      const { fs, call } = await start(pendingRun());
+      await submit(call, sample());
+      const before = fs.files.get(runFiles(SAVE_DIR, '20261031-120000-seed-1').current);
+
+      const result = await patch(call, fix());
+
+      expect(errorCode(result)).toBe('case-already-accepted');
+      expect(fs.files.get(runFiles(SAVE_DIR, '20261031-120000-seed-1').current)).toBe(before);
+    });
+
+    it('goes on from the last case that was a JSON object, not from a text that was not or a list', async () => {
+      const { call } = await start(pendingRun());
+      await submit(call, broken());
+
+      expect((await submit(call, 'this is not JSON')).body).toMatchObject({ attemptsLeft: 1 });
+      expect((await submit(call, '[1, 2]')).body).toMatchObject({ attemptsLeft: 0, final: true });
+      // The attempts are used up: a patch is too late, as a case is.
+      expect((await patch(call, fix())).body).toMatchObject({ accepted: false, final: true });
+    });
+
+    it('keeps the last case in the pending record, takes a text as an object, and never hands it back', async () => {
+      const { fs, call } = await start(pendingRun());
+      const result = await submit(call, JSON.stringify(broken()));
+
+      expect((await loadPending(SAVE_DIR, fs))?.lastCase).toEqual(broken());
+      expect(result.text).not.toContain(String(sample().title));
+      expect(result.text).not.toContain('lastCase');
+      for (const tool of ['run_view', 'generator_brief']) {
+        const shown = await call(tool, {});
+        expect(shown.text).not.toContain(String(sample().title));
+        expect(shown.text).not.toContain('lastCase');
+      }
+    });
+
+    it('keeps a text that was not a JSON object out of the record, and the last case through it', async () => {
+      const { fs, call } = await start(pendingRun());
+      await submit(call, broken());
+
+      await submit(call, '[1, 2]');
+
+      expect((await loadPending(SAVE_DIR, fs))?.lastCase).toEqual(broken());
+    });
+
+    it('keeps no case in the record after the last attempt, so that the file stays small', async () => {
+      const { fs, call } = await start(pendingRun());
+      for (let attempt = 1; attempt <= 3; attempt += 1) await submit(call, broken());
+
+      const pending = await loadPending(SAVE_DIR, fs);
+      expect(pending?.failed).toBe(true);
+      expect(pending?.lastCase).toBeUndefined();
+    });
+
+    it('has the code of a patch that did not apply in the log, and no text', async () => {
+      const { fs, call } = await start(pendingRun());
+      await patch(call, fix());
+
+      const [entry] = await loadGenerationLog(SAVE_DIR, fs);
+      expect(entry).toMatchObject({ outcome: 'rejected', codes: ['patch-failed'], issues: 1 });
+      expect(fs.files.get(join(SAVE_DIR, GENERATION_LOG_FILE))).not.toContain('crimeType');
+    });
+
+    it('reads a record written before the last case was kept', async () => {
+      const { fs, call } = await start(pendingRun());
+      const record = JSON.parse(fs.files.get(pendingFile(SAVE_DIR)) ?? '{}') as Record<string, unknown>;
+      expect(record).not.toHaveProperty('lastCase');
+
+      expect((await patch(call, fix())).body).toMatchObject({ issues: [{ code: 'patch-failed' }] });
+    });
   });
 
   describe('the log of the submissions', () => {

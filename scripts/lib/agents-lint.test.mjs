@@ -320,6 +320,33 @@ describe('the news is visible to the player', () => {
   });
 });
 
+describe('the fix of a rejected case', () => {
+  const generator = read(generatorPath);
+  const submit = /^5\. Call `scenario_submit`[^\n]*$/m.exec(generator)?.[0] ?? '';
+
+  it('has the generator fix the issues with a patch, and send the case itself only the first time', () => {
+    expect(submit).toMatch(/with `case`, the whole case/);
+    expect(submit).toMatch(
+      /fix exactly those \*\*with a patch\*\*: call it again with `patch` and no `case`/,
+    );
+    expect(submit).toMatch(
+      /Send the whole case again as `case` only when the fix is more than a patch can say/,
+    );
+  });
+
+  it('tells the generator what a patch is: three operations, in order, on JSON Pointers, all or none', () => {
+    expect(submit).toMatch(/`add`, `replace` and `remove` operations on JSON Pointers, applied in order/);
+    expect(submit).toMatch(/the case you submitted last \(the engine keeps it, you do not send it again\)/);
+    expect(submit).toMatch(/all of its operations apply or none does/);
+    expect(submit).toMatch(/Lists close up after a `remove` and open after an `add`/);
+  });
+
+  it('says that the path of an issue is the pointer to patch, and that a patch counts as a submission', () => {
+    expect(submit).toMatch(/The `path` of every issue is the JSON Pointer of the place to fix/);
+    expect(submit).toMatch(/\*\*At most three submissions in all, a patch counted as one\.\*\*/);
+  });
+});
+
 describe('the events of a turn', () => {
   const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
   const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));

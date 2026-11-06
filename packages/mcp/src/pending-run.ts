@@ -20,7 +20,9 @@ const PendingThemeSchema = z.enum(PENDING_THEMES);
  * returns it. `rngState` is the state of the dice after the hero was assembled, so the run continues the
  * same sequence and the same seed always gives the same hero and the same run. `attempts` counts the case
  * submissions made so far and `failed` is set when the generator ran out of them; both have defaults, so a
- * record written without them still loads.
+ * record written without them still loads. `lastCase` is the last case the generator submitted that was a JSON
+ * object, as it wrote it: the text a patch is applied to. It is the generator's own work and it holds the sealed
+ * truth of a case that has not been accepted, so like `traits` no tool returns it.
  */
 export const PendingRunSchema = z.object({
   schemaVersion: z.literal(1),
@@ -34,6 +36,7 @@ export const PendingRunSchema = z.object({
   offerRound: z.int().min(0).default(0),
   attempts: z.int().min(0).default(0),
   failed: z.boolean().default(false),
+  lastCase: z.record(z.string(), z.unknown()).optional(),
 });
 export type PendingRun = z.infer<typeof PendingRunSchema>;
 
