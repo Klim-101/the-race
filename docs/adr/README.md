@@ -12,6 +12,7 @@ Decisions that are hard to reverse, written down with the reasons, so that nobod
 | [0006](0006-keeping-the-narrator-blind-in-claude-code.md) | Keeping the narrator blind in Claude Code: saves outside the project and a guard hook | Accepted |
 | [0007](0007-append-only-world-dictionary.md)              | The world dictionary is local and append-only                                         | Accepted |
 | [0008](0008-how-real-names-are-taken-from-headlines.md)   | How the real names of the day are taken from headlines                                | Accepted |
+| [0009](0009-scenario-is-a-contract-of-the-archetype.md)   | A scenario is a contract of the archetype, and each archetype has its own generator   | Accepted |
 
 ## Format
 
