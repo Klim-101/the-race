@@ -11,15 +11,24 @@ import {
   type NewsSeed,
   type Trait,
 } from '@the-race/engine';
-import { loadRunSeeds, runFiles, saveSeedsForDay, type SaveFs } from '@the-race/saves';
+import {
+  GENERATION_LOG_FILE,
+  loadGenerationLog,
+  loadRunSeeds,
+  runFiles,
+  saveSeedsForDay,
+  type GenerationStats,
+  type SaveFs,
+} from '@the-race/saves';
 import { afterEach, describe, expect, it } from 'vitest';
 import { TEST_PROFILE_DIR, offlineNews } from '../../test/fake-context.js';
 import { loadTheRun, newestRunId } from '../../test/game.js';
 import type { ServerContext } from '../context.js';
 import { PendingRunSchema, loadPending, pendingFile, savePending, type PendingRun } from '../pending-run.js';
 import { serveStdio } from '../stdio.js';
+import { STATS_JSON } from '../stats.js';
 import { TOOLS } from './index.js';
-import { compactIssues } from './scenario-submit.js';
+import { codesOf, compactIssues } from './scenario-submit.js';
 
 const SAVE_DIR = 'memory-save-dir';
 const CASES = new URL('../../../../content/cases/', import.meta.url);
@@ -568,6 +577,19 @@ describe('scenario_submit', () => {
     expect(issues[1]).toEqual({ code: 'unreachable-location', path: 'locations[0]', message: 'short' });
   });
 
+  it('lists the distinct codes of all the issues, the most fundamental first', () => {
+    const at = (code: string) => ({ code, path: 'p', message: 'm' });
+
+    expect(
+      codesOf([
+        at('unreachable-location'),
+        at('schema'),
+        at('unreachable-location'),
+        at('duplicate-id'),
+      ] as never),
+    ).toEqual(['schema', 'duplicate-id', 'unreachable-location']);
+  });
+
   it('allows three attempts, then reports an honest failure and refuses a fourth', async () => {
     const { fs, call } = await start(pendingRun());
     const bad = { nothing: true };
@@ -594,6 +616,117 @@ describe('scenario_submit', () => {
     expect(results.filter((result) => result.body.accepted === true)).toHaveLength(1);
     expect(results.filter((result) => result.isError)).toHaveLength(2);
     expect((await loadTheRun(SAVE_DIR, fs)).ok).toBe(true);
+  });
+
+  describe('the log of the submissions', () => {
+    const LOG = join(SAVE_DIR, GENERATION_LOG_FILE);
+    const logOf = (fs: SaveFs) => loadGenerationLog(SAVE_DIR, fs);
+
+    it('has an entry for each submission: the attempt, the outcome and the codes of the issues, the last as final', async () => {
+      const { fs, call } = await start(pendingRun());
+
+      for (let attempt = 1; attempt <= 3; attempt += 1) await submit(call, { nothing: true });
+
+      const log = await logOf(fs);
+      expect(log.map(({ attempt, outcome }) => [attempt, outcome])).toEqual([
+        [1, 'rejected'],
+        [2, 'rejected'],
+        [3, 'final'],
+      ]);
+      expect(log[0]).toMatchObject({
+        date: '2026-10-31',
+        seed: 'seed-1',
+        locale: 'en',
+        theme: 'curious-theft',
+        archetype: 'detective',
+      });
+      expect(log[0]?.codes).toContain('schema');
+      expect(log[0]?.issues).toBeGreaterThanOrEqual(log[0]?.codes.length ?? 0);
+    });
+
+    it('has the accepted case on the attempt it was accepted on, with no code', async () => {
+      const { fs, call } = await start(pendingRun());
+      await submit(call, { nothing: true });
+
+      await submit(call, readCase('goose-of-elmwick.en.json'));
+
+      const log = await logOf(fs);
+      expect(log.map(({ attempt, outcome }) => [attempt, outcome])).toEqual([
+        [1, 'rejected'],
+        [2, 'accepted'],
+      ]);
+      expect(log[1]).toMatchObject({ codes: [], issues: 0 });
+    });
+
+    it('has the theme the engine chose from the seed of the news, the one the brief gave', async () => {
+      const fs = memoryFs();
+      await saveSeedsForDay(SAVE_DIR, '2026-10-31', { seeds: [SEED], realNames: [] }, fs);
+      const { call } = await start(pendingRun({ locale: 'en' }), fs);
+      const brief = await call('generator_brief', {});
+
+      await submit(call, { nothing: true });
+
+      expect((await logOf(fs))[0]?.theme).toBe(brief.body.theme);
+    });
+
+    it('lists each code once, the most fundamental first, and holds no text of the engine or of the case', async () => {
+      const { fs, call } = await start(pendingRun({ locale: 'ru' }));
+
+      await submit(call, readCase('goose-of-elmwick.en.json'));
+
+      const [entry] = await logOf(fs);
+      expect(entry?.codes[0]).toBe('locale-mismatch');
+      expect(new Set(entry?.codes).size).toBe(entry?.codes.length);
+      expect(fs.files.get(LOG)).not.toContain('path');
+      expect(fs.files.get(LOG)).not.toContain('message');
+      expect(fs.files.get(LOG)).not.toContain(String(readCase('goose-of-elmwick.en.json').title));
+      for (const trait of DETECTIVE_TRAITS) expect(fs.files.get(LOG)).not.toContain(trait.id);
+    });
+
+    it('has nothing for a submission refused before it was judged', async () => {
+      const { fs, call } = await start(pendingRun({ failed: true, attempts: 3 }));
+
+      await submit(call, readCase('goose-of-elmwick.en.json'));
+      await submit(call, 42);
+
+      expect(await logOf(fs)).toEqual([]);
+    });
+
+    it('never costs the submission: a log that cannot be written is dropped', async () => {
+      const base = memoryFs();
+      const fs = {
+        ...base,
+        rename: (from: string, to: string) =>
+          to === LOG ? Promise.reject(new Error('disk full')) : base.rename(from, to),
+      };
+      const { call } = await start(pendingRun(), fs);
+
+      expect((await submit(call, { nothing: true })).body).toMatchObject({
+        accepted: false,
+        attemptsLeft: 2,
+      });
+      expect((await submit(call, readCase('goose-of-elmwick.en.json'))).body).toEqual({ accepted: true });
+      expect(base.files.has(LOG)).toBe(false);
+    });
+
+    it('is on the page of statistics once a run is left without a case, and once one is accepted', async () => {
+      const { fs, call } = await start(pendingRun());
+      const page = join(SAVE_DIR, STATS_JSON);
+      await submit(call, { nothing: true });
+      await submit(call, { nothing: true });
+      expect(fs.files.has(page)).toBe(false);
+
+      await submit(call, { nothing: true });
+
+      const failed = JSON.parse(fs.files.get(page) ?? '{}') as { generation: GenerationStats };
+      expect(failed.generation).toMatchObject({ accepted: 0, failed: 1, acceptedOnAttempt: [0, 0, 0] });
+      expect(failed.generation.codes[0]).toMatchObject({ code: 'schema', count: 3 });
+
+      const other = await start(pendingRun({ seed: 'seed-2' }));
+      await submit(other.call, readCase('goose-of-elmwick.en.json'));
+      const accepted = JSON.parse(other.fs.files.get(page) ?? '{}') as { generation: GenerationStats };
+      expect(accepted.generation).toMatchObject({ accepted: 1, failed: 0, acceptedOnAttempt: [1] });
+    });
   });
 
   it('keeps serving after a storage failure', async () => {

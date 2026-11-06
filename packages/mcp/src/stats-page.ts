@@ -1,10 +1,11 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { RunsStats } from '@the-race/saves';
+import type { GenerationStats, RunsStats } from '@the-race/saves';
 import { escapeHtml } from './board/escape-html.js';
 import { named } from './board/tab-text.js';
 import { LOCALE_TEXT } from './locales/index.js';
+import type { StatsText } from './stats-text.js';
 
 const STYLE = `
 :root{color-scheme:light dark;--bg:#f4efe6;--card:#fffdf8;--ink:#2a2622;--muted:#7a7066;--line:#ddd3c3;--accent:#8a3b2a;--warn:#b26a00}
@@ -17,6 +18,7 @@ h1{margin:0 0 4px;font-size:1.8rem}
 .totals{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 20px;padding:0;list-style:none}
 .totals li{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:8px 14px}
 .totals strong{display:block;font-size:1.4rem}
+h2{margin:32px 0 12px;font-size:1.3rem}
 .scroll{overflow-x:auto}
 table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line)}
 th,td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
@@ -28,12 +30,66 @@ a{color:var(--accent)}
 @media print{body{background:#fff;color:#000}}
 `;
 
+/** How many of the rules that rejected cases most often the page lists. */
+const CODES_SHOWN = 10;
+
+function renderGeneration(
+  generation: GenerationStats,
+  text: StatsText,
+  e: (value: string) => string,
+): string {
+  const { accepted, failed, acceptedOnAttempt, codes } = generation;
+  const words = text.generation;
+  const heading = `<h2>${e(words.title)}</h2>`;
+  if (accepted + failed + acceptedOnAttempt.length + codes.length === 0) {
+    return `\n${heading}\n<p class="empty">${e(words.none)}</p>`;
+  }
+  const decided = accepted + failed;
+  const share = decided === 0 ? '–' : `${String(Math.round((100 * accepted) / decided))}%`;
+  const attempts = acceptedOnAttempt
+    .map((count, index) => `<tr><td>${String(index + 1)}</td><td>${String(count)}</td></tr>`)
+    .join('\n');
+  const rules = codes
+    .slice(0, CODES_SHOWN)
+    .map(({ code, count }) => `<tr><td>${e(code)}</td><td>${String(count)}</td></tr>`)
+    .join('\n');
+  return `
+${heading}
+<ul class="totals">
+<li><strong>${share}</strong>${e(words.share)}</li>
+<li><strong>${String(accepted)}</strong>${e(words.accepted)}</li>
+<li><strong>${String(failed)}</strong>${e(words.failed)}</li>
+</ul>
+<div class="scroll"><table>
+<thead><tr><th>${e(words.attempt)}</th><th>${e(words.acceptedOnIt)}</th></tr></thead>
+<tbody>
+${attempts}
+</tbody>
+</table></div>${
+    rules === ''
+      ? ''
+      : `
+<h2>${e(words.mostOften)}</h2>
+<div class="scroll"><table>
+<thead><tr><th>${e(words.code)}</th><th>${e(words.rejections)}</th></tr></thead>
+<tbody>
+${rules}
+</tbody>
+</table></div>`
+  }`;
+}
+
 /**
  * The page of all the runs: each with its date, title, hero, result, days and turns, and a link to its board when
- * it has one, and the totals. Made from the statistics alone, which hold only what `run_view` shows. It needs no
- * script and loads nothing from outside. `boardHref` says where the board of a run is, relative to this page.
+ * it has one, and the totals; then how the case generator has done. Made from the statistics alone, which hold only
+ * what `run_view` shows and codes of the rules that rejected a case. It needs no script and loads nothing from
+ * outside. `boardHref` says where the board of a run is, relative to this page.
  */
-export function renderStatsPage(stats: RunsStats, boardHref: (runId: string) => string): string {
+export function renderStatsPage(
+  stats: RunsStats,
+  generation: GenerationStats,
+  boardHref: (runId: string) => string,
+): string {
   const text = LOCALE_TEXT[stats.locale].stats;
   const e = escapeHtml;
   const none = '–';
@@ -82,7 +138,7 @@ export function renderStatsPage(stats: RunsStats, boardHref: (runId: string) => 
 ${rows.join('\n')}
 </tbody>
 </table></div>`
-  }
+  }${renderGeneration(generation, text, e)}
 </main>
 </body>
 </html>
