@@ -16621,7 +16621,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
     }
     return propValues;
   });
-  const isObject2 = isObject;
+  const isObject3 = isObject;
   const catchall = def.catchall;
   let value;
   const memo2 = globalConfig.memoizer;
@@ -16629,7 +16629,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   inst._zod.parse = (payload, ctx) => {
     value ?? (value = _normalized.value);
     const input2 = payload.value;
-    if (!isObject2(input2)) {
+    if (!isObject3(input2)) {
       payload.issues.push({
         expected: "object",
         code: "invalid_type",
@@ -16765,7 +16765,7 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
     return doc.compile();
   };
   let fastpass;
-  const isObject2 = isObject;
+  const isObject3 = isObject;
   const jit = !globalConfig.jitless;
   const allowsEval2 = allowsEval;
   const fastEnabled = jit && allowsEval2.value;
@@ -16774,7 +16774,7 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
   inst._zod.parse = (payload, ctx) => {
     value ?? (value = _normalized.value);
     const input2 = payload.value;
-    if (!isObject2(input2)) {
+    if (!isObject3(input2)) {
       payload.issues.push({
         expected: "object",
         code: "invalid_type",
@@ -34005,6 +34005,70 @@ function canonicalJson(value) {
 }
 function sha256Hex(text) {
   return createHash("sha256").update(text, "utf8").digest("hex");
+}
+
+// packages/engine/src/json-patch.ts
+var PatchOpSchema = external_exports.discriminatedUnion("op", [
+  external_exports.strictObject({ op: external_exports.literal("add"), path: external_exports.string(), value: external_exports.json() }),
+  external_exports.strictObject({ op: external_exports.literal("replace"), path: external_exports.string(), value: external_exports.json() }),
+  external_exports.strictObject({ op: external_exports.literal("remove"), path: external_exports.string() })
+]);
+var ARRAY_INDEX = /^(?:0|[1-9]\d*)$/;
+var isContainer = (value) => typeof value === "object" && value !== null;
+var indexOf = (token2) => ARRAY_INDEX.test(token2) ? Number(token2) : void 0;
+function parsePointer(path) {
+  if (path === "") return "a patch cannot replace the whole case: send the case itself";
+  if (!path.startsWith("/")) return 'the path must be a JSON Pointer, which starts with "/"';
+  const tokens = path.slice(1).split("/").map((token2) => token2.replaceAll("~1", "/").replaceAll("~0", "~"));
+  return tokens.includes("__proto__") ? "the path names a key that is not allowed" : tokens;
+}
+function childOf(node2, token2) {
+  if (Array.isArray(node2)) {
+    const index = indexOf(token2);
+    return index === void 0 ? void 0 : node2[index];
+  }
+  return isContainer(node2) && Object.hasOwn(node2, token2) ? node2[token2] : void 0;
+}
+var NO_SUCH_PATH = "there is nothing at that path";
+function applyOp(root, op) {
+  const tokens = parsePointer(op.path);
+  if (typeof tokens === "string") return tokens;
+  const last = tokens.slice(-1).join("");
+  const parent = tokens.slice(0, -1).reduce(childOf, root);
+  if (Array.isArray(parent)) {
+    if (op.op === "add" && last === "-") {
+      parent.push(op.value);
+      return void 0;
+    }
+    const index = indexOf(last);
+    const limit = op.op === "add" ? parent.length : parent.length - 1;
+    if (index === void 0 || index > limit) return NO_SUCH_PATH;
+    if (op.op === "add") parent.splice(index, 0, op.value);
+    else if (op.op === "replace") parent[index] = op.value;
+    else parent.splice(index, 1);
+    return void 0;
+  }
+  if (!isContainer(parent)) return NO_SUCH_PATH;
+  if (op.op === "add") {
+    parent[last] = op.value;
+    return void 0;
+  }
+  if (!Object.hasOwn(parent, last)) return NO_SUCH_PATH;
+  if (op.op === "replace") parent[last] = op.value;
+  else Reflect.deleteProperty(parent, last);
+  return void 0;
+}
+function applyPatch(document, operations) {
+  const copy = structuredClone(document);
+  for (const [index, op] of operations.entries()) {
+    const reason = applyOp(copy, op);
+    if (reason !== void 0) return { ok: false, index, operation: op, reason };
+  }
+  return { ok: true, document: copy };
+}
+function toJsonPointer(path) {
+  if (path === "") return "";
+  return path.replace(/\[(\d+)\]/g, ".$1").split(".").map((token2) => `/${token2.replaceAll("~", "~0").replaceAll("/", "~1")}`).join("");
 }
 
 // packages/engine/src/modifiers.ts
@@ -55262,7 +55326,8 @@ var PendingRunSchema = external_exports.object({
   /** How many times the player has asked the tavern for another three heroes. */
   offerRound: external_exports.int().min(0).default(0),
   attempts: external_exports.int().min(0).default(0),
-  failed: external_exports.boolean().default(false)
+  failed: external_exports.boolean().default(false),
+  lastCase: external_exports.record(external_exports.string(), external_exports.unknown()).optional()
 });
 function pendingFile(saveDir) {
   return join12(saveDir, "pending", "state.json");
@@ -55848,6 +55913,8 @@ var MAX_MESSAGE_LENGTH = 240;
 var MAX_PATH_LENGTH = 120;
 var MAX_CASE_TEXT_LENGTH = 4e5;
 var ISSUE_PRIORITY = {
+  // A patch that did not apply leaves nothing else to judge.
+  "patch-failed": -1,
   schema: 0,
   "duplicate-id": 1,
   "unknown-reference": 2,
@@ -55926,7 +55993,7 @@ function compactIssues(issues) {
   return {
     issues: shown2.map(({ code, path, message }) => ({
       code,
-      path: clip(path, MAX_PATH_LENGTH),
+      path: clip(toJsonPointer(path), MAX_PATH_LENGTH),
       message: clip(message, MAX_MESSAGE_LENGTH)
     })),
     moreIssues: issues.length - shown2.length
@@ -55947,11 +56014,39 @@ function serialized(task) {
   return next;
 }
 var FINAL_REASON = "All three attempts were used and the engine accepted none of the cases.";
+var SUBMIT_ERROR_CODES = { caseOrPatch: "case-or-patch" };
+var MAX_PATCH_OPERATIONS = 200;
+var isObject2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+function withSightings(submitted) {
+  const parsed = DetectiveCaseSchema.safeParse(submitted);
+  return parsed.success ? deriveSightingClues(parsed.data, describeSighting(parsed.data.locale)) : submitted;
+}
+function readSubmission(input2, lastCase) {
+  if (input2.patch === void 0) return { submitted: readCase(input2.case) };
+  const failed = (path, message) => ({
+    issue: { code: "patch-failed", path, message }
+  });
+  if (lastCase === void 0) {
+    return failed("patch", "There is no earlier case to patch: send the whole case as `case`.");
+  }
+  const applied = applyPatch(lastCase, input2.patch);
+  if (applied.ok) return { submitted: applied.document };
+  return failed(
+    `patch[${String(applied.index)}]`,
+    `The operation "${applied.operation.op} ${applied.operation.path}" does not apply: ${applied.reason}. Nothing was changed; fix the operation or send the whole case as \`case\`.`
+  );
+}
+function withLastCase(pending, lastCase) {
+  const next = { ...pending };
+  delete next.lastCase;
+  return lastCase === void 0 ? next : { ...next, lastCase };
+}
 var scenarioSubmit = defineTool({
   name: "scenario_submit",
-  description: `For the case generator only. Submits one complete case, as JSON text or as an object, to the engine. The engine validates it for this run's hero. If it is accepted the engine seals it and starts the run, and the result is just {"accepted":true}: stop and answer "accepted". If it is not, the result lists the issues (code, path, message), most important first, and how many attempts are left: fix exactly those and submit the whole case again. At most three submissions are allowed; after that the result has "final":true (with the issues of that last rejection) and the run reports a failure, so stop and answer "failed: <reason>". An accepted case can never be replaced. Never repeat a submission that was accepted.`,
+  description: 'For the case generator only. Submits one case to the engine, in one of two forms, never both: `case`, one complete case as JSON text or as an object (the first submission), or `patch`, a list of operations on the last case you submitted (every later one). A patch is JSON Patch limited to `add`, `replace` and `remove` on JSON Pointers, such as {"op":"replace","path":"/clues/3/description","value":"..."}; all of its operations apply or none does, and a patch costs an attempt like a case. The engine validates it for this run\'s hero. If it is accepted the engine seals it and starts the run, and the result is just {"accepted":true}: stop and answer "accepted". If it is not, the result lists the issues (code, path, message), most important first, and how many attempts are left. The path of an issue is a JSON Pointer to the place to fix: fix exactly those with a patch, which is far shorter than the case, and send the whole case again only when the fix needs more than a patch can say. At most three submissions are allowed; after that the result has "final":true (with the issues of that last rejection) and the run reports a failure, so stop and answer "failed: <reason>". An accepted case can never be replaced. Never repeat a submission that was accepted.',
   inputSchema: external_exports.object({
-    case: external_exports.union([external_exports.string().max(MAX_CASE_TEXT_LENGTH), external_exports.record(external_exports.string(), external_exports.unknown())])
+    case: external_exports.union([external_exports.string().max(MAX_CASE_TEXT_LENGTH), external_exports.record(external_exports.string(), external_exports.unknown())]).optional(),
+    patch: external_exports.array(PatchOpSchema).min(1).max(MAX_PATCH_OPERATIONS).optional()
   }),
   outputSchema: external_exports.object({
     accepted: external_exports.boolean(),
@@ -55966,6 +56061,13 @@ var scenarioSubmit = defineTool({
     if (pending.failed || pending.attempts >= MAX_CASE_ATTEMPTS) {
       return { accepted: false, attemptsLeft: 0, final: true, reason: FINAL_REASON };
     }
+    if (input2.case === void 0 === (input2.patch === void 0)) {
+      throw new ToolFailure({
+        code: SUBMIT_ERROR_CODES.caseOrPatch,
+        message: "Send exactly one of `case` (the whole case) and `patch` (operations on your last case).",
+        remediation: "Submit again with one of them. No attempt was used."
+      });
+    }
     const world = await requireWorld(context2);
     const chosen = chooseSeed(await toldSeedsOfRun(context2, pending.seed), {
       background: hero.background,
@@ -55979,10 +56081,8 @@ var scenarioSubmit = defineTool({
       archetype: hero.archetype,
       attempt: pending.attempts + 1
     };
-    const submitted = readCase(input2.case);
-    const parsed = DetectiveCaseSchema.safeParse(submitted);
-    const candidate2 = parsed.success ? deriveSightingClues(parsed.data, describeSighting(parsed.data.locale)) : submitted;
-    const result = validateCase(candidate2, {
+    const submission = readSubmission(input2, pending.lastCase);
+    const result = "issue" in submission ? { isValid: false, issues: [submission.issue] } : validateCase(withSightings(submission.submitted), {
       hero,
       traits: pending.traits,
       locale: pending.locale,
@@ -56029,9 +56129,13 @@ var scenarioSubmit = defineTool({
     }
     const attempts = pending.attempts + 1;
     const attemptsLeft = MAX_CASE_ATTEMPTS - attempts;
+    const goesOn = "issue" in submission || !isObject2(submission.submitted) ? pending.lastCase : submission.submitted;
     await savePending(
       context2.saveDir,
-      { ...pending, attempts, failed: attemptsLeft === 0 },
+      withLastCase(
+        { ...pending, attempts, failed: attemptsLeft === 0 },
+        attemptsLeft === 0 ? void 0 : goesOn
+      ),
       context2.saveFs
     );
     await keepGenerationLog(context2, {
