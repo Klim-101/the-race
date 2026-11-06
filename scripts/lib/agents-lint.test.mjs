@@ -404,6 +404,29 @@ describe('the two stages of a case', () => {
   });
 });
 
+describe('the brief of the generator', () => {
+  const generator = read(generatorPath);
+  const first =
+    new RegExp(
+      String.raw`^1\. [^
+]*$`,
+      'm',
+    ).exec(generator)?.[0] ?? '';
+
+  it('is said to hold the facts of the run, and the rules of a case to be the instructions', () => {
+    expect(first).toMatch(/^1\. Call `generator_brief`\./);
+    expect(first).toMatch(/one seed and the mirror world/);
+    expect(first).toMatch(
+      /the rules of a case are these instructions, and a rejection says a rule again in its message/,
+    );
+  });
+
+  it('does not send the generator to rules in the brief', () => {
+    expect(generator).not.toMatch(/case schema rules/);
+    expect(generator).not.toMatch(/rules in the brief/);
+  });
+});
+
 describe('the events of a turn', () => {
   const skill = read(join(AGENTS, 'skills', 'play-the-race', 'SKILL.md'));
   const outcomes = read(join(AGENTS, 'skills', 'play-the-race', 'reference', 'outcomes.md'));

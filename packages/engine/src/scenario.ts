@@ -73,8 +73,6 @@ export interface ScenarioKind<Case, Run, Words> {
    * `SHARED_ISSUE_CODES` and its own, placed among them.
    */
   readonly issueOrder: readonly string[];
-  /** The rules of a case that the brief carries. */
-  briefRules(locale: Locale): string;
   /** The theme of a run, from the seeds of the news and the hero; none when there are no seeds. */
   chooseTheme(seeds: readonly NewsSeed[], hero: Hero, runSeed: string): ThemeChoice | undefined;
   /** Reads a submitted document as a whole case or a frame of the schema, or says what is wrong with it. */
