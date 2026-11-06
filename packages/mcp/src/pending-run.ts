@@ -13,16 +13,21 @@ import { z } from 'zod';
 export const PENDING_THEMES = CRIME_TYPES;
 const PendingThemeSchema = z.enum(PENDING_THEMES);
 
+/** The stages a case is written in: its frame first, then its texts (a whole case is judged as the second). */
+export const PENDING_STAGES = ['frame', 'text'] as const;
+
 /**
  * A run that has been asked for but has no case yet: the seed, the language and, once the player has made
  * one, the hero. It lives in its own file beside `run/` and is gone once the case is accepted and the run
  * is saved. `traits` is the hero's hidden roll: it is engine-side state like the run's own, and no tool
  * returns it. `rngState` is the state of the dice after the hero was assembled, so the run continues the
- * same sequence and the same seed always gives the same hero and the same run. `attempts` counts the case
- * submissions made so far and `failed` is set when the generator ran out of them; both have defaults, so a
- * record written without them still loads. `lastCase` is the last case the generator submitted that was a JSON
- * object, as it wrote it: the text a patch is applied to. It is the generator's own work and it holds the sealed
- * truth of a case that has not been accepted, so like `traits` no tool returns it.
+ * same sequence and the same seed always gives the same hero and the same run. A case is written in two stages, a
+ * frame (every text blank) and then its texts: `stage` is the one the generator is at, and it moves to `text` once a
+ * frame is accepted. `frameAttempts` counts the frames rejected and `attempts` the cases and texts rejected; `failed` is
+ * set when either stage ran out of its attempts. All of them have defaults, so a record written without them still
+ * loads. `lastCase` is the last case the generator submitted that was a JSON object, as it wrote it: the text a patch
+ * is applied to. It is the generator's own work and it holds the sealed truth of a case that has not been accepted,
+ * so like `traits` no tool returns it.
  */
 export const PendingRunSchema = z.object({
   schemaVersion: z.literal(1),
@@ -34,6 +39,8 @@ export const PendingRunSchema = z.object({
   rngState: z.int().min(0).max(0xffffffff),
   /** How many times the player has asked the tavern for another three heroes. */
   offerRound: z.int().min(0).default(0),
+  stage: z.enum(PENDING_STAGES).default('frame'),
+  frameAttempts: z.int().min(0).default(0),
   attempts: z.int().min(0).default(0),
   failed: z.boolean().default(false),
   lastCase: z.record(z.string(), z.unknown()).optional(),
@@ -62,6 +69,8 @@ export function newPendingRun(seed: string, locale: PendingRun['locale']): Pendi
     traits: [],
     rngState: createRng(seed).state(),
     offerRound: 0,
+    stage: 'frame',
+    frameAttempts: 0,
     attempts: 0,
     failed: false,
   };

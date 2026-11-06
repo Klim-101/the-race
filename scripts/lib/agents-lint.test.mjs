@@ -322,15 +322,13 @@ describe('the news is visible to the player', () => {
 
 describe('the fix of a rejected case', () => {
   const generator = read(generatorPath);
-  const submit = /^5\. Call `scenario_submit`[^\n]*$/m.exec(generator)?.[0] ?? '';
+  const step = (number) => new RegExp(String.raw`^${number}\. [^\n]*$`, 'm').exec(generator)?.[0] ?? '';
+  const submit = step(5);
 
   it('has the generator fix the issues with a patch, and send the case itself only the first time', () => {
-    expect(submit).toMatch(/with `case`, the whole case/);
+    expect(submit).toMatch(/Call `scenario_submit` with the frame as `case`/);
     expect(submit).toMatch(
       /fix exactly those \*\*with a patch\*\*: call it again with `patch` and no `case`/,
-    );
-    expect(submit).toMatch(
-      /Send the whole case again as `case` only when the fix is more than a patch can say/,
     );
   });
 
@@ -341,9 +339,68 @@ describe('the fix of a rejected case', () => {
     expect(submit).toMatch(/Lists close up after a `remove` and open after an `add`/);
   });
 
-  it('says that the path of an issue is the pointer to patch, and that a patch counts as a submission', () => {
+  it('says that the path of an issue is the pointer to patch', () => {
     expect(submit).toMatch(/The `path` of every issue is the JSON Pointer of the place to fix/);
-    expect(submit).toMatch(/\*\*At most three submissions in all, a patch counted as one\.\*\*/);
+  });
+});
+
+describe('the two stages of a case', () => {
+  const generator = read(generatorPath);
+  const step = (number) => new RegExp(String.raw`^${number}\. [^\n]*$`, 'm').exec(generator)?.[0] ?? '';
+
+  it('has the generator write a frame first, with every narrative text left as an empty string', () => {
+    const frame = step(4);
+
+    expect(frame).toMatch(/^4\. \*\*Stage one, the frame\.\*\*/);
+    expect(frame).toMatch(/with every narrative text left as an empty string `""`/);
+    expect(frame).toMatch(/Everything else is written in full: every id, link, number and choice/);
+    expect(frame).toMatch(/Write one `""` for each claim and each reaction you mean to give/);
+  });
+
+  it('names every kind of text the engine leaves blank in a frame', () => {
+    const frame = step(4);
+
+    for (const text of [
+      'title and premise',
+      'persona',
+      'secret',
+      'alibi',
+      '`claims`',
+      '`reactions`',
+      '`statement` and `admission`',
+      '`insight`',
+      '`motive`',
+      '`method`',
+      '`action`',
+      '`reason`',
+      'random event',
+    ])
+      expect(frame).toContain(text);
+  });
+
+  it('has the generator write the texts as one patch of the places the engine lists', () => {
+    const texts = step(6);
+
+    expect(texts).toMatch(/^6\. \*\*Stage two, the texts\.\*\*/);
+    expect(texts).toMatch(/`frameAccepted: true`/);
+    expect(texts).toMatch(/`toWrite`, the JSON Pointers of every text still blank/);
+    expect(texts).toMatch(/once with a `patch` of `replace` operations, one for each pointer of `toWrite`/);
+    expect(texts).toMatch(
+      /A fix here may change the frame too, for the whole case is judged again by every check/,
+    );
+  });
+
+  it('gives each stage three attempts, a patch counted like a case, and a frame that is accepted costs none', () => {
+    const attempts = step(7);
+
+    expect(attempts).toMatch(/Three for the frame and three for the texts, a patch counted like a case/);
+    expect(attempts).toMatch(/A frame that is accepted costs none/);
+    expect(attempts).toMatch(/If the third attempt of either stage fails, stop/);
+  });
+
+  it('still lets a whole case be sent at once, and still ends with a bare verdict', () => {
+    expect(step(7)).toMatch(/A complete case with every text written may be sent at once/);
+    expect(step(8)).toMatch(/^8\. Your final message is exactly `accepted` or `failed: <short reason>`/);
   });
 });
 

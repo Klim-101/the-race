@@ -34,11 +34,18 @@ const statsOf = (context: Awaited<ReturnType<typeof started>>): RunsStats & { ge
     generation: GenerationStats;
   };
 
-const NO_GENERATION: GenerationStats = { accepted: 0, failed: 0, acceptedOnAttempt: [], codes: [] };
+const NO_GENERATION: GenerationStats = {
+  accepted: 0,
+  failed: 0,
+  acceptedOnAttempt: [],
+  frames: { accepted: 0, rejected: 0 },
+  codes: [],
+};
 const GENERATED: GenerationStats = {
   accepted: 3,
   failed: 1,
   acceptedOnAttempt: [2, 1, 0],
+  frames: { accepted: 4, rejected: 2 },
   codes: [
     { code: 'unreachable-location', count: 4 },
     { code: 'map-too-small', count: 1 },
@@ -102,11 +109,17 @@ describe('writing the page of all the runs', () => {
       locale: 'en',
       theme: 'forgery',
       archetype: 'detective',
+      stage: 'text',
       attempt: 2,
       outcome: 'accepted',
       codes: [],
       issues: 0,
     };
+    await appendGenerationEntry(
+      GAME,
+      { ...entry, stage: 'frame', attempt: 1, outcome: 'framed' },
+      context.fs,
+    );
     await appendGenerationEntry(
       GAME,
       { ...entry, attempt: 1, outcome: 'rejected', codes: ['schema'] },
@@ -120,6 +133,7 @@ describe('writing the page of all the runs', () => {
       accepted: 1,
       failed: 0,
       acceptedOnAttempt: [0, 1],
+      frames: { accepted: 1, rejected: 0 },
       codes: [{ code: 'schema', count: 1 }],
     });
     expect(context.fs.files.get(join(GAME, STATS_PAGE))).toContain('<td>schema</td>');
@@ -133,6 +147,7 @@ describe('writing the page of all the runs', () => {
       locale: 'en',
       theme: 'forgery',
       archetype: 'detective',
+      stage: 'text',
       attempt: 1,
       outcome: 'accepted',
       codes: [],
@@ -283,11 +298,39 @@ describe('the page of all the runs', () => {
   it('shows a dash for the share when no run has been decided yet', () => {
     const page = renderStatsPage(
       base,
-      { accepted: 0, failed: 0, acceptedOnAttempt: [0], codes: [{ code: 'schema', count: 1 }] },
+      {
+        accepted: 0,
+        failed: 0,
+        acceptedOnAttempt: [0],
+        frames: { accepted: 0, rejected: 0 },
+        codes: [{ code: 'schema', count: 1 }],
+      },
       href,
     );
 
     expect(page).toContain('<strong>–</strong>of runs got a case');
+  });
+
+  it('counts the frames accepted and rejected, and shows them only once a frame has been judged', () => {
+    const page = renderStatsPage(base, GENERATED, href);
+
+    expect(page).toContain('<strong>4</strong>frames accepted');
+    expect(page).toContain('<strong>2</strong>frames rejected');
+    expect(renderStatsPage(base, { ...GENERATED, frames: { accepted: 0, rejected: 0 } }, href)).not.toContain(
+      'frames accepted',
+    );
+  });
+
+  it('has a page when only frames were judged so far, with no table of attempts', () => {
+    const page = renderStatsPage(base, { ...NO_GENERATION, frames: { accepted: 1, rejected: 0 } }, href);
+
+    expect(page).toContain('<strong>1</strong>frames accepted');
+    expect(page).not.toContain('No case has been generated yet.');
+    expect(page).not.toContain(`<th>Attempt</th>`);
+  });
+
+  it('names the frames in Russian', () => {
+    expect(renderStatsPage({ ...base, locale: 'ru' }, GENERATED, href)).toContain('каркасов принято');
   });
 
   it('is told in Russian when the runs are', () => {

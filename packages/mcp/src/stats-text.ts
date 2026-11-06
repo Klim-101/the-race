@@ -36,6 +36,9 @@ export interface StatsText {
     readonly accepted: string;
     readonly failed: string;
     readonly share: string;
+    /** The frames of the first stage that were accepted, and those that were rejected. */
+    readonly framesAccepted: string;
+    readonly framesRejected: string;
     readonly attempt: string;
     readonly acceptedOnIt: string;
     readonly mostOften: string;

@@ -3,6 +3,7 @@
 
 export type CaseIssueCode =
   | 'patch-failed'
+  | 'text-missing'
   | 'schema'
   | 'duplicate-id'
   | 'unknown-reference'

@@ -38,10 +38,11 @@ function renderGeneration(
   text: StatsText,
   e: (value: string) => string,
 ): string {
-  const { accepted, failed, acceptedOnAttempt, codes } = generation;
+  const { accepted, failed, acceptedOnAttempt, frames, codes } = generation;
   const words = text.generation;
   const heading = `<h2>${e(words.title)}</h2>`;
-  if (accepted + failed + acceptedOnAttempt.length + codes.length === 0) {
+  const framed = frames.accepted + frames.rejected;
+  if (accepted + failed + framed + acceptedOnAttempt.length + codes.length === 0) {
     return `\n${heading}\n<p class="empty">${e(words.none)}</p>`;
   }
   const decided = accepted + failed;
@@ -58,14 +59,24 @@ ${heading}
 <ul class="totals">
 <li><strong>${share}</strong>${e(words.share)}</li>
 <li><strong>${String(accepted)}</strong>${e(words.accepted)}</li>
-<li><strong>${String(failed)}</strong>${e(words.failed)}</li>
-</ul>
+<li><strong>${String(failed)}</strong>${e(words.failed)}</li>${
+    framed === 0
+      ? ''
+      : `
+<li><strong>${String(frames.accepted)}</strong>${e(words.framesAccepted)}</li>
+<li><strong>${String(frames.rejected)}</strong>${e(words.framesRejected)}</li>`
+  }
+</ul>${
+    attempts === ''
+      ? ''
+      : `
 <div class="scroll"><table>
 <thead><tr><th>${e(words.attempt)}</th><th>${e(words.acceptedOnIt)}</th></tr></thead>
 <tbody>
 ${attempts}
 </tbody>
-</table></div>${
+</table></div>`
+  }${
     rules === ''
       ? ''
       : `

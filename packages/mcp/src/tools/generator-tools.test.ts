@@ -6,7 +6,11 @@ import { join, sep } from 'node:path';
 import { PassThrough } from 'node:stream';
 import {
   DETECTIVE_TRAITS,
+  DetectiveCaseSchema,
   SEED_CRIMES,
+  applyPatch,
+  collectNarrativeTexts,
+  toJsonPointer,
   type DetectiveHero,
   type NewsSeed,
   type Trait,
@@ -688,7 +692,9 @@ describe('scenario_submit', () => {
       });
       const [issue] = result.body.issues as { message: string }[];
       expect(issue?.message).toContain('no earlier case');
-      expect((await loadPending(SAVE_DIR, fs))?.attempts).toBe(1);
+      // With no case yet, the first thing to send is a frame: it is a frame attempt that was lost.
+      expect(result.body.stage).toBe('frame');
+      expect(await loadPending(SAVE_DIR, fs)).toMatchObject({ frameAttempts: 1, attempts: 0 });
     });
 
     it('names the operation that does not apply, applies none of them and keeps the case it was to go on from', async () => {
@@ -806,6 +812,299 @@ describe('scenario_submit', () => {
       expect(record).not.toHaveProperty('lastCase');
 
       expect((await patch(call, fix())).body).toMatchObject({ issues: [{ code: 'patch-failed' }] });
+    });
+  });
+
+  describe('the stages of a case', () => {
+    /** The sample as a generator writes it: the clues in which witnesses tell what they saw are the engine's to make. */
+    const written = (): Record<string, unknown> => {
+      const sample = readCase('goose-of-elmwick.en.json');
+      return {
+        ...sample,
+        clues: (sample.clues as { sightingOf?: unknown }[]).filter((clue) => clue.sightingOf === undefined),
+      };
+    };
+    const slots = () => collectNarrativeTexts(DetectiveCaseSchema.parse(written()));
+    const replace = (path: string, value: string) => ({
+      op: 'replace' as const,
+      path: toJsonPointer(path),
+      value,
+    });
+    /** The frame: the case with every narrative text left blank. */
+    const frameOf = (): Record<string, unknown> => {
+      const result = applyPatch(
+        written(),
+        slots().map(({ path }) => replace(path, '')),
+      );
+      if (!result.ok) throw new Error('The sample could not be blanked.');
+      return result.document as Record<string, unknown>;
+    };
+    /** The texts, as the patch that follows an accepted frame. */
+    const texts = () => slots().map(({ path, text }) => replace(path, text));
+    /** A frame whose first clue that points at someone points at a suspect that does not exist. */
+    const faulty = () => {
+      const frame = frameOf();
+      const clues = frame.clues as { pointsTo: string[] }[];
+      const index = clues.findIndex(({ pointsTo }) => pointsTo.length > 0);
+      const original = [...(clues[index]?.pointsTo ?? [])];
+      const clue = clues[index];
+      if (clue !== undefined) clue.pointsTo = ['ghost'];
+      return { frame, index, original };
+    };
+    const send = (call: (n: string, a: unknown) => Promise<Called>, ops: unknown) =>
+      call('scenario_submit', { patch: ops });
+    const logged = async (fs: SaveFs) =>
+      (await loadGenerationLog(SAVE_DIR, fs)).map(({ stage, attempt, outcome }) => [stage, attempt, outcome]);
+
+    it('accepts a frame without starting a run, and lists the texts still to write', async () => {
+      const { fs, call } = await start(pendingRun());
+
+      const result = await submit(call, frameOf());
+
+      expect(result.body).toMatchObject({
+        accepted: false,
+        stage: 'frame',
+        frameAccepted: true,
+        attemptsLeft: 3,
+      });
+      expect([...(result.body.toWrite as string[])].sort()).toEqual(
+        slots()
+          .map(({ path }) => toJsonPointer(path))
+          .sort(),
+      );
+      expect((await loadTheRun(SAVE_DIR, fs)).ok).toBe(false);
+      expect(await loadPending(SAVE_DIR, fs)).toMatchObject({
+        stage: 'text',
+        frameAttempts: 0,
+        attempts: 0,
+        lastCase: frameOf(),
+      });
+      expect(await logged(fs)).toEqual([['frame', 1, 'framed']]);
+    });
+
+    it('starts the run once the texts are patched into the frame, with the sightings made from the names written', async () => {
+      const { fs, call } = await start(pendingRun());
+      await submit(call, frameOf());
+
+      const result = await send(call, texts());
+
+      expect(result.body).toEqual({ accepted: true });
+      const loaded = await loadTheRun(SAVE_DIR, fs);
+      const sighting = loaded.ok
+        ? loaded.run.case.clues.find(({ id }) => id === 'seen-street-sweeper-postmaster')
+        : undefined;
+      expect(loaded.ok && loaded.run.case.title).toBe(readCase('goose-of-elmwick.en.json').title);
+      expect(sighting?.description).toBe('Mabel Quince saw Wilhelmina Tuck at Elm Street around 02:30.');
+      expect(fs.files.has(pendingFile(SAVE_DIR))).toBe(false);
+      expect(await logged(fs)).toEqual([
+        ['frame', 1, 'framed'],
+        ['text', 1, 'accepted'],
+      ]);
+    });
+
+    it('lists the texts still blank when a patch leaves some, and goes on from the case so far', async () => {
+      const { fs, call } = await start(pendingRun());
+      await submit(call, frameOf());
+
+      const result = await send(call, texts().slice(0, 5));
+
+      expect(result.body).toMatchObject({ accepted: false, stage: 'text', attemptsLeft: 2 });
+      const issues = result.body.issues as { code: string; path: string }[];
+      expect(issues.map(({ code }) => code)).toEqual(Array(8).fill('text-missing'));
+      expect(result.body.moreIssues).toBeGreaterThan(0);
+      expect(result.body.toWrite).toHaveLength(slots().length - 5);
+      const first = texts()[0];
+      expect((await loadPending(SAVE_DIR, fs))?.lastCase).toMatchObject({ title: first?.value });
+
+      expect((await send(call, texts())).body).toEqual({ accepted: true });
+    });
+
+    it('judges a frame on its structure: a fault is a frame attempt, no text is listed, and a patch fixes it', async () => {
+      const { fs, call } = await start(pendingRun());
+      const { frame, index, original } = faulty();
+
+      const first = await submit(call, frame);
+
+      expect(first.body).toMatchObject({ accepted: false, stage: 'frame', attemptsLeft: 2 });
+      expect(first.body).not.toHaveProperty('toWrite');
+      const codes = (first.body.issues as { code: string }[]).map(({ code }) => code);
+      expect(codes.length).toBeGreaterThan(0);
+      expect(new Set(codes)).toEqual(new Set(['unknown-reference']));
+      expect(await loadPending(SAVE_DIR, fs)).toMatchObject({
+        stage: 'frame',
+        frameAttempts: 1,
+        attempts: 0,
+      });
+
+      const second = await send(call, [
+        { op: 'replace', path: `/clues/${String(index)}/pointsTo`, value: original },
+      ]);
+
+      expect(second.body).toMatchObject({ frameAccepted: true, stage: 'frame' });
+      expect(await logged(fs)).toEqual([
+        ['frame', 1, 'rejected'],
+        ['frame', 2, 'framed'],
+      ]);
+    });
+
+    it('reports a fault of the schema in a frame alone, and none of its blank texts', async () => {
+      const { call } = await start(pendingRun());
+      const frame = frameOf();
+      (frame.locations as { id: string }[])[0]!.id = 'Not An Id';
+
+      const result = await submit(call, frame);
+
+      expect(result.body).toMatchObject({ accepted: false, stage: 'frame', attemptsLeft: 2 });
+      expect(result.body.issues).toMatchObject([{ code: 'schema', path: '/locations/0/id' }]);
+      expect(result.body).not.toHaveProperty('toWrite');
+    });
+
+    it('runs out of attempts for frames after three rejected, and the run reports it', async () => {
+      const { fs, call } = await start(pendingRun());
+      const { frame } = faulty();
+
+      expect((await submit(call, frame)).body).toMatchObject({ stage: 'frame', attemptsLeft: 2 });
+      expect((await submit(call, frame)).body).toMatchObject({ stage: 'frame', attemptsLeft: 1 });
+      const third = await submit(call, frame);
+
+      expect(third.body).toMatchObject({ accepted: false, stage: 'frame', attemptsLeft: 0, final: true });
+      expect(third.body.reason).toMatch(/three attempts/);
+      expect(third.body.issues).toBeDefined();
+      expect(await loadPending(SAVE_DIR, fs)).toMatchObject({ failed: true, frameAttempts: 3, attempts: 0 });
+      expect((await loadPending(SAVE_DIR, fs))?.lastCase).toBeUndefined();
+      expect(await logged(fs)).toEqual([
+        ['frame', 1, 'rejected'],
+        ['frame', 2, 'rejected'],
+        ['frame', 3, 'final'],
+      ]);
+      const statistics = JSON.parse(fs.files.get(join(SAVE_DIR, STATS_JSON)) ?? '{}') as {
+        generation: GenerationStats;
+      };
+      expect(statistics.generation).toMatchObject({ failed: 1, frames: { accepted: 0, rejected: 3 } });
+      // Even a good case is too late now.
+      expect((await submit(call, readCase('goose-of-elmwick.en.json'))).body).toMatchObject({ final: true });
+    });
+
+    it('runs out of attempts for texts after three rejected, apart from the frame that cost none', async () => {
+      const { fs, call } = await start(pendingRun());
+      await submit(call, frameOf());
+      const wrongScript = texts().map((op) =>
+        op.path === '/title' ? { ...op, value: 'Все должны всем.' } : op,
+      );
+
+      expect((await send(call, wrongScript)).body).toMatchObject({ stage: 'text', attemptsLeft: 2 });
+      expect((await send(call, wrongScript)).body).toMatchObject({ stage: 'text', attemptsLeft: 1 });
+      const third = await send(call, wrongScript);
+
+      expect(third.body).toMatchObject({ accepted: false, stage: 'text', attemptsLeft: 0, final: true });
+      expect((third.body.issues as { code: string }[]).map(({ code }) => code)).toContain('wrong-script');
+      expect(await loadPending(SAVE_DIR, fs)).toMatchObject({ failed: true, frameAttempts: 0, attempts: 3 });
+      expect(await logged(fs)).toEqual([
+        ['frame', 1, 'framed'],
+        ['text', 1, 'rejected'],
+        ['text', 2, 'rejected'],
+        ['text', 3, 'final'],
+      ]);
+    });
+
+    it('lets a fix of the texts change the frame, for the whole case is judged again by every check', async () => {
+      const { call } = await start(pendingRun());
+      await submit(call, frameOf());
+      const { index } = faulty();
+
+      const result = await send(call, [
+        ...texts(),
+        { op: 'replace', path: `/clues/${String(index)}/pointsTo`, value: ['ghost'] },
+      ]);
+
+      expect(result.body).toMatchObject({ accepted: false, stage: 'text' });
+      expect((result.body.issues as { code: string }[]).map(({ code }) => code)).toContain(
+        'unknown-reference',
+      );
+    });
+
+    it('judges a whole case sent at once as the text stage, and costs no frame attempt', async () => {
+      const { fs, call } = await start(pendingRun());
+
+      const result = await submit(call, { ...written(), crimeType: 'nope' });
+
+      expect(result.body).toMatchObject({ accepted: false, stage: 'text', attemptsLeft: 2 });
+      expect(await loadPending(SAVE_DIR, fs)).toMatchObject({
+        stage: 'frame',
+        frameAttempts: 0,
+        attempts: 1,
+      });
+      expect(await logged(fs)).toEqual([['text', 1, 'rejected']]);
+      expect((await send(call, [replace('crimeType', 'forgery')])).body).toEqual({ accepted: true });
+    });
+
+    it('takes a frame sent again after one was accepted for texts that are missing, not for a new frame', async () => {
+      const { fs, call } = await start(pendingRun());
+      await submit(call, frameOf());
+
+      const result = await submit(call, frameOf());
+
+      expect(result.body).toMatchObject({ accepted: false, stage: 'text', attemptsLeft: 2 });
+      expect((result.body.issues as { code: string }[])[0]?.code).toBe('text-missing');
+      expect(await loadPending(SAVE_DIR, fs)).toMatchObject({ frameAttempts: 0, attempts: 1 });
+    });
+
+    it('counts a patch that does not apply to a frame still being fixed as a frame attempt', async () => {
+      const { fs, call } = await start(pendingRun());
+      await submit(call, faulty().frame);
+
+      const result = await send(call, [{ op: 'remove', path: '/no/such/place' }]);
+
+      expect(result.body).toMatchObject({ accepted: false, stage: 'frame', attemptsLeft: 1 });
+      expect(await loadPending(SAVE_DIR, fs)).toMatchObject({ frameAttempts: 2, attempts: 0 });
+    });
+
+    it('counts a patch that does not apply after the frame was accepted as a text attempt', async () => {
+      const { fs, call } = await start(pendingRun());
+      await submit(call, frameOf());
+
+      const result = await send(call, [{ op: 'remove', path: '/no/such/place' }]);
+
+      expect(result.body).toMatchObject({ accepted: false, stage: 'text', attemptsLeft: 2 });
+      expect(await loadPending(SAVE_DIR, fs)).toMatchObject({ frameAttempts: 0, attempts: 1 });
+    });
+
+    it('reads a record written before the stages as one at the frame stage with no attempt used', async () => {
+      const { fs, call } = await start(pendingRun());
+      const record = JSON.parse(fs.files.get(pendingFile(SAVE_DIR)) ?? '{}') as Record<string, unknown>;
+      delete record.stage;
+      delete record.frameAttempts;
+      fs.files.set(pendingFile(SAVE_DIR), JSON.stringify(record));
+
+      expect((await submit(call, frameOf())).body).toMatchObject({ frameAccepted: true });
+    });
+
+    it('tells the brief how many attempts are left for the frame and for the texts', async () => {
+      const { call } = await start(pendingRun());
+      expect((await call('generator_brief', {})).body).toMatchObject({
+        attemptsLeft: 3,
+        frameAttemptsLeft: 3,
+      });
+      await submit(call, faulty().frame);
+
+      expect((await call('generator_brief', {})).body).toMatchObject({
+        attemptsLeft: 3,
+        frameAttemptsLeft: 2,
+      });
+    });
+
+    it('refuses the brief once the frames are used up', async () => {
+      const { call } = await start(pendingRun({ frameAttempts: 3 }));
+
+      expect(errorCode(await call('generator_brief', {}))).toBe('case-failed');
+    });
+
+    it('is told in the schema rules that a case is written in two stages', async () => {
+      const { call } = await start(pendingRun());
+
+      expect(String((await call('generator_brief', {})).body.schemaRules)).toMatch(
+        /in two stages: first a frame/,
+      );
     });
   });
 

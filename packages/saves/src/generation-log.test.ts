@@ -21,6 +21,7 @@ const entry = (overrides: Partial<GenerationEntry> = {}): GenerationEntry => ({
   locale: 'en',
   theme: 'forgery',
   archetype: 'detective',
+  stage: 'text',
   attempt: 1,
   outcome: 'accepted',
   codes: [],
@@ -100,14 +101,80 @@ describe('the log of the cases the generator submitted', () => {
       'locale',
       'outcome',
       'seed',
+      'stage',
       'theme',
     ]);
+  });
+
+  it('reads an entry written before the stages as one of the text stage', async () => {
+    const fs = memoryFs();
+    const old: Partial<GenerationEntry> = entry({ attempt: 2 });
+    delete old.stage;
+    fs.files.set(generationLogFile(DIR), JSON.stringify({ schemaVersion: 1, entries: [old] }));
+
+    expect(await loadGenerationLog(DIR, fs)).toEqual([entry({ attempt: 2 })]);
   });
 });
 
 describe('the sum of the log', () => {
   it('is empty for an empty log', () => {
-    expect(summarizeGeneration([])).toEqual({ accepted: 0, failed: 0, acceptedOnAttempt: [], codes: [] });
+    expect(summarizeGeneration([])).toEqual({
+      accepted: 0,
+      failed: 0,
+      acceptedOnAttempt: [],
+      frames: { accepted: 0, rejected: 0 },
+      codes: [],
+    });
+  });
+
+  describe('with the stages', () => {
+    const frame = (attempt: number, outcome: 'framed' | 'rejected' | 'final', codes: string[] = []) =>
+      entry({ stage: 'frame', attempt, outcome, codes });
+
+    it('counts the frames accepted and rejected, apart from the cases', () => {
+      const stats = summarizeGeneration([
+        frame(1, 'rejected', ['unreachable-location']),
+        frame(2, 'framed'),
+        entry({ attempt: 1 }),
+        frame(1, 'framed'),
+        frame(1, 'rejected', ['schema']),
+        frame(2, 'rejected', ['schema']),
+        frame(3, 'final', ['schema']),
+      ]);
+
+      expect(stats).toMatchObject({ accepted: 1, failed: 1, frames: { accepted: 2, rejected: 4 } });
+      expect(stats.codes).toEqual([
+        { code: 'schema', count: 3 },
+        { code: 'unreachable-location', count: 1 },
+      ]);
+    });
+
+    it('takes the attempts of the text stage for the attempts of a case: a frame never lengthens the list', () => {
+      const stats = summarizeGeneration([
+        frame(1, 'rejected', ['schema']),
+        frame(2, 'rejected', ['schema']),
+        frame(3, 'framed'),
+        rejected(1, ['real-name']),
+        entry({ attempt: 2 }),
+      ]);
+
+      expect(stats.acceptedOnAttempt).toEqual([0, 1]);
+    });
+
+    it('counts a run left without a case once, at whichever stage it ran out', () => {
+      const stats = summarizeGeneration([
+        frame(1, 'framed'),
+        rejected(1, ['real-name']),
+        rejected(2, ['real-name']),
+        rejected(3, ['real-name'], 'final'),
+        frame(1, 'rejected', ['schema']),
+        frame(2, 'rejected', ['schema']),
+        frame(3, 'final', ['schema']),
+      ]);
+
+      expect(stats.failed).toBe(2);
+      expect(stats.accepted).toBe(0);
+    });
   });
 
   it('tells on which attempt the cases were accepted, and how many runs failed', () => {

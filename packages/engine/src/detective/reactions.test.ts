@@ -120,12 +120,17 @@ describe('what a suspect says about a clue shown to them', () => {
 });
 
 describe('the validator and the reactions', () => {
-  function codes(detectiveCase: DetectiveCase, traits = [] as ReturnType<typeof TraitSchema.parse>[]) {
+  function codes(
+    detectiveCase: DetectiveCase,
+    traits = [] as ReturnType<typeof TraitSchema.parse>[],
+    frame = false,
+  ) {
     const result = validateCase(detectiveCase, {
       hero: buildHero(),
       traits,
       locale: 'en',
       realNames: [],
+      frame,
     });
     return result.isValid ? ([] as CaseIssueCode[]) : result.issues.map(({ code }) => code);
   }
@@ -163,6 +168,23 @@ describe('the validator and the reactions', () => {
 
     expect(codes(detectiveCase, [trait])).toEqual(['reaction-names-trait']);
     expect(codes(detectiveCase)).toEqual([]);
+  });
+
+  it('judges whom a line is for in a frame, and what it says only once it is written', () => {
+    const first = DETECTIVE_TRAITS[0];
+    if (first === undefined) throw new Error('No traits.');
+    const trait = TraitSchema.parse(first);
+    const named = buildReactionCase((built) => {
+      const glove = built.clues.find(({ id }) => id === 'blue-glove');
+      if (glove !== undefined) glove.about = ['baker'];
+      const baker = built.suspects.find(({ id }) => id === 'baker');
+      if (baker?.reactions?.[0] !== undefined) baker.reactions[0].text = `You are a ${trait.id}, detective.`;
+    });
+
+    expect(codes(named, [trait], false)).toEqual(['reaction-names-trait']);
+    expect(codes(named, [trait], true)).toEqual([]);
+    // A line for a clue that is not about the suspect is a fact of the frame.
+    expect(codes(buildReactionCase(), [trait], true)).toEqual(['reaction-not-tied']);
   });
 
   it('checks the words of a line like any text of the case', () => {

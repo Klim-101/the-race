@@ -210,6 +210,7 @@ describe('the path of an issue as a pointer', () => {
     ['suspects[0].lies[1].brokenBy[0]', '/suspects/0/lies/1/brokenBy/0'],
     ['solution.evidenceChains', '/solution/evidenceChains'],
     ['a/b.m~n', '/a~1b/m~0n'],
+    ['/clues/3/description', '/clues/3/description'],
   ])('turns %j into %j', (path, pointer) => {
     expect(toJsonPointer(path)).toBe(pointer);
   });

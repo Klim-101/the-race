@@ -31,8 +31,8 @@ function withPool(events: readonly Record<string, unknown>[]): RawCase {
   return raw;
 }
 
-function issuesOf(raw: RawCase, locale: 'en' | 'ru' = 'en'): CaseIssue[] {
-  const result = validateCase(raw, { hero: buildHero(), traits: [], locale, realNames: [] });
+function issuesOf(raw: RawCase, locale: 'en' | 'ru' = 'en', frame = false): CaseIssue[] {
+  const result = validateCase(raw, { hero: buildHero(), traits: [], locale, realNames: [], frame });
   return result.isValid ? [] : [...result.issues];
 }
 
@@ -228,6 +228,21 @@ describe('the random events of a case', () => {
     const issues = issuesOf(raw);
     expect(issues.map(({ code }) => code)).toEqual(['random-event-violence']);
     expect(issues[0]?.message).toContain('murdered');
+  });
+
+  it('leaves the words of a description to the stage where it is written, and still judges the rest of the event', () => {
+    const violent = withPool([{ ...FLAVOR, description: 'A man is murdered in the alley.' }]);
+    expect(issuesOf(violent, 'en', true)).toEqual([]);
+
+    const closing = withPool([
+      {
+        ...FLAVOR,
+        description: 'A man is murdered in the alley.',
+        effect: { kind: 'location-closes', locationId: 'nowhere' },
+        duration: { kind: 'permanent' },
+      },
+    ]);
+    expect(issuesOf(closing, 'en', true).map(({ code }) => code)).toEqual(['unknown-reference']);
   });
 
   it('holds the descriptions to the same rules of language and names as every other text', () => {

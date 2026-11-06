@@ -15,8 +15,14 @@ export const GENERATION_LOG_FILE = 'generation-log.json';
 /** The newest entries kept; an older one is dropped, so that the file stays small however long the game is played. */
 export const MAX_LOG_ENTRIES = 1000;
 
-/** `accepted`: the run started. `rejected`: another attempt is left. `final`: the last attempt was rejected too. */
-export const GENERATION_OUTCOMES = ['accepted', 'rejected', 'final'] as const;
+/**
+ * `accepted`: the run started. `framed`: a frame was accepted and its texts are still to be written. `rejected`: another
+ * attempt is left in the stage. `final`: the last attempt of the stage was rejected too.
+ */
+export const GENERATION_OUTCOMES = ['accepted', 'framed', 'rejected', 'final'] as const;
+
+/** A case is written in two stages: the frame (every text blank), then the texts. A whole case is of the second. */
+export const GENERATION_STAGES = ['frame', 'text'] as const;
 
 export const GenerationEntrySchema = z.strictObject({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -24,7 +30,9 @@ export const GenerationEntrySchema = z.strictObject({
   locale: LocaleSchema,
   theme: z.string().min(1),
   archetype: z.string().min(1),
-  /** Which submission of this run's case it was, counted from 1. */
+  /** The stage the submission was judged in; a log from before the stages holds whole cases, of the text stage. */
+  stage: z.enum(GENERATION_STAGES).default('text'),
+  /** Which submission of its stage it was for this run's case, counted from 1. */
   attempt: z.int().min(1),
   outcome: z.enum(GENERATION_OUTCOMES),
   /** The distinct codes of the issues found, the most fundamental first; none for an accepted case. */
@@ -44,8 +52,10 @@ export const GenerationStatsSchema = z.strictObject({
   accepted: z.int().min(0),
   /** Runs that used every attempt and got none. */
   failed: z.int().min(0),
-  /** Index 0 is the first attempt: how many cases were accepted on it. As long as the highest attempt seen. */
+  /** Index 0 is the first attempt: how many cases were accepted on it. As long as the highest attempt of the text stage. */
   acceptedOnAttempt: z.array(z.int().min(0)),
+  /** How many frames were accepted, and how many were rejected. */
+  frames: z.strictObject({ accepted: z.int().min(0), rejected: z.int().min(0) }),
   /** How many submissions each code rejected, the most frequent first. */
   codes: z.array(z.strictObject({ code: z.string().min(1), count: z.int().min(1) })),
 });
@@ -83,15 +93,21 @@ export async function appendGenerationEntry(
   );
 }
 
-/** Sums the log up. A run still being generated (only rejections so far) is in neither count. */
+/** Sums the log up. A run still being generated (no case accepted, no stage out of attempts) is in neither count. */
 export function summarizeGeneration(entries: readonly GenerationEntry[]): GenerationStats {
   let accepted = 0;
   let failed = 0;
   let highest = 0;
+  const frames = { accepted: 0, rejected: 0 };
   const onAttempt = new Map<number, number>();
   const rejections = new Map<string, number>();
-  for (const { attempt, outcome, codes } of entries) {
-    highest = Math.max(highest, attempt);
+  for (const { stage, attempt, outcome, codes } of entries) {
+    if (outcome === 'framed') {
+      frames.accepted += 1;
+      continue;
+    }
+    if (stage === 'frame') frames.rejected += 1;
+    else highest = Math.max(highest, attempt);
     if (outcome === 'accepted') {
       accepted += 1;
       onAttempt.set(attempt, (onAttempt.get(attempt) ?? 0) + 1);
@@ -104,6 +120,7 @@ export function summarizeGeneration(entries: readonly GenerationEntry[]): Genera
     accepted,
     failed,
     acceptedOnAttempt: Array.from({ length: highest }, (_, index) => onAttempt.get(index + 1) ?? 0),
+    frames,
     codes: [...rejections]
       .map(([code, count]) => ({ code, count }))
       .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code)),
