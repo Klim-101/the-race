@@ -1,6 +1,6 @@
 # 0009. A scenario is a contract of the archetype, and each archetype has its own case generator
 
-Status: Accepted, 2026-11-06
+Status: Accepted, 2026-11-06. One point amended by [0010](0010-rules-of-a-case-are-taught-by-the-prompt.md): the contract has no place for the rules of the brief.
 
 ## Context
 
