@@ -35082,6 +35082,236 @@ function sortIssues(issues) {
   return issues.toSorted((a, b) => ISSUE_ORDER.indexOf(a.code) - ISSUE_ORDER.indexOf(b.code));
 }
 
+// packages/engine/src/detective/obtainability.ts
+var D20_MAX = 20;
+function canEverPass(hero, traits) {
+  return (check2, situations) => hero.skills[check2.skill] + collectModifier({ traits }, check2.skill, situations) + D20_MAX >= check2.difficulty;
+}
+function closedSources(traits) {
+  return new Set(
+    traits.flatMap(
+      ({ effects }) => effects.flatMap((effect) => effect.kind === "lock-out" ? [effect.source] : [])
+    )
+  );
+}
+function canPassWithTrainedSkill(hero, traits) {
+  const isPossible = canEverPass(hero, traits);
+  return (check2, situations) => hero.skills[check2.skill] >= 1 && isPossible(check2, situations);
+}
+function computeObtainable(detectiveCase, canPass, closed = /* @__PURE__ */ new Set()) {
+  const neighborsById = buildNeighbors(detectiveCase.locations);
+  const locationIds = /* @__PURE__ */ new Set([detectiveCase.startLocationId]);
+  const clueIds = /* @__PURE__ */ new Set();
+  const leadIds = /* @__PURE__ */ new Set();
+  const fallenLieIds = /* @__PURE__ */ new Set();
+  let hasChanged = true;
+  while (hasChanged) {
+    hasChanged = false;
+    for (const location of detectiveCase.locations) {
+      if (locationIds.has(location.id)) continue;
+      const isAdjacent = [...neighborsById.get(location.id) ?? []].some((id) => locationIds.has(id));
+      const isKnown = location.requiresLead === void 0 || leadIds.has(location.requiresLead);
+      if (isAdjacent && isKnown && canEnter(location.access, (check2) => canPass(check2, location.situations), clueIds)) {
+        locationIds.add(location.id);
+        hasChanged = true;
+      }
+    }
+    for (const location of detectiveCase.locations) {
+      if (!locationIds.has(location.id)) continue;
+      for (const clue of detectiveCase.clues) {
+        if (clue.locationId !== location.id || clueIds.has(clue.id)) continue;
+        if (clue.source !== null && closed.has(clue.source)) continue;
+        const situations = [...location.situations, ...clue.situations];
+        if (clue.discovery === null || canPass(clue.discovery, situations)) {
+          clueIds.add(clue.id);
+          hasChanged = true;
+        }
+      }
+    }
+    for (const suspect of detectiveCase.suspects) {
+      if (suspect.locationId !== void 0 && !locationIds.has(suspect.locationId)) continue;
+      for (const lie of suspect.lies) {
+        const told = lie.after === void 0 || fallenLieIds.has(lie.after);
+        if (fallenLieIds.has(lie.id) || !told || !canBreakLie(detectiveCase, lie, clueIds)) continue;
+        fallenLieIds.add(lie.id);
+        hasChanged = true;
+        if (lie.gives !== void 0 && !clueIds.has(lie.gives)) clueIds.add(lie.gives);
+      }
+    }
+    for (const lead of detectiveCase.leads ?? []) {
+      if (!leadIds.has(lead.id) && canEarn(detectiveCase, lead.earnedBy, locationIds, clueIds)) {
+        leadIds.add(lead.id);
+        hasChanged = true;
+      }
+    }
+  }
+  return { locationIds, clueIds, leadIds };
+}
+function canEarn(detectiveCase, earnedBy, locationIds, clueIds) {
+  const reachable = (suspectId) => {
+    const place = detectiveCase.suspects.find(({ id }) => id === suspectId)?.locationId;
+    return place === void 0 || locationIds.has(place);
+  };
+  switch (earnedBy.kind) {
+    case "clue":
+      return clueIds.has(earnedBy.clueId);
+    case "talk":
+      return reachable(earnedBy.suspectId);
+    case "lie":
+      return detectiveCase.suspects.some(
+        ({ id, lies }) => reachable(id) && lies.some((lie) => lie.id === earnedBy.lieId && lie.brokenBy.some((clueId) => clueIds.has(clueId)))
+      );
+    case "locals":
+      return locationIds.has(earnedBy.locationId);
+    case "study":
+      return earnedBy.tool === void 0 && clueIds.has(earnedBy.clueId);
+    case "deduction":
+      return detectiveCase.deductions.some(
+        ({ id, clueIds: needed }) => id === earnedBy.deductionId && needed.every((clueId) => clueIds.has(clueId))
+      );
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever2(earnedBy);
+  }
+}
+function canEnter(access, canPass, clueIds) {
+  switch (access.kind) {
+    case "open":
+      return true;
+    case "skill":
+      return canPass(access.check);
+    case "clue":
+      return clueIds.has(access.clueId);
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever2(access);
+  }
+}
+function canBreakLie(detectiveCase, lie, clueIds) {
+  return lie.brokenBy.some((clueId) => clueIds.has(clueId)) || (lie.brokenByInsights ?? []).some(
+    (deductionId) => detectiveCase.deductions.some(
+      ({ id, clueIds: needed }) => id === deductionId && needed.every((clueId) => clueIds.has(clueId))
+    )
+  );
+}
+function buildNeighbors(locations) {
+  const neighborsById = /* @__PURE__ */ new Map();
+  const link = (fromId, toId) => {
+    const neighbors = neighborsById.get(fromId) ?? /* @__PURE__ */ new Set();
+    neighbors.add(toId);
+    neighborsById.set(fromId, neighbors);
+  };
+  for (const location of locations) {
+    for (const connectedId of location.connections) {
+      link(location.id, connectedId);
+      link(connectedId, location.id);
+    }
+  }
+  return neighborsById;
+}
+
+// packages/engine/src/detective/checks/map-shape.ts
+var GENERATED_MAP = { minLocations: 8, maxLocations: 12, minOutdoor: 3, minBuildings: 2 };
+function buildings(detectiveCase) {
+  const indoor = new Set(
+    detectiveCase.locations.filter(({ exposure }) => exposure === "indoor").map(({ id }) => id)
+  );
+  const neighbors = buildNeighbors(detectiveCase.locations);
+  const seen = /* @__PURE__ */ new Set();
+  let groups = 0;
+  for (const start of indoor) {
+    if (seen.has(start)) continue;
+    groups += 1;
+    const queue4 = [start];
+    seen.add(start);
+    for (const id of queue4) {
+      for (const next of neighbors.get(id) ?? []) {
+        if (indoor.has(next) && !seen.has(next)) {
+          seen.add(next);
+          queue4.push(next);
+        }
+      }
+    }
+  }
+  return groups;
+}
+function checkMapShape(detectiveCase, rules) {
+  const count = detectiveCase.locations.length;
+  const outdoor = detectiveCase.locations.filter(({ exposure }) => exposure === "outdoor").length;
+  const issues = [];
+  if (count < rules.minLocations) {
+    issues.push({
+      code: "map-too-small",
+      path: "locations",
+      message: `The map has ${String(count)} places; it needs at least ${String(rules.minLocations)}: a town with streets between its buildings, not a floor plan.`
+    });
+  }
+  if (count > rules.maxLocations) {
+    issues.push({
+      code: "map-too-large",
+      path: "locations",
+      message: `The map has ${String(count)} places; it may have at most ${String(rules.maxLocations)}.`
+    });
+  }
+  if (outdoor < rules.minOutdoor) {
+    issues.push({
+      code: "too-few-outdoor-places",
+      path: "locations",
+      message: `Only ${String(outdoor)} places are out of doors (exposure "outdoor"); at least ${String(rules.minOutdoor)} must be: a street, a square or a yard that joins the buildings.`
+    });
+  }
+  if (buildings(detectiveCase) < rules.minBuildings) {
+    issues.push({
+      code: "single-building",
+      path: "locations",
+      message: `The indoor places make fewer than ${String(rules.minBuildings)} separate buildings. Rooms of one building connect to each other; two buildings must connect only through an outdoor place, never directly.`
+    });
+  }
+  return issues;
+}
+
+// packages/engine/src/detective/checks/run-length.ts
+var GENERATED_DAYS = { min: 3, max: 10 };
+function checkRunLength(detectiveCase, rules) {
+  const { days } = detectiveCase.clock;
+  if (days >= rules.min && days <= rules.max) return [];
+  return [
+    {
+      code: "run-length-out-of-range",
+      path: "clock.days",
+      message: `The case gives ${String(days)} days; a run lasts from ${String(rules.min)} to ${String(rules.max)}, so set "clock.days" in that range.`
+    }
+  ];
+}
+
+// packages/engine/src/detective/case-rules.ts
+var LEGACY_RULES = Object.freeze({
+  parts: false,
+  ties: false,
+  admissions: false,
+  linkable: false,
+  clearing: false,
+  claims: false,
+  publicLife: false,
+  observations: false,
+  minRandomEvents: 0,
+  map: null,
+  days: null
+});
+var GENERATED_RULES = Object.freeze({
+  parts: true,
+  ties: true,
+  admissions: true,
+  linkable: true,
+  clearing: true,
+  claims: true,
+  publicLife: true,
+  observations: true,
+  minRandomEvents: MIN_RANDOM_EVENTS,
+  map: Object.freeze({ ...GENERATED_MAP }),
+  days: Object.freeze({ ...GENERATED_DAYS })
+});
+
 // packages/engine/src/detective/weather.ts
 var ROAD_RULESET_VERSION = 8;
 var WEATHER_MINUTES = {
@@ -35636,134 +35866,6 @@ function takeTool(run, toolId, dropId) {
     ...rules?.wear === "used-up" ? { charges: rules.charges } : {}
   };
   return { ok: true, run: { ...run, kit: [...kept, taken] } };
-}
-
-// packages/engine/src/detective/obtainability.ts
-var D20_MAX = 20;
-function canEverPass(hero, traits) {
-  return (check2, situations) => hero.skills[check2.skill] + collectModifier({ traits }, check2.skill, situations) + D20_MAX >= check2.difficulty;
-}
-function closedSources(traits) {
-  return new Set(
-    traits.flatMap(
-      ({ effects }) => effects.flatMap((effect) => effect.kind === "lock-out" ? [effect.source] : [])
-    )
-  );
-}
-function canPassWithTrainedSkill(hero, traits) {
-  const isPossible = canEverPass(hero, traits);
-  return (check2, situations) => hero.skills[check2.skill] >= 1 && isPossible(check2, situations);
-}
-function computeObtainable(detectiveCase, canPass, closed = /* @__PURE__ */ new Set()) {
-  const neighborsById = buildNeighbors(detectiveCase.locations);
-  const locationIds = /* @__PURE__ */ new Set([detectiveCase.startLocationId]);
-  const clueIds = /* @__PURE__ */ new Set();
-  const leadIds = /* @__PURE__ */ new Set();
-  const fallenLieIds = /* @__PURE__ */ new Set();
-  let hasChanged = true;
-  while (hasChanged) {
-    hasChanged = false;
-    for (const location of detectiveCase.locations) {
-      if (locationIds.has(location.id)) continue;
-      const isAdjacent = [...neighborsById.get(location.id) ?? []].some((id) => locationIds.has(id));
-      const isKnown = location.requiresLead === void 0 || leadIds.has(location.requiresLead);
-      if (isAdjacent && isKnown && canEnter(location.access, (check2) => canPass(check2, location.situations), clueIds)) {
-        locationIds.add(location.id);
-        hasChanged = true;
-      }
-    }
-    for (const location of detectiveCase.locations) {
-      if (!locationIds.has(location.id)) continue;
-      for (const clue of detectiveCase.clues) {
-        if (clue.locationId !== location.id || clueIds.has(clue.id)) continue;
-        if (clue.source !== null && closed.has(clue.source)) continue;
-        const situations = [...location.situations, ...clue.situations];
-        if (clue.discovery === null || canPass(clue.discovery, situations)) {
-          clueIds.add(clue.id);
-          hasChanged = true;
-        }
-      }
-    }
-    for (const suspect of detectiveCase.suspects) {
-      if (suspect.locationId !== void 0 && !locationIds.has(suspect.locationId)) continue;
-      for (const lie of suspect.lies) {
-        const told = lie.after === void 0 || fallenLieIds.has(lie.after);
-        if (fallenLieIds.has(lie.id) || !told || !canBreakLie(detectiveCase, lie, clueIds)) continue;
-        fallenLieIds.add(lie.id);
-        hasChanged = true;
-        if (lie.gives !== void 0 && !clueIds.has(lie.gives)) clueIds.add(lie.gives);
-      }
-    }
-    for (const lead of detectiveCase.leads ?? []) {
-      if (!leadIds.has(lead.id) && canEarn(detectiveCase, lead.earnedBy, locationIds, clueIds)) {
-        leadIds.add(lead.id);
-        hasChanged = true;
-      }
-    }
-  }
-  return { locationIds, clueIds, leadIds };
-}
-function canEarn(detectiveCase, earnedBy, locationIds, clueIds) {
-  const reachable = (suspectId) => {
-    const place = detectiveCase.suspects.find(({ id }) => id === suspectId)?.locationId;
-    return place === void 0 || locationIds.has(place);
-  };
-  switch (earnedBy.kind) {
-    case "clue":
-      return clueIds.has(earnedBy.clueId);
-    case "talk":
-      return reachable(earnedBy.suspectId);
-    case "lie":
-      return detectiveCase.suspects.some(
-        ({ id, lies }) => reachable(id) && lies.some((lie) => lie.id === earnedBy.lieId && lie.brokenBy.some((clueId) => clueIds.has(clueId)))
-      );
-    case "locals":
-      return locationIds.has(earnedBy.locationId);
-    case "study":
-      return earnedBy.tool === void 0 && clueIds.has(earnedBy.clueId);
-    case "deduction":
-      return detectiveCase.deductions.some(
-        ({ id, clueIds: needed }) => id === earnedBy.deductionId && needed.every((clueId) => clueIds.has(clueId))
-      );
-    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
-    default:
-      return assertNever2(earnedBy);
-  }
-}
-function canEnter(access, canPass, clueIds) {
-  switch (access.kind) {
-    case "open":
-      return true;
-    case "skill":
-      return canPass(access.check);
-    case "clue":
-      return clueIds.has(access.clueId);
-    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
-    default:
-      return assertNever2(access);
-  }
-}
-function canBreakLie(detectiveCase, lie, clueIds) {
-  return lie.brokenBy.some((clueId) => clueIds.has(clueId)) || (lie.brokenByInsights ?? []).some(
-    (deductionId) => detectiveCase.deductions.some(
-      ({ id, clueIds: needed }) => id === deductionId && needed.every((clueId) => clueIds.has(clueId))
-    )
-  );
-}
-function buildNeighbors(locations) {
-  const neighborsById = /* @__PURE__ */ new Map();
-  const link = (fromId, toId) => {
-    const neighbors = neighborsById.get(fromId) ?? /* @__PURE__ */ new Set();
-    neighbors.add(toId);
-    neighborsById.set(fromId, neighbors);
-  };
-  for (const location of locations) {
-    for (const connectedId of location.connections) {
-      link(location.id, connectedId);
-      link(connectedId, location.id);
-    }
-  }
-  return neighborsById;
 }
 
 // packages/engine/src/detective/solvability.ts
@@ -38900,20 +39002,6 @@ function checkClearing(detectiveCase, obtainable, required2) {
   return issues;
 }
 
-// packages/engine/src/detective/checks/run-length.ts
-var GENERATED_DAYS = { min: 3, max: 10 };
-function checkRunLength(detectiveCase, rules) {
-  const { days } = detectiveCase.clock;
-  if (days >= rules.min && days <= rules.max) return [];
-  return [
-    {
-      code: "run-length-out-of-range",
-      path: "clock.days",
-      message: `The case gives ${String(days)} days; a run lasts from ${String(rules.min)} to ${String(rules.max)}, so set "clock.days" in that range.`
-    }
-  ];
-}
-
 // packages/engine/src/detective/checks/links.ts
 function checkLinkable(detectiveCase) {
   return detectiveCase.solution.evidenceChains.flatMap((chain, index) => {
@@ -39051,66 +39139,6 @@ function checkWitnesses(detectiveCase) {
       }
     ] : []
   );
-}
-
-// packages/engine/src/detective/checks/map-shape.ts
-var GENERATED_MAP = { minLocations: 8, maxLocations: 12, minOutdoor: 3, minBuildings: 2 };
-function buildings(detectiveCase) {
-  const indoor = new Set(
-    detectiveCase.locations.filter(({ exposure }) => exposure === "indoor").map(({ id }) => id)
-  );
-  const neighbors = buildNeighbors(detectiveCase.locations);
-  const seen = /* @__PURE__ */ new Set();
-  let groups = 0;
-  for (const start of indoor) {
-    if (seen.has(start)) continue;
-    groups += 1;
-    const queue4 = [start];
-    seen.add(start);
-    for (const id of queue4) {
-      for (const next of neighbors.get(id) ?? []) {
-        if (indoor.has(next) && !seen.has(next)) {
-          seen.add(next);
-          queue4.push(next);
-        }
-      }
-    }
-  }
-  return groups;
-}
-function checkMapShape(detectiveCase, rules) {
-  const count = detectiveCase.locations.length;
-  const outdoor = detectiveCase.locations.filter(({ exposure }) => exposure === "outdoor").length;
-  const issues = [];
-  if (count < rules.minLocations) {
-    issues.push({
-      code: "map-too-small",
-      path: "locations",
-      message: `The map has ${String(count)} places; it needs at least ${String(rules.minLocations)}: a town with streets between its buildings, not a floor plan.`
-    });
-  }
-  if (count > rules.maxLocations) {
-    issues.push({
-      code: "map-too-large",
-      path: "locations",
-      message: `The map has ${String(count)} places; it may have at most ${String(rules.maxLocations)}.`
-    });
-  }
-  if (outdoor < rules.minOutdoor) {
-    issues.push({
-      code: "too-few-outdoor-places",
-      path: "locations",
-      message: `Only ${String(outdoor)} places are out of doors (exposure "outdoor"); at least ${String(rules.minOutdoor)} must be: a street, a square or a yard that joins the buildings.`
-    });
-  }
-  if (buildings(detectiveCase) < rules.minBuildings) {
-    issues.push({
-      code: "single-building",
-      path: "locations",
-      message: `The indoor places make fewer than ${String(rules.minBuildings)} separate buildings. Rooms of one building connect to each other; two buildings must connect only through an outdoor place, never directly.`
-    });
-  }
-  return issues;
 }
 
 // packages/engine/src/detective/checks/leads.ts
@@ -40099,6 +40127,7 @@ function validateCase(input2, context2) {
   if (!parsed.success) return { isValid: false, issues: schemaIssues(parsed.error.issues) };
   const detectiveCase = parsed.data;
   const content = context2.frame !== true;
+  const rules = context2.rules ?? LEGACY_RULES;
   const referenceIssues = checkReferences(detectiveCase);
   if (referenceIssues.length > 0) return { isValid: false, issues: referenceIssues };
   const obtainable = computeObtainable(
@@ -40110,22 +40139,16 @@ function validateCase(input2, context2) {
     ...checkReachability(detectiveCase, obtainable),
     ...checkSuspectReachability(detectiveCase, obtainable),
     ...checkLeads(detectiveCase, obtainable),
-    ...checkParts(detectiveCase, obtainable, context2.requireParts ?? false),
+    ...checkParts(detectiveCase, obtainable, rules.parts),
     ...checkSolution(detectiveCase, context2.hero, context2.traits, obtainable),
     ...checkSolveChance(detectiveCase, context2.hero, context2.traits, obtainable),
-    ...checkLies(
-      detectiveCase,
-      obtainable,
-      context2.requireTies ?? false,
-      context2.requireAdmissions ?? false,
-      context2.requireClaims ?? false
-    ),
+    ...checkLies(detectiveCase, obtainable, rules.ties, rules.admissions, rules.claims),
     ...checkTimeline(detectiveCase),
     ...checkWitnesses(detectiveCase),
-    ...context2.requirePublicLife ? checkPublicPlaces(detectiveCase) : [],
-    ...context2.requireObservations && content ? checkObservations(detectiveCase) : [],
-    ...context2.requireLinkable ? checkLinkable(detectiveCase) : [],
-    ...checkClearing(detectiveCase, obtainable, context2.requireClearing ?? false),
+    ...rules.publicLife ? checkPublicPlaces(detectiveCase) : [],
+    ...rules.observations && content ? checkObservations(detectiveCase) : [],
+    ...rules.linkable ? checkLinkable(detectiveCase) : [],
+    ...checkClearing(detectiveCase, obtainable, rules.clearing),
     ...checkReactions(detectiveCase, context2.traits, content),
     ...checkWorldEvents(detectiveCase, context2.hero, context2.traits),
     ...checkRandomEvents(
@@ -40133,11 +40156,11 @@ function validateCase(input2, context2) {
       context2.hero,
       context2.traits,
       context2.locale,
-      context2.minRandomEvents ?? 0,
+      rules.minRandomEvents,
       content
     ),
-    ...context2.map === void 0 ? [] : checkMapShape(detectiveCase, context2.map),
-    ...context2.days === void 0 ? [] : checkRunLength(detectiveCase, context2.days),
+    ...rules.map === null ? [] : checkMapShape(detectiveCase, rules.map),
+    ...rules.days === null ? [] : checkRunLength(detectiveCase, rules.days),
     ...checkFleeDeadline(detectiveCase, context2.hero, context2.traits),
     ...checkRedHerrings(detectiveCase),
     ...checkTexts(detectiveCase, context2.locale, context2.realNames, content)
@@ -56204,17 +56227,7 @@ var scenarioSubmit = defineTool({
       hero,
       traits: pending.traits,
       locale: pending.locale,
-      minRandomEvents: MIN_RANDOM_EVENTS,
-      map: GENERATED_MAP,
-      days: GENERATED_DAYS,
-      requireParts: true,
-      requireTies: true,
-      requireAdmissions: true,
-      requireLinkable: true,
-      requireClearing: true,
-      requireClaims: true,
-      requirePublicLife: true,
-      requireObservations: true,
+      rules: GENERATED_RULES,
       // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
       realNames: [
         .../* @__PURE__ */ new Set([...worldRealNames(world), ...(await seedsOfRun(context2))?.realNames ?? []])

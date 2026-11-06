@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../../test/fixtures/cheese-case.js';
 import { DetectiveCaseSchema, type DetectiveCase, type Exposure } from '../case-schema.js';
 import { validateCase } from '../case-validator.js';
+import { LEGACY_RULES } from '../case-rules.js';
 import { GENERATED_MAP, checkMapShape } from './map-shape.js';
 
 /**
@@ -105,7 +106,7 @@ describe('checkMapShape', () => {
     const base = { hero: buildHero(), traits: [], locale: 'en', realNames: [] } as const;
 
     expect(validateCase(detectiveCase, base)).toMatchObject({ isValid: true });
-    const strict = validateCase(detectiveCase, { ...base, map: GENERATED_MAP });
+    const strict = validateCase(detectiveCase, { ...base, rules: { ...LEGACY_RULES, map: GENERATED_MAP } });
     expect(strict.isValid).toBe(false);
     expect(!strict.isValid && strict.issues.map(({ code }) => code)).toContain('map-too-small');
   });

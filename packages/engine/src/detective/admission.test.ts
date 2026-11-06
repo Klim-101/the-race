@@ -6,6 +6,7 @@ import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { createRng, D20_SIDES, type Rng } from '../dice.js';
 import { resolveIntent, type Resolved } from './actions.js';
 import { validateCase } from './case-validator.js';
+import { LEGACY_RULES } from './case-rules.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import type { CaseIssueCode } from './case-issue.js';
 import { computeObtainable, canEverPass } from './obtainability.js';
@@ -166,7 +167,7 @@ describe('the validator and a lie that follows another', () => {
       traits: [],
       locale: 'en',
       realNames: [],
-      requireAdmissions,
+      rules: { ...LEGACY_RULES, admissions: requireAdmissions },
     });
     return result.isValid ? [] : result.issues.map(({ code }) => code);
   }

@@ -6,6 +6,7 @@ import { buildCheeseCase, buildHero } from '../../../test/fixtures/cheese-case.j
 import type { CaseIssueCode } from '../case-issue.js';
 import { DetectiveCaseSchema, type DetectiveCase } from '../case-schema.js';
 import { validateCase } from '../case-validator.js';
+import { LEGACY_RULES } from '../case-rules.js';
 import { checkPublicPlaces } from './public-places.js';
 
 /** The cheese case with every place indoors but the market square, which has nothing in it. */
@@ -24,7 +25,7 @@ function codes(detectiveCase: DetectiveCase, requirePublicLife = true): CaseIssu
     traits: [],
     locale: 'en',
     realNames: [],
-    requirePublicLife,
+    rules: { ...LEGACY_RULES, publicLife: requirePublicLife },
   });
   return result.isValid ? [] : result.issues.map(({ code }) => code);
 }

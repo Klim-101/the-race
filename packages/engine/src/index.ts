@@ -26,6 +26,7 @@ export * from './detective/archetype.js';
 export * from './detective/traits.js';
 export * from './detective/case-schema.js';
 export * from './detective/case-issue.js';
+export * from './detective/case-rules.js';
 export * from './detective/frame.js';
 export { collectNarrativeTexts, type NarrativeText } from './detective/checks/texts.js';
 export * from './detective/condition.js';

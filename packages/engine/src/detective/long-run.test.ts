@@ -7,6 +7,7 @@ import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { createRng, restoreRng } from '../dice.js';
 import { resolveIntent } from './actions.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
+import { LEGACY_RULES } from './case-rules.js';
 import { validateCase } from './case-validator.js';
 import { GENERATED_DAYS } from './checks/run-length.js';
 import { DETECTIVE_NERVES, DETECTIVE_SLEEP_DEBT } from './archetype.js';
@@ -42,7 +43,7 @@ describe('the days a case may give', () => {
       traits: [],
       locale: 'en',
       realNames: [],
-      ...(asked ? { days: GENERATED_DAYS } : {}),
+      ...(asked ? { rules: { ...LEGACY_RULES, days: GENERATED_DAYS } } : {}),
     });
     return result.isValid ? [] : result.issues.map(({ code }) => code);
   };
@@ -61,7 +62,7 @@ describe('the days a case may give', () => {
       traits: [],
       locale: 'en',
       realNames: [],
-      days: GENERATED_DAYS,
+      rules: { ...LEGACY_RULES, days: GENERATED_DAYS },
     });
     expect(result).toMatchObject({
       isValid: false,

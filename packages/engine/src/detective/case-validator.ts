@@ -6,17 +6,18 @@ import type { DetectiveHero } from './archetype.js';
 import type { Locale } from '../locale.js';
 import type { Trait } from '../traits.js';
 import type { CaseIssue } from './case-issue.js';
+import { LEGACY_RULES, type CaseRules } from './case-rules.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { checkFleeDeadline } from './checks/flee-deadline.js';
 import { checkLies } from './checks/lies.js';
 import { checkClearing } from './checks/clearing.js';
-import { checkRunLength, type DayRules } from './checks/run-length.js';
+import { checkRunLength } from './checks/run-length.js';
 import { checkLinkable } from './checks/links.js';
 import { checkReactions } from './checks/reactions.js';
 import { checkObservations } from './checks/observations.js';
 import { checkPublicPlaces } from './checks/public-places.js';
 import { checkWitnesses } from './checks/witnesses.js';
-import { checkMapShape, type MapRules } from './checks/map-shape.js';
+import { checkMapShape } from './checks/map-shape.js';
 import { checkLeads } from './checks/leads.js';
 import { checkParts } from './checks/parts.js';
 import { checkRandomEvents } from './checks/random-events.js';
@@ -43,39 +44,10 @@ export interface CaseValidationContext {
   /** Names taken from the source headlines; none of them may survive into the mirror world. */
   readonly realNames: readonly string[];
   /**
-   * The fewest random events the pool must hold; a generated case must bring `MIN_RANDOM_EVENTS`. Left out, a
-   * case without a pool is accepted, as the cases of before the pool were.
+   * The rules the case is judged by beyond the checks every case passes (see `CaseRules`): `GENERATED_RULES` for a case
+   * the generator wrote. Left out, the rules of the cases from before the generator's, `LEGACY_RULES`.
    */
-  readonly minRandomEvents?: number;
-  /**
-   * The shape of the map the case must have (`GENERATED_MAP` for a generated one): enough places, streets or
-   * squares between the buildings, and more than one building. Left out, any map is accepted.
-   */
-  readonly map?: MapRules;
-  /**
-   * How many days the case may give the hero (`GENERATED_DAYS` for a generated one). Left out, any length the schema
-   * allows is accepted.
-   */
-  readonly days?: DayRules;
-  /**
-   * Whether every place that holds a clue must be split into parts (a generated case must). Left out, a place
-   * may stay whole, as the places of the cases before the parts did.
-   */
-  readonly requireParts?: boolean;
-  /** Whether a clue that breaks a lie must be about the one who told it (a generated case must). */
-  readonly requireTies?: boolean;
-  /** Whether every lie must say what the suspect admits once it is caught (a generated case must). */
-  readonly requireAdmissions?: boolean;
-  /** Whether every evidence chain of two clues or more must have a conclusion that takes some two of them (a generated case must). */
-  readonly requireLinkable?: boolean;
-  /** Whether every innocent suspect must be clearable, and every red herring explained (a generated case must). */
-  readonly requireClearing?: boolean;
-  /** Whether every suspect who lies must also have a true claim to say beside it (a generated case must). */
-  readonly requireClaims?: boolean;
-  /** Whether every public place must have something in it: a part, a witness or a rumour (a generated case must). */
-  readonly requirePublicLife?: boolean;
-  /** Whether a clue may only describe what is seen, never what it means (a generated case must). */
-  readonly requireObservations?: boolean;
+  readonly rules?: CaseRules;
   /**
    * Whether the case is a frame: its narrative texts are not written yet (see `readCaseOrFrame`), so only what does
    * not depend on what they say is judged. Left out, every check runs.
@@ -106,6 +78,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
   const detectiveCase = parsed.data;
   // What a text says is judged once it is written.
   const content = context.frame !== true;
+  const rules = context.rules ?? LEGACY_RULES;
 
   // The graph checks below look entities up by id, so they only make sense once every id resolves.
   const referenceIssues = checkReferences(detectiveCase);
@@ -120,22 +93,16 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...checkReachability(detectiveCase, obtainable),
     ...checkSuspectReachability(detectiveCase, obtainable),
     ...checkLeads(detectiveCase, obtainable),
-    ...checkParts(detectiveCase, obtainable, context.requireParts ?? false),
+    ...checkParts(detectiveCase, obtainable, rules.parts),
     ...checkSolution(detectiveCase, context.hero, context.traits, obtainable),
     ...checkSolveChance(detectiveCase, context.hero, context.traits, obtainable),
-    ...checkLies(
-      detectiveCase,
-      obtainable,
-      context.requireTies ?? false,
-      context.requireAdmissions ?? false,
-      context.requireClaims ?? false,
-    ),
+    ...checkLies(detectiveCase, obtainable, rules.ties, rules.admissions, rules.claims),
     ...checkTimeline(detectiveCase),
     ...checkWitnesses(detectiveCase),
-    ...(context.requirePublicLife ? checkPublicPlaces(detectiveCase) : []),
-    ...(context.requireObservations && content ? checkObservations(detectiveCase) : []),
-    ...(context.requireLinkable ? checkLinkable(detectiveCase) : []),
-    ...checkClearing(detectiveCase, obtainable, context.requireClearing ?? false),
+    ...(rules.publicLife ? checkPublicPlaces(detectiveCase) : []),
+    ...(rules.observations && content ? checkObservations(detectiveCase) : []),
+    ...(rules.linkable ? checkLinkable(detectiveCase) : []),
+    ...checkClearing(detectiveCase, obtainable, rules.clearing),
     ...checkReactions(detectiveCase, context.traits, content),
     ...checkWorldEvents(detectiveCase, context.hero, context.traits),
     ...checkRandomEvents(
@@ -143,11 +110,11 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
       context.hero,
       context.traits,
       context.locale,
-      context.minRandomEvents ?? 0,
+      rules.minRandomEvents,
       content,
     ),
-    ...(context.map === undefined ? [] : checkMapShape(detectiveCase, context.map)),
-    ...(context.days === undefined ? [] : checkRunLength(detectiveCase, context.days)),
+    ...(rules.map === null ? [] : checkMapShape(detectiveCase, rules.map)),
+    ...(rules.days === null ? [] : checkRunLength(detectiveCase, rules.days)),
     ...checkFleeDeadline(detectiveCase, context.hero, context.traits),
     ...checkRedHerrings(detectiveCase),
     ...checkTexts(detectiveCase, context.locale, context.realNames, content),
