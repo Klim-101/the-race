@@ -5,6 +5,16 @@ import { readFileSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { PassThrough } from 'node:stream';
 import {
+  DETECTIVE_SCENARIO,
+  EntityIdSchema,
+  LocaleSchema,
+  SHARED_ISSUE_CODES,
+  checkLocale,
+  checkNarrativeTexts,
+  readFrame,
+  type AnyScenarioKind,
+  type ScenarioContext,
+  type StartRunInput,
   DETECTIVE_TRAITS,
   DetectiveCaseSchema,
   SEED_CRIMES,
@@ -26,16 +36,27 @@ import {
   type SaveFs,
 } from '@the-race/saves';
 import { afterEach, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { TEST_PROFILE_DIR, offlineNews } from '../../test/fake-context.js';
 import { loadTheRun, newestRunId } from '../../test/game.js';
 import type { ServerContext } from '../context.js';
-import { PendingRunSchema, loadPending, pendingFile, savePending, type PendingRun } from '../pending-run.js';
+import {
+  PendingRunSchema,
+  loadPending,
+  pendingFile,
+  savePending,
+  themeOfSeed,
+  type PendingRun,
+} from '../pending-run.js';
+import type { ScenarioSet, ServerScenario } from '../scenario-set.js';
 import { serveStdio } from '../stdio.js';
 import { STATS_JSON } from '../stats.js';
 import { TOOLS } from './index.js';
 import { codesOf, compactIssues } from './scenario-submit.js';
 
 const SAVE_DIR = 'memory-save-dir';
+/** The order the detective's issues are shown in; the tools take it from the scenario of the hero's archetype. */
+const ORDER = DETECTIVE_SCENARIO.issueOrder;
 const CASES = new URL('../../../../content/cases/', import.meta.url);
 const readCase = (name: string): Record<string, unknown> =>
   JSON.parse(readFileSync(new URL(name, CASES), 'utf8')) as Record<string, unknown>;
@@ -198,6 +219,23 @@ describe('generator_brief', () => {
     expect(brief.body.seedIsUntrusted).toMatch(/untrusted/);
     for (const trait of DETECTIVE_TRAITS) expect(brief.text).not.toContain(trait.id);
     expect(brief.text).not.toMatch(/trait/i);
+  });
+
+  it('takes a theme of the detective from the seed of the run when the run has none and the news gave no seed', async () => {
+    const pending: PendingRun = { ...pendingRun({ seed: 'seed-7' }) };
+    delete pending.theme;
+    const { call } = await start(pending);
+
+    const brief = await call('generator_brief', {});
+
+    expect(brief.body.theme).toBe(themeOfSeed('seed-7', DETECTIVE_SCENARIO.themes));
+    expect(DETECTIVE_SCENARIO.themes).toContain(brief.body.theme);
+  });
+
+  it('keeps a theme the run was given, as an older record has one, when the news gave no seed', async () => {
+    const { call } = await start(pendingRun({ theme: 'forgery' }));
+
+    expect((await call('generator_brief', {})).body.theme).toBe('forgery');
   });
 
   it('hands over the one seed the engine chose, with its crime and tone, and no headline', async () => {
@@ -446,6 +484,185 @@ describe('the brief kept with the pending run', () => {
     const brief = JSON.stringify((JSON.parse(text) as { brief: unknown }).brief);
     expect(brief).not.toContain(SEED.headlineIds[0]);
     for (const trait of DETECTIVE_TRAITS) expect(brief).not.toContain(trait.id);
+  });
+});
+
+describe("a scenario that is not the detective's", () => {
+  // A scenario of an archetype that is not the detective's, given to the tools in the place of the engine's. Its case is a
+  // title and some steps, its themes are its own, and it puts one issue of its own after the shared ones. Its run is the
+  // detective's, built from a sample, because that is the only run the saves can keep until the run is general (#43); what
+  // the test looks at is what the tools gave it.
+  const ToySchema = z.object({
+    locale: LocaleSchema,
+    title: z.string().trim().min(1),
+    steps: z.array(z.object({ id: EntityIdSchema, text: z.string().trim().min(1) })).min(1),
+  });
+  type Toy = z.infer<typeof ToySchema>;
+
+  const checked: { scenario: unknown; context: ScenarioContext; words: unknown }[] = [];
+  const started: StartRunInput<unknown>[] = [];
+
+  const toy = (): ServerScenario => {
+    const kind: AnyScenarioKind = {
+      themes: ['storm', 'famine'],
+      issueOrder: [...SHARED_ISSUE_CODES, 'no-steps'],
+      chooseTheme: (seeds) => {
+        const [seed] = seeds;
+        return seed && { seed, theme: 'storm' };
+      },
+      read: (document) => readFrame(ToySchema, document),
+      check: (scenario, context, words) => {
+        checked.push({ scenario, context, words });
+        const { locale, title, steps } = scenario as Toy;
+        const issues = [
+          ...checkLocale(locale, context.locale),
+          ...(context.frame
+            ? []
+            : checkNarrativeTexts(
+                [
+                  { path: 'title', text: title },
+                  ...steps.map(({ text }, index) => ({ path: `steps[${String(index)}].text`, text })),
+                ],
+                context.locale,
+                context.realNames,
+              )),
+          ...(steps.length < 2
+            ? [{ code: 'no-steps', path: 'steps', message: 'A case needs two steps.' }]
+            : []),
+        ];
+        return issues.length === 0 ? { isValid: true, scenario } : { isValid: false, issues };
+      },
+      startRun: (input) => {
+        started.push(input);
+        return DETECTIVE_SCENARIO.startRun({
+          ...input,
+          scenario: DetectiveCaseSchema.parse(readCase('goose-of-elmwick.en.json')),
+        });
+      },
+    };
+    return { kind, words: (locale) => `words:${locale}` };
+  };
+  const scenarios = (): ScenarioSet => ({ detective: toy() });
+
+  const frame = {
+    locale: 'en',
+    title: '',
+    steps: [
+      { id: 'gather', text: '' },
+      { id: 'flee', text: '' },
+    ],
+  };
+  const texts = [
+    { op: 'replace', path: '/title', value: 'The storm' },
+    { op: 'replace', path: '/steps/0/text', value: 'Gather the neighbours.' },
+    { op: 'replace', path: '/steps/1/text', value: 'Leave by the river road.' },
+  ];
+  const withoutTheme = (): PendingRun => {
+    const pending: PendingRun = { ...pendingRun({ seed: 'seed-1' }) };
+    delete pending.theme;
+    return pending;
+  };
+
+  it('gives the brief the theme its scenario picks from the seed, and the seed it was given', async () => {
+    const fs = memoryFs();
+    await saveSeedsForDay(SAVE_DIR, '2026-10-31', { seeds: [SEED], realNames: [] }, fs);
+    const { call } = await start(withoutTheme(), fs, { scenarios: scenarios() });
+
+    const brief = await call('generator_brief', {});
+
+    expect(brief.body).toMatchObject({ theme: 'storm', seed: { id: SEED.id, kind: SEED.kind } });
+  });
+
+  it("takes the theme from its own list when there is no seed, by the dice of the run and not the detective's", async () => {
+    const { fs, call } = await start(withoutTheme(), memoryFs(), { scenarios: scenarios() });
+
+    const brief = await call('generator_brief', {});
+
+    expect(brief.body.theme).toBe(themeOfSeed('seed-1', ['storm', 'famine']));
+    expect(['storm', 'famine']).toContain(brief.body.theme);
+    expect((await loadPending(SAVE_DIR, fs))?.brief?.theme).toBe(brief.body.theme);
+  });
+
+  it('is judged as a frame, written with a patch, and starts a run with what its scenario was given', async () => {
+    const fs = memoryFs();
+    await saveSeedsForDay(SAVE_DIR, '2026-10-31', { seeds: [SEED], realNames: [] }, fs);
+    const { call } = await start(withoutTheme(), fs, { scenarios: scenarios() });
+    await call('generator_brief', {});
+
+    const framed = await submit(call, frame);
+    expect(framed.body).toMatchObject({ accepted: false, stage: 'frame', frameAccepted: true });
+    expect([...(framed.body.toWrite as string[])].sort()).toEqual([
+      '/steps/0/text',
+      '/steps/1/text',
+      '/title',
+    ]);
+    expect(checked.at(-1)?.context).toMatchObject({ frame: true, locale: 'en' });
+
+    const result = await call('scenario_submit', { patch: texts });
+
+    expect(result.body).toEqual({ accepted: true });
+    expect(checked.at(-1)).toMatchObject({
+      scenario: { title: 'The storm' },
+      context: { frame: false },
+      words: 'words:en',
+    });
+    expect(started).toHaveLength(1);
+    expect(started[0]).toMatchObject({
+      scenario: { title: 'The storm' },
+      seed: 'seed-1',
+      locale: 'en',
+      setting: null,
+      inspiration: { kind: SEED.kind, premise: SEED.premise },
+      records: [],
+    });
+    expect((await loadTheRun(SAVE_DIR, fs)).ok).toBe(true);
+  });
+
+  it('shows its issues in the order of its own list, and keeps their codes in that order in the log', async () => {
+    const { fs, call } = await start(withoutTheme(), memoryFs(), { scenarios: scenarios() });
+    const wrong = { locale: 'en', title: 'Все должны всем.', steps: [{ id: 'one', text: 'Alone.' }] };
+
+    const result = await submit(call, wrong);
+
+    // `no-steps` is not a code of the detective's list: sorted by that, it would come first. By its own it comes last.
+    expect((result.body.issues as { code: string }[]).map(({ code }) => code)).toEqual([
+      'wrong-script',
+      'no-steps',
+    ]);
+    expect((await loadGenerationLog(SAVE_DIR, fs))[0]?.codes).toEqual(['wrong-script', 'no-steps']);
+  });
+
+  it("judges the case by its own schema: a detective's case is not one of its cases", async () => {
+    const { call } = await start(withoutTheme(), memoryFs(), { scenarios: scenarios() });
+
+    const result = await submit(call, readCase('goose-of-elmwick.en.json'));
+
+    expect(result.body).toMatchObject({ accepted: false, stage: 'text' });
+    expect((result.body.issues as { code: string }[]).every(({ code }) => code === 'schema')).toBe(true);
+  });
+});
+
+describe('the tools that make a case', () => {
+  const read = (path: string) =>
+    readFileSync(new URL(path, import.meta.url), 'utf8')
+      // What the code says, not the comments: a comment may name the detective to say what it is not.
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+  // What belongs to the detective, by name, and what only a detective's scenario may reach for.
+  const THE_DETECTIVE =
+    /Detective|DETECTIVE|CRIME_TYPES|SEED_CRIMES|deriveSighting|SightingDescription|describeSighting|validateCase|readCaseOrFrame|toolSlotsOf|GENERATED_RULES|CaseRules|case-schema/;
+
+  it.each(['generator-brief.ts', 'scenario-submit.ts', '../pending-run.ts'])(
+    "name nothing of the detective in %s: they take the scenario of the hero's archetype and know no other",
+    (file) => {
+      expect(read(file)).not.toMatch(THE_DETECTIVE);
+    },
+  );
+
+  it("name an archetype in one place of the server, the set of scenarios, which they ask for the hero's", () => {
+    expect(read('../scenario-set.ts')).toMatch(/detective:/);
+    expect(read('generator-brief.ts')).toMatch(/scenarioFor\(context, hero\)/);
+    expect(read('scenario-submit.ts')).toMatch(/scenarioFor\(context, hero\)/);
   });
 });
 
@@ -730,10 +947,10 @@ describe('scenario_submit', () => {
       path: `a${'b'.repeat(200)}`,
       message: `m${'n'.repeat(400)}`,
     } as const;
-    const { issues } = compactIssues([
-      issue,
-      { code: 'unreachable-location', path: 'locations[0]', message: 'short' },
-    ]);
+    const { issues } = compactIssues(
+      [issue, { code: 'unreachable-location', path: 'locations[0]', message: 'short' }],
+      ORDER,
+    );
     expect(issues[0]?.path).toHaveLength(120);
     expect(issues[0]?.path.endsWith('…')).toBe(true);
     expect(issues[0]?.message).toHaveLength(240);
@@ -743,13 +960,16 @@ describe('scenario_submit', () => {
   it('shows the issues in the order of the engine: the most fundamental first, and the same kinds as they came', () => {
     const at = (code: string, path: string) => ({ code, path, message: 'm' }) as never;
 
-    const { issues } = compactIssues([
-      at('clue-draws-conclusion', 'clues[0].description'),
-      at('real-name', 'title'),
-      at('unreachable-location', 'locations[2]'),
-      at('real-name', 'premise'),
-      at('schema', 'clues.1.id'),
-    ]);
+    const { issues } = compactIssues(
+      [
+        at('clue-draws-conclusion', 'clues[0].description'),
+        at('real-name', 'title'),
+        at('unreachable-location', 'locations[2]'),
+        at('real-name', 'premise'),
+        at('schema', 'clues.1.id'),
+      ],
+      ORDER,
+    );
 
     expect(issues.map(({ code, path }) => `${code} ${path}`)).toEqual([
       'schema /clues/1/id',
@@ -764,11 +984,10 @@ describe('scenario_submit', () => {
     const at = (path: string) => ({ code: 'unreachable-location', path, message: 'm' }) as const;
 
     expect(
-      compactIssues([
-        at('clues[3].description'),
-        at('locations.2.id'),
-        at('solution.evidenceChains'),
-      ]).issues.map(({ path }) => path),
+      compactIssues(
+        [at('clues[3].description'), at('locations.2.id'), at('solution.evidenceChains')],
+        ORDER,
+      ).issues.map(({ path }) => path),
     ).toEqual(['/clues/3/description', '/locations/2/id', '/solution/evidenceChains']);
   });
 
@@ -776,12 +995,10 @@ describe('scenario_submit', () => {
     const at = (code: string) => ({ code, path: 'p', message: 'm' });
 
     expect(
-      codesOf([
-        at('unreachable-location'),
-        at('schema'),
-        at('unreachable-location'),
-        at('duplicate-id'),
-      ] as never),
+      codesOf(
+        [at('unreachable-location'), at('schema'), at('unreachable-location'), at('duplicate-id')] as never,
+        ORDER,
+      ),
     ).toEqual(['schema', 'duplicate-id', 'unreachable-location']);
   });
 

@@ -17,7 +17,7 @@ import { SEED_CRIMES } from '../src/news/choose-seed.js';
 import type { NewsSeed } from '../src/news/seed.js';
 import { toolSlotsOf } from '../src/progress.js';
 import type { ProfileRecord } from '../src/profile.js';
-import { SCENARIOS, type ArchetypeRun } from '../src/scenarios.js';
+import { SCENARIOS, scenarioOf, type ArchetypeRun } from '../src/scenarios.js';
 import type { ScenarioContext, ScenarioKind, StartRunInput } from '../src/scenario.js';
 import { checkLocale, checkNarrativeTexts } from '../src/text/check-texts.js';
 import { EntityIdSchema } from '../src/detective/case-schema.js';
@@ -71,6 +71,10 @@ function written(): Record<string, unknown> {
 describe('the registry of scenarios', () => {
   it('has a scenario for every archetype there is, and none for any other', () => {
     expect(Object.keys(SCENARIOS).sort()).toEqual(Object.keys(ARCHETYPES).sort());
+  });
+
+  it('gives the scenario of an archetype by its id, as the registry holds it', () => {
+    expect(scenarioOf('detective')).toBe(SCENARIOS.detective);
   });
 
   it('starts the run of the archetype: the detective starts the detective run', () => {

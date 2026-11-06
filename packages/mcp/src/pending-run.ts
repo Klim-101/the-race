@@ -3,9 +3,8 @@
 
 import { join } from 'node:path';
 import {
-  CRIME_TYPES,
-  DetectiveHeroSchema,
   EntityIdSchema,
+  HeroSchema,
   LocaleSchema,
   SeedKindSchema,
   SettingSchema,
@@ -16,24 +15,17 @@ import {
 import type { SaveFs } from '@the-race/saves';
 import { z } from 'zod';
 
-/**
- * The theme a new run falls back to when the news gave no seed: any crime type of the case schema, picked from
- * the run's seed. With a seed the engine takes the theme from the seed's kind instead.
- */
-export const PENDING_THEMES = CRIME_TYPES;
-const PendingThemeSchema = z.enum(PENDING_THEMES);
-
 /** The stages a case is written in: its frame first, then its texts (a whole case is judged as the second). */
 export const PENDING_STAGES = ['frame', 'text'] as const;
 
 /**
- * What the engine chose for the run and gave the generator: the theme (the crime type), the tone, the one seed of the
+ * What the engine chose for the run and gave the generator: the theme (a kind of case of the archetype), the tone, the one seed of the
  * news (none when the news could not be read) and the country the case is set in (none while the world has no country
  * with a climate). It is chosen once, when the generator asks, and kept, so that the run which comes of the case
  * records the very seed and country the generator wrote for, whatever the news or the world did in the meantime.
  */
 export const PendingBriefSchema = z.strictObject({
-  theme: PendingThemeSchema,
+  theme: z.string().min(1),
   tone: ToneSchema,
   seed: z
     .strictObject({
@@ -63,8 +55,13 @@ export const PendingRunSchema = z.object({
   schemaVersion: z.literal(1),
   seed: z.string().min(1),
   locale: LocaleSchema,
-  theme: PendingThemeSchema,
-  hero: DetectiveHeroSchema.nullable(),
+  /**
+   * The theme the run falls back on when the news gave no seed, if one was set: the archetype is not known until the hero
+   * is made, so a new run has none, and the brief takes one of the archetype's themes from the run's seed (see
+   * `themeOfSeed`). A record from before that keeps the theme it was given.
+   */
+  theme: z.string().min(1).optional(),
+  hero: HeroSchema.nullable(),
   traits: z.array(TraitSchema),
   rngState: z.int().min(0).max(0xffffffff),
   /** How many times the player has asked the tavern for another three heroes. */
@@ -83,11 +80,11 @@ export function pendingFile(saveDir: string): string {
   return join(saveDir, 'pending', 'state.json');
 }
 
-/** The theme of a seed. It uses dice of its own so that picking it never moves the hero's dice. */
-export function themeOfSeed(seed: string): PendingRun['theme'] {
-  const pick = createRng(`${seed}:theme`).roll(PENDING_THEMES.length) - 1;
+/** The theme of a seed, from the themes of an archetype. It uses dice of its own so that picking it never moves the hero's dice. */
+export function themeOfSeed(seed: string, themes: readonly string[]): string {
+  const pick = createRng(`${seed}:theme`).roll(themes.length) - 1;
   // The die has exactly one face per theme, so the index is always inside the list.
-  return PendingThemeSchema.parse(PENDING_THEMES[pick]);
+  return String(themes[pick]);
 }
 
 /** A pending run with no hero yet. */
@@ -96,7 +93,6 @@ export function newPendingRun(seed: string, locale: PendingRun['locale']): Pendi
     schemaVersion: 1,
     seed,
     locale,
-    theme: themeOfSeed(seed),
     hero: null,
     traits: [],
     rngState: createRng(seed).state(),

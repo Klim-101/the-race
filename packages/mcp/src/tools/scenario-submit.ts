@@ -3,21 +3,14 @@
 
 import {
   EMPTY_RUN_LOG,
-  GENERATED_RULES,
-  createDetectiveRun,
-  deriveSightingClues,
-  toolSlotsOf,
-  validateCase,
-  worldRealNames,
   PatchOpSchema,
   applyPatch,
-  readCaseOrFrame,
-  sortIssues,
+  sortIssuesBy,
   toJsonPointer,
-  type CaseIssue,
-  type CaseValidationContext,
-  type DetectiveCase,
+  worldRealNames,
+  type Issue,
   type PatchOp,
+  type ScenarioContext,
 } from '@the-race/engine';
 import { makeRunId, saveRun, saveRunSeeds } from '@the-race/saves';
 import { z } from 'zod';
@@ -26,7 +19,7 @@ import { seedsOfRun } from '../news.js';
 import { PENDING_STAGES, clearPending, savePending, type PendingRun } from '../pending-run.js';
 import { ToolFailure } from '../tool-error.js';
 import { recordsOrNone } from '../profile.js';
-import { describeSighting } from '../sighting-text.js';
+import { scenarioFor, type ServerScenario } from '../scenario-set.js';
 import { requireWorld } from '../world.js';
 import { keepGenerationLog, keepStats } from '../stats.js';
 import { MAX_CASE_ATTEMPTS, MAX_FRAME_ATTEMPTS, chooseBrief, openPendingRun } from './generator-brief.js';
@@ -42,20 +35,26 @@ function clip(text: string, length: number): string {
   return text.length <= length ? text : `${text.slice(0, length - 1)}…`;
 }
 
-/** The distinct codes of all the issues, the most fundamental first: what the log keeps, and never a message. */
-export function codesOf(issues: readonly CaseIssue[]): string[] {
-  return [...new Set(sortIssues(issues).map(({ code }) => code))];
+/**
+ * The distinct codes of all the issues, the most fundamental first by the order of the archetype: what the log keeps, and
+ * never a message.
+ */
+export function codesOf(issues: readonly Issue[], order: readonly string[]): string[] {
+  return [...new Set(sortIssuesBy(order, issues).map(({ code }) => code))];
 }
 
 /**
- * Most important first, capped, and each one short. Array.sort is stable, so ties keep the engine's order. A path is
+ * Most important first by the order of the archetype, capped, and each one short. Issues of one code keep the order they came in. A path is
  * a JSON Pointer, so that the generator can patch the very place it is told about.
  */
-export function compactIssues(issues: readonly CaseIssue[]): {
+export function compactIssues(
+  issues: readonly Issue[],
+  order: readonly string[],
+): {
   issues: { code: string; path: string; message: string }[];
   moreIssues: number;
 } {
-  const shown = sortIssues(issues).slice(0, MAX_ISSUES);
+  const shown = sortIssuesBy(order, issues).slice(0, MAX_ISSUES);
   return {
     issues: shown.map(({ code, path, message }) => ({
       code,
@@ -97,16 +96,7 @@ const MAX_PATCH_OPERATIONS = 200;
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-type Submission = { readonly submitted: unknown } | { readonly issue: CaseIssue };
-
-/**
- * The clues in which witnesses tell what they saw are made here, with words in the language of the case: the generator
- * names them (`seen-<witness>-<suspect>`) and writes no text for them. They are added after the clues it wrote, so the
- * paths of the issues stay the places of its own text. In a frame the words are placeholders, and the clues are made
- * again once the texts are written.
- */
-const withSightings = (detectiveCase: DetectiveCase): DetectiveCase =>
-  deriveSightingClues(detectiveCase, describeSighting(detectiveCase.locale));
+type Submission = { readonly submitted: unknown } | { readonly issue: Issue };
 
 /**
  * What was submitted: the case the generator wrote, or the last case with the patch applied. A patch that has no case
@@ -149,22 +139,26 @@ type Judged =
   | {
       readonly kind: 'rejected';
       readonly stage: Stage;
-      readonly issues: readonly CaseIssue[];
+      readonly issues: readonly Issue[];
       /** The texts still blank, by JSON Pointer, when there are any. */
       readonly toWrite: readonly string[];
     }
   | { readonly kind: 'framed'; readonly toWrite: readonly string[] }
-  | { readonly kind: 'accepted'; readonly detectiveCase: DetectiveCase };
+  | { readonly kind: 'accepted'; readonly scenario: unknown };
 
 /**
  * The stage a patch that did not apply belongs to: the texts' once a frame is accepted, and the frame's while there is
  * no case yet or the case it would go on from is a frame still (some text blank). A patch to a case with every text
  * written is a fix of a whole case, which is judged as the text stage.
  */
-function stageOfPatch(at: Stage, lastCase: Record<string, unknown> | undefined): Stage {
+function stageOfPatch(
+  at: Stage,
+  lastCase: Record<string, unknown> | undefined,
+  scenario: ServerScenario,
+): Stage {
   if (at === 'text') return 'text';
   if (lastCase === undefined) return 'frame';
-  const reading = readCaseOrFrame(lastCase);
+  const reading = scenario.kind.read(lastCase);
   return reading.kind !== 'whole' && reading.blanks.length > 0 ? 'frame' : 'text';
 }
 
@@ -178,12 +172,18 @@ function judge(
   submission: Submission,
   at: Stage,
   lastCase: Record<string, unknown> | undefined,
-  rules: CaseValidationContext,
+  scenario: ServerScenario,
+  context: Omit<ScenarioContext, 'frame'>,
 ): Judged {
   if ('issue' in submission) {
-    return { kind: 'rejected', stage: stageOfPatch(at, lastCase), issues: [submission.issue], toWrite: [] };
+    return {
+      kind: 'rejected',
+      stage: stageOfPatch(at, lastCase, scenario),
+      issues: [submission.issue],
+      toWrite: [],
+    };
   }
-  const reading = readCaseOrFrame(submission.submitted);
+  const reading = scenario.kind.read(submission.submitted);
   const blanks = reading.kind === 'whole' ? [] : reading.blanks;
   const stage: Stage = at === 'frame' && blanks.length > 0 ? 'frame' : 'text';
   // A frame that is rejected has its texts blank by design, and the generator knows them: only the texts still to
@@ -200,22 +200,23 @@ function judge(
     }));
     return { kind: 'rejected', stage, issues, toWrite: remaining };
   }
-  const result = validateCase(
-    withSightings(reading.scenario),
-    reading.kind === 'frame' ? { ...rules, frame: true } : rules,
+  const result = scenario.kind.check(
+    reading.scenario,
+    { ...context, frame: reading.kind === 'frame' },
+    scenario.words(context.locale),
   );
   if (!result.isValid) return { kind: 'rejected', stage, issues: result.issues, toWrite: remaining };
   return reading.kind === 'frame'
     ? { kind: 'framed', toWrite: blanks }
-    : { kind: 'accepted', detectiveCase: result.detectiveCase };
+    : { kind: 'accepted', scenario: result.scenario };
 }
 
 export const scenarioSubmit = defineTool({
   name: 'scenario_submit',
   description:
     'For the case generator only. Submits a case to the engine in two stages. First the frame: the case with every ' +
-    'narrative text (names, descriptions, personas, statements, admissions, claims, insights, motive, method, reasons, ' +
-    'the title and the premise) left as an empty string "". The engine judges it on its structure alone. If it is ' +
+    'narrative text of it (your instructions say which they are) left as an empty string "". The engine judges it on ' +
+    'its structure alone. If it is ' +
     'sound the result has `frameAccepted: true` and `toWrite`, the JSON Pointers of every text still blank: write them ' +
     'all in one `patch`. A complete case with every text written is also accepted, at once, and is judged by every ' +
     'check. A submission is `case` (JSON text or an object) or `patch` (a list of operations on the last case you ' +
@@ -249,6 +250,7 @@ export const scenarioSubmit = defineTool({
   handler: (input, context) =>
     serialized(async () => {
       const { pending, hero } = await openPendingRun(context);
+      const scenario = scenarioFor(context, hero);
       if (
         pending.failed ||
         pending.attempts >= MAX_CASE_ATTEMPTS ||
@@ -269,7 +271,7 @@ export const scenarioSubmit = defineTool({
       const world = await requireWorld(context);
       // What the brief gave the generator, as it was kept when the generator asked: the news or the world may have
       // changed since. A record from before it was kept has none, and the choice is made now, as it always was.
-      const brief = pending.brief ?? (await chooseBrief(context, pending, hero, world));
+      const brief = pending.brief ?? (await chooseBrief(context, pending, hero, world, scenario));
       const logged = {
         date: context.today(),
         seed: pending.seed,
@@ -278,11 +280,10 @@ export const scenarioSubmit = defineTool({
         archetype: hero.archetype,
       };
       const submission = readSubmission(input, pending.lastCase);
-      const judged = judge(submission, pending.stage, pending.lastCase, {
+      const judged = judge(submission, pending.stage, pending.lastCase, scenario, {
         hero,
         traits: pending.traits,
         locale: pending.locale,
-        rules: GENERATED_RULES,
         // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
         realNames: [
           ...new Set([...worldRealNames(world), ...((await seedsOfRun(context))?.realNames ?? [])]),
@@ -293,10 +294,10 @@ export const scenarioSubmit = defineTool({
         // The run's id and folder, made now: the date and time it starts and the seed.
         const runId = makeRunId(context.now(), pending.seed);
         // The run continues the dice the hero was made with: the pending record holds their state.
-        const run = createDetectiveRun({
+        const run = scenario.kind.startRun({
           hero,
           traits: pending.traits,
-          case: judged.detectiveCase,
+          scenario: judged.scenario,
           seed: pending.seed,
           runId,
           rngState: pending.rngState,
@@ -305,8 +306,8 @@ export const scenarioSubmit = defineTool({
           setting: brief.setting,
           // Shown to the player later, as what the case grew from.
           inspiration: brief.seed && { kind: brief.seed.kind, premise: brief.seed.premise },
-          // The tool slots the player's runs have earned this hero.
-          toolSlots: toolSlotsOf(await recordsOrNone(context)),
+          // What the player's runs have earned this hero is read from them by the scenario.
+          records: await recordsOrNone(context),
         });
         await saveRun(context.saveDir, run, context.saveFs, EMPTY_RUN_LOG);
         // The news the run was made from stays with it, so that it can be read back on its own.
@@ -375,7 +376,7 @@ export const scenarioSubmit = defineTool({
         stage: judged.stage,
         attempt: spent,
         outcome: attemptsLeft === 0 ? 'final' : 'rejected',
-        codes: codesOf(judged.issues),
+        codes: codesOf(judged.issues, scenario.kind.issueOrder),
         issues: judged.issues.length,
       });
       // The last rejection keeps its issues too: without them a run that failed cannot be told why.
@@ -383,7 +384,7 @@ export const scenarioSubmit = defineTool({
         accepted: false,
         stage: judged.stage,
         attemptsLeft,
-        ...compactIssues(judged.issues),
+        ...compactIssues(judged.issues, scenario.kind.issueOrder),
         ...(judged.toWrite.length === 0 ? {} : { toWrite: [...judged.toWrite] }),
       };
       if (attemptsLeft === 0) {

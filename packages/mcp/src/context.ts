@@ -3,6 +3,7 @@
 
 import type { FeedList, HttpGet } from '@the-race/news';
 import type { SaveFs } from '@the-race/saves';
+import type { ScenarioSet } from './scenario-set.js';
 
 /**
  * Everything a tool may touch, passed in. A tool reaches for no global: not the disk, not the clock, not
@@ -36,6 +37,8 @@ export interface ServerContext {
   readonly newsLagDays: number;
   /** The version of the plugin that started the server; absent when it was started outside the plugin. */
   readonly pluginVersion?: string | undefined;
+  /** The scenario of each archetype; left out, the engine's own. A test gives one that is not the engine's. */
+  readonly scenarios?: ScenarioSet | undefined;
 }
 
 export interface StartupNotices {
