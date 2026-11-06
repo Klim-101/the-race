@@ -6,8 +6,6 @@ import {
   MIN_RANDOM_EVENTS,
   GENERATED_DAYS,
   GENERATED_MAP,
-  chooseSeed,
-  chooseSetting,
   createDetectiveRun,
   deriveSightingClues,
   toolSlotsOf,
@@ -26,14 +24,14 @@ import {
 import { makeRunId, saveRun, saveRunSeeds } from '@the-race/saves';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
-import { seedsOfRun, toldSeedsOfRun } from '../news.js';
+import { seedsOfRun } from '../news.js';
 import { PENDING_STAGES, clearPending, savePending, type PendingRun } from '../pending-run.js';
 import { ToolFailure } from '../tool-error.js';
 import { recordsOrNone } from '../profile.js';
 import { describeSighting } from '../sighting-text.js';
 import { requireWorld } from '../world.js';
 import { keepGenerationLog, keepStats } from '../stats.js';
-import { MAX_CASE_ATTEMPTS, MAX_FRAME_ATTEMPTS, openPendingRun } from './generator-brief.js';
+import { MAX_CASE_ATTEMPTS, MAX_FRAME_ATTEMPTS, chooseBrief, openPendingRun } from './generator-brief.js';
 
 /** What a generator is told at most: a long list of issues helps nobody. */
 const MAX_ISSUES = 8;
@@ -348,16 +346,14 @@ export const scenarioSubmit = defineTool({
       }
 
       const world = await requireWorld(context);
-      // The seed the brief gave the generator: the same choice from the same news, hero and seed.
-      const chosen = chooseSeed(await toldSeedsOfRun(context, pending.seed), {
-        background: hero.background,
-        runSeed: pending.seed,
-      });
+      // What the brief gave the generator, as it was kept when the generator asked: the news or the world may have
+      // changed since. A record from before it was kept has none, and the choice is made now, as it always was.
+      const brief = pending.brief ?? (await chooseBrief(context, pending, hero, world));
       const logged = {
         date: context.today(),
         seed: pending.seed,
         locale: pending.locale,
-        theme: chosen?.crimeType ?? pending.theme,
+        theme: brief.theme,
         archetype: hero.archetype,
       };
       const submission = readSubmission(input, pending.lastCase);
@@ -394,10 +390,10 @@ export const scenarioSubmit = defineTool({
           runId,
           rngState: pending.rngState,
           locale: pending.locale,
-          // The same country the brief named for this seed; the run keeps it from here on.
-          setting: chooseSetting(world, pending.seed),
+          // The country the brief named; the run keeps it from here on.
+          setting: brief.setting,
           // Shown to the player later, as what the case grew from.
-          inspiration: chosen && { kind: chosen.seed.kind, premise: chosen.seed.premise },
+          inspiration: brief.seed && { kind: brief.seed.kind, premise: brief.seed.premise },
           // The tool slots the player's runs have earned this hero.
           toolSlots: toolSlotsOf(await recordsOrNone(context)),
         });

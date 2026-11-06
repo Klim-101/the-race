@@ -2,7 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { join } from 'node:path';
-import { CRIME_TYPES, DetectiveHeroSchema, LocaleSchema, TraitSchema, createRng } from '@the-race/engine';
+import {
+  CRIME_TYPES,
+  DetectiveHeroSchema,
+  EntityIdSchema,
+  LocaleSchema,
+  SeedKindSchema,
+  SettingSchema,
+  ToneSchema,
+  TraitSchema,
+  createRng,
+} from '@the-race/engine';
 import type { SaveFs } from '@the-race/saves';
 import { z } from 'zod';
 
@@ -17,6 +27,26 @@ const PendingThemeSchema = z.enum(PENDING_THEMES);
 export const PENDING_STAGES = ['frame', 'text'] as const;
 
 /**
+ * What the engine chose for the run and gave the generator: the theme (the crime type), the tone, the one seed of the
+ * news (none when the news could not be read) and the country the case is set in (none while the world has no country
+ * with a climate). It is chosen once, when the generator asks, and kept, so that the run which comes of the case
+ * records the very seed and country the generator wrote for, whatever the news or the world did in the meantime.
+ */
+export const PendingBriefSchema = z.strictObject({
+  theme: PendingThemeSchema,
+  tone: ToneSchema,
+  seed: z
+    .strictObject({
+      id: EntityIdSchema,
+      kind: SeedKindSchema,
+      premise: z.string().min(1).max(400),
+    })
+    .nullable(),
+  setting: SettingSchema.nullable(),
+});
+export type PendingBrief = z.infer<typeof PendingBriefSchema>;
+
+/**
  * A run that has been asked for but has no case yet: the seed, the language and, once the player has made
  * one, the hero. It lives in its own file beside `run/` and is gone once the case is accepted and the run
  * is saved. `traits` is the hero's hidden roll: it is engine-side state like the run's own, and no tool
@@ -27,7 +57,7 @@ export const PENDING_STAGES = ['frame', 'text'] as const;
  * set when either stage ran out of its attempts. All of them have defaults, so a record written without them still
  * loads. `lastCase` is the last case the generator submitted that was a JSON object, as it wrote it: the text a patch
  * is applied to. It is the generator's own work and it holds the sealed truth of a case that has not been accepted,
- * so like `traits` no tool returns it.
+ * so like `traits` no tool returns it. `brief` is what the generator was given to build on (see `PendingBriefSchema`).
  */
 export const PendingRunSchema = z.object({
   schemaVersion: z.literal(1),
@@ -44,6 +74,8 @@ export const PendingRunSchema = z.object({
   attempts: z.int().min(0).default(0),
   failed: z.boolean().default(false),
   lastCase: z.record(z.string(), z.unknown()).optional(),
+  /** Absent until the generator first asks for its brief, and in a record written before it was kept. */
+  brief: PendingBriefSchema.optional(),
 });
 export type PendingRun = z.infer<typeof PendingRunSchema>;
 
