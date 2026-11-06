@@ -6,7 +6,6 @@ import {
   ClimateProfileSchema,
   TONES,
   ToneSchema,
-  chooseSeed,
   chooseSetting,
   createRng,
   viewWorld,
@@ -23,9 +22,11 @@ import {
   clearPending,
   loadPending,
   savePending,
+  themeOfSeed,
   type PendingBrief,
   type PendingRun,
 } from '../pending-run.js';
+import { scenarioFor, type ServerScenario } from '../scenario-set.js';
 import { ToolFailure } from '../tool-error.js';
 import { requireWorld } from '../world.js';
 
@@ -95,23 +96,22 @@ export function toneForSeed(seed: string): Tone {
 }
 
 /**
- * What the engine chooses for this run from the news and the world as they stand now: the engine picks the seed and
- * the crime, so the same news gives other heroes other cases, and the country on dice of the run's own. It is the
- * choice the generator is given, and it is made once (see `PendingBriefSchema`); a record from before that has none and
- * is chosen for here, as it always was.
+ * What the engine chooses for this run from the news and the world as they stand now: the scenario of the hero's
+ * archetype picks the seed and the theme, so the same news gives other heroes other cases, and the country is picked on
+ * dice of the run's own. It is the choice the generator is given, and it is made once (see `PendingBriefSchema`); a record
+ * from before that has none and is chosen for here, as it always was. With no seed the theme is the one the run was given,
+ * or else one of the archetype's, taken from the run's seed.
  */
 export async function chooseBrief(
   context: ServerContext,
   pending: PendingRun,
   hero: Hero,
   dictionary: World,
+  scenario: ServerScenario,
 ): Promise<PendingBrief> {
-  const choice = chooseSeed(await toldSeedsOfRun(context, pending.seed), {
-    background: hero.background,
-    runSeed: pending.seed,
-  });
+  const choice = scenario.kind.chooseTheme(await toldSeedsOfRun(context, pending.seed), hero, pending.seed);
   return {
-    theme: choice?.crimeType ?? pending.theme,
+    theme: choice?.theme ?? pending.theme ?? themeOfSeed(pending.seed, scenario.kind.themes),
     tone: choice?.seed.tone ?? toneForSeed(pending.seed),
     seed: choice ? { id: choice.seed.id, kind: choice.seed.kind, premise: choice.seed.premise } : null,
     setting: chooseSetting(dictionary, pending.seed) ?? null,
@@ -170,9 +170,10 @@ export const generatorBrief = defineTool({
     }
     const dictionary = await requireWorld(context);
     // The first call chooses and keeps; a later one gives back what the first gave, whatever the news did since.
+    const scenario = scenarioFor(context, hero);
     let { brief } = pending;
     if (brief === undefined) {
-      brief = await chooseBrief(context, pending, hero, dictionary);
+      brief = await chooseBrief(context, pending, hero, dictionary, scenario);
       await savePending(context.saveDir, { ...pending, brief }, context.saveFs);
     }
     const world = viewWorld(dictionary, pending.locale);

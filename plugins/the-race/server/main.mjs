@@ -35090,9 +35090,6 @@ var ISSUE_ORDER = [
   "solution-after-culprit-flees",
   "clue-draws-conclusion"
 ];
-function sortIssues(issues) {
-  return sortIssuesBy(ISSUE_ORDER, issues);
-}
 
 // packages/engine/src/detective/obtainability.ts
 var D20_MAX = 20;
@@ -40265,6 +40262,45 @@ function validateCase(input2, context2) {
   ];
   return issues.length === 0 ? { isValid: true, detectiveCase } : { isValid: false, issues };
 }
+
+// packages/engine/src/detective/scenario.ts
+var DETECTIVE_SCENARIO = {
+  themes: CRIME_TYPES,
+  issueOrder: ISSUE_ORDER,
+  chooseTheme(seeds, hero, runSeed) {
+    const choice = chooseSeed(seeds, { background: hero.background, runSeed });
+    return choice && { seed: choice.seed, theme: choice.crimeType };
+  },
+  read: readCaseOrFrame,
+  check(scenario, context2, describe3) {
+    const result = validateCase(deriveSightingClues(scenario, describe3), {
+      hero: context2.hero,
+      traits: context2.traits,
+      locale: context2.locale,
+      realNames: context2.realNames,
+      rules: GENERATED_RULES,
+      frame: context2.frame
+    });
+    return result.isValid ? { isValid: true, scenario: result.detectiveCase } : result;
+  },
+  startRun: (input2) => createDetectiveRun({
+    hero: input2.hero,
+    traits: input2.traits,
+    case: input2.scenario,
+    seed: input2.seed,
+    runId: input2.runId,
+    rngState: input2.rngState,
+    locale: input2.locale,
+    setting: input2.setting,
+    inspiration: input2.inspiration,
+    // The tool slots the player's runs have earned this hero.
+    toolSlots: toolSlotsOf(input2.records)
+  })
+};
+
+// packages/engine/src/scenarios.ts
+var SCENARIOS = { detective: DETECTIVE_SCENARIO };
+var scenarioOf = (archetype) => SCENARIOS[archetype];
 
 // packages/engine/src/detective/event-log.ts
 var SkillCheckResultSchema = external_exports.object({
@@ -55476,11 +55512,9 @@ function namesInHeadlines(news) {
 
 // packages/mcp/src/pending-run.ts
 import { join as join12 } from "node:path";
-var PENDING_THEMES = CRIME_TYPES;
-var PendingThemeSchema = external_exports.enum(PENDING_THEMES);
 var PENDING_STAGES = ["frame", "text"];
 var PendingBriefSchema = external_exports.strictObject({
-  theme: PendingThemeSchema,
+  theme: external_exports.string().min(1),
   tone: ToneSchema,
   seed: external_exports.strictObject({
     id: EntityIdSchema,
@@ -55493,8 +55527,13 @@ var PendingRunSchema = external_exports.object({
   schemaVersion: external_exports.literal(1),
   seed: external_exports.string().min(1),
   locale: LocaleSchema,
-  theme: PendingThemeSchema,
-  hero: DetectiveHeroSchema.nullable(),
+  /**
+   * The theme the run falls back on when the news gave no seed, if one was set: the archetype is not known until the hero
+   * is made, so a new run has none, and the brief takes one of the archetype's themes from the run's seed (see
+   * `themeOfSeed`). A record from before that keeps the theme it was given.
+   */
+  theme: external_exports.string().min(1).optional(),
+  hero: HeroSchema.nullable(),
   traits: external_exports.array(TraitSchema),
   rngState: external_exports.int().min(0).max(4294967295),
   /** How many times the player has asked the tavern for another three heroes. */
@@ -55510,16 +55549,15 @@ var PendingRunSchema = external_exports.object({
 function pendingFile(saveDir) {
   return join12(saveDir, "pending", "state.json");
 }
-function themeOfSeed(seed) {
-  const pick5 = createRng(`${seed}:theme`).roll(PENDING_THEMES.length) - 1;
-  return PendingThemeSchema.parse(PENDING_THEMES[pick5]);
+function themeOfSeed(seed, themes) {
+  const pick5 = createRng(`${seed}:theme`).roll(themes.length) - 1;
+  return String(themes[pick5]);
 }
 function newPendingRun(seed, locale) {
   return {
     schemaVersion: 1,
     seed,
     locale,
-    theme: themeOfSeed(seed),
     hero: null,
     traits: [],
     rngState: createRng(seed).state(),
@@ -55561,6 +55599,25 @@ async function savePending(saveDir, pending, fs) {
 async function clearPending(saveDir, fs) {
   await fs.remove(pendingFile(saveDir));
 }
+
+// packages/mcp/src/sighting-text.ts
+function clockTime(minuteOfDay) {
+  return `${String(Math.floor(minuteOfDay / 60)).padStart(2, "0")}:${String(minuteOfDay % 60).padStart(2, "0")}`;
+}
+function timesIn(minutesOfDay, and) {
+  const times = minutesOfDay.map(clockTime);
+  return times.length <= 1 ? times.join("") : `${times.slice(0, -1).join(", ")} ${and} ${times.slice(-1).join("")}`;
+}
+function describeSighting(locale) {
+  const text = LOCALE_TEXT[locale].sighting;
+  return ({ witnessName, suspectName, placeName, minutesOfDay }) => text.clue.replace("{witness}", witnessName).replace("{suspect}", suspectName).replace("{place}", placeName).replace("{times}", timesIn(minutesOfDay, text.and));
+}
+
+// packages/mcp/src/scenario-set.ts
+var DEFAULT_SCENARIOS = {
+  detective: { kind: scenarioOf("detective"), words: describeSighting }
+};
+var scenarioFor = (context2, hero) => (context2.scenarios ?? DEFAULT_SCENARIOS)[hero.archetype];
 
 // packages/mcp/src/world.ts
 async function requireWorld(context2) {
@@ -55616,13 +55673,10 @@ function toneForSeed(seed) {
   const index = createRng(`${seed}:tone`).roll(TONES.length) - 1;
   return ToneSchema.parse(TONES[index]);
 }
-async function chooseBrief(context2, pending, hero, dictionary) {
-  const choice = chooseSeed(await toldSeedsOfRun(context2, pending.seed), {
-    background: hero.background,
-    runSeed: pending.seed
-  });
+async function chooseBrief(context2, pending, hero, dictionary, scenario) {
+  const choice = scenario.kind.chooseTheme(await toldSeedsOfRun(context2, pending.seed), hero, pending.seed);
   return {
-    theme: choice?.crimeType ?? pending.theme,
+    theme: choice?.theme ?? pending.theme ?? themeOfSeed(pending.seed, scenario.kind.themes),
     tone: choice?.seed.tone ?? toneForSeed(pending.seed),
     seed: choice ? { id: choice.seed.id, kind: choice.seed.kind, premise: choice.seed.premise } : null,
     setting: chooseSetting(dictionary, pending.seed) ?? null
@@ -55666,9 +55720,10 @@ var generatorBrief = defineTool({
       });
     }
     const dictionary = await requireWorld(context2);
+    const scenario = scenarioFor(context2, hero);
     let { brief } = pending;
     if (brief === void 0) {
-      brief = await chooseBrief(context2, pending, hero, dictionary);
+      brief = await chooseBrief(context2, pending, hero, dictionary, scenario);
       await savePending(context2.saveDir, { ...pending, brief }, context2.saveFs);
     }
     const world = viewWorld(dictionary, pending.locale);
@@ -56089,19 +56144,6 @@ var runView = defineTool({
   }
 });
 
-// packages/mcp/src/sighting-text.ts
-function clockTime(minuteOfDay) {
-  return `${String(Math.floor(minuteOfDay / 60)).padStart(2, "0")}:${String(minuteOfDay % 60).padStart(2, "0")}`;
-}
-function timesIn(minutesOfDay, and) {
-  const times = minutesOfDay.map(clockTime);
-  return times.length <= 1 ? times.join("") : `${times.slice(0, -1).join(", ")} ${and} ${times.slice(-1).join("")}`;
-}
-function describeSighting(locale) {
-  const text = LOCALE_TEXT[locale].sighting;
-  return ({ witnessName, suspectName, placeName, minutesOfDay }) => text.clue.replace("{witness}", witnessName).replace("{suspect}", suspectName).replace("{place}", placeName).replace("{times}", timesIn(minutesOfDay, text.and));
-}
-
 // packages/mcp/src/tools/scenario-submit.ts
 var MAX_ISSUES = 8;
 var MAX_MESSAGE_LENGTH = 240;
@@ -56110,11 +56152,11 @@ var MAX_CASE_TEXT_LENGTH = 4e5;
 function clip(text, length) {
   return text.length <= length ? text : `${text.slice(0, length - 1)}\u2026`;
 }
-function codesOf(issues) {
-  return [...new Set(sortIssues(issues).map(({ code }) => code))];
+function codesOf(issues, order) {
+  return [...new Set(sortIssuesBy(order, issues).map(({ code }) => code))];
 }
-function compactIssues(issues) {
-  const shown2 = sortIssues(issues).slice(0, MAX_ISSUES);
+function compactIssues(issues, order) {
+  const shown2 = sortIssuesBy(order, issues).slice(0, MAX_ISSUES);
   return {
     issues: shown2.map(({ code, path, message }) => ({
       code,
@@ -56142,7 +56184,6 @@ var FINAL_REASON = "All three attempts of a stage were used and the engine accep
 var SUBMIT_ERROR_CODES = { caseOrPatch: "case-or-patch" };
 var MAX_PATCH_OPERATIONS = 200;
 var isObject2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
-var withSightings = (detectiveCase) => deriveSightingClues(detectiveCase, describeSighting(detectiveCase.locale));
 function readSubmission(input2, lastCase) {
   if (input2.patch === void 0) return { submitted: readCase(input2.case) };
   const failed = (path, message) => ({
@@ -56163,17 +56204,22 @@ function withLastCase(pending, lastCase) {
   delete next.lastCase;
   return lastCase === void 0 ? next : { ...next, lastCase };
 }
-function stageOfPatch(at3, lastCase) {
+function stageOfPatch(at3, lastCase, scenario) {
   if (at3 === "text") return "text";
   if (lastCase === void 0) return "frame";
-  const reading = readCaseOrFrame(lastCase);
+  const reading = scenario.kind.read(lastCase);
   return reading.kind !== "whole" && reading.blanks.length > 0 ? "frame" : "text";
 }
-function judge(submission, at3, lastCase, rules) {
+function judge(submission, at3, lastCase, scenario, context2) {
   if ("issue" in submission) {
-    return { kind: "rejected", stage: stageOfPatch(at3, lastCase), issues: [submission.issue], toWrite: [] };
+    return {
+      kind: "rejected",
+      stage: stageOfPatch(at3, lastCase, scenario),
+      issues: [submission.issue],
+      toWrite: []
+    };
   }
-  const reading = readCaseOrFrame(submission.submitted);
+  const reading = scenario.kind.read(submission.submitted);
   const blanks = reading.kind === "whole" ? [] : reading.blanks;
   const stage = at3 === "frame" && blanks.length > 0 ? "frame" : "text";
   const remaining = stage === "text" ? blanks : [];
@@ -56188,16 +56234,17 @@ function judge(submission, at3, lastCase, rules) {
     }));
     return { kind: "rejected", stage, issues, toWrite: remaining };
   }
-  const result = validateCase(
-    withSightings(reading.scenario),
-    reading.kind === "frame" ? { ...rules, frame: true } : rules
+  const result = scenario.kind.check(
+    reading.scenario,
+    { ...context2, frame: reading.kind === "frame" },
+    scenario.words(context2.locale)
   );
   if (!result.isValid) return { kind: "rejected", stage, issues: result.issues, toWrite: remaining };
-  return reading.kind === "frame" ? { kind: "framed", toWrite: blanks } : { kind: "accepted", detectiveCase: result.detectiveCase };
+  return reading.kind === "frame" ? { kind: "framed", toWrite: blanks } : { kind: "accepted", scenario: result.scenario };
 }
 var scenarioSubmit = defineTool({
   name: "scenario_submit",
-  description: 'For the case generator only. Submits a case to the engine in two stages. First the frame: the case with every narrative text (names, descriptions, personas, statements, admissions, claims, insights, motive, method, reasons, the title and the premise) left as an empty string "". The engine judges it on its structure alone. If it is sound the result has `frameAccepted: true` and `toWrite`, the JSON Pointers of every text still blank: write them all in one `patch`. A complete case with every text written is also accepted, at once, and is judged by every check. A submission is `case` (JSON text or an object) or `patch` (a list of operations on the last case you submitted), never both. A patch is JSON Patch limited to `add`, `replace` and `remove` on JSON Pointers, such as {"op":"replace","path":"/clues/3/description","value":"..."}; all of its operations apply or none does. The engine validates it for this run\'s hero. If the case is accepted the engine seals it and starts the run, and the result is just {"accepted":true}: stop and answer "accepted". If a submission is not, the result lists the issues (code, path, message), most important first, `stage` (`frame` or `text`) and how many attempts are left in that stage. The path of an issue is a JSON Pointer to the place to fix: fix exactly those with a patch, which is far shorter than the case. Each stage has three attempts, a patch counted like a case; a frame that is accepted costs none. After the last the result has "final":true (with the issues of that last rejection) and the run reports a failure, so stop and answer "failed: <reason>". An accepted case can never be replaced. Never repeat a submission that was accepted.',
+  description: 'For the case generator only. Submits a case to the engine in two stages. First the frame: the case with every narrative text of it (your instructions say which they are) left as an empty string "". The engine judges it on its structure alone. If it is sound the result has `frameAccepted: true` and `toWrite`, the JSON Pointers of every text still blank: write them all in one `patch`. A complete case with every text written is also accepted, at once, and is judged by every check. A submission is `case` (JSON text or an object) or `patch` (a list of operations on the last case you submitted), never both. A patch is JSON Patch limited to `add`, `replace` and `remove` on JSON Pointers, such as {"op":"replace","path":"/clues/3/description","value":"..."}; all of its operations apply or none does. The engine validates it for this run\'s hero. If the case is accepted the engine seals it and starts the run, and the result is just {"accepted":true}: stop and answer "accepted". If a submission is not, the result lists the issues (code, path, message), most important first, `stage` (`frame` or `text`) and how many attempts are left in that stage. The path of an issue is a JSON Pointer to the place to fix: fix exactly those with a patch, which is far shorter than the case. Each stage has three attempts, a patch counted like a case; a frame that is accepted costs none. After the last the result has "final":true (with the issues of that last rejection) and the run reports a failure, so stop and answer "failed: <reason>". An accepted case can never be replaced. Never repeat a submission that was accepted.',
   inputSchema: external_exports.object({
     case: external_exports.union([external_exports.string().max(MAX_CASE_TEXT_LENGTH), external_exports.record(external_exports.string(), external_exports.unknown())]).optional(),
     patch: external_exports.array(PatchOpSchema).min(1).max(MAX_PATCH_OPERATIONS).optional()
@@ -56217,6 +56264,7 @@ var scenarioSubmit = defineTool({
   }),
   handler: (input2, context2) => serialized(async () => {
     const { pending, hero } = await openPendingRun(context2);
+    const scenario = scenarioFor(context2, hero);
     if (pending.failed || pending.attempts >= MAX_CASE_ATTEMPTS || pending.frameAttempts >= MAX_FRAME_ATTEMPTS) {
       return { accepted: false, attemptsLeft: 0, final: true, reason: FINAL_REASON };
     }
@@ -56228,7 +56276,7 @@ var scenarioSubmit = defineTool({
       });
     }
     const world = await requireWorld(context2);
-    const brief = pending.brief ?? await chooseBrief(context2, pending, hero, world);
+    const brief = pending.brief ?? await chooseBrief(context2, pending, hero, world, scenario);
     const logged = {
       date: context2.today(),
       seed: pending.seed,
@@ -56237,11 +56285,10 @@ var scenarioSubmit = defineTool({
       archetype: hero.archetype
     };
     const submission = readSubmission(input2, pending.lastCase);
-    const judged = judge(submission, pending.stage, pending.lastCase, {
+    const judged = judge(submission, pending.stage, pending.lastCase, scenario, {
       hero,
       traits: pending.traits,
       locale: pending.locale,
-      rules: GENERATED_RULES,
       // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
       realNames: [
         .../* @__PURE__ */ new Set([...worldRealNames(world), ...(await seedsOfRun(context2))?.realNames ?? []])
@@ -56249,10 +56296,10 @@ var scenarioSubmit = defineTool({
     });
     if (judged.kind === "accepted") {
       const runId = makeRunId(context2.now(), pending.seed);
-      const run = createDetectiveRun({
+      const run = scenario.kind.startRun({
         hero,
         traits: pending.traits,
-        case: judged.detectiveCase,
+        scenario: judged.scenario,
         seed: pending.seed,
         runId,
         rngState: pending.rngState,
@@ -56261,8 +56308,8 @@ var scenarioSubmit = defineTool({
         setting: brief.setting,
         // Shown to the player later, as what the case grew from.
         inspiration: brief.seed && { kind: brief.seed.kind, premise: brief.seed.premise },
-        // The tool slots the player's runs have earned this hero.
-        toolSlots: toolSlotsOf(await recordsOrNone(context2))
+        // What the player's runs have earned this hero is read from them by the scenario.
+        records: await recordsOrNone(context2)
       });
       await saveRun(context2.saveDir, run, context2.saveFs, EMPTY_RUN_LOG);
       const news = await seedsOfRun(context2);
@@ -56322,14 +56369,14 @@ var scenarioSubmit = defineTool({
       stage: judged.stage,
       attempt: spent,
       outcome: attemptsLeft === 0 ? "final" : "rejected",
-      codes: codesOf(judged.issues),
+      codes: codesOf(judged.issues, scenario.kind.issueOrder),
       issues: judged.issues.length
     });
     const rejection = {
       accepted: false,
       stage: judged.stage,
       attemptsLeft,
-      ...compactIssues(judged.issues),
+      ...compactIssues(judged.issues, scenario.kind.issueOrder),
       ...judged.toWrite.length === 0 ? {} : { toWrite: [...judged.toWrite] }
     };
     if (attemptsLeft === 0) {

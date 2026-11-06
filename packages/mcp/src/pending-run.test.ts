@@ -1,10 +1,10 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { CRIME_TYPES } from '@the-race/engine';
 import { describe, expect, it } from 'vitest';
 import { memoryFs } from '../../saves/test/memory-fs.js';
 import {
-  PENDING_THEMES,
   clearPending,
   loadPending,
   newPendingRun,
@@ -17,9 +17,26 @@ const DIR = 'pending-save';
 
 describe('pending run', () => {
   it('picks the same theme for the same seed, from the list, and every theme occurs', () => {
-    const themes = new Set(Array.from({ length: 400 }, (_, index) => themeOfSeed(`seed-${String(index)}`)));
-    expect([...themes].sort()).toEqual([...PENDING_THEMES].sort());
-    expect(themeOfSeed('x')).toBe(themeOfSeed('x'));
+    const themes = new Set(
+      Array.from({ length: 400 }, (_, index) => themeOfSeed(`seed-${String(index)}`, CRIME_TYPES)),
+    );
+    expect([...themes].sort()).toEqual([...CRIME_TYPES].sort());
+    expect(themeOfSeed('x', CRIME_TYPES)).toBe(themeOfSeed('x', CRIME_TYPES));
+  });
+
+  it('picks from the themes it is given, whichever archetype they are of', () => {
+    const storms = ['storm', 'famine'];
+
+    const picked = new Set(
+      Array.from({ length: 100 }, (_, index) => themeOfSeed(`seed-${String(index)}`, storms)),
+    );
+
+    expect([...picked].sort()).toEqual(['famine', 'storm']);
+    expect(themeOfSeed('only', ['one'])).toBe('one');
+  });
+
+  it('starts with no theme: the archetype is not known until the hero is made, and the brief takes one', () => {
+    expect(newPendingRun('abc', 'ru')).not.toHaveProperty('theme');
   });
 
   it('starts without a hero and keeps what it saves', async () => {

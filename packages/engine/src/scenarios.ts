@@ -16,3 +16,12 @@ export const SCENARIOS = { detective: DETECTIVE_SCENARIO } as const satisfies Re
 
 /** The run an accepted case starts: the run of its archetype. Only the detective's exists until the run is general (#43). */
 export type ArchetypeRun = ReturnType<(typeof SCENARIOS)[Archetype]['startRun']>;
+
+/**
+ * A scenario seen from outside, by what every archetype's has in common: the case, and the words it needs of the player's
+ * language, are its own and nothing here knows them, and the run it starts is the archetype's run.
+ */
+export type AnyScenarioKind = ScenarioKind<unknown, ArchetypeRun, unknown>;
+
+/** The scenario of an archetype. */
+export const scenarioOf = (archetype: Archetype): AnyScenarioKind => SCENARIOS[archetype];
