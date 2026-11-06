@@ -102,13 +102,15 @@ export function applyPatch(document: unknown, operations: readonly PatchOp[]): P
 
 /**
  * The path of an issue (`clues[3].description`, or `locations.2.id` from the schema) as a JSON Pointer
- * (`/clues/3/description`), so that a generator can patch the very place it was told about.
+ * (`/clues/3/description`), so that a generator can patch the very place it was told about. A pointer passes as it is.
  */
 export function toJsonPointer(path: string): string {
-  if (path === '') return '';
-  return path
-    .replace(/\[(\d+)\]/g, '.$1')
-    .split('.')
-    .map((token) => `/${token.replaceAll('~', '~0').replaceAll('/', '~1')}`)
-    .join('');
+  // A path that is a pointer already (it starts with a slash) is left as it is: no key of the engine's paths does.
+  if (path === '' || path.startsWith('/')) return path;
+  return jsonPointerOf(path.replace(/\[(\d+)\]/g, '.$1').split('.'));
+}
+
+/** The JSON Pointer to the place the keys lead to, from the root. */
+export function jsonPointerOf(keys: readonly PropertyKey[]): string {
+  return keys.map((key) => `/${String(key).replaceAll('~', '~0').replaceAll('/', '~1')}`).join('');
 }

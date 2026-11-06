@@ -8,7 +8,14 @@ export * from './assemble-hero.js';
 export * from './dice.js';
 export { assertNever } from './assert-never.js';
 export { canonicalJson, sha256Hex } from './canonical-json.js';
-export { PatchOpSchema, applyPatch, toJsonPointer, type PatchOp, type PatchResult } from './json-patch.js';
+export {
+  PatchOpSchema,
+  applyPatch,
+  jsonPointerOf,
+  toJsonPointer,
+  type PatchOp,
+  type PatchResult,
+} from './json-patch.js';
 export * from './traits.js';
 export * from './meters.js';
 export * from './modifiers.js';
@@ -19,6 +26,8 @@ export * from './detective/archetype.js';
 export * from './detective/traits.js';
 export * from './detective/case-schema.js';
 export * from './detective/case-issue.js';
+export * from './detective/frame.js';
+export { collectNarrativeTexts, type NarrativeText } from './detective/checks/texts.js';
 export * from './detective/condition.js';
 export * from './detective/gear.js';
 export * from './detective/suitcase.js';

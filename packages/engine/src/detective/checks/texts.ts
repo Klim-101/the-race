@@ -8,19 +8,22 @@ import { isInLocaleScript } from '../../text/script.js';
 import type { CaseIssue } from '../case-issue.js';
 import type { DetectiveCase } from '../case-schema.js';
 
-interface NarrativeText {
+export interface NarrativeText {
   readonly path: string;
   readonly text: string;
 }
 
 /**
- * Every narrative text is in the run's language and names nothing from the real world. The truth is
- * checked too: it reaches the player in the final report.
+ * The case is in the run's language, and (with `content`) every narrative text is in it and names nothing from the
+ * real world. The truth is checked too: it reaches the player in the final report. The language of the case is a
+ * fact about its frame; what the texts say is judged only once they are written, so a frame is checked with
+ * `content` off.
  */
 export function checkTexts(
   detectiveCase: DetectiveCase,
   locale: Locale,
   realNames: readonly string[],
+  content: boolean,
 ): CaseIssue[] {
   const issues: CaseIssue[] = [];
   if (detectiveCase.locale !== locale) {
@@ -30,6 +33,7 @@ export function checkTexts(
       message: `The case is in "${detectiveCase.locale}", but the run is in "${locale}".`,
     });
   }
+  if (!content) return issues;
   for (const { path, text } of collectNarrativeTexts(detectiveCase)) {
     const realName = findRealName(text, realNames);
     if (realName !== undefined) {
@@ -49,7 +53,8 @@ export function checkTexts(
   return issues;
 }
 
-function collectNarrativeTexts(detectiveCase: DetectiveCase): NarrativeText[] {
+/** Every narrative text of a case with its path: the places a frame leaves blank and a text patch fills. */
+export function collectNarrativeTexts(detectiveCase: DetectiveCase): NarrativeText[] {
   const at = (path: string, text: string): NarrativeText => ({ path, text });
   const { truth } = detectiveCase;
   return [

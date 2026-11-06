@@ -586,6 +586,8 @@
       "accepted": "runs that got a case",
       "failed": "runs left without one",
       "share": "of runs got a case",
+      "framesAccepted": "frames accepted",
+      "framesRejected": "frames rejected",
       "attempt": "Attempt",
       "acceptedOnIt": "Cases accepted",
       "mostOften": "Rules that rejected cases most often",

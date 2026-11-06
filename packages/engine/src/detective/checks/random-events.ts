@@ -13,7 +13,8 @@ import { isSolvable, scheduledClosures, withEffect, type Standing } from '../sol
  * The pool of random events: ids are unique, every reference resolves, days fall inside the case, no
  * description speaks of violence or death, and no event, taken with every scheduled closure, can cut this
  * hero off from the solution. Events are checked one by one; the engine checks again, with what has already
- * happened, before it applies one, which is what keeps a run of them from adding up to a dead end.
+ * happened, before it applies one, which is what keeps a run of them from adding up to a dead end. What a
+ * description says is judged only once it is written (`content`); a frame is checked without it.
  */
 export function checkRandomEvents(
   detectiveCase: DetectiveCase,
@@ -21,6 +22,7 @@ export function checkRandomEvents(
   traits: readonly Trait[],
   locale: Locale,
   minEvents: number,
+  content: boolean,
 ): CaseIssue[] {
   const { days } = detectiveCase.clock;
   const locationIds = new Set(detectiveCase.locations.map(({ id }) => id));
@@ -79,7 +81,7 @@ export function checkRandomEvents(
         `The case lasts ${String(days)} days, so an effect cannot outlast day ${String(days + 1)}.`,
       );
     }
-    const violence = findViolence(event.description, locale);
+    const violence = content ? findViolence(event.description, locale) : undefined;
     if (violence !== undefined) {
       issues.push({
         code: 'random-event-violence',

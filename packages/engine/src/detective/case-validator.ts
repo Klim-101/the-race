@@ -1,6 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import type { z } from 'zod';
 import type { DetectiveHero } from './archetype.js';
 import type { Locale } from '../locale.js';
 import type { Trait } from '../traits.js';
@@ -75,26 +76,36 @@ export interface CaseValidationContext {
   readonly requirePublicLife?: boolean;
   /** Whether a clue may only describe what is seen, never what it means (a generated case must). */
   readonly requireObservations?: boolean;
+  /**
+   * Whether the case is a frame: its narrative texts are not written yet (see `readCaseOrFrame`), so only what does
+   * not depend on what they say is judged. Left out, every check runs.
+   */
+  readonly frame?: boolean;
 }
 
 export type CaseValidationResult =
   | { readonly isValid: true; readonly detectiveCase: DetectiveCase }
   | { readonly isValid: false; readonly issues: readonly CaseIssue[] };
 
-/** Accepts a generated case only when this hero can actually solve it; otherwise lists every issue. */
+/** The problems the schema found, in the form of the other issues. */
+export function schemaIssues(issues: readonly z.core.$ZodIssue[]): CaseIssue[] {
+  return issues.map((issue) => ({
+    code: 'schema',
+    path: issue.path.map(String).join('.'),
+    message: issue.message,
+  }));
+}
+
+/**
+ * Accepts a generated case only when this hero can actually solve it; otherwise lists every issue. A frame is judged
+ * by the checks that do not read what a text says, and a case that is complete by all of them.
+ */
 export function validateCase(input: unknown, context: CaseValidationContext): CaseValidationResult {
   const parsed = DetectiveCaseSchema.safeParse(input);
-  if (!parsed.success) {
-    return {
-      isValid: false,
-      issues: parsed.error.issues.map((issue) => ({
-        code: 'schema',
-        path: issue.path.map(String).join('.'),
-        message: issue.message,
-      })),
-    };
-  }
+  if (!parsed.success) return { isValid: false, issues: schemaIssues(parsed.error.issues) };
   const detectiveCase = parsed.data;
+  // What a text says is judged once it is written.
+  const content = context.frame !== true;
 
   // The graph checks below look entities up by id, so they only make sense once every id resolves.
   const referenceIssues = checkReferences(detectiveCase);
@@ -122,10 +133,10 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...checkTimeline(detectiveCase),
     ...checkWitnesses(detectiveCase),
     ...(context.requirePublicLife ? checkPublicPlaces(detectiveCase) : []),
-    ...(context.requireObservations ? checkObservations(detectiveCase) : []),
+    ...(context.requireObservations && content ? checkObservations(detectiveCase) : []),
     ...(context.requireLinkable ? checkLinkable(detectiveCase) : []),
     ...checkClearing(detectiveCase, obtainable, context.requireClearing ?? false),
-    ...checkReactions(detectiveCase, context.traits),
+    ...checkReactions(detectiveCase, context.traits, content),
     ...checkWorldEvents(detectiveCase, context.hero, context.traits),
     ...checkRandomEvents(
       detectiveCase,
@@ -133,12 +144,13 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
       context.traits,
       context.locale,
       context.minRandomEvents ?? 0,
+      content,
     ),
     ...(context.map === undefined ? [] : checkMapShape(detectiveCase, context.map)),
     ...(context.days === undefined ? [] : checkRunLength(detectiveCase, context.days)),
     ...checkFleeDeadline(detectiveCase, context.hero, context.traits),
     ...checkRedHerrings(detectiveCase),
-    ...checkTexts(detectiveCase, context.locale, context.realNames),
+    ...checkTexts(detectiveCase, context.locale, context.realNames, content),
   ];
   return issues.length === 0 ? { isValid: true, detectiveCase } : { isValid: false, issues };
 }

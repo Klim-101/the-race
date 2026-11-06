@@ -9,8 +9,13 @@ import type { DetectiveCase } from '../case-schema.js';
  * A line a suspect says about a clue is for a clue that bears on them: a reaction to one that is about someone else
  * would be a tell that it was not about them. It names no hidden trait of the hero either; the generator never sees
  * the traits, so a line that does is one that guessed, and the narrator never lets a trait be named before it shows.
+ * What a line says is judged only once it is written (`content`); whom it is for is a fact of the frame.
  */
-export function checkReactions(detectiveCase: DetectiveCase, traits: readonly Trait[]): CaseIssue[] {
+export function checkReactions(
+  detectiveCase: DetectiveCase,
+  traits: readonly Trait[],
+  content: boolean,
+): CaseIssue[] {
   const cluesById = new Map(detectiveCase.clues.map((clue) => [clue.id, clue]));
   return detectiveCase.suspects.flatMap((suspect, suspectIndex) =>
     (suspect.reactions ?? []).flatMap((reaction, reactionIndex) => {
@@ -18,7 +23,7 @@ export function checkReactions(detectiveCase: DetectiveCase, traits: readonly Tr
       const clue = cluesById.get(reaction.clueId);
       const tied = clue !== undefined && [...(clue.about ?? []), ...clue.pointsTo].includes(suspect.id);
       const text = reaction.text.toLowerCase();
-      const named = traits.find(({ id }) => text.includes(id.toLowerCase()));
+      const named = content ? traits.find(({ id }) => text.includes(id.toLowerCase())) : undefined;
       return [
         ...(tied
           ? []
