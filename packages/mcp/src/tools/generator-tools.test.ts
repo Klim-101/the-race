@@ -10,6 +10,7 @@ import {
   SEED_CRIMES,
   applyPatch,
   collectNarrativeTexts,
+  createRng,
   toJsonPointer,
   type DetectiveHero,
   type NewsSeed,
@@ -287,6 +288,164 @@ describe('generator_brief', () => {
   it('refuses when the attempts are used up', async () => {
     const { call } = await start(pendingRun({ attempts: 3, failed: true }));
     expect(errorCode(await call('generator_brief', {}))).toBe('case-failed');
+  });
+});
+
+describe('the brief kept with the pending run', () => {
+  const OTHER: NewsSeed = {
+    id: 'bridge-closed',
+    headlineIds: ['h9f8e7d6c'],
+    kind: 'outage',
+    tone: 'serious',
+    premise: 'A crossing everyone relies on is shut without notice, and nobody owns the fault.',
+  };
+  const NORWAY = { kind: 'country', real: ['Norway', 'Норвегия'], region: 'north' };
+  const FREEDONIA = { kind: 'country', real: ['Freedonia'], region: 'island' };
+  /** A run seed for which a world of two countries picks the second: so that a late choice is never the first. */
+  const SECOND_OF_TWO = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].find(
+    (seed) => createRng(`${seed}:setting`).roll(2) === 2,
+  );
+  const newsOf = (fs: SaveFs, seeds: NewsSeed[]) =>
+    saveSeedsForDay(SAVE_DIR, '2026-10-31', { seeds, realNames: [] }, fs);
+
+  it('keeps what the first call gave, as it gave it', async () => {
+    const fs = memoryFs();
+    await newsOf(fs, [SEED]);
+    const { call } = await start(pendingRun(), fs);
+    await call('world_propose', NORWAY);
+
+    const brief = await call('generator_brief', {});
+
+    const kept = (await loadPending(SAVE_DIR, fs))?.brief;
+    expect(kept).toMatchObject({
+      theme: brief.body.theme,
+      tone: brief.body.tone,
+      seed: brief.body.seed,
+    });
+    expect(kept?.setting).toMatchObject({ id: (brief.body.setting as { id: string }).id });
+    expect(kept?.seed).toMatchObject({ id: SEED.id, kind: SEED.kind, premise: SEED.premise });
+  });
+
+  it('keeps no seed when there was none, and no country while the world has none', async () => {
+    const { fs, call } = await start(pendingRun());
+
+    await call('generator_brief', {});
+
+    expect((await loadPending(SAVE_DIR, fs))?.brief).toMatchObject({ seed: null, setting: null });
+  });
+
+  it('gives the same seed, theme, tone and country again when the news and the world changed since', async () => {
+    const fs = memoryFs();
+    await newsOf(fs, [SEED]);
+    const { call } = await start(pendingRun(), fs);
+    await call('world_propose', NORWAY);
+    const first = await call('generator_brief', {});
+
+    await newsOf(fs, [OTHER]);
+    await call('world_propose', FREEDONIA);
+    const second = await call('generator_brief', {});
+
+    expect(second.body.seed).toEqual(first.body.seed);
+    expect(second.body).toMatchObject({
+      theme: first.body.theme,
+      tone: first.body.tone,
+      setting: first.body.setting,
+    });
+    expect(second.body.seed).toMatchObject({ id: SEED.id });
+    // What the world holds is told as it stands: the new country is in the dictionary, but not the setting.
+    expect((second.body.mirrorWorld as { entries: unknown[] }).entries).toHaveLength(2);
+  });
+
+  it('counts the attempts left afresh, with the same brief', async () => {
+    const { call } = await start(pendingRun());
+    const first = await call('generator_brief', {});
+    await submit(call, { nothing: true });
+
+    const second = await call('generator_brief', {});
+
+    expect(first.body.attemptsLeft).toBe(3);
+    expect(second.body.attemptsLeft).toBe(2);
+    expect({ ...second.body, attemptsLeft: 3 }).toEqual(first.body);
+  });
+
+  it('makes the run from the seed and the country the generator was given, not from a later choice', async () => {
+    expect(SECOND_OF_TWO).toBeDefined();
+    const fs = memoryFs();
+    await newsOf(fs, [SEED]);
+    const { call } = await start(pendingRun({ seed: SECOND_OF_TWO ?? 'a', locale: 'en' }), fs);
+    await call('world_propose', NORWAY);
+    const brief = await call('generator_brief', {});
+
+    // While the generator writes, the news is refreshed and the world gains a country that would now be picked.
+    await newsOf(fs, [OTHER]);
+    await call('world_propose', FREEDONIA);
+    const submitted = await submit(call, readCase('goose-of-elmwick.en.json'));
+
+    expect(submitted.body).toEqual({ accepted: true });
+    const loaded = await loadTheRun(SAVE_DIR, fs);
+    expect(loaded.ok && loaded.run.inspiration).toEqual({ kind: SEED.kind, premise: SEED.premise });
+    expect(loaded.ok && loaded.run.setting?.id).toBe((brief.body.setting as { id: string }).id);
+    const view = await call('run_view', {});
+    expect(view.body.inspiration).toEqual({ kind: SEED.kind, premise: SEED.premise });
+  });
+
+  it('would have picked another country by the late choice, which is what the kept brief prevents', async () => {
+    // The same world and run seed, with no brief kept: the choice is made at the submission, as it was before.
+    const fs = memoryFs();
+    await newsOf(fs, [SEED]);
+    const { call } = await start(pendingRun({ seed: SECOND_OF_TWO ?? 'a', locale: 'en' }), fs);
+    await call('world_propose', NORWAY);
+    await call('world_propose', FREEDONIA);
+    await newsOf(fs, [OTHER]);
+    const countries = ((await call('world_view', { locale: 'en' })).body.entries as { id: string }[]).map(
+      ({ id }) => id,
+    );
+
+    await submit(call, readCase('goose-of-elmwick.en.json'));
+
+    const loaded = await loadTheRun(SAVE_DIR, fs);
+    expect(countries).toHaveLength(2);
+    // The country of the second place: not the one the first of the two worlds would have given.
+    expect(loaded.ok && loaded.run.setting?.id).toBe(countries[1]);
+    expect(loaded.ok && loaded.run.inspiration).toEqual({ kind: OTHER.kind, premise: OTHER.premise });
+  });
+
+  it('is accepted when the record was written before the brief was kept: the choice is made at the submission', async () => {
+    const fs = memoryFs();
+    await newsOf(fs, [SEED]);
+    const { call } = await start(pendingRun({ locale: 'en' }), fs);
+    await call('world_propose', NORWAY);
+    const record = JSON.parse(fs.files.get(pendingFile(SAVE_DIR)) ?? '{}') as Record<string, unknown>;
+    expect(record).not.toHaveProperty('brief');
+
+    const submitted = await submit(call, readCase('goose-of-elmwick.en.json'));
+
+    expect(submitted.body).toEqual({ accepted: true });
+    const loaded = await loadTheRun(SAVE_DIR, fs);
+    expect(loaded.ok && loaded.run.inspiration).toEqual({ kind: SEED.kind, premise: SEED.premise });
+    expect(loaded.ok && loaded.run.setting?.climate.zone).toBe('subarctic');
+  });
+
+  it('keeps the brief through the attempts, so that a patch is judged against the same run', async () => {
+    const fs = memoryFs();
+    await newsOf(fs, [SEED]);
+    const { call } = await start(pendingRun(), fs);
+    await call('generator_brief', {});
+    await submit(call, { nothing: true });
+
+    expect((await loadPending(SAVE_DIR, fs))?.brief?.seed).toMatchObject({ id: SEED.id });
+  });
+
+  it('never gives a headline or a hidden trait: the kept brief holds the seed of the news only as the brief shows it', async () => {
+    const fs = memoryFs();
+    await newsOf(fs, [SEED]);
+    const { call } = await start(pendingRun(), fs);
+    await call('generator_brief', {});
+
+    const text = fs.files.get(pendingFile(SAVE_DIR)) ?? '';
+    const brief = JSON.stringify((JSON.parse(text) as { brief: unknown }).brief);
+    expect(brief).not.toContain(SEED.headlineIds[0]);
+    for (const trait of DETECTIVE_TRAITS) expect(brief).not.toContain(trait.id);
   });
 });
 
