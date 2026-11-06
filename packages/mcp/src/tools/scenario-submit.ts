@@ -14,9 +14,9 @@ import {
   PatchOpSchema,
   applyPatch,
   readCaseOrFrame,
+  sortIssues,
   toJsonPointer,
   type CaseIssue,
-  type CaseIssueCode,
   type CaseValidationContext,
   type DetectiveCase,
   type PatchOp,
@@ -40,90 +40,13 @@ const MAX_PATH_LENGTH = 120;
 /** Large enough for any case the schema allows; a bigger text is not one. */
 const MAX_CASE_TEXT_LENGTH = 400_000;
 
-/** The most fundamental problems first (a lower number): a case that does not parse has nothing else to fix yet. */
-const ISSUE_PRIORITY: Record<CaseIssueCode, number> = {
-  // A patch that did not apply leaves nothing else to judge.
-  'patch-failed': -1,
-  schema: 0,
-  // A blank text is the next thing to fix once the schema is satisfied.
-  'text-missing': 0.5,
-  'duplicate-id': 1,
-  'unknown-reference': 2,
-  'locale-mismatch': 3,
-  'wrong-language': 4,
-  'wrong-script': 5,
-  'real-name': 6,
-  'map-too-small': 6.2,
-  'map-too-large': 6.2,
-  'too-few-outdoor-places': 6.4,
-  'single-building': 6.6,
-  'hidden-start': 6.7,
-  'suspect-in-hidden-place': 6.7,
-  'empty-public-place': 6.9,
-  'parts-missing': 6.8,
-  'part-in-wrong-place': 6.8,
-  'clue-in-two-parts': 6.8,
-  'clue-without-part': 6.8,
-  'part-never-shown': 6.8,
-  'unreachable-location': 7,
-  'unobtainable-clue': 8,
-  'unreachable-suspect': 9,
-  'clue-not-tied': 9.05,
-  'lie-without-admission': 9.06,
-  'lie-chain-broken': 9.07,
-  'alibi-replaced-twice': 9.075,
-  'witness-saw-the-crime': 18.5,
-  'chain-without-deduction': 17.5,
-  'culprit-cleared': 17.6,
-  'suspect-without-true-claim': 17.62,
-  'reaction-not-tied': 17.65,
-  'reaction-names-trait': 17.66,
-  'suspect-cannot-be-cleared': 17.7,
-  'red-herring-unexplained': 17.8,
-  'red-herring-without-thread': 17.85,
-  'unearnable-lead': 9.1,
-  'unused-lead': 9.1,
-  'false-lead-holds-clue': 9.1,
-  'part-without-fallback': 9.2,
-  'fallback-unreachable': 9.4,
-  'too-few-evidence-chains': 10,
-  'overlapping-evidence-chains': 11,
-  'red-herring-in-evidence-chain': 12,
-  'unobtainable-evidence': 13,
-  'evidence-chain-misses-culprit': 14,
-  'no-chain-without-untrained-skill': 15,
-  'unobtainable-motive': 16,
-  'unlikely-solution': 17,
-  'unbreakable-lie': 18,
-  'culprit-not-at-crime': 19,
-  'actor-in-two-places': 20,
-  'too-many-red-herrings': 21,
-  'world-event-out-of-range': 22,
-  'event-cuts-solution': 23,
-  'random-event-out-of-range': 24,
-  'random-event-cuts-solution': 25,
-  'random-event-violence': 26,
-  'too-few-random-events': 27,
-  'random-events-miss-a-day': 27.5,
-  'run-length-out-of-range': 27.6,
-  'solution-after-culprit-flees': 28,
-  'clue-draws-conclusion': 29,
-};
-
-function priorityOf(issue: CaseIssue): number {
-  return ISSUE_PRIORITY[issue.code];
-}
-
 function clip(text: string, length: number): string {
   return text.length <= length ? text : `${text.slice(0, length - 1)}…`;
 }
 
-const mostImportantFirst = (issues: readonly CaseIssue[]): CaseIssue[] =>
-  [...issues].sort((a, b) => priorityOf(a) - priorityOf(b));
-
 /** The distinct codes of all the issues, the most fundamental first: what the log keeps, and never a message. */
 export function codesOf(issues: readonly CaseIssue[]): string[] {
-  return [...new Set(mostImportantFirst(issues).map(({ code }) => code))];
+  return [...new Set(sortIssues(issues).map(({ code }) => code))];
 }
 
 /**
@@ -134,7 +57,7 @@ export function compactIssues(issues: readonly CaseIssue[]): {
   issues: { code: string; path: string; message: string }[];
   moreIssues: number;
 } {
-  const shown = mostImportantFirst(issues).slice(0, MAX_ISSUES);
+  const shown = sortIssues(issues).slice(0, MAX_ISSUES);
   return {
     issues: shown.map(({ code, path, message }) => ({
       code,

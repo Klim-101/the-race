@@ -740,6 +740,26 @@ describe('scenario_submit', () => {
     expect(issues[1]).toEqual({ code: 'unreachable-location', path: '/locations/0', message: 'short' });
   });
 
+  it('shows the issues in the order of the engine: the most fundamental first, and the same kinds as they came', () => {
+    const at = (code: string, path: string) => ({ code, path, message: 'm' }) as never;
+
+    const { issues } = compactIssues([
+      at('clue-draws-conclusion', 'clues[0].description'),
+      at('real-name', 'title'),
+      at('unreachable-location', 'locations[2]'),
+      at('real-name', 'premise'),
+      at('schema', 'clues.1.id'),
+    ]);
+
+    expect(issues.map(({ code, path }) => `${code} ${path}`)).toEqual([
+      'schema /clues/1/id',
+      'real-name /title',
+      'real-name /premise',
+      'unreachable-location /locations/2',
+      'clue-draws-conclusion /clues/0/description',
+    ]);
+  });
+
   it('gives the path of an issue as a JSON Pointer, whichever way the engine wrote it', () => {
     const at = (path: string) => ({ code: 'unreachable-location', path, message: 'm' }) as const;
 
