@@ -201,7 +201,7 @@ function judge(
     return { kind: 'rejected', stage, issues, toWrite: remaining };
   }
   const result = validateCase(
-    withSightings(reading.detectiveCase),
+    withSightings(reading.scenario),
     reading.kind === 'frame' ? { ...rules, frame: true } : rules,
   );
   if (!result.isValid) return { kind: 'rejected', stage, issues: result.issues, toWrite: remaining };
