@@ -444,6 +444,11 @@ describe('the events of a turn', () => {
     );
   });
 
+  it('says the same least number of events in the list of the fields as in the description of the pool', () => {
+    expect(generator).toMatch(/`randomEvents` \(required, at least four\)/);
+    expect(generator).not.toMatch(/at least three/);
+  });
+
   it('has the generator cover every day with some event, which the engine requires', () => {
     expect(generator).toMatch(
       /every day of the case must be covered by some event's `fromDay` to `untilDay`/,
