@@ -8,7 +8,8 @@ import { LEGACY_RULES } from './case-rules.js';
 import { DetectiveCaseSchema } from './case-schema.js';
 import { validateCase, type CaseValidationContext } from './case-validator.js';
 import { collectNarrativeTexts } from './checks/texts.js';
-import { BLANK_TEXT_PLACEHOLDER, readCaseOrFrame } from './frame.js';
+import { BLANK_TEXT_PLACEHOLDER } from '../frame.js';
+import { readCaseOrFrame } from './frame.js';
 
 const slots = (): { path: string; text: string }[] =>
   collectNarrativeTexts(DetectiveCaseSchema.parse(buildCheeseCase()));
@@ -67,12 +68,12 @@ describe('reading a document as a case or a frame', () => {
     if (reading.kind !== 'frame') throw new Error('Not a frame.');
     const whole = DetectiveCaseSchema.parse(buildCheeseCase());
 
-    expect(reading.detectiveCase.title).toBe(BLANK_TEXT_PLACEHOLDER);
-    expect(reading.detectiveCase.truth.motive).toBe(BLANK_TEXT_PLACEHOLDER);
-    expect(reading.detectiveCase.locations.map(({ id, connections }) => [id, connections])).toEqual(
+    expect(reading.scenario.title).toBe(BLANK_TEXT_PLACEHOLDER);
+    expect(reading.scenario.truth.motive).toBe(BLANK_TEXT_PLACEHOLDER);
+    expect(reading.scenario.locations.map(({ id, connections }) => [id, connections])).toEqual(
       whole.locations.map(({ id, connections }) => [id, connections]),
     );
-    expect(reading.detectiveCase.truth.timeline.map(({ atMinute, actorId }) => [atMinute, actorId])).toEqual(
+    expect(reading.scenario.truth.timeline.map(({ atMinute, actorId }) => [atMinute, actorId])).toEqual(
       whole.truth.timeline.map(({ atMinute, actorId }) => [atMinute, actorId]),
     );
   });
@@ -143,7 +144,7 @@ describe('a frame in the validator', () => {
     const reading = readCaseOrFrame(frameOfCheese());
     if (reading.kind !== 'frame') throw new Error('Not a frame.');
 
-    expect(validateCase(reading.detectiveCase, context({ frame: true })).isValid).toBe(true);
+    expect(validateCase(reading.scenario, context({ frame: true })).isValid).toBe(true);
 
     const patched = applyPatch(frameOfCheese(), textsOfCheese());
     expect(patched.ok).toBe(true);
@@ -157,16 +158,14 @@ describe('a frame in the validator', () => {
     const reading = readCaseOrFrame(document);
     if (reading.kind !== 'frame') throw new Error('Not a frame.');
 
-    expect(codesOf(reading.detectiveCase, context({ frame: true }))).toEqual(['unknown-reference']);
+    expect(codesOf(reading.scenario, context({ frame: true }))).toEqual(['unknown-reference']);
   });
 
   it('is judged on the language of the case, which is a fact of the frame and not of a text', () => {
     const reading = readCaseOrFrame(frameOfCheese());
     if (reading.kind !== 'frame') throw new Error('Not a frame.');
 
-    expect(codesOf(reading.detectiveCase, context({ frame: true, locale: 'ru' }))).toEqual([
-      'locale-mismatch',
-    ]);
+    expect(codesOf(reading.scenario, context({ frame: true, locale: 'ru' }))).toEqual(['locale-mismatch']);
   });
 
   describe('what the texts say', () => {

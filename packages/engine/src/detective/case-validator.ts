@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { z } from 'zod';
+import { schemaIssues } from '../issues.js';
 import type { DetectiveHero } from './archetype.js';
 import type { Locale } from '../locale.js';
 import type { Trait } from '../traits.js';
@@ -58,15 +58,6 @@ export interface CaseValidationContext {
 export type CaseValidationResult =
   | { readonly isValid: true; readonly detectiveCase: DetectiveCase }
   | { readonly isValid: false; readonly issues: readonly CaseIssue[] };
-
-/** The problems the schema found, in the form of the other issues. */
-export function schemaIssues(issues: readonly z.core.$ZodIssue[]): CaseIssue[] {
-  return issues.map((issue) => ({
-    code: 'schema',
-    path: issue.path.map(String).join('.'),
-    message: issue.message,
-  }));
-}
 
 /**
  * Accepts a generated case only when this hero can actually solve it; otherwise lists every issue. A frame is judged

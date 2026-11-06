@@ -2,16 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Locale } from '../../locale.js';
-import { isClearlyOtherLanguage } from '../../text/language.js';
-import { findRealName } from '../../text/real-names.js';
-import { isInLocaleScript } from '../../text/script.js';
+import { checkLocale, checkNarrativeTexts, type NarrativeText } from '../../text/check-texts.js';
 import type { CaseIssue } from '../case-issue.js';
 import type { DetectiveCase } from '../case-schema.js';
 
-export interface NarrativeText {
-  readonly path: string;
-  readonly text: string;
-}
+export type { NarrativeText };
 
 /**
  * The case is in the run's language, and (with `content`) every narrative text is in it and names nothing from the
@@ -25,32 +20,10 @@ export function checkTexts(
   realNames: readonly string[],
   content: boolean,
 ): CaseIssue[] {
-  const issues: CaseIssue[] = [];
-  if (detectiveCase.locale !== locale) {
-    issues.push({
-      code: 'locale-mismatch',
-      path: 'locale',
-      message: `The case is in "${detectiveCase.locale}", but the run is in "${locale}".`,
-    });
-  }
-  if (!content) return issues;
-  for (const { path, text } of collectNarrativeTexts(detectiveCase)) {
-    const realName = findRealName(text, realNames);
-    if (realName !== undefined) {
-      issues.push({
-        code: 'real-name',
-        path,
-        message: `Replace the real-world name "${realName}" with its mirror-world name.`,
-      });
-    }
-    if (!isInLocaleScript(text, locale)) {
-      issues.push({ code: 'wrong-script', path, message: `Write this text in "${locale}".` });
-    } else if (isClearlyOtherLanguage(text, locale)) {
-      // Only when the script is right: a wrong script is already reported, and once is enough.
-      issues.push({ code: 'wrong-language', path, message: `Write this text in the language "${locale}".` });
-    }
-  }
-  return issues;
+  return [
+    ...checkLocale(detectiveCase.locale, locale),
+    ...(content ? checkNarrativeTexts(collectNarrativeTexts(detectiveCase), locale, realNames) : []),
+  ];
 }
 
 /** Every narrative text of a case with its path: the places a frame leaves blank and a text patch fills. */

@@ -1,6 +1,8 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { sortIssuesBy } from '../issues.js';
+
 /**
  * Every reason a case may be rejected, the most fundamental first: a case that does not parse has nothing else to fix
  * yet, a place that cannot be reached makes the clues in it unobtainable, and so on up to the finer points of the
@@ -91,5 +93,5 @@ export interface CaseIssue {
  * list given is left as it is.
  */
 export function sortIssues(issues: readonly CaseIssue[]): CaseIssue[] {
-  return issues.toSorted((a, b) => ISSUE_ORDER.indexOf(a.code) - ISSUE_ORDER.indexOf(b.code));
+  return sortIssuesBy(ISSUE_ORDER, issues);
 }
