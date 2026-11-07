@@ -64,6 +64,7 @@ import { SIT_MINUTES, SIT_NERVES, sitRefusal, sitsLeft } from './venue.js';
 import { chooseTool, partsOfPlace } from './search-parts.js';
 import { GearIdSchema, worn, type GearId } from './gear.js';
 import { buildNeighbors } from './obtainability.js';
+import { deliverMessages, type ArrivedMessage } from './messages.js';
 import { closedSourcesOf, drawDayEvents, drawOwedDayEvent, isLocationClosed } from './random-events.js';
 import {
   changeReputation,
@@ -772,9 +773,11 @@ export function resolveIntent(run: DetectiveRunState, input: unknown, rng: Rng):
   const slept = sleepIfDue(resolution, run.clock.day, rng);
   const indebted = collectDebt(slept.run, run.clock.day);
   const shown = applyReveals(indebted.run, [...(slept.revealed ?? []), ...indebted.revealed]);
-  const settled = settleClock(drawDayEvents(shown.run, run.clock, rng).run, run.clock.day);
+  const clockSettled = settleClock(drawDayEvents(shown.run, run.clock, rng).run, run.clock.day);
+  // Last, so that a message is read by a hero who is still on the case, at the place the turn left them in.
+  const { run: settled, arrived: newMessages } = deliverMessages(clockSettled);
   const newLeadIds = settled.earnedLeads.slice(run.earnedLeads.length).map(({ leadId }) => leadId);
-  return { ...slept, run: settled, revealed: shown.revealed, newLeadIds };
+  return { ...slept, run: settled, revealed: shown.revealed, newLeadIds, newMessages };
 }
 
 /** What `resolveIntent` returns: every carried-out turn says which hidden traits it showed, often none. */
@@ -784,6 +787,8 @@ export type Resolved =
       readonly revealed: readonly Revealed[];
       /** The leads this turn earned, by id: the view says what each is. */
       readonly newLeadIds: readonly string[];
+      /** The messages that reached the hero this turn (see `messages.ts`); often none. */
+      readonly newMessages: readonly ArrivedMessage[];
     });
 
 type Carried = Resolution & { ok: true };

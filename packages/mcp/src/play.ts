@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  MESSAGE_CHANNELS,
   recordResolution,
   resolveIntent,
   restoreRng,
@@ -131,6 +132,8 @@ export const TurnResultSchema = z.object({
   revealed: z.array(RevealedTraitSchema).default([]),
   /** The leads this turn earned, in the hero's own words; the view lists them all. Often none. */
   leads: z.array(z.object({ id: z.string(), reason: z.string() })).default([]),
+  /** The messages that reached the hero this turn (a note, a call, a text); each one is also among `clues`. */
+  messages: z.array(z.object({ clueId: z.string(), channel: z.enum(MESSAGE_CHANNELS) })).default([]),
   /** The clues this turn gave the hero, with their texts, so the turn needs no `run_view` to be told; often none. */
   clues: z
     .array(z.object({ id: z.string(), number: z.string(), description: z.string(), garbled: z.boolean() }))
@@ -271,6 +274,7 @@ export async function playIntent(
     leads: resolution.newLeadIds.flatMap((leadId) =>
       caseLeads.filter(({ id }) => id === leadId).map(({ id, reason }) => ({ id, reason })),
     ),
+    messages: resolution.newMessages.map(({ clueId, channel }) => ({ clueId, channel })),
     ...gainedInTurn(run, resolution.run),
     view: summarizeRun(resolution.run),
   };

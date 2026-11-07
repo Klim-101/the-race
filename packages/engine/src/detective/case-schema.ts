@@ -190,6 +190,23 @@ export const LocationSchema = z.object({
 });
 export type Location = z.infer<typeof LocationSchema>;
 
+/** How a message of an abduction reaches the hero: a note left in a place, a call, a text. */
+export const MESSAGE_CHANNELS = ['note', 'call', 'text'] as const;
+export const MessageChannelSchema = z.enum(MESSAGE_CHANNELS);
+export type MessageChannel = z.infer<typeof MessageChannelSchema>;
+
+/**
+ * Set on a clue that comes by itself at a time (see `messages.ts`), and lies in no part. `arrivesAtMinute` counts as
+ * `deadlineMinute` does, from midnight of day 1 of the run, so a message can come on a later day: it is no minute of
+ * the day. A note lies at the clue's `locationId` and is read when the hero is there; a call must be taken within an
+ * hour of its time, or it is missed; a text is read at the hero's next turn, however late.
+ */
+export const ClueMessageSchema = z.object({
+  channel: MessageChannelSchema,
+  arrivesAtMinute: z.int().min(1),
+});
+export type ClueMessage = z.infer<typeof ClueMessageSchema>;
+
 export const ClueSchema = z.object({
   id: EntityIdSchema,
   locationId: EntityIdSchema,
@@ -213,6 +230,8 @@ export const ClueSchema = z.object({
    * the cases of before it, which keep their seal; a clue that points at a suspect is about them as well.
    */
   about: z.array(EntityIdSchema).optional(),
+  /** Set on a message of an abduction; optional, so that the cases of before it keep their seal. */
+  message: ClueMessageSchema.optional(),
   isRedHerring: z.boolean(),
 });
 export type Clue = z.infer<typeof ClueSchema>;
@@ -517,6 +536,15 @@ export const DetectiveCaseSchema = z
     witnesses: z.array(WitnessSchema).optional(),
   })
   .superRefine((detectiveCase, context) => {
+    detectiveCase.clues.forEach((clue, index) => {
+      if (clue.message !== undefined && formOf(detectiveCase) !== 'abduction') {
+        context.addIssue({
+          code: 'custom',
+          path: ['clues', index, 'message'],
+          message: 'Only an abduction has messages that come by themselves.',
+        });
+      }
+    });
     const hasAbduction = detectiveCase.truth.abduction !== undefined;
     if (formOf(detectiveCase) === 'abduction' && !hasAbduction) {
       context.addIssue({
