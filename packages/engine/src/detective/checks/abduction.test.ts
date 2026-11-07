@@ -1,0 +1,298 @@
+// Copyright The RACE Authors
+// SPDX-License-Identifier: Apache-2.0
+
+import { describe, expect, it } from 'vitest';
+import { buildCheeseCase, buildHero } from '../../../test/fixtures/cheese-case.js';
+import { createRng } from '../../dice.js';
+import { MOVE_MINUTES } from '../actions.js';
+import type { CaseIssue } from '../case-issue.js';
+import { validateCase } from '../case-validator.js';
+import { DETECTIVE_TRAITS } from '../traits.js';
+
+type Raw = ReturnType<typeof buildCheeseCase>;
+
+const base = buildCheeseCase();
+const CULPRIT_NAME = 'Orla Brenn';
+/** A place a clue of the first evidence chain lies in. */
+const LED_PLACE = (
+  base.clues.find(({ id }) => id === base.solution.evidenceChains[0]?.[0]) as { locationId: string }
+).locationId;
+/** 23:00 of the second day. */
+const DEADLINE = 2820;
+
+function messageClue(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: 'ransom-text',
+    locationId: 'market-square',
+    description: 'A text from an unknown number: "She is cold, but she is fine."',
+    discovery: null,
+    pointsTo: [],
+    isRedHerring: false,
+    message: { channel: 'text', arrivesAtMinute: 1600 },
+    ...overrides,
+  };
+}
+
+function abduction(change: (built: Raw) => void = () => undefined): Raw {
+  const built = buildCheeseCase();
+  built.form = 'abduction';
+  built.truth.abduction = {
+    victim: { kind: 'pet', name: 'Gouda' },
+    whereabouts: LED_PLACE,
+    deadlineMinute: DEADLINE,
+  };
+  built.clues.push(messageClue());
+  change(built);
+  return built;
+}
+
+function issuesOf(input: unknown, traits = [] as typeof DETECTIVE_TRAITS): CaseIssue[] {
+  const result = validateCase(input, { hero: buildHero(), traits, locale: 'en', realNames: [] });
+  return result.isValid ? [] : [...result.issues];
+}
+const codesOf = (input: unknown): string[] => issuesOf(input).map(({ code }) => code);
+
+describe('the fairness of an abduction', () => {
+  it('accepts a fair abduction with its message', () => {
+    expect(issuesOf(abduction())).toEqual([]);
+  });
+
+  it('has nothing to judge in a whodunit', () => {
+    expect(issuesOf(buildCheeseCase())).toEqual([]);
+  });
+
+  describe('the deadline', () => {
+    it('is no later than the end of the case', () => {
+      const end = base.clock.days * 1440;
+      const late = abduction((c) => {
+        c.truth.abduction = { ...(c.truth.abduction as object), deadlineMinute: end + 1 };
+      });
+      const last = abduction((c) => {
+        c.truth.abduction = { ...(c.truth.abduction as object), deadlineMinute: end };
+        (c.clues[c.clues.length - 1] as { message: object }).message = {
+          channel: 'text',
+          arrivesAtMinute: 1600,
+        };
+      });
+
+      expect(codesOf(late)).toEqual(['deadline-out-of-range']);
+      expect(codesOf(last)).toEqual([]);
+    });
+
+    it('leaves the hero time to walk to the victim, from 08:00 of the first day', () => {
+      // The place is a step from the start; the deadline falls before the hero can be there.
+      const walk = abduction((c) => {
+        c.truth.abduction = {
+          ...(c.truth.abduction as object),
+          whereabouts: 'cheese-stall',
+          deadlineMinute: 480 + MOVE_MINUTES - 1,
+        };
+        c.clues = c.clues.filter(({ id }) => id !== 'ransom-text');
+      });
+
+      expect(codesOf(walk)).toContain('deadline-too-short');
+    });
+
+    it('is not asked to fit a proof that cannot be gathered at all: other checks say so', () => {
+      const hopeless = abduction((c) => {
+        for (const id of ['flour-crumbs', 'cart-tracks', 'oven-receipt']) {
+          (c.clues.find((clue) => clue.id === id) as { discovery: object }).discovery = {
+            skill: 'perception',
+            difficulty: 30,
+          };
+        }
+      });
+
+      expect(codesOf(hopeless)).toContain('unobtainable-evidence');
+      expect(codesOf(hopeless)).not.toContain('deadline-too-short');
+    });
+
+    it('leaves the hero time to gather the cheapest chain of proof', () => {
+      const short = abduction((c) => {
+        c.truth.abduction = { ...(c.truth.abduction as object), deadlineMinute: 540 };
+        c.clues = c.clues.filter(({ id }) => id !== 'ransom-text');
+      });
+
+      expect(issuesOf(short)).toMatchObject([
+        { code: 'deadline-too-short', path: 'truth.abduction.deadlineMinute' },
+      ]);
+    });
+  });
+
+  describe('the victim place', () => {
+    /** A place off the square that no clue of a chain lies in, where the victim is kept. */
+    const withBoathouse = (c: Raw, access: object = { kind: 'open' }): void => {
+      (c.locations.find(({ id }) => id === 'market-square') as { connections: string[] }).connections.push(
+        'boathouse',
+      );
+      c.locations.push({
+        id: 'boathouse',
+        name: 'Old boathouse',
+        description: 'Damp planks and the smell of tar.',
+        connections: [],
+        access,
+      });
+      c.truth.abduction = { ...(c.truth.abduction as object), whereabouts: 'boathouse' };
+    };
+
+    it('is one the hero can enter', () => {
+      const shut = abduction((c) => {
+        withBoathouse(c, { kind: 'skill', check: { skill: 'social', difficulty: 30 } });
+      });
+
+      expect(codesOf(shut)).toContain('victim-place-unreachable');
+      expect(codesOf(shut)).not.toContain('deadline-too-short');
+    });
+
+    it('is led to by some chain: a clue of a chain lies there, names it, opens the way in or earns the lead', () => {
+      const unled = abduction((c) => {
+        withBoathouse(c);
+      });
+      const lies = abduction((c) => {
+        withBoathouse(c);
+        c.clues.find(({ id }) => id === 'flour-crumbs')!.locationId = 'boathouse';
+      });
+      const named = abduction((c) => {
+        withBoathouse(c);
+        (c.clues.find(({ id }) => id === 'flour-crumbs') as { description: string }).description +=
+          ' Tar on it, from the old boathouse.';
+      });
+      const opens = abduction((c) => {
+        withBoathouse(c, { kind: 'clue', clueId: 'flour-crumbs' });
+      });
+      const leads = abduction((c) => {
+        withBoathouse(c);
+        (c.locations.find(({ id }) => id === 'boathouse') as { requiresLead?: string }).requiresLead =
+          'boathouse-lead';
+        (c as unknown as { leads: object[] }).leads = [
+          { id: 'boathouse-lead', reason: 'Tar.', earnedBy: { kind: 'clue', clueId: 'flour-crumbs' } },
+        ];
+      });
+
+      expect(codesOf(unled)).toContain('victim-place-unled');
+      expect(issuesOf(unled).find(({ code }) => code === 'victim-place-unled')?.path).toBe(
+        'truth.abduction.whereabouts',
+      );
+      for (const led of [lies, named, opens, leads]) expect(codesOf(led)).not.toContain('victim-place-unled');
+    });
+
+    it('is not led to by a lead that no clue of a chain earns, nor by a name in a text not yet written', () => {
+      const other = abduction((c) => {
+        withBoathouse(c);
+        (c.locations.find(({ id }) => id === 'boathouse') as { requiresLead?: string }).requiresLead =
+          'boathouse-lead';
+        (c as unknown as { leads: object[] }).leads = [
+          { id: 'boathouse-lead', reason: 'Tar.', earnedBy: { kind: 'clue', clueId: 'ransom-text' } },
+        ];
+      });
+      const frame = abduction((c) => {
+        withBoathouse(c);
+        (c.clues.find(({ id }) => id === 'flour-crumbs') as { description: string }).description +=
+          ' From the old boathouse.';
+      });
+
+      const talk = abduction((c) => {
+        withBoathouse(c);
+        (c.locations.find(({ id }) => id === 'boathouse') as { requiresLead?: string }).requiresLead =
+          'boathouse-lead';
+        (c as unknown as { leads: object[] }).leads = [
+          { id: 'boathouse-lead', reason: 'Tar.', earnedBy: { kind: 'talk', suspectId: 'baker' } },
+        ];
+      });
+
+      expect(codesOf(other)).toContain('victim-place-unled');
+      expect(codesOf(talk)).toContain('victim-place-unled');
+      const result = validateCase(frame, {
+        hero: buildHero(),
+        traits: [],
+        locale: 'en',
+        realNames: [],
+        frame: true,
+      });
+      expect(!result.isValid && result.issues.map(({ code }) => code)).toContain('victim-place-unled');
+    });
+  });
+
+  describe('a message', () => {
+    it('arrives before the deadline', () => {
+      const onTime = abduction((c) => {
+        (c.clues[c.clues.length - 1] as { message: object }).message = {
+          channel: 'call',
+          arrivesAtMinute: DEADLINE - 1,
+        };
+      });
+      const late = abduction((c) => {
+        (c.clues[c.clues.length - 1] as { message: object }).message = {
+          channel: 'call',
+          arrivesAtMinute: DEADLINE,
+        };
+      });
+
+      expect(codesOf(onTime)).toEqual([]);
+      expect(issuesOf(late)).toMatchObject([
+        { code: 'message-after-deadline', path: 'clues[6].message.arrivesAtMinute' },
+      ]);
+    });
+
+    it('does not name the culprit, by name, by id or by a word of the name', () => {
+      const texts = [
+        `Text: ${CULPRIT_NAME} has her.`,
+        'Text: baker has her.',
+        `Text: ${CULPRIT_NAME.split(' ')[0] ?? ''} says she is fine.`,
+      ];
+      for (const description of texts) {
+        const named = abduction((c) => {
+          (c.clues[c.clues.length - 1] as { description: string }).description = description;
+        });
+
+        expect(codesOf(named)).toContain('message-names-culprit');
+      }
+    });
+
+    it('does not name a trait of the hero', () => {
+      const trait = DETECTIVE_TRAITS[0];
+      if (trait === undefined) throw new Error('No trait.');
+      const named = abduction((c) => {
+        (c.clues[c.clues.length - 1] as { description: string }).description =
+          `Text: ${trait.id} is what you are.`;
+      });
+
+      expect(codesOf(named)).not.toContain('message-names-trait');
+      expect(issuesOf(named, [trait]).map(({ code }) => code)).toContain('message-names-trait');
+    });
+
+    it('is judged by what it says only once it is written', () => {
+      const result = validateCase(
+        abduction((c) => {
+          (c.clues[c.clues.length - 1] as { description: string }).description = `${CULPRIT_NAME} has her.`;
+        }),
+        { hero: buildHero(), traits: [], locale: 'en', realNames: [], frame: true },
+      );
+
+      expect(result.isValid ? [] : result.issues.map(({ code }) => code)).not.toContain(
+        'message-names-culprit',
+      );
+    });
+  });
+
+  it('holds over many seeds: out of range exactly past the end, a message late exactly from the deadline', () => {
+    const end = base.clock.days * 1440;
+    for (let seed = 1; seed <= 200; seed += 1) {
+      const rng = createRng(seed);
+      const deadline = 600 + Math.floor(rng.next() * (end + 400 - 600));
+      const arrives = 1 + Math.floor(rng.next() * (end + 400));
+      const codes = codesOf(
+        abduction((c) => {
+          c.truth.abduction = { ...(c.truth.abduction as object), deadlineMinute: deadline };
+          (c.clues[c.clues.length - 1] as { message: object }).message = {
+            channel: 'text',
+            arrivesAtMinute: arrives,
+          };
+        }),
+      );
+
+      expect(codes.includes('deadline-out-of-range'), `seed ${String(seed)}`).toBe(deadline > end);
+      expect(codes.includes('message-after-deadline'), `seed ${String(seed)}`).toBe(arrives >= deadline);
+    }
+  });
+});

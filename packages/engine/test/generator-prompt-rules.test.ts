@@ -99,6 +99,35 @@ const RULES: Record<CaseIssueCode, Taught> = {
   'too-few-random-events': /randomEvents\*\* \(\*\*required\*\*: at least four/,
   'random-events-miss-a-day': /every day of the case must be covered by some event's/,
   'run-length-out-of-range': /`days` \(3 to 10/,
+  // The abduction form is taught to the generator with its brief (#453), which replaces these lines with patterns.
+  'deadline-out-of-range': {
+    learned:
+      'the abduction form is not in the brief of the generator until #453, and the message of the rejection says the number, the place and the rule',
+  },
+  'victim-place-unreachable': {
+    learned:
+      'the abduction form is not in the brief of the generator until #453, and the message of the rejection says the number, the place and the rule',
+  },
+  'deadline-too-short': {
+    learned:
+      'the abduction form is not in the brief of the generator until #453, and the message of the rejection says the number, the place and the rule',
+  },
+  'message-after-deadline': {
+    learned:
+      'the abduction form is not in the brief of the generator until #453, and the message of the rejection says the number, the place and the rule',
+  },
+  'victim-place-unled': {
+    learned:
+      'the abduction form is not in the brief of the generator until #453, and the message of the rejection says the number, the place and the rule',
+  },
+  'message-names-culprit': {
+    learned:
+      'the abduction form is not in the brief of the generator until #453, and the message of the rejection says the number, the place and the rule',
+  },
+  'message-names-trait': {
+    learned:
+      'the abduction form is not in the brief of the generator until #453, and the message of the rejection says the number, the place and the rule',
+  },
   'solution-after-culprit-flees': /a `culprit-flees` must come after the solution is reachable/,
   'clue-draws-conclusion': /what is seen, read or measured, and never what it means/,
 };
@@ -133,6 +162,17 @@ describe("the rules of a case in the generator's prompt", () => {
   });
 
   it('leave only a few codes to the rejection, and the list is the one reported with the change that made it', () => {
-    expect(learned.map(([code]) => code)).toEqual(['part-never-shown', 'random-event-out-of-range']);
+    expect(learned.map(([code]) => code)).toEqual([
+      'part-never-shown',
+      'random-event-out-of-range',
+      // Until the abduction form is in the brief (#453).
+      'deadline-out-of-range',
+      'victim-place-unreachable',
+      'deadline-too-short',
+      'message-after-deadline',
+      'victim-place-unled',
+      'message-names-culprit',
+      'message-names-trait',
+    ]);
   });
 });

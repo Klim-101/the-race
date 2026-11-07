@@ -35147,6 +35147,13 @@ var ISSUE_ORDER = [
   "random-events-miss-a-day",
   "run-length-out-of-range",
   "solution-after-culprit-flees",
+  "deadline-out-of-range",
+  "victim-place-unreachable",
+  "deadline-too-short",
+  "message-after-deadline",
+  "victim-place-unled",
+  "message-names-culprit",
+  "message-names-trait",
   "clue-draws-conclusion"
 ];
 
@@ -35181,6 +35188,12 @@ function computeObtainable(detectiveCase, canPass, closed = /* @__PURE__ */ new 
       const isKnown = location.requiresLead === void 0 || leadIds.has(location.requiresLead);
       if (isAdjacent && isKnown && canEnter(location.access, (check2) => canPass(check2, location.situations), clueIds)) {
         locationIds.add(location.id);
+        hasChanged = true;
+      }
+    }
+    for (const clue of detectiveCase.clues) {
+      if (clue.message !== void 0 && clue.message.channel !== "note" && !clueIds.has(clue.id)) {
+        clueIds.add(clue.id);
         hasChanged = true;
       }
     }
@@ -39150,6 +39163,122 @@ function checkTrueClaims(detectiveCase) {
   );
 }
 
+// packages/engine/src/detective/checks/abduction.ts
+var MIN_NAME_PIECE = 4;
+function stepsToVictim(detectiveCase, obtainable, to) {
+  const seen = /* @__PURE__ */ new Set([detectiveCase.startLocationId]);
+  const queue4 = detectiveCase.locations.filter(({ id }) => id === detectiveCase.startLocationId).map((location) => ({ location, steps: 0 }));
+  for (const { location, steps } of queue4) {
+    if (location.id === to) return steps;
+    for (const next of detectiveCase.locations) {
+      const linked = location.connections.includes(next.id) || next.connections.includes(location.id);
+      if (!linked || seen.has(next.id) || !obtainable.locationIds.has(next.id)) continue;
+      seen.add(next.id);
+      queue4.push({ location: next, steps: steps + 1 });
+    }
+  }
+  return null;
+}
+function namesOf(name, id) {
+  return [id, name, ...name.split(/[\s,.]+/).filter((piece) => piece.length >= MIN_NAME_PIECE)].map(
+    (piece) => piece.toLowerCase()
+  );
+}
+function checkAbduction(detectiveCase, hero, traits, obtainable, content) {
+  const { abduction, culpritId } = detectiveCase.truth;
+  if (abduction === void 0) return [];
+  const issues = [];
+  const { whereabouts, deadlineMinute } = abduction;
+  const endOfCase = detectiveCase.clock.days * MINUTES_PER_DAY;
+  if (deadlineMinute > endOfCase) {
+    issues.push({
+      code: "deadline-out-of-range",
+      path: "truth.abduction.deadlineMinute",
+      message: `The deadline (${String(deadlineMinute)}) is past the end of the case: ${String(detectiveCase.clock.days)} days end at minute ${String(endOfCase)}. It counts from midnight of day 1, so 23:00 of day 2 is 2820.`
+    });
+  }
+  const steps = stepsToVictim(detectiveCase, obtainable, whereabouts);
+  const available = deadlineMinute - DAY_START_MINUTE;
+  if (steps === null) {
+    issues.push({
+      code: "victim-place-unreachable",
+      path: "truth.abduction.whereabouts",
+      message: `The hero cannot get from "${detectiveCase.startLocationId}" to "${whereabouts}", where the victim is kept.`
+    });
+  } else if (steps * MOVE_MINUTES > available) {
+    issues.push({
+      code: "deadline-too-short",
+      path: "truth.abduction.deadlineMinute",
+      message: `The hero starts at 08:00 of day 1 and needs ${String(steps * MOVE_MINUTES)} minutes to walk to "${whereabouts}", but the deadline leaves ${String(Math.max(0, available))}.`
+    });
+  }
+  const { evidenceChains, motiveDeductionId } = detectiveCase.solution;
+  const motiveClueIds = detectiveCase.deductions.filter(({ id }) => id === motiveDeductionId).flatMap(({ clueIds }) => clueIds);
+  const gathered = evidenceChains.flatMap((chain) => {
+    const minutes2 = minutesToGather(detectiveCase, /* @__PURE__ */ new Set([...chain, ...motiveClueIds]), {
+      canPass: canEverPass(hero, traits),
+      closed: closedSources(traits),
+      closures: []
+    });
+    return minutes2 === null ? [] : [minutes2];
+  });
+  const cheapest = Math.min(...gathered);
+  if (gathered.length > 0 && cheapest > available) {
+    issues.push({
+      code: "deadline-too-short",
+      path: "truth.abduction.deadlineMinute",
+      message: `The cheapest chain of proof takes about ${String(cheapest)} minutes to gather, but the deadline leaves ${String(Math.max(0, available))} from 08:00 of day 1.`
+    });
+  }
+  const places = detectiveCase.locations.filter(({ id }) => id === whereabouts);
+  const placeNames = places.map(({ name }) => name.toLowerCase());
+  const chainClueIds = new Set(evidenceChains.flat());
+  const chainClues = detectiveCase.clues.filter(({ id }) => chainClueIds.has(id));
+  const opensTheWay = (clueId) => places.some(({ access }) => access.kind === "clue" && access.clueId === clueId);
+  const earnsTheLead = (clueId) => (detectiveCase.leads ?? []).some(
+    ({ id, earnedBy }) => places.some(({ requiresLead }) => requiresLead === id) && earnedBy.kind === "clue" && earnedBy.clueId === clueId
+  );
+  const isLed = chainClues.some(
+    (clue) => clue.locationId === whereabouts || opensTheWay(clue.id) || earnsTheLead(clue.id) || content && placeNames.some((name) => clue.description.toLowerCase().includes(name))
+  );
+  if (!isLed) {
+    issues.push({
+      code: "victim-place-unled",
+      path: "truth.abduction.whereabouts",
+      message: `No chain of evidence leads to "${whereabouts}": a clue of a chain must lie there, name the place, open the way in or earn the lead to it.`
+    });
+  }
+  const culpritNames = detectiveCase.suspects.filter(({ id }) => id === culpritId).flatMap(({ name, id }) => namesOf(name, id));
+  detectiveCase.clues.forEach((clue, index) => {
+    if (clue.message === void 0) return;
+    const path = `clues[${String(index)}]`;
+    if (clue.message.arrivesAtMinute >= deadlineMinute) {
+      issues.push({
+        code: "message-after-deadline",
+        path: `${path}.message.arrivesAtMinute`,
+        message: `Message "${clue.id}" arrives at ${String(clue.message.arrivesAtMinute)}, not before the deadline (${String(deadlineMinute)}).`
+      });
+    }
+    if (!content) return;
+    const text = clue.description.toLowerCase();
+    if (culpritNames.some((name) => text.includes(name))) {
+      issues.push({
+        code: "message-names-culprit",
+        path: `${path}.description`,
+        message: `Message "${clue.id}" names the culprit; a message shows the victim is alive and leaves the culprit to be found.`
+      });
+    }
+    if (traits.some(({ id }) => text.includes(id.toLowerCase()))) {
+      issues.push({
+        code: "message-names-trait",
+        path: `${path}.description`,
+        message: `Message "${clue.id}" names a trait of the hero; write what the message says and nothing about the hero.`
+      });
+    }
+  });
+  return issues;
+}
+
 // packages/engine/src/detective/checks/clearing.ts
 function checkClearing(detectiveCase, obtainable, required2) {
   const { culpritId } = detectiveCase.truth;
@@ -39442,7 +39571,9 @@ function checkParts(detectiveCase, obtainable, requireParts) {
       ({ lies }) => lies.flatMap(({ gives }) => gives === void 0 ? [] : [gives])
     ),
     // What a witness tells lies in no part either.
-    ...detectiveCase.clues.flatMap(({ id, sightingOf }) => sightingOf === void 0 ? [] : [id])
+    ...detectiveCase.clues.flatMap(({ id, sightingOf }) => sightingOf === void 0 ? [] : [id]),
+    // A message comes by itself, or lies where it was left.
+    ...detectiveCase.clues.flatMap(({ id, message }) => message === void 0 ? [] : [id])
   ]);
   detectiveCase.locations.forEach((location, locationIndex) => {
     const parts = location.parts ?? [];
@@ -40379,6 +40510,7 @@ function validateCase(input2, context2) {
     ...rules.map === null ? [] : checkMapShape(detectiveCase, rules.map),
     ...rules.days === null ? [] : checkRunLength(detectiveCase, rules.days),
     ...checkFleeDeadline(detectiveCase, context2.hero, context2.traits),
+    ...checkAbduction(detectiveCase, context2.hero, context2.traits, obtainable, content),
     ...checkRedHerrings(detectiveCase),
     ...checkTexts(detectiveCase, context2.locale, context2.realNames, content)
   ];

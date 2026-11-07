@@ -29,6 +29,8 @@ export function checkParts(
     ),
     // What a witness tells lies in no part either.
     ...detectiveCase.clues.flatMap(({ id, sightingOf }) => (sightingOf === undefined ? [] : [id])),
+    // A message comes by itself, or lies where it was left.
+    ...detectiveCase.clues.flatMap(({ id, message }) => (message === undefined ? [] : [id])),
   ]);
 
   detectiveCase.locations.forEach((location, locationIndex) => {

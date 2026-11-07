@@ -26,7 +26,7 @@ function abduction(
   if (options.form !== null) result.form = options.form ?? 'abduction';
   const truth: Record<string, unknown> = { ...built.truth };
   if (options.block !== null) {
-    truth.abduction = { ...ABDUCTION, whereabouts: built.locations[0]?.id, ...options.block };
+    truth.abduction = { ...ABDUCTION, whereabouts: 'cheese-stall', ...options.block };
   }
   result.truth = truth;
   return result;

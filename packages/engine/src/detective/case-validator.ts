@@ -10,6 +10,7 @@ import { LEGACY_RULES, type CaseRules } from './case-rules.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
 import { checkFleeDeadline } from './checks/flee-deadline.js';
 import { checkLies } from './checks/lies.js';
+import { checkAbduction } from './checks/abduction.js';
 import { checkClearing } from './checks/clearing.js';
 import { checkRunLength } from './checks/run-length.js';
 import { checkLinkable } from './checks/links.js';
@@ -107,6 +108,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...(rules.map === null ? [] : checkMapShape(detectiveCase, rules.map)),
     ...(rules.days === null ? [] : checkRunLength(detectiveCase, rules.days)),
     ...checkFleeDeadline(detectiveCase, context.hero, context.traits),
+    ...checkAbduction(detectiveCase, context.hero, context.traits, obtainable, content),
     ...checkRedHerrings(detectiveCase),
     ...checkTexts(detectiveCase, context.locale, context.realNames, content),
   ];
