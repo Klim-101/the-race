@@ -310,6 +310,32 @@ export const TimelineEntrySchema = z.object({
 });
 export type TimelineEntry = z.infer<typeof TimelineEntrySchema>;
 
+/**
+ * What kind of case it is. A `whodunit` asks who did it; an `abduction` asks where the victim is kept, before a
+ * deadline. A case that does not say (every case before the forms) is a `whodunit`: see `formOf`.
+ */
+export const CASE_FORMS = ['whodunit', 'abduction'] as const;
+export const CaseFormSchema = z.enum(CASE_FORMS);
+export type CaseForm = z.infer<typeof CaseFormSchema>;
+
+export const VICTIM_KINDS = ['person', 'pet'] as const;
+export const VictimKindSchema = z.enum(VICTIM_KINDS);
+export type VictimKind = z.infer<typeof VictimKindSchema>;
+
+/** The facts only an abduction has; the narrator never sees them. */
+export const AbductionSchema = z.object({
+  victim: z.object({ kind: VictimKindSchema, name: NarrativeTextSchema }),
+  /** The location where the victim is kept. */
+  whereabouts: EntityIdSchema,
+  /**
+   * The deadline, counted from midnight of day 1 of the run as one number: `(day - 1) * 1440 + minute`, so 23:00 of
+   * the second day is 2460. Unlike `crimeAtMinute` and the minutes of the timeline it is not a minute of the day, and
+   * the writer needs not know when the hero starts: the time left is this number less that of the run's clock.
+   */
+  deadlineMinute: z.int().min(1),
+});
+export type Abduction = z.infer<typeof AbductionSchema>;
+
 /** The secret the narrator never sees. */
 export const TruthSchema = z.object({
   culpritId: EntityIdSchema,
@@ -318,6 +344,8 @@ export const TruthSchema = z.object({
   crimeLocationId: EntityIdSchema,
   crimeAtMinute: z.int().min(0),
   timeline: z.array(TimelineEntrySchema).min(1),
+  /** Present exactly when the case's form is `abduction`. */
+  abduction: AbductionSchema.optional(),
 });
 export type Truth = z.infer<typeof TruthSchema>;
 
@@ -457,29 +485,57 @@ export const ClockSchema = z.object({
 });
 export type Clock = z.infer<typeof ClockSchema>;
 
-export const DetectiveCaseSchema = z.object({
-  schemaVersion: z.literal(CASE_SCHEMA_VERSION),
-  locale: LocaleSchema,
-  crimeType: CrimeTypeSchema,
-  tone: ToneSchema,
-  title: NarrativeTextSchema,
-  premise: NarrativeTextSchema,
-  startLocationId: EntityIdSchema,
-  locations: z.array(LocationSchema).min(1),
-  clues: z.array(ClueSchema).min(1),
-  suspects: z.array(SuspectSchema).min(2),
-  deductions: z.array(DeductionSchema),
-  truth: TruthSchema,
-  solution: SolutionSchema,
-  clock: ClockSchema,
-  /**
-   * The pool the night draws from. Optional rather than defaulted: a default would write `[]` into every
-   * case and change the seal of the cases accepted before the pool existed.
-   */
-  randomEvents: z.array(RandomEventSchema).max(MAX_RANDOM_EVENTS).optional(),
-  /** Optional for the same reason: the cases of before the leads have none, and keep their seal. */
-  leads: z.array(LeadSchema).optional(),
-  /** Optional for the same reason: the cases of before the witnesses have none, and keep their seal. */
-  witnesses: z.array(WitnessSchema).optional(),
-});
+export const DetectiveCaseSchema = z
+  .object({
+    schemaVersion: z.literal(CASE_SCHEMA_VERSION),
+    locale: LocaleSchema,
+    /**
+     * Optional rather than defaulted, so that the cases of before the forms keep their seal; read it with `formOf`,
+     * which makes an absent form a `whodunit`.
+     */
+    form: CaseFormSchema.optional(),
+    crimeType: CrimeTypeSchema,
+    tone: ToneSchema,
+    title: NarrativeTextSchema,
+    premise: NarrativeTextSchema,
+    startLocationId: EntityIdSchema,
+    locations: z.array(LocationSchema).min(1),
+    clues: z.array(ClueSchema).min(1),
+    suspects: z.array(SuspectSchema).min(2),
+    deductions: z.array(DeductionSchema),
+    truth: TruthSchema,
+    solution: SolutionSchema,
+    clock: ClockSchema,
+    /**
+     * The pool the night draws from. Optional rather than defaulted: a default would write `[]` into every
+     * case and change the seal of the cases accepted before the pool existed.
+     */
+    randomEvents: z.array(RandomEventSchema).max(MAX_RANDOM_EVENTS).optional(),
+    /** Optional for the same reason: the cases of before the leads have none, and keep their seal. */
+    leads: z.array(LeadSchema).optional(),
+    /** Optional for the same reason: the cases of before the witnesses have none, and keep their seal. */
+    witnesses: z.array(WitnessSchema).optional(),
+  })
+  .superRefine((detectiveCase, context) => {
+    const hasAbduction = detectiveCase.truth.abduction !== undefined;
+    if (formOf(detectiveCase) === 'abduction' && !hasAbduction) {
+      context.addIssue({
+        code: 'custom',
+        path: ['truth', 'abduction'],
+        message: 'An abduction needs its victim, whereabouts and deadline.',
+      });
+    }
+    if (formOf(detectiveCase) === 'whodunit' && hasAbduction) {
+      context.addIssue({
+        code: 'custom',
+        path: ['truth', 'abduction'],
+        message: 'Only an abduction has a victim, whereabouts and deadline.',
+      });
+    }
+  });
 export type DetectiveCase = z.infer<typeof DetectiveCaseSchema>;
+
+/** The form of a case; the cases of before the forms are whodunits. */
+export function formOf(detectiveCase: { readonly form?: CaseForm | undefined }): CaseForm {
+  return detectiveCase.form ?? 'whodunit';
+}

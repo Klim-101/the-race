@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 27;
+var RULESET_VERSION = 28;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -34891,13 +34891,30 @@ var TimelineEntrySchema = external_exports.object({
   locationId: EntityIdSchema,
   action: NarrativeTextSchema
 });
+var CASE_FORMS = ["whodunit", "abduction"];
+var CaseFormSchema = external_exports.enum(CASE_FORMS);
+var VICTIM_KINDS = ["person", "pet"];
+var VictimKindSchema = external_exports.enum(VICTIM_KINDS);
+var AbductionSchema = external_exports.object({
+  victim: external_exports.object({ kind: VictimKindSchema, name: NarrativeTextSchema }),
+  /** The location where the victim is kept. */
+  whereabouts: EntityIdSchema,
+  /**
+   * The deadline, counted from midnight of day 1 of the run as one number: `(day - 1) * 1440 + minute`, so 23:00 of
+   * the second day is 2460. Unlike `crimeAtMinute` and the minutes of the timeline it is not a minute of the day, and
+   * the writer needs not know when the hero starts: the time left is this number less that of the run's clock.
+   */
+  deadlineMinute: external_exports.int().min(1)
+});
 var TruthSchema = external_exports.object({
   culpritId: EntityIdSchema,
   motive: NarrativeTextSchema,
   method: NarrativeTextSchema,
   crimeLocationId: EntityIdSchema,
   crimeAtMinute: external_exports.int().min(0),
-  timeline: external_exports.array(TimelineEntrySchema).min(1)
+  timeline: external_exports.array(TimelineEntrySchema).min(1),
+  /** Present exactly when the case's form is `abduction`. */
+  abduction: AbductionSchema.optional()
 });
 var SolutionSchema = external_exports.object({
   motiveDeductionId: EntityIdSchema,
@@ -34986,6 +35003,11 @@ var ClockSchema = external_exports.object({
 var DetectiveCaseSchema = external_exports.object({
   schemaVersion: external_exports.literal(CASE_SCHEMA_VERSION),
   locale: LocaleSchema,
+  /**
+   * Optional rather than defaulted, so that the cases of before the forms keep their seal; read it with `formOf`,
+   * which makes an absent form a `whodunit`.
+   */
+  form: CaseFormSchema.optional(),
   crimeType: CrimeTypeSchema,
   tone: ToneSchema,
   title: NarrativeTextSchema,
@@ -35007,7 +35029,26 @@ var DetectiveCaseSchema = external_exports.object({
   leads: external_exports.array(LeadSchema).optional(),
   /** Optional for the same reason: the cases of before the witnesses have none, and keep their seal. */
   witnesses: external_exports.array(WitnessSchema).optional()
+}).superRefine((detectiveCase, context2) => {
+  const hasAbduction = detectiveCase.truth.abduction !== void 0;
+  if (formOf(detectiveCase) === "abduction" && !hasAbduction) {
+    context2.addIssue({
+      code: "custom",
+      path: ["truth", "abduction"],
+      message: "An abduction needs its victim, whereabouts and deadline."
+    });
+  }
+  if (formOf(detectiveCase) === "whodunit" && hasAbduction) {
+    context2.addIssue({
+      code: "custom",
+      path: ["truth", "abduction"],
+      message: "Only an abduction has a victim, whereabouts and deadline."
+    });
+  }
 });
+function formOf(detectiveCase) {
+  return detectiveCase.form ?? "whodunit";
+}
 
 // packages/engine/src/issues.ts
 function sortIssuesBy(order, issues) {
@@ -39810,6 +39851,9 @@ function checkReferencesResolve(detectiveCase) {
   const { truth, solution } = detectiveCase;
   expect(suspectIds, "suspect", truth.culpritId, "truth.culpritId");
   expect(locationIds, "location", truth.crimeLocationId, "truth.crimeLocationId");
+  if (truth.abduction !== void 0) {
+    expect(locationIds, "location", truth.abduction.whereabouts, "truth.abduction.whereabouts");
+  }
   truth.timeline.forEach((entry, index) => {
     expect(suspectIds, "suspect", entry.actorId, `truth.timeline[${String(index)}].actorId`);
     expect(locationIds, "location", entry.locationId, `truth.timeline[${String(index)}].locationId`);
