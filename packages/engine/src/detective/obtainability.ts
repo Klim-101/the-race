@@ -77,6 +77,13 @@ export function computeObtainable(
         hasChanged = true;
       }
     }
+    // A call or a text finds the hero wherever they are; only a note has to be gone to.
+    for (const clue of detectiveCase.clues) {
+      if (clue.message !== undefined && clue.message.channel !== 'note' && !clueIds.has(clue.id)) {
+        clueIds.add(clue.id);
+        hasChanged = true;
+      }
+    }
     for (const location of detectiveCase.locations) {
       if (!locationIds.has(location.id)) continue;
       for (const clue of detectiveCase.clues) {

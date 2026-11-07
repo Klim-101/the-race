@@ -9,7 +9,7 @@ import type { Clue, DetectiveCase, Location } from '../case-schema.js';
 import { ACTIVE_MINUTES_PER_DAY } from '../clock.js';
 import { buildNeighbors, canEverPass, closedSources, type CheckPolicy } from '../obtainability.js';
 
-interface Closure {
+export interface Closure {
   readonly locationId: string;
   readonly day: number;
 }
@@ -68,14 +68,14 @@ export function checkFleeDeadline(
       ];
 }
 
-interface Conditions {
+export interface Conditions {
   readonly canPass: CheckPolicy;
   readonly closed: ReadonlySet<InformationSource>;
   readonly closures: readonly Closure[];
 }
 
 /** Minutes of the plan described above to hold every target clue, or `null` if the plan gets stuck. */
-function minutesToGather(
+export function minutesToGather(
   detectiveCase: DetectiveCase,
   targetClueIds: ReadonlySet<string>,
   { canPass, closed, closures }: Conditions,
