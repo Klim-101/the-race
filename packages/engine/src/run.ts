@@ -34,8 +34,10 @@ export const RUN_SCHEMA_VERSION = 2;
  * 26: a show that only confirms what a suspect has already given up is refused, unspent (see `suspect-mood.ts`).
  * 27: a run longer than three days is promised a third of its days in events, spread over the run, not one a day (see
  * `random-events.ts`).
+ * 28: a case has a form, and an abduction has a victim, a place and a deadline (see `case-schema.ts`); the rules of
+ * the form are yet to come, and until they do a run plays as before.
  */
-export const RULESET_VERSION = 27;
+export const RULESET_VERSION = 28;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;

@@ -216,6 +216,9 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
   const { truth, solution } = detectiveCase;
   expect(suspectIds, 'suspect', truth.culpritId, 'truth.culpritId');
   expect(locationIds, 'location', truth.crimeLocationId, 'truth.crimeLocationId');
+  if (truth.abduction !== undefined) {
+    expect(locationIds, 'location', truth.abduction.whereabouts, 'truth.abduction.whereabouts');
+  }
   truth.timeline.forEach((entry, index) => {
     expect(suspectIds, 'suspect', entry.actorId, `truth.timeline[${String(index)}].actorId`);
     expect(locationIds, 'location', entry.locationId, `truth.timeline[${String(index)}].locationId`);
