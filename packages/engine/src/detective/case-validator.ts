@@ -7,7 +7,7 @@ import type { Locale } from '../locale.js';
 import type { Trait } from '../traits.js';
 import type { CaseIssue } from './case-issue.js';
 import { LEGACY_RULES, type CaseRules } from './case-rules.js';
-import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
+import { DetectiveCaseSchema, formOf, type CaseForm, type DetectiveCase } from './case-schema.js';
 import { checkFleeDeadline } from './checks/flee-deadline.js';
 import { checkLies } from './checks/lies.js';
 import { checkAbduction } from './checks/abduction.js';
@@ -54,6 +54,8 @@ export interface CaseValidationContext {
    * not depend on what they say is judged. Left out, every check runs.
    */
   readonly frame?: boolean;
+  /** The form the brief named; a case of another form is rejected. Left out, any form will do. */
+  readonly form?: CaseForm;
 }
 
 export type CaseValidationResult =
@@ -68,6 +70,21 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
   const parsed = DetectiveCaseSchema.safeParse(input);
   if (!parsed.success) return { isValid: false, issues: schemaIssues(parsed.error.issues) };
   const detectiveCase = parsed.data;
+  if (context.form !== undefined && formOf(detectiveCase) !== context.form) {
+    return {
+      isValid: false,
+      issues: [
+        {
+          code: 'form-mismatch',
+          path: 'form',
+          message:
+            context.form === 'abduction'
+              ? 'The brief asks for an abduction: set "form" to "abduction" and give "truth.abduction".'
+              : 'The brief asks for a whodunit: leave "form" out (or "whodunit") and give no "truth.abduction".',
+        },
+      ],
+    };
+  }
   // What a text says is judged once it is written.
   const content = context.frame !== true;
   const rules = context.rules ?? LEGACY_RULES;

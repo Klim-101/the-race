@@ -34,6 +34,8 @@ export interface ScenarioContext {
   readonly realNames: readonly string[];
   /** Whether the case is a frame: its texts are blank, so only what does not depend on what they say is judged. */
   readonly frame: boolean;
+  /** The form of case the brief named, by name; a case of another form is rejected. Left out, any form will do. */
+  readonly form?: string;
 }
 
 export type ScenarioResult<Case> =

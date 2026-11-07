@@ -337,6 +337,14 @@ export const CASE_FORMS = ['whodunit', 'abduction'] as const;
 export const CaseFormSchema = z.enum(CASE_FORMS);
 export type CaseForm = z.infer<typeof CaseFormSchema>;
 
+/**
+ * The form the engine gives a theme: a disappearance is told as an abduction, with a place and a deadline, and every
+ * other crime as a whodunit. The generator is told the form and never picks it.
+ */
+export function formForTheme(theme: string): CaseForm {
+  return theme === 'missing-person' ? 'abduction' : 'whodunit';
+}
+
 export const VICTIM_KINDS = ['person', 'pet'] as const;
 export const VictimKindSchema = z.enum(VICTIM_KINDS);
 export type VictimKind = z.infer<typeof VictimKindSchema>;

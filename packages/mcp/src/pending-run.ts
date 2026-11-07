@@ -3,6 +3,7 @@
 
 import { join } from 'node:path';
 import {
+  CaseFormSchema,
   EntityIdSchema,
   HeroSchema,
   LocaleSchema,
@@ -27,6 +28,8 @@ export const PENDING_STAGES = ['frame', 'text'] as const;
 export const PendingBriefSchema = z.strictObject({
   theme: z.string().min(1),
   tone: ToneSchema,
+  /** The form of the case, chosen by the engine from the theme; absent in a brief kept before forms, which is a whodunit. */
+  form: CaseFormSchema.optional(),
   seed: z
     .strictObject({
       id: EntityIdSchema,
