@@ -9,7 +9,7 @@ import {
   LOCALES,
   LocaleSchema,
 } from '@the-race/engine';
-import { loadCurrentRun } from '@the-race/saves';
+import { loadCurrentRun, takeUnseenDamaged } from '@the-race/saves';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
 import { newPendingRun, savePending } from '../pending-run.js';
@@ -23,7 +23,7 @@ export const runNew = defineTool({
     '"run-in-progress" while a run is active: resume it with run_view, or end it with run_give_up if the ' +
     "player wants to stop. Pass the player's language as `locale`: exactly the two letters ru or en, whatever the player calls it, and a `seed` only if the player gave one. " +
     'A save that cannot be read never blocks it: the new run starts beside it and the damaged one is left alone; ' +
-    'when `unreadableSaves` is in the result, say in one plain line that an earlier save could not be read and was left as it is. ' +
+    'when `unreadableSaves` is in the result, say in one plain line that an earlier save could not be read and was left as it is (it comes once for a save, not at every run). ' +
     'It changes nothing about a finished run, and calling it again before the hero exists simply starts over ' +
     'with a fresh seed. The result is what the player may choose from when making the hero: the skills and the ' +
     'points to spend on them (all of them, no more, no skill above `maxSkillLevel`), ready-made builds of those ' +
@@ -61,6 +61,7 @@ export const runNew = defineTool({
           'Call run_view and resume it. Only if the player wants to stop, confirm and call run_give_up first.',
       });
     }
+    const unseen = await takeUnseenDamaged(context.saveDir, damaged, context.saveFs);
     await savePending(
       context.saveDir,
       newPendingRun(input.seed ?? context.newSeed(), input.locale),
@@ -77,7 +78,7 @@ export const runNew = defineTool({
       lifeStates: [...LIFE_STATES],
       signals: DETECTIVE.signals.map(({ id, voice, gift, cost }) => ({ id, voice, gift, cost })),
       locales: [...LOCALES],
-      ...(damaged.length === 0 ? {} : { unreadableSaves: damaged.length }),
+      ...(unseen.length === 0 ? {} : { unreadableSaves: unseen.length }),
     };
   },
 });

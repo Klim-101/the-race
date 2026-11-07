@@ -124,6 +124,19 @@ describe('run_new', () => {
     expect(context.fs.files.get(damaged)).toBe('{broken');
   });
 
+  it('tells of a save it cannot read once, and not at the next run or the next look', async () => {
+    const context = gameContext();
+    const damaged = runFiles(context.saveDir, '20261030-100000-damaged').current;
+    context.fs.files.set(damaged, '{broken');
+
+    const first = await call(runNew, { locale: 'en' }, context);
+    const second = await call(runNew, { locale: 'en' }, context);
+
+    expect(first.body).toMatchObject({ unreadableSaves: 1 });
+    expect(second.body).not.toHaveProperty('unreadableSaves');
+    expect(context.fs.files.get(damaged)).toBe('{broken');
+  });
+
   it('says nothing of saves when none is damaged', async () => {
     const made = await call(runNew, { locale: 'en' }, gameContext());
 
