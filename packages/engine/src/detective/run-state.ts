@@ -45,6 +45,8 @@ import {
   DetectiveCaseSchema,
   EntityIdSchema,
   LeadTriggerSchema,
+  formOf,
+  type CaseForm,
   type DetectiveCase,
   type Exposure,
   type Lead,
@@ -814,6 +816,8 @@ export type LeadSource =
 
 export interface DetectiveRunView {
   readonly title: string;
+  /** What kind of case it is; the cases of before the forms are whodunits. */
+  readonly form: CaseForm;
   readonly premise: string;
   readonly locale: Locale;
   readonly turn: number;
@@ -1281,6 +1285,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     supplies: viewSupplies(run.supplies),
     pending: viewPending(run.pendingEffects, absoluteMinute(run.clock)),
     warnings: warningsOfMeters(meterReadings(run)),
+    form: formOf(detectiveCase),
     chronicle: viewChronicle(run),
     news: detectiveCase.clock.worldEvents
       .filter(({ day }) => day <= run.clock.day)

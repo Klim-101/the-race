@@ -40,6 +40,10 @@ export const RunSummarySchema = z.object({
   title: z.string(),
   locale: z.enum(['ru', 'en']),
   turn: z.int().min(0),
+  /** `abduction` for a case with a deadline and a place to name, else `whodunit`. */
+  form: z.enum(['whodunit', 'abduction']),
+  /** The minutes left before the deadline of an abduction, `null` for a case that has none. */
+  minutesToDeadline: z.int().nullable(),
   status: z.enum(['active', 'won', 'lost', 'gave-up']),
   endReason: z.string().nullable(),
   clock: z.object({ day: z.int(), minute: z.int(), totalDays: z.int() }),
@@ -76,6 +80,8 @@ export function summarizeRun(run: DetectiveRunState): z.input<typeof RunSummaryS
     title: view.title,
     locale: view.locale,
     turn: view.turn,
+    form: view.form,
+    minutesToDeadline: view.chronicle.minutesToDeadline,
     status: view.status,
     endReason: run.endReason,
     clock: view.clock,

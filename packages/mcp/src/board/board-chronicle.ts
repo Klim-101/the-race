@@ -182,8 +182,11 @@ export function renderChronicle(
   return `<div class="card">
 <p>${e(t.now)}: ${e(t.day)} ${String(view.clock.day)} / ${String(view.clock.totalDays)}, ${clock(view.clock.minute)}</p>
 <p>${e(t.left)}: <strong>${e(duration(view.chronicle.activeMinutesLeft, t))}</strong></p>${
-    view.weather === null ? '' : `\n<p>${e(t.weatherToday)}: ${e(named(t.weathers, view.weather))}</p>`
-  }
+    view.chronicle.minutesToDeadline === null
+      ? ''
+      : `
+<p>${e(t.deadline)}: <strong>${e(duration(view.chronicle.minutesToDeadline, t))}</strong></p>`
+  }${view.weather === null ? '' : `\n<p>${e(t.weatherToday)}: ${e(named(t.weathers, view.weather))}</p>`}
 </div>
 ${shortfall === undefined ? '' : renderShortfall(shortfall, t.shortfall)}<h3>${e(text.strip.title)}</h3>
 ${turns.length === 0 ? `<p class="empty">${e(t.noTurns)}</p>` : ''}${renderStrips(view, strip, turns, text)}
