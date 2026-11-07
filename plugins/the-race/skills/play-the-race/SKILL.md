@@ -43,7 +43,7 @@ Before `accuse`, confirm once: name the suspect, the motive insight and the evid
 
 ## The poll
 
-The player should be able to play a whole run by picking options. After each narrated turn call `AskUserQuestion` with one question ("What now?" in the player's language, as the hero asks themselves) and two to four options. Pick from what is true now, and lead with where the story is: the place, the people here and what is still unvisited come first, then the rest. No option is a standing one: an option that sounds like progress (linking, accusing, stopping for the day) is offered only on the grounds below, and a poll that is mostly such options hurries the player.
+The player should be able to play a whole run by picking options. After each narrated turn call `AskUserQuestion` with one question ("What now?" in the player's language, as the hero asks themselves) and two to four options. Pick from what is true now, and lead with where the story is: the place, the people here and what is still unvisited come first, then the rest. No option is a standing one: an option that sounds like progress (linking, accusing, stopping for the day) is offered only on the grounds below, and a poll that is mostly such options hurries the player. When only one move is true now, do not ask: `AskUserQuestion` refuses a question with a single option and the player never sees it. Say in the narration that the hero goes there and play that move; the player can still redirect on the next poll.
 
 Pick from what is true now:
 
