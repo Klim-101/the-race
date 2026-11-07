@@ -273,6 +273,85 @@ describe('the turn tools', () => {
     expect(result.body).toMatchObject({ outcome: { kind: 'accuse', verdict: 'wrong', motiveRight: false } });
   });
 
+  describe('in an abduction', () => {
+    /** The sample told as an abduction: the victim is kept at the post office, and the deadline falls late on day 2. */
+    async function abductionRun() {
+      const context = gameContext();
+      await prepareHero(context);
+      const detectiveCase = sampleCase();
+      detectiveCase.form = 'abduction';
+      detectiveCase.truth.abduction = {
+        victim: { kind: 'pet', name: 'Admiral Quill' },
+        whereabouts: 'post-office',
+        deadlineMinute: 2820,
+      };
+      await installCase(context, DetectiveCaseSchema.parse(detectiveCase));
+      return context;
+    }
+
+    it('shows the form and the time left in the view and in the summary of every turn', async () => {
+      const context = await abductionRun();
+
+      const seen = await call(runView, {}, context);
+      const looked = await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+
+      expect(seen.body).toMatchObject({ form: 'abduction', chronicle: { minutesToDeadline: 2820 - 480 } });
+      expect(looked.body).toMatchObject({ view: { form: 'abduction', minutesToDeadline: 2820 - 485 } });
+      expect(await call(act, { turn: 99, intent: { kind: 'look' } }, context)).toMatchObject({
+        isError: true,
+      });
+    });
+
+    it('shows the time left on the board, and a case with no deadline shows none', async () => {
+      const context = await abductionRun();
+      const result = await call(evidenceBoard, {}, context);
+      const page = context.fs.files.get(result.body.path as string) ?? '';
+
+      expect(page).toContain('Until the deadline');
+      const plain = await activeRun();
+      const other = await call(evidenceBoard, {}, plain);
+      expect(plain.fs.files.get(other.body.path as string) ?? '').not.toContain('Until the deadline');
+    });
+
+    it('takes the place of the accusation, and judges it with the culprit', async () => {
+      const context = await abductionRun();
+      const right = { turn: 0, culpritId: 'postmaster', motiveInsightId: null, evidenceClueIds: [] };
+
+      const result = await call(accuse, { ...right, whereaboutsId: 'courtyard' }, context);
+
+      expect(result.body).toMatchObject({
+        outcome: {
+          verdict: 'wrong',
+          culpritRight: true,
+          placeRight: false,
+          truth: { whereaboutsId: 'post-office' },
+        },
+        view: { status: 'lost', endReason: 'wrong' },
+      });
+    });
+
+    it('refuses an accusation without the place, and spends nothing', async () => {
+      const context = await abductionRun();
+      const bare = { turn: 0, culpritId: 'postmaster', motiveInsightId: null, evidenceClueIds: [] };
+
+      expect(errorCode(await call(accuse, bare, context))).toBe('place-needed');
+      expect(errorCode(await call(accuse, { ...bare, whereaboutsId: null }, context))).toBe('place-needed');
+      expect(await call(runView, {}, context)).toMatchObject({ body: { status: 'active', turn: 0 } });
+    });
+  });
+
+  it('refuses a place in the accusation of a case that is no abduction', async () => {
+    const context = await activeRun();
+    const choice = { turn: 0, culpritId: 'caterer', motiveInsightId: null, evidenceClueIds: [] };
+
+    expect(errorCode(await call(accuse, { ...choice, whereaboutsId: 'courtyard' }, context))).toBe(
+      'place-unwanted',
+    );
+    expect(await call(accuse, { ...choice, whereaboutsId: null }, context)).toMatchObject({
+      body: { outcome: { verdict: 'wrong' } },
+    });
+  });
+
   it('still refuse a motive that names an insight the hero has not made', async () => {
     const context = await activeRun();
     const choice = { turn: 0, culpritId: 'caterer', motiveInsightId: 'made-up', evidenceClueIds: [] };

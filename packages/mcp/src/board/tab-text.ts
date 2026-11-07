@@ -205,6 +205,7 @@ export interface TabText {
     readonly weathers: Readonly<Record<string, string>>;
     readonly day: string;
     readonly left: string;
+    readonly deadline: string;
     readonly hours: string;
     readonly minutes: string;
     /** The heading of what the case grew from, the line when it grew from nothing, and the kinds of trouble. */

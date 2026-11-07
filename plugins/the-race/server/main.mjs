@@ -37332,6 +37332,7 @@ function viewRun(run) {
     supplies: viewSupplies(run.supplies),
     pending: viewPending(run.pendingEffects, absoluteMinute(run.clock)),
     warnings: warningsOfMeters(meterReadings(run)),
+    form: formOf(detectiveCase),
     chronicle: viewChronicle(run),
     news: detectiveCase.clock.worldEvents.filter(({ day }) => day <= run.clock.day).map(({ description }) => description).concat(
       run.drawnEvents.flatMap(
@@ -52851,6 +52852,7 @@ var en_default3 = {
       now: "Now",
       day: "Day",
       left: "Working time left",
+      deadline: "Until the deadline",
       hours: "h",
       minutes: "min",
       inspired: "What in the news the case grew from",
@@ -53456,6 +53458,7 @@ var ru_default2 = {
       now: "\u0421\u0435\u0439\u0447\u0430\u0441",
       day: "\u0414\u0435\u043D\u044C",
       left: "\u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0440\u0430\u0431\u043E\u0447\u0435\u0433\u043E \u0432\u0440\u0435\u043C\u0435\u043D\u0438",
+      deadline: "\u0414\u043E \u0441\u0440\u043E\u043A\u0430",
       hours: "\u0447",
       minutes: "\u043C\u0438\u043D",
       inspired: "\u0418\u0437 \u0447\u0435\u0433\u043E \u0432\u044B\u0440\u043E\u0441\u043B\u043E \u0434\u0435\u043B\u043E (\u0438\u0437 \u043D\u043E\u0432\u043E\u0441\u0442\u0435\u0439)",
@@ -54000,7 +54003,8 @@ function renderChronicle(view, turns, text, fresh = NOTHING_NEW, strip = []) {
   )[0];
   return `<div class="card">
 <p>${e(t.now)}: ${e(t.day)} ${String(view.clock.day)} / ${String(view.clock.totalDays)}, ${clock(view.clock.minute)}</p>
-<p>${e(t.left)}: <strong>${e(duration3(view.chronicle.activeMinutesLeft, t))}</strong></p>${view.weather === null ? "" : `
+<p>${e(t.left)}: <strong>${e(duration3(view.chronicle.activeMinutesLeft, t))}</strong></p>${view.chronicle.minutesToDeadline === null ? "" : `
+<p>${e(t.deadline)}: <strong>${e(duration3(view.chronicle.minutesToDeadline, t))}</strong></p>`}${view.weather === null ? "" : `
 <p>${e(t.weatherToday)}: ${e(named(t.weathers, view.weather))}</p>`}
 </div>
 ${shortfall === void 0 ? "" : renderShortfall(shortfall, t.shortfall)}<h3>${e(text.strip.title)}</h3>
@@ -55540,6 +55544,10 @@ var RunSummarySchema = external_exports.object({
   title: external_exports.string(),
   locale: external_exports.enum(["ru", "en"]),
   turn: external_exports.int().min(0),
+  /** `abduction` for a case with a deadline and a place to name, else `whodunit`. */
+  form: external_exports.enum(["whodunit", "abduction"]),
+  /** The minutes left before the deadline of an abduction, `null` for a case that has none. */
+  minutesToDeadline: external_exports.int().nullable(),
   status: external_exports.enum(["active", "won", "lost", "gave-up"]),
   endReason: external_exports.string().nullable(),
   clock: external_exports.object({ day: external_exports.int(), minute: external_exports.int(), totalDays: external_exports.int() }),
@@ -55575,6 +55583,8 @@ function summarizeRun(run) {
     title: view.title,
     locale: view.locale,
     turn: view.turn,
+    form: view.form,
+    minutesToDeadline: view.chronicle.minutesToDeadline,
     status: view.status,
     endReason: run.endReason,
     clock: view.clock,
@@ -55707,17 +55717,24 @@ async function playIntent(context2, turn, intent) {
 // packages/mcp/src/tools/accuse.ts
 var accuse2 = defineTool({
   name: "accuse",
-  description: 'The final accusation, and it ends the run for good: it cannot be undone. `culpritId` is a suspect from run_view, `motiveInsightId` the id of an insight the hero has made as the motive (or null for none) and `evidenceClueIds` the found clues laid out as proof. Call it only after the player has confirmed these three choices; never to test a theory. The fields are exactly `turn`, `culpritId`, `motiveInsightId` and `evidenceClueIds`, and they are easy to confuse with the neighbouring tools: `culpritId` is not `suspectId`, `motiveInsightId` is not `insightId`, `evidenceClueIds` is not `clueIds`; `turn` is a number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with "stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, place): the run is over, so this is the only place the truth is ever shown. For "unproven" it also has a `shortfall`: what the motive and the evidence lacked, clue by clue. Every verdict also has an `epilogue`: the true `course` of the crime in order, the clues `missed` (never found, with their place, part and obstacle) and the false clues that `misled` the hero. Tell it as the closing story, in the form endings.md gives for the verdict, and add nothing the outcome does not contain.',
+  description: 'The final accusation, and it ends the run for good: it cannot be undone. `culpritId` is a suspect from run_view, `motiveInsightId` the id of an insight the hero has made as the motive (or null for none) and `evidenceClueIds` the found clues laid out as proof. In an abduction (`form` of the view) it also takes `whereaboutsId`, the id of the place on the map where the hero says the victim is kept, which an abduction needs and no other case accepts. Call it only after the player has confirmed these choices; never to test a theory. The fields are exactly `turn`, `culpritId`, `motiveInsightId`, `evidenceClueIds` and, in an abduction, `whereaboutsId`, and they are easy to confuse with the neighbouring tools: `culpritId` is not `suspectId`, `motiveInsightId` is not `insightId`, `evidenceClueIds` is not `clueIds`; `turn` is a number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with "stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, place): the run is over, so this is the only place the truth is ever shown. For "unproven" it also has a `shortfall`: what the motive and the evidence lacked, clue by clue. Every verdict also has an `epilogue`: the true `course` of the crime in order, the clues `missed` (never found, with their place, part and obstacle) and the false clues that `misled` the hero. Tell it as the closing story, in the form endings.md gives for the verdict, and add nothing the outcome does not contain.',
   inputSchema: external_exports.object({
     turn: TurnSchema,
     culpritId: EntityIdSchema,
     // A host that has not loaded the tool's schema sends every argument as a string, and "null" is a valid id to
     // the schema: no insight has that id, so it is read for what the caller meant, no motive.
+    // An abduction names the place where the victim is kept; any other case leaves it out (or null, as a host may send).
+    whereaboutsId: external_exports.union([EntityIdSchema, external_exports.null().transform(() => void 0)]).optional(),
     motiveInsightId: external_exports.union([external_exports.null(), external_exports.literal("null").transform(() => null), EntityIdSchema]),
     evidenceClueIds: external_exports.array(EntityIdSchema)
   }),
   outputSchema: TurnResultSchema,
-  handler: ({ turn, ...rest }, context2) => playIntent(context2, turn, { kind: "accuse", ...rest })
+  // A place left out is left out of the intent altogether: the log keeps the intent as it was sent.
+  handler: ({ turn, whereaboutsId, ...rest }, context2) => playIntent(context2, turn, {
+    kind: "accuse",
+    ...rest,
+    ...whereaboutsId === void 0 ? {} : { whereaboutsId }
+  })
 });
 
 // packages/mcp/src/tools/act.ts
