@@ -55305,6 +55305,10 @@ var TurnResultSchema = external_exports.object({
   revealed: external_exports.array(RevealedTraitSchema).default([]),
   /** The leads this turn earned, in the hero's own words; the view lists them all. Often none. */
   leads: external_exports.array(external_exports.object({ id: external_exports.string(), reason: external_exports.string() })).default([]),
+  /** The clues this turn gave the hero, with their texts, so the turn needs no `run_view` to be told; often none. */
+  clues: external_exports.array(external_exports.object({ id: external_exports.string(), number: external_exports.string(), description: external_exports.string(), garbled: external_exports.boolean() })).default([]),
+  /** The conclusions this turn drew, with their texts; often none. */
+  insights: external_exports.array(external_exports.object({ id: external_exports.string(), insight: external_exports.string() })).default([]),
   view: RunSummarySchema
 });
 var SAVE_PROBLEMS = {
@@ -55357,6 +55361,13 @@ function eventsOfTurn(before, after) {
   const pool = after.case.randomEvents ?? [];
   return after.drawnEvents.slice(before.drawnEvents.length).flatMap(({ eventId }) => pool.filter(({ id }) => id === eventId)).map(({ description, effect }) => ({ description, effect: effect.kind }));
 }
+function gainedInTurn(before, after) {
+  const view = viewRun(after);
+  return {
+    clues: view.clues.filter(({ id }) => !before.foundClueIds.includes(id)).map(({ id, number: number4, description, garbled }) => ({ id, number: number4, description, garbled })),
+    insights: view.insights.filter(({ id }) => !before.insightIds.includes(id)).map(({ id, insight }) => ({ id, insight }))
+  };
+}
 async function playIntent(context2, turn, intent) {
   const { runId, run, log } = await requireRun(context2);
   assertFreshTurn(run, turn);
@@ -55376,6 +55387,7 @@ async function playIntent(context2, turn, intent) {
     leads: resolution.newLeadIds.flatMap(
       (leadId) => caseLeads.filter(({ id }) => id === leadId).map(({ id, reason }) => ({ id, reason }))
     ),
+    ...gainedInTurn(run, resolution.run),
     view: summarizeRun(resolution.run)
   };
 }
@@ -55420,7 +55432,7 @@ var ActIntentSchema = external_exports.discriminatedUnion("kind", [
 ]);
 var act = defineTool({
   name: "act",
-  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it; or, with `witnessId` of a person run_view lists under `witnesses`, ask that person what they saw, and with `aboutSuspectId` only about that one suspect), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit), take (`stockId` of something run_view lists under `location.offers`: a tool for the suitcase, with `dropId` of a tool of the suitcase to put down when it is full, or a supply for the pockets) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
+  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it; or, with `witnessId` of a person run_view lists under `witnesses`, ask that person what they saw, and with `aboutSuspectId` only about that one suspect), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit), take (`stockId` of something run_view lists under `location.offers`: a tool for the suitcase, with `dropId` of a tool of the suitcase to put down when it is full, or a supply for the pockets) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn. The clues and conclusions the turn gave are in `clues` and `insights` with their texts, so a turn needs no run_view to be told. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
   inputSchema: external_exports.object({ turn: TurnSchema, intent: ActIntentSchema }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, intent }, context2) => playIntent(context2, turn, intent)
@@ -55429,7 +55441,7 @@ var act = defineTool({
 // packages/mcp/src/tools/deduce.ts
 var deduce2 = defineTool({
   name: "deduce",
-  description: 'Links two or more clues the hero has found into an insight. `clueIds` are ids of found clues from run_view (none may be garbled: reread them first). The size of a link is public: `openLinks` of run_view lists how many clues each conclusion still to be made takes, and a set of any other size is refused with "wrong-link-size" before any time is spent, so only try sizes it lists (a link may hold one clue more than its conclusion needs and still give it). Takes game time, more when the link leads nowhere. Call it when the player connects clues, while the run is active. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes. The `outcome.result` is "insight" (new: its text is in run_view), "already-known" or "nothing" (the link leads nowhere; say so without hinting how close it was). Do not use it to accuse and do not guess clue ids the player never found.',
+  description: 'Links two or more clues the hero has found into an insight. `clueIds` are ids of found clues from run_view (none may be garbled: reread them first). The size of a link is public: `openLinks` of run_view lists how many clues each conclusion still to be made takes, and a set of any other size is refused with "wrong-link-size" before any time is spent, so only try sizes it lists (a link may hold one clue more than its conclusion needs and still give it). Takes game time, more when the link leads nowhere. Call it when the player connects clues, while the run is active. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes. The `outcome.result` is "insight" (new: its text is in `insights` of the result), "already-known" or "nothing" (the link leads nowhere; say so without hinting how close it was). Do not use it to accuse and do not guess clue ids the player never found.',
   inputSchema: external_exports.object({ turn: TurnSchema, clueIds: external_exports.array(EntityIdSchema).min(2) }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, clueIds }, context2) => playIntent(context2, turn, { kind: "deduce", clueIds })
@@ -56015,7 +56027,7 @@ var profileImport = defineTool({
 // packages/mcp/src/tools/question.ts
 var question = defineTool({
   name: "question",
-  description: 'Questions a suspect who is in the hero\'s current place. `suspectId` is from the suspects of run_view; `approach` is "pressure" (lean on them) or "social" (win them over); `clueIds` are found clues the hero shows them, which may break a lie, and `insightIds` are conclusions the hero has drawn (the `insights` of run_view), put to them as a question, which break a lie more surely; or none for a plain talk. Takes game time and may cost reputation, and a pressure with nothing to stand on closes the suspect for a while. Call it once per conversation, while the run is active. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes. The result `outcome` says whether the hero got through, the suspect\'s `alibi` to voice, the `effect` of each shown clue or conclusion (`breaks-lie`, `confirms`, `implicates` or `no-effect`), the `mood` the talk left the suspect in, the lies that fell and a slipped `secret`; never imply the suspect holds anything you were not told. Do not use it to move, search or link clues.',
+  description: 'Questions a suspect who is in the hero\'s current place. `suspectId` is from the suspects of run_view; `approach` is "pressure" (lean on them) or "social" (win them over); `clueIds` are found clues the hero shows them, which may break a lie, and `insightIds` are conclusions the hero has drawn (the `insights` of run_view), put to them as a question, which break a lie more surely; or none for a plain talk. Takes game time and may cost reputation, and a pressure with nothing to stand on closes the suspect for a while. Call it once per conversation, while the run is active. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes. The result `outcome` says whether the hero got through, the suspect\'s `alibi` to voice, the `effect` of each shown clue or conclusion (`breaks-lie`, `confirms`, `implicates` or `no-effect`), the `mood` the talk left the suspect in, the lies that fell and a slipped `secret`; the clues a suspect handed over are in `clues` with their texts; never imply the suspect holds anything you were not told. Do not use it to move, search or link clues.',
   inputSchema: external_exports.object({
     turn: TurnSchema,
     suspectId: EntityIdSchema,

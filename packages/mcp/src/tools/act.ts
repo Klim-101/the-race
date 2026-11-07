@@ -45,7 +45,7 @@ export const act = defineTool({
     'ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" ' +
     'and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` ' +
     '(what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary ' +
-    'of the run after the turn; read run_view for clue texts. A refusal (a locked door, an unknown id) ' +
+    'of the run after the turn. The clues and conclusions the turn gave are in `clues` and `insights` with their texts, so a turn needs no run_view to be told. A refusal (a locked door, an unknown id) ' +
     'changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) ' +
     'or accuse (accuse).',
   inputSchema: z.object({ turn: TurnSchema, intent: ActIntentSchema }),

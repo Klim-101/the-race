@@ -18,7 +18,7 @@ export const question = defineTool({
     'refused with "stale-turn" and nothing changes. The result `outcome` says whether the hero got through, ' +
     "the suspect's `alibi` to voice, the `effect` of each shown clue or conclusion (`breaks-lie`, `confirms`, " +
     '`implicates` or `no-effect`), the `mood` the talk left the suspect in, the lies that fell and a slipped ' +
-    '`secret`; never imply the suspect holds anything you were not told. Do not use it to move, search or ' +
+    '`secret`; the clues a suspect handed over are in `clues` with their texts; never imply the suspect holds anything you were not told. Do not use it to move, search or ' +
     'link clues.',
   inputSchema: z.object({
     turn: TurnSchema,

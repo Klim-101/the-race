@@ -131,6 +131,12 @@ export const TurnResultSchema = z.object({
   revealed: z.array(RevealedTraitSchema).default([]),
   /** The leads this turn earned, in the hero's own words; the view lists them all. Often none. */
   leads: z.array(z.object({ id: z.string(), reason: z.string() })).default([]),
+  /** The clues this turn gave the hero, with their texts, so the turn needs no `run_view` to be told; often none. */
+  clues: z
+    .array(z.object({ id: z.string(), number: z.string(), description: z.string(), garbled: z.boolean() }))
+    .default([]),
+  /** The conclusions this turn drew, with their texts; often none. */
+  insights: z.array(z.object({ id: z.string(), insight: z.string() })).default([]),
   view: RunSummarySchema,
 });
 
@@ -220,6 +226,22 @@ function eventsOfTurn(
     .map(({ description, effect }) => ({ description, effect: effect.kind }));
 }
 
+/** What the turn put in the hero's hands, by the difference of the two states: the clues and the conclusions it gave. */
+function gainedInTurn(
+  before: DetectiveRunState,
+  after: DetectiveRunState,
+): Pick<z.input<typeof TurnResultSchema>, 'clues' | 'insights'> {
+  const view = viewRun(after);
+  return {
+    clues: view.clues
+      .filter(({ id }) => !before.foundClueIds.includes(id))
+      .map(({ id, number, description, garbled }) => ({ id, number, description, garbled })),
+    insights: view.insights
+      .filter(({ id }) => !before.insightIds.includes(id))
+      .map(({ id, insight }) => ({ id, insight })),
+  };
+}
+
 /**
  * Plays one intent on the saved run: checks the turn, resolves it on the run's own dice, writes the turn to
  * the run's log and saves both. A refusal changes nothing, not even the file. The outcome returned is what
@@ -249,6 +271,7 @@ export async function playIntent(
     leads: resolution.newLeadIds.flatMap((leadId) =>
       caseLeads.filter(({ id }) => id === leadId).map(({ id, reason }) => ({ id, reason })),
     ),
+    ...gainedInTurn(run, resolution.run),
     view: summarizeRun(resolution.run),
   };
 }

@@ -719,6 +719,61 @@ describe('the size of a link', () => {
     const after = (await call(runView, {}, context)).body as { turn: number; clock: { minute: number } };
     expect(after).toMatchObject({ turn: before.turn, clock: { minute: before.clock.minute } });
   });
+
+  it('tells the text of a conclusion in the turn that drew it', async () => {
+    const { context, clues } = await withFoundClues(6);
+    const view = (await call(runView, {}, context)).body as { turn: number; insights: unknown[] };
+    let turn = view.turn;
+    const told: { id: string; insight: string }[] = [];
+    for (let i = 0; i < clues.length; i += 1) {
+      for (let j = i + 1; j < clues.length; j += 1) {
+        const played = await call(deduce, { turn, clueIds: [clues[i], clues[j]] }, context);
+        if (played.isError) continue;
+        const body = played.body as { insights: typeof told; view: { turn: number } };
+        told.push(...body.insights);
+        turn = body.view.turn;
+      }
+    }
+
+    const held = (await call(runView, {}, context)).body.insights as { id: string; insight: string }[];
+    expect(told.length).toBeGreaterThan(0);
+    expect(told.map(({ id }) => id).sort()).toEqual(held.map(({ id }) => id).sort());
+    for (const item of told) expect(held.find(({ id }) => id === item.id)?.insight).toBe(item.insight);
+  });
+});
+
+describe('the clues and conclusions a turn gave', () => {
+  interface Gained {
+    id: string;
+    number: string;
+    description: string;
+    garbled: boolean;
+  }
+
+  it('tells each new clue with its text in the turn that gave it, so run_view is not needed to tell it', async () => {
+    const context = await activeRun();
+    const told: Gained[] = [];
+    let turn = 0;
+    for (const intent of [{ kind: 'look' }, { kind: 'search' }, { kind: 'rest' }]) {
+      const played = await call(act, { turn, intent }, context);
+      const body = played.body as { clues: Gained[]; insights: unknown[]; view: { turn: number } };
+      // A turn that gave nothing says so with an empty list, and a clue is told once.
+      for (const clue of body.clues) expect(told.map(({ id }) => id)).not.toContain(clue.id);
+      expect(body.insights).toEqual([]);
+      told.push(...body.clues);
+      turn = body.view.turn;
+    }
+
+    const held = (await call(runView, {}, context)).body.clues as Gained[];
+    expect(told.map(({ id }) => id).sort()).toEqual(held.map(({ id }) => id).sort());
+    for (const clue of told) {
+      expect(held.find(({ id }) => id === clue.id)).toMatchObject({
+        number: clue.number,
+        description: clue.description,
+        garbled: clue.garbled,
+      });
+    }
+  });
 });
 
 describe('the hidden traits a turn showed', () => {
