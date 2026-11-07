@@ -159,6 +159,8 @@ export type RefusalCode =
   | 'locked'
   | 'location-closed'
   | 'unknown-suspect'
+  | 'place-needed'
+  | 'place-unwanted'
   | 'no-witness'
   | 'suspect-elsewhere'
   | 'clue-not-found'

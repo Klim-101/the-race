@@ -78,12 +78,14 @@ describe('end reasons', () => {
       'wrong',
       'time-ran-out',
       'culprit-fled',
+      'deadline-passed',
       'reputation-zero',
       'breakdown',
       'gave-up',
     ]);
     expect(END_REASONS.map(statusOfEndReason)).toEqual([
       'won',
+      'lost',
       'lost',
       'lost',
       'lost',

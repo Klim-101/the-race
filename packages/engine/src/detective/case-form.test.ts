@@ -9,7 +9,7 @@ import { validateCase } from './case-validator.js';
 const ABDUCTION: Abduction = {
   victim: { kind: 'pet', name: 'Gouda, the cheese-shop cat' },
   whereabouts: 'cellar',
-  deadlineMinute: 2460,
+  deadlineMinute: 2820,
 };
 
 function issuesOf(input: unknown): { code: string; path: string; message: string }[] {
@@ -55,7 +55,7 @@ describe('the form of a case', () => {
     const parsed = DetectiveCaseSchema.parse(abduction());
 
     expect(formOf(parsed)).toBe('abduction');
-    expect(parsed.truth.abduction?.deadlineMinute).toBe(2460);
+    expect(parsed.truth.abduction?.deadlineMinute).toBe(2820);
   });
 
   it('accepts a person as the victim', () => {

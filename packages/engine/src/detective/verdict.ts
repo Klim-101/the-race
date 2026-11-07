@@ -34,6 +34,8 @@ export type DeduceIntent = z.infer<typeof DeduceIntentSchema>;
 export const AccuseIntentSchema = z.object({
   kind: z.literal('accuse'),
   culpritId: EntityIdSchema,
+  /** For an abduction, the place where the hero says the victim is kept; for no other form. */
+  whereaboutsId: EntityIdSchema.optional(),
   /** The insight the hero offers as the motive, or `null` for an accusation without one. */
   motiveInsightId: EntityIdSchema.nullable(),
   /** The clues the hero lays out as proof. */
@@ -57,6 +59,9 @@ export type VerdictRefusalCode =
   | 'invalid-intent'
   | 'run-over'
   | 'unknown-suspect'
+  | 'unknown-location'
+  | 'place-needed'
+  | 'place-unwanted'
   | 'not-found'
   | 'no-insight'
   | 'garbled-clue'
@@ -120,13 +125,18 @@ export interface AccusationOutcome {
   readonly kind: 'accuse';
   readonly verdict: Verdict;
   readonly culpritRight: boolean;
+  /** Only for an abduction: whether the victim is where the hero said. */
+  readonly placeRight?: boolean;
   readonly motiveRight: boolean;
   readonly evidenceComplete: boolean;
   /** Only for `unproven`: what the proof lacked. */
   readonly shortfall?: Shortfall;
   /** What the closing story is told from: the course of the crime and, by verdict, what was missed or misled. */
   readonly epilogue: Epilogue;
-  readonly truth: Pick<Truth, 'culpritId' | 'motive' | 'method' | 'crimeLocationId'>;
+  readonly truth: Pick<Truth, 'culpritId' | 'motive' | 'method' | 'crimeLocationId'> & {
+    /** Only for an abduction: where the victim was kept. */
+    readonly whereaboutsId?: string;
+  };
 }
 
 export type AccuseResolution =
@@ -266,7 +276,9 @@ function shortfallOf(
  *   evidence chain;
  * - `unproven`: the culprit is right but the proof falls short;
  * - `wrong`: someone else did it.
- * The verdict ends the run (`won` only for a proven case) and only then does the outcome show the truth.
+ * In an abduction the hero names the place where the victim is kept
+ * as well, and the culprit and the place must both be right to prove or to fall short of proof: one of them wrong is
+ * a `wrong` verdict. The verdict ends the run (`won` only for a proven case) and only then does the outcome show the truth.
  * A case that no longer matches its seal is not judged at all.
  */
 export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): AccuseResolution {
@@ -278,9 +290,21 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
   if (run.status !== 'active') {
     return refuse('run-over', `The run is already over (${run.status}).`);
   }
-  const { culpritId, motiveInsightId, evidenceClueIds } = parsed.data;
+  const { culpritId, whereaboutsId, motiveInsightId, evidenceClueIds } = parsed.data;
   if (!run.case.suspects.some(({ id }) => id === culpritId)) {
     return refuse('unknown-suspect', `"${culpritId}" is not a suspect.`);
+  }
+  const abduction = run.case.truth.abduction;
+  if (abduction === undefined && whereaboutsId !== undefined) {
+    return refuse('place-unwanted', 'Only an abduction asks where the victim is.');
+  }
+  if (abduction !== undefined) {
+    if (whereaboutsId === undefined) {
+      return refuse('place-needed', 'An abduction needs the place where the victim is kept.');
+    }
+    if (!run.case.locations.some(({ id }) => id === whereaboutsId)) {
+      return refuse('unknown-location', `"${whereaboutsId}" is not a place of this case.`);
+    }
   }
   if (evidenceClueIds.some((id) => !run.foundClueIds.includes(id))) {
     return refuse('not-found', 'Only clues the hero has found can be laid out as evidence.');
@@ -291,11 +315,13 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
   }
 
   const { truth, solution } = run.case;
+  const placeRight = abduction === undefined ? undefined : whereaboutsId === abduction.whereabouts;
   const culpritRight = culpritId === truth.culpritId;
   const motiveRight = motiveInsightId === solution.motiveDeductionId;
   const laidOut = new Set(evidenceClueIds);
   const evidenceComplete = solution.evidenceChains.some((chain) => chain.every((id) => laidOut.has(id)));
-  const verdict: Verdict = !culpritRight ? 'wrong' : motiveRight && evidenceComplete ? 'proven' : 'unproven';
+  const verdict: Verdict =
+    !culpritRight || placeRight === false ? 'wrong' : motiveRight && evidenceComplete ? 'proven' : 'unproven';
   const shortfall =
     verdict === 'unproven'
       ? shortfallOf(run, { motiveRight, motiveInsightId, evidenceComplete, laidOut })
@@ -308,6 +334,7 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
       kind: 'accuse',
       verdict,
       culpritRight,
+      ...(placeRight === undefined ? {} : { placeRight }),
       motiveRight,
       evidenceComplete,
       ...(shortfall === undefined ? {} : { shortfall }),
@@ -317,6 +344,7 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
         motive: truth.motive,
         method: truth.method,
         crimeLocationId: truth.crimeLocationId,
+        ...(abduction === undefined ? {} : { whereaboutsId: abduction.whereabouts }),
       },
     },
   };

@@ -329,7 +329,7 @@ export const AbductionSchema = z.object({
   whereabouts: EntityIdSchema,
   /**
    * The deadline, counted from midnight of day 1 of the run as one number: `(day - 1) * 1440 + minute`, so 23:00 of
-   * the second day is 2460. Unlike `crimeAtMinute` and the minutes of the timeline it is not a minute of the day, and
+   * the second day is 2820. Unlike `crimeAtMinute` and the minutes of the timeline it is not a minute of the day, and
    * the writer needs not know when the hero starts: the time left is this number less that of the run's clock.
    */
   deadlineMinute: z.int().min(1),
