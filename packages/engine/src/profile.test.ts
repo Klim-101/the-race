@@ -109,6 +109,7 @@ describe('computeProfileStats', () => {
       breakdown: 1,
       'gave-up': 1,
       'time-ran-out': 0,
+      'deadline-passed': 0,
     });
   });
 

@@ -68,6 +68,7 @@ export const END_REASONS = [
   'wrong',
   'time-ran-out',
   'culprit-fled',
+  'deadline-passed',
   'reputation-zero',
   'breakdown',
   'gave-up',

@@ -32799,6 +32799,7 @@ var END_REASONS = [
   "wrong",
   "time-ran-out",
   "culprit-fled",
+  "deadline-passed",
   "reputation-zero",
   "breakdown",
   "gave-up"
@@ -34901,7 +34902,7 @@ var AbductionSchema = external_exports.object({
   whereabouts: EntityIdSchema,
   /**
    * The deadline, counted from midnight of day 1 of the run as one number: `(day - 1) * 1440 + minute`, so 23:00 of
-   * the second day is 2460. Unlike `crimeAtMinute` and the minutes of the timeline it is not a minute of the day, and
+   * the second day is 2820. Unlike `crimeAtMinute` and the minutes of the timeline it is not a minute of the day, and
    * the writer needs not know when the hero starts: the time left is this number less that of the run's clock.
    */
   deadlineMinute: external_exports.int().min(1)
@@ -36430,6 +36431,17 @@ function moodWord(step) {
   return SUSPECT_MOODS.slice(step, step + 1).join("");
 }
 
+// packages/engine/src/detective/abduction.ts
+var ABDUCTION_RULESET_VERSION = 28;
+function runMinuteOf(clock2) {
+  return (clock2.day - 1) * MINUTES_PER_DAY + clock2.minute;
+}
+function minutesToDeadline(run) {
+  const { abduction } = run.case.truth;
+  if (abduction === void 0 || run.rulesetVersion < ABDUCTION_RULESET_VERSION) return null;
+  return Math.max(0, abduction.deadlineMinute - runMinuteOf(run.clock));
+}
+
 // packages/engine/src/detective/clue-number.ts
 function clueNumber(heroName, index) {
   const words = heroName.split(/\s+/).filter((word) => word !== "");
@@ -37133,7 +37145,7 @@ function viewChronicle(run) {
     )
   ].sort((a, b) => a.day - b.day);
   const activeMinutesLeft = MINUTES_PER_DAY - run.clock.minute + Math.max(0, days - run.clock.day) * (MINUTES_PER_DAY - DAY_START_MINUTE);
-  return { activeMinutesLeft, events };
+  return { activeMinutesLeft, minutesToDeadline: minutesToDeadline(run), events };
 }
 function signalViewOf(run) {
   const signal = signalOfRun(run);
@@ -37504,7 +37516,8 @@ function settleClock(run, previousDay) {
   const rested = run.clock.day > previousDay && run.clock.minute < DAY_START_MINUTE ? { ...run, clock: { day: run.clock.day, minute: DAY_START_MINUTE } } : run;
   const passed = daysPassed(run.case, previousDay, rested.clock.day);
   const closed = passed.closedLocationIds.reduce(closeLocation, rested);
-  const reason = passed.endReason ?? (closed.reputation === 0 ? "reputation-zero" : null) ?? endReasonOfMeters(meterReadings(closed));
+  const reason = passed.endReason ?? // An abduction's deadline: the victim was not found before it.
+  (minutesToDeadline(closed) === 0 ? "deadline-passed" : null) ?? (closed.reputation === 0 ? "reputation-zero" : null) ?? endReasonOfMeters(meterReadings(closed));
   return reason === null ? closed : endRun(closed, statusOfEndReason(reason), reason);
 }
 
@@ -38192,6 +38205,8 @@ var DeduceIntentSchema = external_exports.object({
 var AccuseIntentSchema = external_exports.object({
   kind: external_exports.literal("accuse"),
   culpritId: EntityIdSchema,
+  /** For an abduction, the place where the hero says the victim is kept; for no other form. */
+  whereaboutsId: EntityIdSchema.optional(),
   /** The insight the hero offers as the motive, or `null` for an accusation without one. */
   motiveInsightId: EntityIdSchema.nullable(),
   /** The clues the hero lays out as proof. */
@@ -38297,9 +38312,21 @@ function accuse(run, input2, rng) {
   if (run.status !== "active") {
     return refuse2("run-over", `The run is already over (${run.status}).`);
   }
-  const { culpritId, motiveInsightId, evidenceClueIds } = parsed.data;
+  const { culpritId, whereaboutsId, motiveInsightId, evidenceClueIds } = parsed.data;
   if (!run.case.suspects.some(({ id }) => id === culpritId)) {
     return refuse2("unknown-suspect", `"${culpritId}" is not a suspect.`);
+  }
+  const abduction = run.case.truth.abduction;
+  if (abduction === void 0 && whereaboutsId !== void 0) {
+    return refuse2("place-unwanted", "Only an abduction asks where the victim is.");
+  }
+  if (abduction !== void 0) {
+    if (whereaboutsId === void 0) {
+      return refuse2("place-needed", "An abduction needs the place where the victim is kept.");
+    }
+    if (!run.case.locations.some(({ id }) => id === whereaboutsId)) {
+      return refuse2("unknown-location", `"${whereaboutsId}" is not a place of this case.`);
+    }
   }
   if (evidenceClueIds.some((id) => !run.foundClueIds.includes(id))) {
     return refuse2("not-found", "Only clues the hero has found can be laid out as evidence.");
@@ -38309,11 +38336,12 @@ function accuse(run, input2, rng) {
     return refuse2("no-insight", "The hero has made no such deduction.");
   }
   const { truth, solution } = run.case;
+  const placeRight = abduction === void 0 ? void 0 : whereaboutsId === abduction.whereabouts;
   const culpritRight = culpritId === truth.culpritId;
   const motiveRight = motiveInsightId === solution.motiveDeductionId;
   const laidOut = new Set(evidenceClueIds);
   const evidenceComplete = solution.evidenceChains.some((chain) => chain.every((id) => laidOut.has(id)));
-  const verdict = !culpritRight ? "wrong" : motiveRight && evidenceComplete ? "proven" : "unproven";
+  const verdict = !culpritRight || placeRight === false ? "wrong" : motiveRight && evidenceComplete ? "proven" : "unproven";
   const shortfall = verdict === "unproven" ? shortfallOf(run, { motiveRight, motiveInsightId, evidenceComplete, laidOut }) : void 0;
   return {
     ok: true,
@@ -38322,6 +38350,7 @@ function accuse(run, input2, rng) {
       kind: "accuse",
       verdict,
       culpritRight,
+      ...placeRight === void 0 ? {} : { placeRight },
       motiveRight,
       evidenceComplete,
       ...shortfall === void 0 ? {} : { shortfall },
@@ -38330,7 +38359,8 @@ function accuse(run, input2, rng) {
         culpritId: truth.culpritId,
         motive: truth.motive,
         method: truth.method,
-        crimeLocationId: truth.crimeLocationId
+        crimeLocationId: truth.crimeLocationId,
+        ...abduction === void 0 ? {} : { whereaboutsId: abduction.whereabouts }
       }
     }
   };
@@ -53027,6 +53057,7 @@ var en_default3 = {
       wrong: "wrong person",
       "time-ran-out": "time ran out",
       "culprit-fled": "the culprit fled",
+      "deadline-passed": "the deadline passed",
       "reputation-zero": "no reputation left",
       breakdown: "nerves gave out",
       "gave-up": "given up"
@@ -53631,6 +53662,7 @@ var ru_default2 = {
       wrong: "\u043D\u0435 \u0442\u043E\u0442 \u0447\u0435\u043B\u043E\u0432\u0435\u043A",
       "time-ran-out": "\u0432\u044B\u0448\u043B\u043E \u0432\u0440\u0435\u043C\u044F",
       "culprit-fled": "\u0432\u0438\u043D\u043E\u0432\u043D\u044B\u0439 \u0441\u043A\u0440\u044B\u043B\u0441\u044F",
+      "deadline-passed": "\u0441\u0440\u043E\u043A \u0432\u044B\u0448\u0435\u043B",
       "reputation-zero": "\u0440\u0435\u043F\u0443\u0442\u0430\u0446\u0438\u0438 \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C",
       breakdown: "\u0441\u0434\u0430\u043B\u0438 \u043D\u0435\u0440\u0432\u044B",
       "gave-up": "\u043E\u0441\u0442\u0430\u0432\u043B\u0435\u043D"

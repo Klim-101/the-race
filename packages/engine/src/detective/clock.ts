@@ -5,6 +5,7 @@ import { assertNever } from '../assert-never.js';
 import { endReasonOfMeters } from '../meters.js';
 import { DAY_START_MINUTE, MINUTES_PER_DAY, statusOfEndReason, type EndReason } from '../run.js';
 import type { DetectiveCase } from './case-schema.js';
+import { minutesToDeadline } from './abduction.js';
 import { meterReadings } from './condition.js';
 import { closeLocation, endRun, type DetectiveRunState } from './run-state.js';
 
@@ -76,6 +77,8 @@ export function settleClock(run: DetectiveRunState, previousDay: number): Detect
   const closed = passed.closedLocationIds.reduce(closeLocation, rested);
   const reason =
     passed.endReason ??
+    // An abduction's deadline: the victim was not found before it.
+    (minutesToDeadline(closed) === 0 ? 'deadline-passed' : null) ??
     (closed.reputation === 0 ? 'reputation-zero' : null) ??
     endReasonOfMeters(meterReadings(closed));
   return reason === null ? closed : endRun(closed, statusOfEndReason(reason), reason);
