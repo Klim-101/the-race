@@ -14,6 +14,8 @@ export const ISSUE_ORDER = [
   // A patch that did not apply leaves nothing else to judge.
   'patch-failed',
   'schema',
+  // The case is not of the form the brief named; nothing else can be judged by the rules of the wrong one.
+  'form-mismatch',
   // A blank text is the next thing to fix once the schema is satisfied.
   'text-missing',
   'duplicate-id',

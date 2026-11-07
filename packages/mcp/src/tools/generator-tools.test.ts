@@ -210,6 +210,7 @@ describe('generator_brief', () => {
     expect(brief.body).toMatchObject({
       locale: 'en',
       theme: 'curious-theft',
+      form: 'whodunit',
       hero: { name: HERO.name, background: 'analyst', signal: { id: 'burnt-out', voice: 'flat-dry' } },
       attemptsLeft: 3,
       seed: null,
@@ -230,6 +231,19 @@ describe('generator_brief', () => {
 
     expect(brief.body.theme).toBe(themeOfSeed('seed-7', DETECTIVE_SCENARIO.themes));
     expect(DETECTIVE_SCENARIO.themes).toContain(brief.body.theme);
+  });
+
+  it('tells the form the engine chose for the theme: a disappearance is an abduction, any other crime a whodunit', async () => {
+    const forms: [string, string][] = [
+      ['missing-person', 'abduction'],
+      ['forgery', 'whodunit'],
+      ['curious-theft', 'whodunit'],
+    ];
+    for (const [theme, form] of forms) {
+      const { call } = await start(pendingRun({ theme }));
+
+      expect((await call('generator_brief', {})).body).toMatchObject({ theme, form });
+    }
   });
 
   it('keeps a theme the run was given, as an older record has one, when the news gave no seed', async () => {
@@ -345,6 +359,20 @@ describe('the brief kept with the pending run', () => {
   );
   const newsOf = (fs: SaveFs, seeds: NewsSeed[]) =>
     saveSeedsForDay(SAVE_DIR, '2026-10-31', { seeds, realNames: [] }, fs);
+
+  it('reads a brief kept before the forms as a whodunit, in the brief and in the judging', async () => {
+    const kept = { theme: 'curious-theft', tone: 'wry' as const, seed: null, setting: null };
+    const { fs, call } = await start(pendingRun({ brief: kept }));
+
+    expect((await call('generator_brief', {})).body).toMatchObject({
+      theme: 'curious-theft',
+      form: 'whodunit',
+    });
+    expect(await submit(call, readCase('goose-of-elmwick.en.json'))).toMatchObject({
+      body: { accepted: true },
+    });
+    expect((await loadTheRun(SAVE_DIR, fs)).ok).toBe(true);
+  });
 
   it('keeps what the first call gave, as it gave it', async () => {
     const fs = memoryFs();
@@ -867,6 +895,35 @@ describe('scenario_submit', () => {
   it('refuses without a pending run, and without a hero', async () => {
     expect(errorCode(await submit((await start(null)).call, {}))).toBe('no-pending-run');
     expect(errorCode(await submit((await start(pendingRun({ hero: null }))).call, {}))).toBe('no-hero');
+  });
+
+  it('rejects a case of another form than the brief named, whichever way, and counts an attempt', async () => {
+    const goose = readCase('goose-of-elmwick.en.json');
+    const abduction = {
+      ...goose,
+      form: 'abduction',
+      truth: {
+        ...(goose.truth as Record<string, unknown>),
+        abduction: {
+          victim: { kind: 'pet', name: 'Admiral Quill' },
+          whereabouts: 'post-office',
+          deadlineMinute: 2820,
+        },
+      },
+    };
+    const cases: [string, Record<string, unknown>][] = [
+      ['missing-person', readCase('goose-of-elmwick.en.json')],
+      ['curious-theft', abduction],
+    ];
+    for (const [theme, value] of cases) {
+      const { fs, call } = await start(pendingRun({ theme }));
+
+      const result = await submit(call, value);
+
+      expect(result.body).toMatchObject({ accepted: false, attemptsLeft: 2 });
+      expect((result.body.issues as { code: string }[]).map(({ code }) => code)).toEqual(['form-mismatch']);
+      expect((await loadPending(SAVE_DIR, fs))?.attempts).toBe(1);
+    }
   });
 
   it('refuses an input that is neither text nor an object without using an attempt', async () => {
@@ -1496,6 +1553,7 @@ describe('scenario_submit', () => {
 
       expect(Object.keys(brief.body).sort()).toEqual([
         'attemptsLeft',
+        'form',
         'frameAttemptsLeft',
         'hero',
         'locale',

@@ -12,6 +12,7 @@ import { ISSUE_ORDER, sortIssues, type CaseIssue, type CaseIssueCode } from './c
 const PRIORITY_BEFORE: Record<CaseIssueCode, number> = {
   'patch-failed': -1,
   schema: 0,
+  'form-mismatch': 0.1,
   'text-missing': 0.5,
   'duplicate-id': 1,
   'unknown-reference': 2,

@@ -6,7 +6,7 @@ import { toolSlotsOf } from '../progress.js';
 import type { ScenarioKind } from '../scenario.js';
 import { ISSUE_ORDER } from './case-issue.js';
 import { GENERATED_RULES } from './case-rules.js';
-import { CRIME_TYPES, type DetectiveCase } from './case-schema.js';
+import { CRIME_TYPES, CaseFormSchema, type DetectiveCase } from './case-schema.js';
 import { validateCase } from './case-validator.js';
 import { readCaseOrFrame } from './frame.js';
 import { createDetectiveRun, type DetectiveRunState } from './run-state.js';
@@ -30,6 +30,7 @@ export const DETECTIVE_SCENARIO: ScenarioKind<
   },
   read: readCaseOrFrame,
   check(scenario, context, describe) {
+    const form = CaseFormSchema.safeParse(context.form);
     const result = validateCase(deriveSightingClues(scenario, describe), {
       hero: context.hero,
       traits: context.traits,
@@ -37,6 +38,7 @@ export const DETECTIVE_SCENARIO: ScenarioKind<
       realNames: context.realNames,
       rules: GENERATED_RULES,
       frame: context.frame,
+      ...(form.success ? { form: form.data } : {}),
     });
     return result.isValid ? { isValid: true, scenario: result.detectiveCase } : result;
   },

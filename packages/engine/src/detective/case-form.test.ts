@@ -3,8 +3,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
-import { DetectiveCaseSchema, formOf, type Abduction } from './case-schema.js';
+import { DetectiveCaseSchema, formForTheme, formOf, type Abduction } from './case-schema.js';
 import { validateCase } from './case-validator.js';
+import { DETECTIVE_SCENARIO } from './scenario.js';
 
 const ABDUCTION: Abduction = {
   victim: { kind: 'pet', name: 'Gouda, the cheese-shop cat' },
@@ -114,5 +115,61 @@ describe('the form of a case', () => {
 
   it('accepts an abduction whose whereabouts is a place of the case', () => {
     expect(issuesOf(abduction())).toEqual([]);
+  });
+});
+
+describe('the form the engine names', () => {
+  it('gives a disappearance the form of an abduction and every other crime a whodunit', () => {
+    expect(formForTheme('missing-person')).toBe('abduction');
+    for (const theme of [
+      'financial',
+      'cyber',
+      'political-leak',
+      'forgery',
+      'corporate-espionage',
+      'curious-theft',
+    ]) {
+      expect(formForTheme(theme)).toBe('whodunit');
+    }
+  });
+
+  it('rejects a case of another form than the one named, and says which is asked', () => {
+    const named = (form: 'abduction' | 'whodunit', input: unknown) =>
+      validateCase(input, { hero: buildHero(), traits: [], locale: 'en', realNames: [], form });
+
+    expect(named('whodunit', buildCheeseCase())).toMatchObject({ isValid: true });
+    expect(named('abduction', abduction())).toMatchObject({ isValid: true });
+    expect(named('abduction', buildCheeseCase())).toMatchObject({
+      isValid: false,
+      issues: [
+        { code: 'form-mismatch', path: 'form', message: expect.stringContaining('abduction') as unknown },
+      ],
+    });
+    expect(named('whodunit', abduction())).toMatchObject({
+      isValid: false,
+      issues: [{ code: 'form-mismatch', message: expect.stringContaining('whodunit') as unknown }],
+    });
+  });
+
+  it('is asked of a case by its scenario when the brief names a form, and by name only', () => {
+    // The scenario reads the form as a name: one it does not know asks for nothing.
+    const check = (form: string | undefined) =>
+      DETECTIVE_SCENARIO.check(
+        DetectiveCaseSchema.parse(buildCheeseCase()),
+        {
+          hero: buildHero(),
+          traits: [],
+          locale: 'en',
+          realNames: [],
+          frame: false,
+          ...(form === undefined ? {} : { form }),
+        },
+        () => 'x',
+      );
+
+    expect(check('abduction')).toMatchObject({ isValid: false });
+    expect(check('whodunit')).not.toMatchObject({ issues: [{ code: 'form-mismatch' }] });
+    expect(check('murder')).not.toMatchObject({ issues: [{ code: 'form-mismatch' }] });
+    expect(check(undefined)).not.toMatchObject({ issues: [{ code: 'form-mismatch' }] });
   });
 });

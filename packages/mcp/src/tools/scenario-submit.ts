@@ -284,6 +284,7 @@ export const scenarioSubmit = defineTool({
         hero,
         traits: pending.traits,
         locale: pending.locale,
+        form: brief.form ?? 'whodunit',
         // The real names of the dictionary and those of the day's headlines the seeds were drawn from.
         realNames: [
           ...new Set([...worldRealNames(world), ...((await seedsOfRun(context))?.realNames ?? [])]),
