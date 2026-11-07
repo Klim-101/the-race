@@ -104,7 +104,7 @@ describe('frontmatter', () => {
 
   it('plugin.json carries the canonical metadata', () => {
     const plugin = JSON.parse(read(join(AGENTS, 'plugin.json')));
-    expect(plugin).toMatchObject({ name: 'the-race', version: '0.67.0', license: 'Apache-2.0' });
+    expect(plugin).toMatchObject({ name: 'the-race', version: '0.68.0', license: 'Apache-2.0' });
     expect(plugin.description).toBeTruthy();
     expect(plugin.author.name).toBeTruthy();
     expect(plugin.keywords.length).toBeGreaterThan(0);

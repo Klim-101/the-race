@@ -57,6 +57,7 @@ export {
   type GenerationEntry,
   type GenerationStats,
 } from './generation-log.js';
+export { DAMAGED_SEEN_FILE, damagedSeenFile, takeUnseenDamaged } from './damaged-seen.js';
 export { buildResumeSummary, RESUME_LABELS, type ResumeLabels } from './resume-summary.js';
 export {
   loadSeeds,

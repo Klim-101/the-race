@@ -41836,8 +41836,42 @@ function summarizeGeneration(entries) {
   };
 }
 
-// packages/saves/src/seed-store.ts
+// packages/saves/src/damaged-seen.ts
 import { join as join6 } from "node:path";
+var DAMAGED_SEEN_FILE = "damaged-seen.json";
+var DamagedSeenSchema = external_exports.strictObject({ schemaVersion: external_exports.literal(1), runIds: external_exports.array(external_exports.string()) });
+var damagedSeenFile = (saveDir) => join6(saveDir, DAMAGED_SEEN_FILE);
+async function loadSeen(saveDir, fs) {
+  try {
+    const text = await fs.readFile(damagedSeenFile(saveDir));
+    if (text === void 0) return [];
+    const parsed = DamagedSeenSchema.safeParse(JSON.parse(text));
+    return parsed.success ? parsed.data.runIds : [];
+  } catch {
+    return [];
+  }
+}
+async function takeUnseenDamaged(saveDir, damaged, fs) {
+  if (damaged.length === 0) return [];
+  const seen = await loadSeen(saveDir, fs);
+  const unseen = damaged.filter(({ runId }) => !seen.includes(runId));
+  if (unseen.length === 0) return [];
+  try {
+    await fs.mkdir(saveDir);
+    const runIds = [.../* @__PURE__ */ new Set([...seen, ...unseen.map(({ runId }) => runId)])];
+    await replaceFile(
+      fs,
+      damagedSeenFile(saveDir),
+      `${JSON.stringify({ schemaVersion: 1, runIds }, null, 2)}
+`
+    );
+  } catch {
+  }
+  return unseen;
+}
+
+// packages/saves/src/seed-store.ts
+import { join as join7 } from "node:path";
 var SEED_DAYS_KEPT = 14;
 var DaySchema = external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 var DaySeedsSchema = external_exports.strictObject({
@@ -41850,7 +41884,7 @@ var SeedStoreSchema = external_exports.strictObject({
   namesEdition: external_exports.literal(NAME_RULES_EDITION),
   days: external_exports.record(DaySchema, DaySeedsSchema)
 });
-var seedsFile = (saveDir) => join6(saveDir, "seeds", "seeds.json");
+var seedsFile = (saveDir) => join7(saveDir, "seeds", "seeds.json");
 async function loadSeeds(saveDir, fs = nodeSaveFs) {
   try {
     const text = await fs.readFile(seedsFile(saveDir));
@@ -41869,7 +41903,7 @@ async function saveSeedsForDay(saveDir, day, entry, fs = nodeSaveFs) {
     namesEdition: NAME_RULES_EDITION,
     days: Object.fromEntries(kept)
   });
-  await fs.mkdir(join6(saveDir, "seeds"));
+  await fs.mkdir(join7(saveDir, "seeds"));
   await replaceFile(fs, seedsFile(saveDir), `${JSON.stringify(store, null, 2)}
 `);
 }
@@ -41880,8 +41914,8 @@ function seedsOnOrBefore(days, day) {
 }
 
 // packages/saves/src/world-store.ts
-import { join as join7 } from "node:path";
-var worldFile = (saveDir) => join7(saveDir, "world.json");
+import { join as join8 } from "node:path";
+var worldFile = (saveDir) => join8(saveDir, "world.json");
 async function loadWorld(saveDir, fs = nodeSaveFs, migrations = WORLD_MIGRATIONS) {
   let text;
   try {
@@ -41925,7 +41959,7 @@ async function saveWorld(saveDir, world, fs = nodeSaveFs) {
 
 // packages/saves/src/profile-store.ts
 import { homedir as homedir2 } from "node:os";
-import { join as join8, resolve as resolve3 } from "node:path";
+import { join as join9, resolve as resolve3 } from "node:path";
 var PROFILE_FILE = "profile.json";
 var PROFILE_EXPORT_FILE = "export.json";
 var PROFILE_IMPORT_FILE = "import.json";
@@ -41957,7 +41991,7 @@ async function readRecords(fs, path) {
   }
 }
 async function loadProfile(profileDir, fs = nodeSaveFs) {
-  const read = await readRecords(fs, join8(profileDir, PROFILE_FILE));
+  const read = await readRecords(fs, join9(profileDir, PROFILE_FILE));
   if (read.ok) return read;
   return read.reason === "missing" ? { ok: true, records: [] } : { ok: false, reason: read.reason };
 }
@@ -41965,7 +41999,7 @@ async function writeRecords(profileDir, fs, file2, records) {
   await fs.mkdir(profileDir);
   const data = `${JSON.stringify({ version: 1, records }, null, 2)}
 `;
-  await replaceFile(fs, join8(profileDir, file2), data);
+  await replaceFile(fs, join9(profileDir, file2), data);
 }
 async function recordRun(profileDir, record2, fs = nodeSaveFs) {
   const loaded = await loadProfile(profileDir, fs);
@@ -41978,12 +42012,12 @@ async function exportProfile(profileDir, fs = nodeSaveFs) {
   const loaded = await loadProfile(profileDir, fs);
   if (!loaded.ok) throw new RangeError(`The profile on disk is unusable (${loaded.reason}).`);
   await writeRecords(profileDir, fs, PROFILE_EXPORT_FILE, loaded.records);
-  return join8(profileDir, PROFILE_EXPORT_FILE);
+  return join9(profileDir, PROFILE_EXPORT_FILE);
 }
 async function importProfile(profileDir, fs = nodeSaveFs) {
   const own2 = await loadProfile(profileDir, fs);
   if (!own2.ok) return { ok: false, reason: "profile-unusable" };
-  const incoming = await readRecords(fs, join8(profileDir, PROFILE_IMPORT_FILE));
+  const incoming = await readRecords(fs, join9(profileDir, PROFILE_IMPORT_FILE));
   if (!incoming.ok) return { ok: false, reason: incoming.reason === "corrupt" ? "invalid" : "no-file" };
   const known = new Set(own2.records.map(({ runId }) => runId));
   const fresh = incoming.records.filter(({ runId }) => {
@@ -41998,12 +42032,12 @@ async function importProfile(profileDir, fs = nodeSaveFs) {
 // packages/saves/src/legacy-move.ts
 import { homedir as homedir3 } from "node:os";
 import { mkdir as mkdir2, readFile as readFile2, readdir as readdir2, rename as rename2, rm as rm2, stat, writeFile } from "node:fs/promises";
-import { dirname, join as join9, relative } from "node:path";
+import { dirname, join as join10, relative } from "node:path";
 async function listAll(directory, base) {
   const entries = await readdir2(directory, { withFileTypes: true });
   const nested = await Promise.all(
     entries.map(async (entry) => {
-      const path = join9(directory, entry.name);
+      const path = join10(directory, entry.name);
       return entry.isDirectory() ? listAll(path, base) : [relative(base, path)];
     })
   );
@@ -42034,7 +42068,7 @@ async function sameContent(fs, a, b) {
   const [left, right] = await Promise.all([fs.listFiles(a), fs.listFiles(b)]);
   if (left.length !== right.length || left.some((file2) => !right.includes(file2))) return false;
   for (const file2 of left) {
-    const [one, other] = await Promise.all([fs.readFile(join9(a, file2)), fs.readFile(join9(b, file2))]);
+    const [one, other] = await Promise.all([fs.readFile(join10(a, file2)), fs.readFile(join10(b, file2))]);
     if (one !== other) return false;
   }
   return true;
@@ -42052,7 +42086,7 @@ async function moveFolder(fs, from, to) {
     const staging = `${to}.moving`;
     await fs.removeDirectory(staging);
     try {
-      for (const file2 of files) await fs.writeFile(join9(staging, file2), await fs.readFile(join9(from, file2)));
+      for (const file2 of files) await fs.writeFile(join10(staging, file2), await fs.readFile(join10(from, file2)));
       if (!await sameContent(fs, from, staging))
         throw new RangeError("The copy does not match the original.");
       await fs.mkdir(dirname(to));
@@ -42072,7 +42106,7 @@ async function moveLegacySaves(inputs, fs = nodeMoveFs) {
   return moveFolder(fs, legacySaveDir(inputs), resolveSaveDir(inputs));
 }
 function moveLegacyRun(saveDir, fs = nodeMoveFs) {
-  return moveFolder(fs, join9(saveDir, "run"), join9(saveDir, RUNS_DIR, LEGACY_RUN_ID));
+  return moveFolder(fs, join10(saveDir, "run"), join10(saveDir, RUNS_DIR, LEGACY_RUN_ID));
 }
 function moveDefaultLegacySaves() {
   return moveLegacySaves({ env: process.env, platform: process.platform, homedir: homedir3() });
@@ -43865,14 +43899,14 @@ function createHttpGet(options) {
 }
 
 // packages/news/src/load-headlines.ts
-import { join as join10 } from "node:path";
+import { join as join11 } from "node:path";
 var DEFAULT_MAX_HEADLINES = 40;
 var DaySchema2 = external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 var CacheSchema = external_exports.object({
   day: DaySchema2,
   headlines: external_exports.array(external_exports.object({ title: external_exports.string(), summary: external_exports.string().optional() }))
 });
-var cacheFile = (saveDir, feed) => join10(saveDir, "news", `${feed.id}.json`);
+var cacheFile = (saveDir, feed) => join11(saveDir, "news", `${feed.id}.json`);
 async function readCache(input2, feed) {
   try {
     const text = await input2.saveFs.readFile(cacheFile(input2.saveDir, feed));
@@ -43887,7 +43921,7 @@ async function writeCache(input2, feed, headlines) {
   const file2 = cacheFile(input2.saveDir, feed);
   const temporary = `${file2}.tmp`;
   try {
-    await input2.saveFs.mkdir(join10(input2.saveDir, "news"));
+    await input2.saveFs.mkdir(join11(input2.saveDir, "news"));
     await input2.saveFs.writeFileSynced(temporary, JSON.stringify({ day: input2.day, headlines }));
     await input2.saveFs.rename(temporary, file2);
   } catch {
@@ -55051,7 +55085,7 @@ async function keepBoard(context2, runId, run, log, before) {
 }
 
 // packages/mcp/src/stats.ts
-import { basename, dirname as dirname3, join as join11, relative as relative2, sep } from "node:path";
+import { basename, dirname as dirname3, join as join12, relative as relative2, sep } from "node:path";
 
 // packages/mcp/src/stats-page.ts
 var STYLE2 = `
@@ -55178,11 +55212,11 @@ async function writeStats(context2) {
   await context2.saveFs.mkdir(directory);
   await replaceFile(
     context2.saveFs,
-    join11(directory, STATS_JSON),
+    join12(directory, STATS_JSON),
     `${JSON.stringify({ ...stats, generation }, null, 2)}
 `
   );
-  await replaceFile(context2.saveFs, join11(directory, STATS_PAGE), page);
+  await replaceFile(context2.saveFs, join12(directory, STATS_PAGE), page);
 }
 async function keepGenerationLog(context2, entry) {
   try {
@@ -55523,7 +55557,7 @@ function namesInHeadlines(news) {
 }
 
 // packages/mcp/src/pending-run.ts
-import { join as join12 } from "node:path";
+import { join as join13 } from "node:path";
 var PENDING_STAGES = ["frame", "text"];
 var PendingBriefSchema = external_exports.strictObject({
   theme: external_exports.string().min(1),
@@ -55559,7 +55593,7 @@ var PendingRunSchema = external_exports.object({
   brief: PendingBriefSchema.optional()
 });
 function pendingFile(saveDir) {
-  return join12(saveDir, "pending", "state.json");
+  return join13(saveDir, "pending", "state.json");
 }
 function themeOfSeed(seed, themes) {
   const pick5 = createRng(`${seed}:theme`).roll(themes.length) - 1;
@@ -55598,7 +55632,7 @@ async function loadPending(saveDir, fs) {
 async function savePending(saveDir, pending, fs) {
   const path = pendingFile(saveDir);
   const temporary = `${path}.tmp`;
-  await fs.mkdir(join12(saveDir, "pending"));
+  await fs.mkdir(join13(saveDir, "pending"));
   try {
     await fs.writeFileSynced(temporary, `${JSON.stringify(PendingRunSchema.parse(pending), null, 2)}
 `);
@@ -56070,7 +56104,7 @@ var runGiveUp = defineTool({
 // packages/mcp/src/tools/run-new.ts
 var runNew = defineTool({
   name: "run_new",
-  description: 'Starts a new run: it picks a seed and a theme and waits for the player to make a hero. Call it only when the player asks for a new run and run_view reports no run in progress. It is refused with the code "run-in-progress" while a run is active: resume it with run_view, or end it with run_give_up if the player wants to stop. Pass the player\'s language as `locale`: exactly the two letters ru or en, whatever the player calls it, and a `seed` only if the player gave one. A save that cannot be read never blocks it: the new run starts beside it and the damaged one is left alone; when `unreadableSaves` is in the result, say in one plain line that an earlier save could not be read and was left as it is. It changes nothing about a finished run, and calling it again before the hero exists simply starts over with a fresh seed. The result is what the player may choose from when making the hero: the skills and the points to spend on them (all of them, no more, no skill above `maxSkillLevel`), ready-made builds of those points (`skillPresets`: offer these first, a player may still spend the points one by one), the backgrounds, the character signals (ids with a voice, a gift and a cost to be told from the locale text) and the languages. Next call hero_offer: the tavern puts three heroes forward and the player picks one (hero_create is only for a hand-made hero the player asks for).',
+  description: 'Starts a new run: it picks a seed and a theme and waits for the player to make a hero. Call it only when the player asks for a new run and run_view reports no run in progress. It is refused with the code "run-in-progress" while a run is active: resume it with run_view, or end it with run_give_up if the player wants to stop. Pass the player\'s language as `locale`: exactly the two letters ru or en, whatever the player calls it, and a `seed` only if the player gave one. A save that cannot be read never blocks it: the new run starts beside it and the damaged one is left alone; when `unreadableSaves` is in the result, say in one plain line that an earlier save could not be read and was left as it is (it comes once for a save, not at every run). It changes nothing about a finished run, and calling it again before the hero exists simply starts over with a fresh seed. The result is what the player may choose from when making the hero: the skills and the points to spend on them (all of them, no more, no skill above `maxSkillLevel`), ready-made builds of those points (`skillPresets`: offer these first, a player may still spend the points one by one), the backgrounds, the character signals (ids with a voice, a gift and a cost to be told from the locale text) and the languages. Next call hero_offer: the tavern puts three heroes forward and the player picks one (hero_create is only for a hand-made hero the player asks for).',
   inputSchema: external_exports.object({
     locale: LocaleSchema.describe(
       'The language code of the whole run, "ru" or "en" (never a language name), fixed from now on.'
@@ -56100,6 +56134,7 @@ var runNew = defineTool({
         remediation: "Call run_view and resume it. Only if the player wants to stop, confirm and call run_give_up first."
       });
     }
+    const unseen = await takeUnseenDamaged(context2.saveDir, damaged, context2.saveFs);
     await savePending(
       context2.saveDir,
       newPendingRun(input2.seed ?? context2.newSeed(), input2.locale),
@@ -56116,7 +56151,7 @@ var runNew = defineTool({
       lifeStates: [...LIFE_STATES],
       signals: DETECTIVE.signals.map(({ id, voice, gift, cost }) => ({ id, voice, gift, cost })),
       locales: [...LOCALES],
-      ...damaged.length === 0 ? {} : { unreadableSaves: damaged.length }
+      ...unseen.length === 0 ? {} : { unreadableSaves: unseen.length }
     };
   }
 });
@@ -56143,11 +56178,12 @@ async function stateOf2(context2) {
     };
   }
   if (loaded !== void 0) return { ...viewRun(loaded.run), endReason: loaded.run.endReason };
-  return damaged.length === 0 ? { status: "no-run" } : { status: "no-run", unreadableSaves: damaged.length };
+  const unseen = await takeUnseenDamaged(context2.saveDir, damaged, context2.saveFs);
+  return unseen.length === 0 ? { status: "no-run" } : { status: "no-run", unreadableSaves: unseen.length };
 }
 var runView = defineTool({
   name: "run_view",
-  description: 'Shows where things stand, as far as the player may know. Changes nothing, so it is safe to call at any time: at the start of a session to resume, and whenever you need the state. With a run, the result is its public view: `status` (active, won, lost or gave-up), `endReason` once it is over, `turn` (the number the state-changing tools expect), the place, the clues and insights found, the suspects (name and persona only), the clock and the hero (`toolSlots.used` counts only the pieces of the kit with `suitcase: true`; the phone and what the trade of the hero gave take no slot). It never holds the truth, the culprit or an unrevealed trait. With no run, `status` is "awaiting-hero" (run_new was called: ask the player to make a hero), "awaiting-case" (the hero exists: run the case generator) or "no-run" (offer a new run; when it has `unreadableSaves`, an earlier save could not be read and was left alone: say so in one plain line, it blocks nothing). Do not call it again right after a tool whose result you have not yet narrated. Once, after the saves were moved into the game folder, the result also has `savesMoved` (`from`, `to`): tell the player in one plain line, out of the fiction, that their saves now live in `to`.',
+  description: 'Shows where things stand, as far as the player may know. Changes nothing, so it is safe to call at any time: at the start of a session to resume, and whenever you need the state. With a run, the result is its public view: `status` (active, won, lost or gave-up), `endReason` once it is over, `turn` (the number the state-changing tools expect), the place, the clues and insights found, the suspects (name and persona only), the clock and the hero (`toolSlots.used` counts only the pieces of the kit with `suitcase: true`; the phone and what the trade of the hero gave take no slot). It never holds the truth, the culprit or an unrevealed trait. With no run, `status` is "awaiting-hero" (run_new was called: ask the player to make a hero), "awaiting-case" (the hero exists: run the case generator) or "no-run" (offer a new run; when it has `unreadableSaves`, an earlier save could not be read and was left alone: say so in one plain line, it blocks nothing; a save is reported once, not at every call). Do not call it again right after a tool whose result you have not yet narrated. Once, after the saves were moved into the game folder, the result also has `savesMoved` (`from`, `to`): tell the player in one plain line, out of the fiction, that their saves now live in `to`.',
   inputSchema: external_exports.object({}),
   outputSchema: external_exports.looseObject({ status: external_exports.string() }),
   handler: async (_input, context2) => {
