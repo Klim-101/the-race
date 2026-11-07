@@ -15,7 +15,7 @@ export const deduce = defineTool({
     '"wrong-link-size" before any time is spent, so only try sizes it lists (a link may hold one clue more than its conclusion needs and still give it). Takes game time, more when the link leads nowhere. ' +
     'Call it when the player connects clues, while the run is active. Pass `turn` from run_view: a stale ' +
     'one is refused with "stale-turn" and nothing changes. The `outcome.result` is "insight" (new: its text ' +
-    'is in run_view), "already-known" or "nothing" (the link leads nowhere; say so without hinting how close ' +
+    'is in `insights` of the result), "already-known" or "nothing" (the link leads nowhere; say so without hinting how close ' +
     'it was). Do not use it to accuse and do not guess clue ids the player never found.',
   inputSchema: z.object({ turn: TurnSchema, clueIds: z.array(EntityIdSchema).min(2) }),
   outputSchema: TurnResultSchema,
