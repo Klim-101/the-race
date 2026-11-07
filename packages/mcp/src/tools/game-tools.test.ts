@@ -937,6 +937,27 @@ describe('the leads of a turn', () => {
     expect(view.leads.map(({ id }) => id)).toContain('boiler-whisper');
   });
 
+  it('tells the message that reached the hero in a turn, and gives it among the clues', async () => {
+    const context = gameContext();
+    await prepareHero(context);
+    const detectiveCase = sampleCase();
+    const [first] = detectiveCase.clues;
+    if (first === undefined) throw new Error('The sample has no clue.');
+    first.message = { channel: 'text', arrivesAtMinute: 1 };
+    detectiveCase.form = 'abduction';
+    detectiveCase.truth.abduction = {
+      victim: { kind: 'pet', name: 'Gouda' },
+      whereabouts: detectiveCase.truth.crimeLocationId,
+      deadlineMinute: 5000,
+    };
+    await installCase(context, DetectiveCaseSchema.parse(detectiveCase));
+
+    const looked = await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+
+    expect(looked.body).toMatchObject({ messages: [{ clueId: first.id, channel: 'text' }] });
+    expect((looked.body.clues as { id: string }[]).map(({ id }) => id)).toContain(first.id);
+  });
+
   it('pins an earned lead on the board with what earned it, and nothing of a lead not earned or of a false one', async () => {
     const context = gameContext();
     await prepareHero(context);

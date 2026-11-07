@@ -34797,6 +34797,12 @@ var LocationSchema = external_exports.object({
   /** What the place keeps for the hero. Optional, so that the cases of before it keep their seal. */
   stock: external_exports.array(StockEntrySchema).optional()
 });
+var MESSAGE_CHANNELS = ["note", "call", "text"];
+var MessageChannelSchema = external_exports.enum(MESSAGE_CHANNELS);
+var ClueMessageSchema = external_exports.object({
+  channel: MessageChannelSchema,
+  arrivesAtMinute: external_exports.int().min(1)
+});
 var ClueSchema = external_exports.object({
   id: EntityIdSchema,
   locationId: EntityIdSchema,
@@ -34820,6 +34826,8 @@ var ClueSchema = external_exports.object({
    * the cases of before it, which keep their seal; a clue that points at a suspect is about them as well.
    */
   about: external_exports.array(EntityIdSchema).optional(),
+  /** Set on a message of an abduction; optional, so that the cases of before it keep their seal. */
+  message: ClueMessageSchema.optional(),
   isRedHerring: external_exports.boolean()
 });
 var LieSchema = external_exports.object({
@@ -35031,6 +35039,15 @@ var DetectiveCaseSchema = external_exports.object({
   /** Optional for the same reason: the cases of before the witnesses have none, and keep their seal. */
   witnesses: external_exports.array(WitnessSchema).optional()
 }).superRefine((detectiveCase, context2) => {
+  detectiveCase.clues.forEach((clue, index) => {
+    if (clue.message !== void 0 && formOf(detectiveCase) !== "abduction") {
+      context2.addIssue({
+        code: "custom",
+        path: ["clues", index, "message"],
+        message: "Only an abduction has messages that come by themselves."
+      });
+    }
+  });
   const hasAbduction = detectiveCase.truth.abduction !== void 0;
   if (formOf(detectiveCase) === "abduction" && !hasAbduction) {
     context2.addIssue({
@@ -38168,6 +38185,36 @@ function askBonusOf(run, toolId) {
   return item === void 0 || bonus === void 0 ? void 0 : { item, bonus };
 }
 
+// packages/engine/src/detective/messages.ts
+var CALL_WINDOW_MINUTES = 60;
+function reaches(run, clue, message) {
+  const late2 = runMinuteOf(run.clock) - message.arrivesAtMinute;
+  if (late2 < 0) return false;
+  switch (message.channel) {
+    case "note":
+      return run.locationId === clue.locationId;
+    case "call":
+      return late2 <= CALL_WINDOW_MINUTES;
+    case "text":
+      return true;
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever2(message.channel);
+  }
+}
+function deliverMessages(run) {
+  if (run.status !== "active" || run.rulesetVersion < ABDUCTION_RULESET_VERSION) return { run, arrived: [] };
+  const arrived = [];
+  let next = run;
+  for (const clue of run.case.clues) {
+    const { message } = clue;
+    if (message === void 0 || run.foundClueIds.includes(clue.id) || !reaches(run, clue, message)) continue;
+    next = findToldClue(next, clue.id);
+    arrived.push({ clueId: clue.id, channel: message.channel });
+  }
+  return { run: next, arrived };
+}
+
 // packages/engine/src/detective/epilogue.ts
 function epilogueOf(run, accusedId, shortfall) {
   const { truth, clues, locations } = run.case;
@@ -38763,9 +38810,10 @@ function resolveIntent(run, input2, rng) {
   const slept = sleepIfDue(resolution, run.clock.day, rng);
   const indebted = collectDebt(slept.run, run.clock.day);
   const shown2 = applyReveals(indebted.run, [...slept.revealed ?? [], ...indebted.revealed]);
-  const settled = settleClock(drawDayEvents(shown2.run, run.clock, rng).run, run.clock.day);
+  const clockSettled = settleClock(drawDayEvents(shown2.run, run.clock, rng).run, run.clock.day);
+  const { run: settled, arrived: newMessages } = deliverMessages(clockSettled);
   const newLeadIds = settled.earnedLeads.slice(run.earnedLeads.length).map(({ leadId }) => leadId);
-  return { ...slept, run: settled, revealed: shown2.revealed, newLeadIds };
+  return { ...slept, run: settled, revealed: shown2.revealed, newLeadIds, newMessages };
 }
 function sleepIfDue(resolution, day, rng) {
   const { run } = resolution;
@@ -55415,6 +55463,8 @@ var TurnResultSchema = external_exports.object({
   revealed: external_exports.array(RevealedTraitSchema).default([]),
   /** The leads this turn earned, in the hero's own words; the view lists them all. Often none. */
   leads: external_exports.array(external_exports.object({ id: external_exports.string(), reason: external_exports.string() })).default([]),
+  /** The messages that reached the hero this turn (a note, a call, a text); each one is also among `clues`. */
+  messages: external_exports.array(external_exports.object({ clueId: external_exports.string(), channel: external_exports.enum(MESSAGE_CHANNELS) })).default([]),
   /** The clues this turn gave the hero, with their texts, so the turn needs no `run_view` to be told; often none. */
   clues: external_exports.array(external_exports.object({ id: external_exports.string(), number: external_exports.string(), description: external_exports.string(), garbled: external_exports.boolean() })).default([]),
   /** The conclusions this turn drew, with their texts; often none. */
@@ -55497,6 +55547,7 @@ async function playIntent(context2, turn, intent) {
     leads: resolution.newLeadIds.flatMap(
       (leadId) => caseLeads.filter(({ id }) => id === leadId).map(({ id, reason }) => ({ id, reason }))
     ),
+    messages: resolution.newMessages.map(({ clueId, channel }) => ({ clueId, channel })),
     ...gainedInTurn(run, resolution.run),
     view: summarizeRun(resolution.run)
   };
