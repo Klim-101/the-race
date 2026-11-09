@@ -22,9 +22,13 @@ export const DEFAULT_TURNS_SHOWN = 12;
  */
 export interface ClosedFile {
   readonly verdict: Verdict;
+  readonly culpritRight: boolean;
+  /** Only for an abduction: whether the hero named the place where the victim was kept. */
+  readonly placeRight?: boolean;
   readonly culprit: string;
   readonly motive: string;
   readonly method: string;
+  /** The place of the crime; for an abduction, the place where the victim was kept, which is what the hero was asked. */
   readonly place: string;
   readonly course: readonly {
     /** Minutes since the start of the crime day. */
@@ -141,10 +145,12 @@ function detailOf(run: DetectiveRunState, entry: LogEntry): TurnDetail {
         shortfall: outcome.shortfall ?? null,
         file: {
           verdict: outcome.verdict,
+          culpritRight: outcome.culpritRight,
+          ...(outcome.placeRight === undefined ? {} : { placeRight: outcome.placeRight }),
           culprit: nameOf(run, outcome.truth.culpritId),
           motive: outcome.truth.motive,
           method: outcome.truth.method,
-          place: placeName(outcome.truth.crimeLocationId),
+          place: placeName(outcome.truth.whereaboutsId ?? outcome.truth.crimeLocationId),
           course: (outcome.epilogue?.course ?? []).map(({ atMinute, actorId, locationId, action }) => ({
             atMinute,
             actor: nameOf(run, actorId),
