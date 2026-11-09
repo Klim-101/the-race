@@ -227,7 +227,9 @@ describe('the page', () => {
     expect(page).toContain('<html lang="ru">');
     expect(page).toContain('Доска улик');
     expect(page).toContain('раскрыто');
-    expect(page).toContain('Улики и связи');
+    expect(page).toContain('Сопоставление');
+    expect(page).toContain('Выводы');
+    expect(page).toContain('Досье');
     expect(page).toContain('Герой и снаряжение');
   });
 
@@ -366,74 +368,69 @@ describe('the suspects tab', () => {
   });
 });
 
-describe('the clues and links tab', () => {
+describe('the clues and conclusions tabs', () => {
   it('says on each conclusion which clues it was drawn from, with the whole text of each', () => {
+    const tree = tab(renderEvidenceBoard(viewOf(FOUND)), 'insights');
     const clues = tab(renderEvidenceBoard(viewOf(FOUND)), 'clues');
 
-    expect(clues).toContain('Drawn from:');
-    expect(clues).toContain(
-      '<span class="source"><span class="num">MIRA-01</span> A rusty key under the counter.</span>',
+    expect(tree).toContain(
+      '<span class="num">MIRA-01</span><span class="t">A rusty key under the counter.</span>',
     );
-    expect(clues).toContain(
-      '<span class="source"><span class="num">MIRA-02</span> Flour on the cellar steps.</span>',
+    expect(tree).toContain(
+      '<span class="num">MIRA-02</span><span class="t">Flour on the cellar steps.</span>',
     );
+    expect(tree).toContain('The baker lied about the flour.');
     expect(clues).toContain('read badly');
-    expect(clues).toContain('The baker lied about the flour.');
-    expect(clues).toMatchSnapshot();
   });
 
   it('has no graph: the board and the notebooks already say how it hangs together', () => {
-    const clues = tab(renderEvidenceBoard(viewOf(FOUND)), 'clues');
-
-    expect(clues).not.toContain('<svg');
-    expect(clues).not.toContain('conclusion-link');
+    for (const id of ['clues', 'insights']) {
+      expect(tab(renderEvidenceBoard(viewOf(FOUND)), id)).not.toContain('<svg');
+    }
   });
 
   it('says so when there is nothing to connect, and keeps the empty notes', () => {
-    const clues = tab(renderEvidenceBoard(viewOf()), 'clues');
+    const page = renderEvidenceBoard(viewOf());
 
-    expect(clues).toContain('Nothing to connect yet.');
-    expect(clues).toContain('Nothing on the board yet');
-    expect(clues).toContain('No conclusions yet');
+    expect(tab(page, 'clues')).toContain('Nothing on the board yet');
+    expect(tab(page, 'insights')).toContain('No link has been tried yet.');
   });
 
-  it('skips a clue it cannot find under a conclusion, and says nothing of sources when none is known', () => {
-    const clues = tab(
-      renderEvidenceBoard(
-        viewOf({
-          clues: [
-            {
-              id: 'k',
-              locationId: 'gone',
-              description: 'Flour.',
-              garbled: false,
-              witness: null,
-              bearsOn: [],
-              number: 'MIRA-03',
-            },
-          ],
-          insights: [
-            { id: 'i', insight: 'Odd.', clueIds: ['k', 'missing'], clears: null },
-            { id: 'j', insight: 'Odder.', clueIds: ['missing'], clears: null },
-          ],
-        }),
-      ),
-      'clues',
+  it('shows a clue it cannot find under a conclusion by its id, and the place a clue has no name for', () => {
+    const page = renderEvidenceBoard(
+      viewOf({
+        clues: [
+          {
+            id: 'k',
+            locationId: 'gone',
+            description: 'Flour.',
+            garbled: false,
+            witness: null,
+            bearsOn: [],
+            number: 'MIRA-03',
+          },
+        ],
+        insights: [
+          { id: 'i', insight: 'Odd.', clueIds: ['k', 'missing'], clears: null },
+          { id: 'j', insight: 'Odder.', clueIds: ['missing'], clears: null },
+        ],
+      }),
     );
+    const tree = tab(page, 'insights');
 
-    expect(clues).toContain('gone</span>');
-    expect(clues.match(/class="source"/g)).toHaveLength(1);
-    expect(clues.match(/Drawn from/g)).toHaveLength(1);
+    expect(tab(page, 'clues')).toContain('gone</th>');
+    expect(tree).toContain('<span class="num">missing</span><span class="t">missing</span>');
+    expect(tree).toContain('Odd.');
+    expect(tree).toContain('Odder.');
   });
 
-  it('shows conclusions and no link note about clues when no clue is listed', () => {
-    const clues = tab(
-      renderEvidenceBoard(viewOf({ insights: [{ id: 'i', insight: 'Odd.', clueIds: ['x'], clears: null }] })),
-      'clues',
+  it('shows conclusions even when no clue is listed', () => {
+    const page = renderEvidenceBoard(
+      viewOf({ insights: [{ id: 'i', insight: 'Odd.', clueIds: ['x'], clears: null }] }),
     );
 
-    expect(clues).toContain('Odd.');
-    expect(clues).not.toContain('Nothing to connect yet.');
+    expect(tab(page, 'insights')).toContain('Odd.');
+    expect(tab(page, 'clues')).toContain('Nothing on the board yet');
   });
 
   it('never cuts a clue short with an ellipsis: not in a link tried, not on a person, not on a conclusion', () => {
@@ -470,9 +467,10 @@ describe('the clues and links tab', () => {
     );
 
     expect(tab(page, 'clues')).toContain(long);
+    expect(tab(page, 'insights')).toContain(`<span class="t">${long}</span>`);
     // A person's page names the clue by its number; the whole text is a click away, on the clue's own card.
     expect(tab(page, 'suspects')).toContain('MIRA-04</span> no effect');
-    for (const id of ['clues', 'suspects']) expect(tab(page, id)).not.toContain('…');
+    for (const id of ['clues', 'insights', 'suspects']) expect(tab(page, id)).not.toContain('…');
   });
 });
 
@@ -1116,21 +1114,21 @@ describe('the gift and the cost of a signal on the hero tab', () => {
 });
 
 describe('the links still to be made', () => {
-  const links = (view: Partial<View>) => tab(renderEvidenceBoard(viewOf(view)), 'clues');
+  const links = (view: Partial<View>) => tab(renderEvidenceBoard(viewOf(view)), 'insights');
 
   it('says how many clues each open conclusion takes, smallest first, with no clue and no id', () => {
     const page = links({ openLinks: [2, 3, 3] });
 
-    expect(page).toContain('Links still to be made:');
-    expect(page).toContain('1 × a link of 2, 2 × a link of 3');
+    expect(page).toContain('aria-label="Links still to be made"');
+    expect(page).toContain('1 × a link of 2');
+    expect(page).toContain('2 × a link of 3');
   });
 
   it('is told in Russian too, and also before any clue is found', () => {
     const page = links({ locale: 'ru', openLinks: [2], clues: [], insights: [] });
 
-    expect(page).toContain('Связок ещё предстоит:');
+    expect(page).toContain('Связок ещё предстоит');
     expect(page).toContain('1 × связка из 2');
-    expect(page).toContain('Связывать пока нечего');
   });
 
   it('says that every conclusion is drawn once none is open', () => {

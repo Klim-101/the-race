@@ -195,17 +195,20 @@ describe('the clue grid', () => {
   const page = renderEvidenceBoard(PLAYED);
   const clues = tab(page, 'clues');
 
-  it('shows what was done with each clue: where, shown to whom, used in a link, to be read again', () => {
-    expect(clues.match(/class="card clue-card"/g)).toHaveLength(3);
-    expect(clues).toContain('found at Stall · turn 2');
-    expect(clues).toContain('Shown to: Anna (broke a lie), Boris (confirmed a fallen lie)');
-    expect(clues).toContain('used in 1 links: MIRA-01 + MIRA-02');
-    expect(clues).toContain('not used in any link');
-    expect(clues).toContain('read badly');
+  it('shows each clue on a short card: where, and a mark for what is left to do with it', () => {
+    const cards = clues.split('<div class="card clue-card"').slice(1);
+
+    expect(cards).toHaveLength(3);
+    expect(cards[0]).toContain('found at Stall · turn 2');
+    expect(cards[0]).toContain('read badly');
+    // The key was shown and is in a link; the glove was shown to nobody and is in no link.
+    expect(cards[0]).not.toContain('class="marks"');
+    expect(cards[1]).not.toContain('class="marks"');
+    expect(cards[2]).toContain('<span class="mk">shown to nobody</span> <span class="mk">in no link</span>');
+    expect(clues).not.toContain('Shown to:');
   });
 
-  it('carries the pick to the corkboard and the map by link, and by the shared selection', () => {
-    expect(clues).toContain('<a href="#board">On the corkboard</a> · <a href="#map">On the map</a>');
+  it('lights the place and the people on the other tabs when a clue card is picked', () => {
     expect(clues).toContain('data-rel="clue:flour place:market suspect:a suspect:b"');
   });
 
@@ -306,6 +309,209 @@ describe('the clue grid', () => {
 
   it('matches its snapshot', () => {
     expect(clues).toMatchSnapshot();
+  });
+});
+
+describe('the matching table', () => {
+  const table = tab(renderEvidenceBoard(PLAYED), 'clues');
+  const rowIn = (page: string, id: string): string =>
+    new RegExp('<th scope="row" class="who" data-pick="suspect:' + id + '"[\\s\\S]*?</tr>').exec(page)?.[0] ??
+    '';
+  const row = (id: string): string => rowIn(table, id);
+
+  it('groups the clues by the place they were found at, under one heading for each place', () => {
+    expect(table).toContain(
+      '<th colspan="1" scope="colgroup">Stall</th><th colspan="2" scope="colgroup">Market</th>',
+    );
+    expect(table.indexOf('MIRA-01</span>')).toBeLessThan(table.indexOf('MIRA-02</span>'));
+  });
+
+  it('puts what each showing did in the cell of the person and the clue', () => {
+    expect(row('a').match(/class="cell /g)).toHaveLength(1);
+    expect(row('a')).toContain('class="cell c-breaks" role="img" aria-label="broke a lie"');
+    expect(row('b')).toContain('c-impl');
+    expect(row('b')).toContain('c-conf');
+    expect(row('c')).not.toContain('class="cell');
+  });
+
+  it('ties a clue heading and a person to what they light, so a pick reaches the cards below', () => {
+    expect(table).toContain(
+      '<th scope="col" class="clue" data-pick="clue:flour" data-rel="clue:flour place:market suspect:a suspect:b"',
+    );
+    expect(row('a')).toContain('data-rel="suspect:a place:market clue:flour"');
+  });
+
+  it('marks a clue that bears on a person and was never shown to them, and only that', () => {
+    const bearing = viewOf({
+      ...PLAYED,
+      clues: [
+        { ...clue('key', 'MIRA-01', 'stall'), bearsOn: ['a', 'b'] },
+        { ...clue('flour', 'MIRA-02', 'market'), bearsOn: ['a'] },
+      ],
+    });
+    const page = tab(renderEvidenceBoard(bearing), 'clues');
+
+    // Anna was shown the flour but not the key; Boris was shown the key, and the flour does not bear on him.
+    expect(rowIn(page, 'a').match(/c-todo/g)).toHaveLength(1);
+    expect(rowIn(page, 'b')).not.toContain('c-todo');
+    expect(rowIn(page, 'c')).not.toContain('c-todo');
+  });
+
+  it('says in the last row which links each clue is in, and marks a clue that is in none', () => {
+    expect(table.match(/<td class="used">1<\/td>/g)).toHaveLength(2);
+    expect(table.match(/<td class="unused"/g)).toHaveLength(1);
+  });
+
+  it('marks a clue a witness told, and dims a person who is cleared', () => {
+    const told = viewOf({
+      ...PLAYED,
+      clues: [{ ...clue('key', 'MIRA-01', 'stall'), witness: 'Pip' }],
+      suspects: [suspect('a', 'Anna', { cleared: true })],
+    });
+    const page = tab(renderEvidenceBoard(told), 'clues');
+
+    expect(page).toContain('<span class="mk w" title="Told by Pip">witness</span>');
+    expect(page).toContain('<tr class="cleared">');
+  });
+
+  it('says where each person is, and falls back to the id of a place the map lacks', () => {
+    expect(row('a')).toContain('Last seen: right here');
+    expect(row('b')).toContain('Last seen: anywhere, apparently');
+    const far = viewOf({
+      ...PLAYED,
+      clues: [clue('key', 'MIRA-01', 'nowhere')],
+      suspects: [suspect('a', 'Anna', { place: { id: 'stall', name: 'Stall' } })],
+      history: { finds: [], shown: [], links: [] },
+    });
+    const page = tab(renderEvidenceBoard(far), 'clues');
+
+    expect(page).toContain('scope="colgroup">nowhere</th>');
+    expect(page).toContain('Last seen: Stall');
+  });
+
+  it('is told in Russian', () => {
+    const ru = tab(renderEvidenceBoard({ ...PLAYED, locale: 'ru' }), 'clues');
+
+    expect(ru).toContain('Кому что показано');
+    expect(ru).toContain('сломала ложь');
+  });
+
+  it('matches its snapshot', () => {
+    expect(table).toMatchSnapshot();
+  });
+});
+
+describe('the conclusions tab', () => {
+  const lead = (id: string, source: unknown, extra: Record<string, unknown> = {}) => ({
+    id,
+    reason: `Reason of ${id}.`,
+    source,
+    window: null,
+    openNow: true,
+    done: false,
+    opens: [{ kind: 'place', id: 'stall', name: 'Stall' }],
+    ...extra,
+  });
+  const drawn = viewOf({
+    ...PLAYED,
+    openLinks: [2, 2, 3],
+    insights: [
+      { id: 'i1', insight: 'The flour was moved.', clueIds: ['flour', 'key'], clears: null },
+      { id: 'i2', insight: 'The glove was left on purpose.', clueIds: ['glove'], clears: null },
+    ],
+    leads: [
+      lead('l1', { kind: 'deduction', insightId: 'i1' }),
+      lead('l2', { kind: 'deduction', insightId: 'i1' }, { done: true }),
+      lead('l3', { kind: 'deduction', insightId: 'i1' }, { openNow: false }),
+      lead('l4', { kind: 'deduction', insightId: 'i1' }, { opens: [] }),
+      lead('l5', { kind: 'clue', clueId: 'key' }),
+      lead('l6', null),
+    ],
+    history: {
+      ...PLAYED.history,
+      links: [
+        { clueIds: ['key', 'flour'], result: 'insight', turn: 9 },
+        { clueIds: ['glove', 'flour'], result: 'nothing', turn: 10 },
+        { clueIds: ['key', 'glove'], result: 'already-known', turn: 11 },
+      ],
+    },
+  });
+  const tree = tab(renderEvidenceBoard(drawn), 'insights');
+
+  it('draws each tried link as a branch from its clues, oldest first, with its number and turn', () => {
+    expect(tree.match(/<div class="branch/g)).toHaveLength(4);
+    expect(tree.indexOf('Link 1 · turn 9')).toBeLessThan(tree.indexOf('Link 2 · turn 10'));
+    expect(tree.indexOf('Link 2 · turn 10')).toBeLessThan(tree.indexOf('Link 3 · turn 11'));
+    expect(tree).toContain('<span class="num">MIRA-01</span><span class="t">Text of key.</span>');
+    expect(tree).toContain('led nowhere');
+    expect(tree).toContain('already known');
+  });
+
+  it('puts the conclusion of a link after it, with the leads it earned, and nothing after a link that gave none', () => {
+    const first = tree.slice(tree.indexOf('Link 1'), tree.indexOf('Link 2'));
+
+    expect(first).toContain('The flour was moved.');
+    expect(first).toContain('Reason of l1.');
+    expect(first).toContain('can be followed now');
+    expect(first).toContain('followed to the end');
+    expect(first).toContain('shut at this hour');
+    expect(first).toContain('has opened nothing yet');
+    expect(first).not.toContain('Reason of l5.');
+    const cold = tree.slice(tree.indexOf('<div class="branch cold"'), tree.indexOf('Link 3'));
+
+    expect(cold).toContain('<div class="insight">—</div>');
+    expect(cold).not.toContain('class="lead ');
+  });
+
+  it('keeps a conclusion that has no link in the history, by its clues alone', () => {
+    const last = tree.slice(tree.lastIndexOf('<div class="branch'));
+
+    expect(last).toContain('The glove was left on purpose.');
+    expect(last).not.toContain('class="linkbox"');
+  });
+
+  it('shows the links still to be made as empty slots of their size, and never which clues', () => {
+    expect(tree).toContain('<span class="open-slot"><i></i><i></i> 2 × a link of 2</span>');
+    expect(tree).toContain('<span class="open-slot"><i></i><i></i><i></i> 1 × a link of 3</span>');
+  });
+
+  it('says that every conclusion is drawn once none is open, and that no link was tried yet', () => {
+    const none = tab(renderEvidenceBoard(viewOf()), 'insights');
+
+    expect(none).toContain('No link has been tried yet.');
+    expect(none).toContain('Every conclusion has been drawn.');
+    expect(none).not.toContain('class="branch');
+  });
+
+  it('is told in Russian', () => {
+    const ru = tab(renderEvidenceBoard({ ...drawn, locale: 'ru' }), 'insights');
+
+    expect(ru).toContain('Связка 1 · ход 9');
+    expect(ru).toContain('Ещё не связано');
+  });
+
+  it('matches its snapshot', () => {
+    expect(tree).toMatchSnapshot();
+  });
+});
+
+describe('the tabs', () => {
+  it('are the corkboard, the files, the matching, the conclusions, then the rest', () => {
+    const page = renderEvidenceBoard(PLAYED);
+    const nav = /<nav class="tabs"[^>]*>([\s\S]*?)<\/nav>/.exec(page)?.[1] ?? '';
+
+    expect([...nav.matchAll(/href="#(\w+)"/g)].map((match) => match[1])).toEqual([
+      'board',
+      'suspects',
+      'clues',
+      'insights',
+      'map',
+      'chronicle',
+      'hero',
+    ]);
+    expect(nav).toContain(
+      '<a href="#suspects">Files</a><a href="#clues">Matching</a><a href="#insights">Conclusions</a>',
+    );
   });
 });
 

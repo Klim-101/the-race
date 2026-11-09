@@ -296,7 +296,8 @@ describe('picking across the tabs', () => {
       }),
     );
 
-    expect(page).toContain('<div class="card" data-rel="clue:key clue:flour"><p>The baker lied.</p>');
+    expect(page).toContain('<div class="branch" data-rel="clue:key clue:flour">');
+    expect(page).toContain('<div class="insight">The baker lied.</div>');
   });
 
   it('writes no rule for an id that could break out of a selector', () => {

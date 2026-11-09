@@ -2,53 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { DetectiveRunView } from '@the-race/engine';
-import { renderLinks } from './board-links.js';
+import { linkNumbers, placeOf, renderMatrix } from './board-matrix.js';
 import type { Fresh } from './board-new.js';
-import { numberOf } from './board-opened.js';
-import { clueTokens, pickableTokens, rel, shownPairs, threadTokens, token } from './board-relations.js';
+import { clueTokens, pickableTokens, rel, shownPairs, token } from './board-relations.js';
 import type { BoardText } from './board-text.js';
 import { escapeHtml } from './escape-html.js';
 import type { TabText } from './tab-text.js';
 
 type Clue = DetectiveRunView['clues'][number];
 
-/** The links the hero tried, oldest first, with the clues of each and what came of it, and nothing of how close it was. */
-function tried(view: DetectiveRunView, text: TabText): string {
-  const e = escapeHtml;
-  if (view.history.links.length === 0) return `<p class="empty">${e(text.corkboard.noneTried)}</p>`;
-  const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
-  const number = numberOf(view);
-  const items = view.history.links.map(({ clueIds, result, turn }) => {
-    const names = clueIds.map((id) => `<span class="num">${e(number(id))}</span>`).join(' + ');
-    // The numbers are the name of each clue; its whole text is one click away.
-    const whole = clueIds
-      .map((id) => `<p><span class="num">${e(number(id))}</span> ${e(description.get(id) ?? id)}</p>`)
-      .join('');
-    return `<li data-rel="${e(rel(threadTokens(clueIds)))}">${names} <span class="result">${e(text.corkboard.results[result])}</span> <span class="tag">${e(text.corkboard.step.replace('{n}', String(turn)))}</span>
-<details><summary>${e(text.corkboard.fullText)}</summary>${whole}</details></li>`;
-  });
-  return `<ul class="tried">${items.join('\n')}</ul>`;
-}
-
-/** The people a clue bears on, so that a show is not a guess; nothing of whether it breaks a lie. */
-function bearsOnLine(view: DetectiveRunView, clue: Clue, text: TabText): string {
-  const names = new Map(view.suspects.map(({ id, name }) => [id, name]));
-  const people = clue.bearsOn.map((id) => names.get(id) ?? id);
-  return people.length === 0
-    ? ''
-    : `<p class="tag bears-on">${escapeHtml(text.clueGrid.bearsOn.replace('{names}', people.join(', ')))}</p>
-`;
-}
-
 /** The id of a clue's card, for the style that opens it when the clue is picked. */
 export const cardId = (clueId: string): string => `card-${clueId}`;
-
-/** The place a clue was found at: where the hero found it, which is the clue's own. */
-const placeOf = (view: DetectiveRunView, clue: Clue): string =>
-  view.history.finds.find(({ clueId }) => clueId === clue.id)?.locationId ?? clue.locationId;
-
-const linksOf = (view: DetectiveRunView, clueId: string) =>
-  view.history.links.filter(({ clueIds }) => clueIds.includes(clueId));
 
 /** The controls over the grid; the page's script shows only the cards that fit them (see `SCRIPT`). */
 function filters(view: DetectiveRunView, text: TabText, example: string): string {
@@ -68,30 +32,21 @@ function filters(view: DetectiveRunView, text: TabText, example: string): string
 </div>`;
 }
 
-/** One clue as a card: what it says, where and when it was found, and what the hero did with it. */
+/** One clue as a short card: what it says, where and when it was found, and marks for what is still to do with it. */
 function card(view: DetectiveRunView, clue: Clue, board: BoardText, text: TabText, fresh: Fresh): string {
   const e = escapeHtml;
-  const number = numberOf(view);
   const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
-  const suspectName = new Map(view.suspects.map(({ id, name }) => [id, name]));
   const turn = view.history.finds.find(({ clueId }) => clueId === clue.id)?.turn;
   const place = placeOf(view, clue);
   const where = `${text.corkboard.foundAt} ${placeName.get(place) ?? place}${turn === undefined ? '' : ` · ${text.corkboard.step.replace('{n}', String(turn))}`}`;
   const shown = shownPairs(view).filter(({ clueId }) => clueId === clue.id);
-  const shownLine =
-    shown.length === 0
-      ? text.corkboard.nobody
-      : shown
-          .map(
-            ({ suspectId, effect }) =>
-              `${suspectName.get(suspectId) ?? suspectId} (${text.corkboard.effects[effect]})`,
-          )
-          .join(', ');
-  const links = linksOf(view, clue.id);
-  const used =
-    links.length === 0
-      ? text.clueGrid.notUsed
-      : `${text.clueGrid.usedIn.replace('{n}', String(links.length))}: ${links.map(({ clueIds }) => clueIds.map(number).join(' + ')).join('; ')}`;
+  const linked = linkNumbers(view, clue.id).length > 0;
+  const status = text.matrix.status;
+  const marks = [
+    ...(shown.length === 0 ? [status.notShown] : []),
+    ...(linked ? [] : [status.notLinked]),
+    ...(clue.witness === null ? [] : [text.clueGrid.heardFrom.replace('{name}', clue.witness)]),
+  ];
   const attrs = [
     `id="${e(cardId(clue.id))}"`,
     `data-pick="${e(token('clue', clue.id))}"`,
@@ -99,16 +54,17 @@ function card(view: DetectiveRunView, clue: Clue, board: BoardText, text: TabTex
     `data-place="${e(place)}"`,
     `data-shown="${e(shown.map(({ suspectId }) => suspectId).join(' '))}"`,
     `data-garbled="${clue.garbled ? '1' : '0'}"`,
-    `data-unused="${links.length === 0 ? '1' : '0'}"`,
+    `data-unused="${linked ? '0' : '1'}"`,
     `data-number="${e(clue.number)}"`,
     'tabindex="0" role="button"',
   ].join(' ');
   return `<div class="card clue-card${clue.witness === null ? '' : ' sighting'}" ${attrs}>
 <span class="tag"><span class="num">${e(clue.number)}</span> · ${e(where)}</span>${fresh.clueIds.has(clue.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ''}
-<p class="text">${e(clue.description)}</p>${clue.witness === null ? '' : `\n<p class="tag witness-tag">${e(text.clueGrid.heardFrom.replace('{name}', clue.witness))}</p>`}${clue.garbled ? `\n<p class="warn">${e(board.garbled)}</p>` : ''}
-${bearsOnLine(view, clue, text)}<p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
-<p class="tag">${e(used)}</p>
-<p class="tag ways"><a href="#board">${e(text.clueGrid.toBoard)}</a> · <a href="#map">${e(text.clueGrid.toMap)}</a></p>
+<p class="text">${e(clue.description)}</p>${clue.garbled ? `\n<p class="warn">${e(board.garbled)}</p>` : ''}${
+    marks.length === 0
+      ? ''
+      : `\n<p class="marks">${marks.map((mark) => `<span class="mk">${e(mark)}</span>`).join(' ')}</p>`
+  }
 </div>`;
 }
 
@@ -124,42 +80,17 @@ export function cardRules(view: DetectiveRunView): string {
     .join('\n');
 }
 
-/** The clues and links: the links to be made and tried, a grid of clue cards with filters, and the conclusions. */
+/** The clues: the table of who was shown what, and under it the short cards of every clue with filters. */
 export function renderClues(view: DetectiveRunView, board: BoardText, text: TabText, fresh: Fresh): string {
   const e = escapeHtml;
-  const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
-  const number = numberOf(view);
   const [first] = view.clues;
   const clues =
     first === undefined
-      ? `<p class="empty">${e(board.noClues)}</p>`
-      : `${filters(view, text, first.number)}
+      ? ''
+      : `<h2>${e(text.matrix.cards)} (${String(view.clues.length)})</h2>
+${filters(view, text, first.number)}
 <div class="grid">${view.clues.map((clue) => card(view, clue, board, text, fresh)).join('\n')}</div>
 <p class="empty" id="clue-none" hidden>${e(text.clueGrid.none)}</p>`;
-  const insights =
-    view.insights.length === 0
-      ? `<p class="empty">${e(board.noInsights)}</p>`
-      : view.insights
-          .map(({ insight, clueIds }) => {
-            const sources = clueIds.flatMap((id) => {
-              const line = description.get(id);
-              return line === undefined
-                ? []
-                : [`<span class="source"><span class="num">${e(number(id))}</span> ${e(line)}</span>`];
-            });
-            const from =
-              sources.length === 0
-                ? ''
-                : `\n<p class="tag">${e(text.corkboard.drawnFrom)}:</p>\n${sources.join('\n')}`;
-            return `<div class="card" data-rel="${e(rel(threadTokens(clueIds)))}"><p>${e(insight)}</p>${from}</div>`;
-          })
-          .join('\n');
-  return `<h2>${e(text.links.title)}</h2>
-${renderLinks(view, text)}
-<h2>${e(text.corkboard.tried)}</h2>
-${tried(view, text)}
-<h2>${e(board.clues)} (${String(view.clues.length)})</h2>
-${clues}
-<h2>${e(board.insights)} (${String(view.insights.length)})</h2>
-${insights}`;
+  return `${view.clues.length === 0 ? `<p class="empty">${e(board.noClues)}</p>` : renderMatrix(view, board, text)}
+${clues}`;
 }

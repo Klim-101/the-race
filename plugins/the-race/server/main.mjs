@@ -28965,7 +28965,7 @@ function foldIntersection(json2) {
     if (Object.keys(union2).length !== 1)
       return;
     const rest = allOf.filter((m) => m !== union2);
-    const branches = union2[keyword].map((branch) => foldObjects([...rest, branch]));
+    const branches = union2[keyword].map((branch2) => foldObjects([...rest, branch2]));
     if (branches.some((b) => !b))
       return;
     folded = { [keyword]: branches };
@@ -29683,8 +29683,8 @@ function stringifyKeyNames(bySchema, json2, visited) {
     const branches = json2[keyword];
     if (!Array.isArray(branches))
       continue;
-    const mapped = branches.map((branch) => stringifyKeyNames(bySchema, branch, visited));
-    if (mapped.some((branch, i) => branch !== branches[i]))
+    const mapped = branches.map((branch2) => stringifyKeyNames(bySchema, branch2, visited));
+    if (mapped.some((branch2, i) => branch2 !== branches[i]))
       json2 = { ...json2, [keyword]: mapped };
   }
   const types = Array.isArray(json2.type) ? json2.type : [json2.type];
@@ -52685,11 +52685,8 @@ ${days.map(
 var en_default3 = {
   board: {
     pageTitle: "Evidence board",
-    clues: "Evidence",
     noClues: "Nothing on the board yet. The wall is embarrassingly bare.",
     garbled: "read badly: read it again before it counts",
-    insights: "Conclusions",
-    noInsights: "No conclusions yet. Do try to have one.",
     suspects: "The cast",
     whereabouts: "Last seen",
     anywhere: "anywhere, apparently",
@@ -52762,8 +52759,9 @@ var en_default3 = {
     tabs: {
       board: "Board",
       map: "Map",
-      suspects: "Suspects",
-      clues: "Clues and links",
+      suspects: "Files",
+      clues: "Matching",
+      insights: "Conclusions",
       chronicle: "Chronicle",
       hero: "Hero and kit",
       file: "Closed file"
@@ -52834,6 +52832,7 @@ var en_default3 = {
       brokenBy: "broken by",
       shown: "Shown to them",
       noneShown: "Nothing shown yet.",
+      notShownYet: "Not shown, but bears on them: {numbers}",
       title: "What they said",
       none: "Nothing said yet.",
       day: "day",
@@ -52844,8 +52843,6 @@ var en_default3 = {
       }
     },
     links: {
-      title: "Links",
-      none: "Nothing to connect yet.",
       open: "Links still to be made",
       size: "a link of {n}",
       group: "{count} \xD7 {size}",
@@ -53131,7 +53128,6 @@ var en_default3 = {
         "no-effect": "no effect"
       },
       legend: "Red thread: a link tried. Blue thread: a clue shown to a person.",
-      drawnFrom: "Drawn from",
       linksOf: "Links it took part in",
       noLinks: "none yet",
       closeHint: "Click again, or press Esc, to put it back.",
@@ -53207,7 +53203,6 @@ var en_default3 = {
     },
     clueGrid: {
       heardFrom: "Told by {name}",
-      bearsOn: "Bears on: {names}",
       filters: "Filter the clues",
       place: "Found at",
       suspect: "Shown to",
@@ -53216,11 +53211,25 @@ var en_default3 = {
       unused: "not yet used in a link",
       number: "Number",
       numberHint: "such as {example}",
-      none: "No clue fits.",
-      usedIn: "used in {n} links",
-      notUsed: "not used in any link",
-      toBoard: "On the corkboard",
-      toMap: "On the map"
+      none: "No clue fits."
+    },
+    matrix: {
+      title: "Who was shown what",
+      unshown: "bears on them, not shown",
+      linkedIn: "In links",
+      none: "none",
+      hint: "A dashed question mark: the clue bears on the person and you have not shown it to them. A dash at the bottom: the clue is in no link yet. Pick a number or a name to light everything tied to it.",
+      cards: "Card index",
+      status: { notShown: "shown to nobody", notLinked: "in no link", witness: "witness" }
+    },
+    tree: {
+      clues: "Clues",
+      link: "Link",
+      insight: "Conclusion",
+      lead: "Lead",
+      linkStep: "Link {n} \xB7 turn {turn}",
+      open: "Not yet linked",
+      note: "The empty cells only count the links left and how many clues each takes. Which ones is yours to find out."
     }
   },
   sighting: {
@@ -53287,11 +53296,8 @@ var en_default3 = {
 var ru_default2 = {
   board: {
     pageTitle: "\u0414\u043E\u0441\u043A\u0430 \u0443\u043B\u0438\u043A",
-    clues: "\u0423\u043B\u0438\u043A\u0438",
     noClues: "\u041D\u0430 \u0434\u043E\u0441\u043A\u0435 \u043F\u043E\u043A\u0430 \u043F\u0443\u0441\u0442\u043E. \u0417\u0440\u0435\u043B\u0438\u0449\u0435, \u0447\u0435\u0441\u0442\u043D\u043E \u0433\u043E\u0432\u043E\u0440\u044F, \u0436\u0430\u043B\u043A\u043E\u0435.",
     garbled: "\u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043E \u043F\u043B\u043E\u0445\u043E: \u043F\u0435\u0440\u0435\u0447\u0438\u0442\u0430\u0439\u0442\u0435, \u0438\u043D\u0430\u0447\u0435 \u0432 \u0441\u0447\u0451\u0442 \u043D\u0435 \u043F\u043E\u0439\u0434\u0451\u0442",
-    insights: "\u0412\u044B\u0432\u043E\u0434\u044B",
-    noInsights: "\u0412\u044B\u0432\u043E\u0434\u043E\u0432 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442. \u041F\u043E\u0441\u0442\u0430\u0440\u0430\u0439\u0442\u0435\u0441\u044C \u043E\u0431\u0437\u0430\u0432\u0435\u0441\u0442\u0438\u0441\u044C \u0445\u043E\u0442\u044F \u0431\u044B \u043E\u0434\u043D\u0438\u043C.",
     suspects: "\u0414\u0435\u0439\u0441\u0442\u0432\u0443\u044E\u0449\u0438\u0435 \u043B\u0438\u0446\u0430",
     whereabouts: "\u0417\u0430\u043C\u0435\u0447\u0435\u043D",
     anywhere: "\u0433\u0434\u0435 \u0443\u0433\u043E\u0434\u043D\u043E, \u0441\u0443\u0434\u044F \u043F\u043E \u0432\u0441\u0435\u043C\u0443",
@@ -53364,8 +53370,9 @@ var ru_default2 = {
     tabs: {
       board: "\u0414\u043E\u0441\u043A\u0430",
       map: "\u041A\u0430\u0440\u0442\u0430",
-      suspects: "\u041F\u043E\u0434\u043E\u0437\u0440\u0435\u0432\u0430\u0435\u043C\u044B\u0435",
-      clues: "\u0423\u043B\u0438\u043A\u0438 \u0438 \u0441\u0432\u044F\u0437\u0438",
+      suspects: "\u0414\u043E\u0441\u044C\u0435",
+      clues: "\u0421\u043E\u043F\u043E\u0441\u0442\u0430\u0432\u043B\u0435\u043D\u0438\u0435",
+      insights: "\u0412\u044B\u0432\u043E\u0434\u044B",
       chronicle: "\u0425\u0440\u043E\u043D\u0438\u043A\u0430",
       hero: "\u0413\u0435\u0440\u043E\u0439 \u0438 \u0441\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435",
       file: "\u0417\u0430\u043A\u0440\u044B\u0442\u043E\u0435 \u0434\u0435\u043B\u043E"
@@ -53440,6 +53447,7 @@ var ru_default2 = {
       brokenBy: "\u043E\u043F\u0440\u043E\u0432\u0435\u0440\u0433\u043D\u0443\u0442\u043E",
       shown: "\u0427\u0442\u043E \u0435\u043C\u0443 \u043F\u043E\u043A\u0430\u0437\u0430\u043B\u0438",
       noneShown: "\u041F\u043E\u043A\u0430 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u043E.",
+      notShownYet: "\u041D\u0435 \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u043E, \u043D\u043E \u043A\u0430\u0441\u0430\u0435\u0442\u0441\u044F \u0435\u0433\u043E: {numbers}",
       title: "\u0427\u0442\u043E \u043E\u043D\u0438 \u0441\u043A\u0430\u0437\u0430\u043B\u0438",
       none: "\u041F\u043E\u043A\u0430 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0441\u043A\u0430\u0437\u0430\u043D\u043E.",
       day: "\u0434\u0435\u043D\u044C",
@@ -53450,8 +53458,6 @@ var ru_default2 = {
       }
     },
     links: {
-      title: "\u0421\u0432\u044F\u0437\u043A\u0438",
-      none: "\u0421\u0432\u044F\u0437\u044B\u0432\u0430\u0442\u044C \u043F\u043E\u043A\u0430 \u043D\u0435\u0447\u0435\u0433\u043E.",
       open: "\u0421\u0432\u044F\u0437\u043E\u043A \u0435\u0449\u0451 \u043F\u0440\u0435\u0434\u0441\u0442\u043E\u0438\u0442",
       size: "\u0441\u0432\u044F\u0437\u043A\u0430 \u0438\u0437 {n}",
       group: "{count} \xD7 {size}",
@@ -53737,7 +53743,6 @@ var ru_default2 = {
         "no-effect": "\u0431\u0435\u0437 \u044D\u0444\u0444\u0435\u043A\u0442\u0430"
       },
       legend: "\u041A\u0440\u0430\u0441\u043D\u0430\u044F \u043D\u0438\u0442\u043A\u0430: \u043F\u0440\u043E\u0432\u0435\u0440\u0435\u043D\u043D\u0430\u044F \u0441\u0432\u044F\u0437\u043A\u0430. \u0421\u0438\u043D\u044F\u044F \u043D\u0438\u0442\u043A\u0430: \u0443\u043B\u0438\u043A\u0430, \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u043D\u0430\u044F \u0447\u0435\u043B\u043E\u0432\u0435\u043A\u0443.",
-      drawnFrom: "\u0412\u044B\u0432\u0435\u0434\u0435\u043D\u043E \u0438\u0437",
       linksOf: "\u0421\u0432\u044F\u0437\u043A\u0438 \u0441 \u043D\u0435\u0439",
       noLinks: "\u043F\u043E\u043A\u0430 \u043D\u0435\u0442",
       closeHint: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437 \u0438\u043B\u0438 Esc, \u0447\u0442\u043E\u0431\u044B \u0443\u0431\u0440\u0430\u0442\u044C.",
@@ -53813,7 +53818,6 @@ var ru_default2 = {
     },
     clueGrid: {
       heardFrom: "\u0421\u043E \u0441\u043B\u043E\u0432 \u0441\u0432\u0438\u0434\u0435\u0442\u0435\u043B\u044F: {name}",
-      bearsOn: "\u041A\u0430\u0441\u0430\u0435\u0442\u0441\u044F: {names}",
       filters: "\u041E\u0442\u0431\u043E\u0440 \u0443\u043B\u0438\u043A",
       place: "\u041D\u0430\u0439\u0434\u0435\u043D\u043E \u0432",
       suspect: "\u041F\u043E\u043A\u0430\u0437\u0430\u043D\u043E",
@@ -53822,11 +53826,25 @@ var ru_default2 = {
       unused: "\u0435\u0449\u0451 \u043D\u0435 \u0432 \u0441\u0432\u044F\u0437\u043A\u0430\u0445",
       number: "\u041D\u043E\u043C\u0435\u0440",
       numberHint: "\u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440 {example}",
-      none: "\u041D\u0438 \u043E\u0434\u043D\u0430 \u0443\u043B\u0438\u043A\u0430 \u043D\u0435 \u043F\u043E\u0434\u0445\u043E\u0434\u0438\u0442.",
-      usedIn: "\u0432 \u0441\u0432\u044F\u0437\u043A\u0430\u0445: {n}",
-      notUsed: "\u043D\u0438 \u0432 \u043E\u0434\u043D\u043E\u0439 \u0441\u0432\u044F\u0437\u043A\u0435",
-      toBoard: "\u041D\u0430 \u0434\u043E\u0441\u043A\u0435",
-      toMap: "\u041D\u0430 \u043A\u0430\u0440\u0442\u0435"
+      none: "\u041D\u0438 \u043E\u0434\u043D\u0430 \u0443\u043B\u0438\u043A\u0430 \u043D\u0435 \u043F\u043E\u0434\u0445\u043E\u0434\u0438\u0442."
+    },
+    matrix: {
+      title: "\u041A\u043E\u043C\u0443 \u0447\u0442\u043E \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u043E",
+      unshown: "\u043A\u0430\u0441\u0430\u0435\u0442\u0441\u044F, \u043D\u043E \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u043E",
+      linkedIn: "\u0412 \u0441\u0432\u044F\u0437\u043A\u0430\u0445",
+      none: "\u043D\u0438 \u0432 \u043E\u0434\u043D\u043E\u0439",
+      hint: "\u041F\u0443\u043D\u043A\u0442\u0438\u0440\u043D\u044B\u0439 \u0437\u043D\u0430\u043A \u0432\u043E\u043F\u0440\u043E\u0441\u0430: \u0443\u043B\u0438\u043A\u0430 \u043A\u0430\u0441\u0430\u0435\u0442\u0441\u044F \u0447\u0435\u043B\u043E\u0432\u0435\u043A\u0430, \u0430 \u0432\u044B \u0435\u0451 \u0435\u043C\u0443 \u0435\u0449\u0451 \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u043B\u0438. \u041F\u0440\u043E\u0447\u0435\u0440\u043A \u0432\u043D\u0438\u0437\u0443: \u0443\u043B\u0438\u043A\u0430 \u043F\u043E\u043A\u0430 \u043D\u0435 \u0432\u043E\u0448\u043B\u0430 \u043D\u0438 \u0432 \u043E\u0434\u043D\u0443 \u0441\u0432\u044F\u0437\u043A\u0443. \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \u043D\u0430 \u043D\u043E\u043C\u0435\u0440 \u0438\u043B\u0438 \u0438\u043C\u044F, \u0438 \u043F\u043E\u0434\u0441\u0432\u0435\u0442\u0438\u0442\u0441\u044F \u0432\u0441\u0451, \u0447\u0442\u043E \u0441 \u043D\u0438\u043C\u0438 \u0441\u0432\u044F\u0437\u0430\u043D\u043E.",
+      cards: "\u041A\u0430\u0440\u0442\u043E\u0442\u0435\u043A\u0430",
+      status: { notShown: "\u043D\u0438\u043A\u043E\u043C\u0443 \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u0430", notLinked: "\u043D\u0435 \u0432 \u0441\u0432\u044F\u0437\u043A\u0430\u0445", witness: "\u0441\u0432\u0438\u0434\u0435\u0442\u0435\u043B\u044C" }
+    },
+    tree: {
+      clues: "\u0423\u043B\u0438\u043A\u0438",
+      link: "\u0421\u0432\u044F\u0437\u043A\u0430",
+      insight: "\u0412\u044B\u0432\u043E\u0434",
+      lead: "\u0417\u0430\u0446\u0435\u043F\u043A\u0430",
+      linkStep: "\u0421\u0432\u044F\u0437\u043A\u0430 {n} \xB7 \u0445\u043E\u0434 {turn}",
+      open: "\u0415\u0449\u0451 \u043D\u0435 \u0441\u0432\u044F\u0437\u0430\u043D\u043E",
+      note: "\u041F\u0443\u0441\u0442\u044B\u0435 \u044F\u0447\u0435\u0439\u043A\u0438 \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u044E\u0442 \u043B\u0438\u0448\u044C, \u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0441\u0432\u044F\u0437\u043E\u043A \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0438 \u0438\u0437 \u0441\u043A\u043E\u043B\u044C\u043A\u0438\u0445 \u0443\u043B\u0438\u043A. \u041A\u0430\u043A\u0438\u0435 \u0438\u043C\u0435\u043D\u043D\u043E \u2014 \u0440\u0435\u0448\u0430\u0442\u044C \u0432\u0430\u043C."
     }
   },
   sighting: {
@@ -54074,23 +54092,142 @@ ${file2.missed.map(
 `;
 }
 
-// packages/mcp/src/board/board-links.ts
-function openLinks(view, text) {
-  const { open: open3, size, group, allDrawn } = text.links;
-  const counts = /* @__PURE__ */ new Map();
-  for (const n of view.openLinks) counts.set(n, (counts.get(n) ?? 0) + 1);
-  const groups = [...counts].map(
-    ([n, count]) => escapeHtml(group.replace("{count}", String(count)).replace("{size}", size.replace("{n}", String(n))))
-  ).join(", ");
-  return `<p class="card"><strong>${escapeHtml(open3)}:</strong> ${view.openLinks.length === 0 ? escapeHtml(allDrawn) : groups}</p>
-`;
+// packages/mcp/src/board/board-matrix.ts
+var SYMBOL = {
+  "breaks-lie": "\u2715",
+  confirms: "\u2713",
+  implicates: "!",
+  "no-effect": "\xB7"
+};
+var KIND = {
+  "breaks-lie": "c-breaks",
+  confirms: "c-conf",
+  implicates: "c-impl",
+  "no-effect": "c-none"
+};
+var placeOf = (view, clue) => view.history.finds.find(({ clueId }) => clueId === clue.id)?.locationId ?? clue.locationId;
+var linkNumbers = (view, clueId) => view.history.links.flatMap(({ clueIds }, index) => clueIds.includes(clueId) ? [index + 1] : []);
+function unshownFor(view, suspectId) {
+  const shown2 = new Set(
+    shownPairs(view).filter((pair) => pair.suspectId === suspectId).map(({ clueId }) => clueId)
+  );
+  return view.clues.filter((clue) => clue.bearsOn.includes(suspectId) && !shown2.has(clue.id));
 }
-function renderLinks(view, text) {
-  const open3 = openLinks(view, text);
-  if (view.clues.length === 0 && view.insights.length === 0) {
-    return `${open3}<p class="empty">${escapeHtml(text.links.none)}</p>`;
-  }
-  return open3;
+function renderMatrix(view, board, text) {
+  const e = escapeHtml;
+  const t = text.matrix;
+  const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
+  const places = [...new Set(view.clues.map((clue) => placeOf(view, clue)))];
+  const clues = places.flatMap((place) => view.clues.filter((clue) => placeOf(view, clue) === place));
+  const pairs = new Map(shownPairs(view).map((pair) => [`${pair.clueId}
+${pair.suspectId}`, pair.effect]));
+  const picking = (entry, tokens) => `data-pick="${e(entry)}" data-rel="${e(rel(tokens))}" tabindex="0" role="button"`;
+  const groups = places.map((place) => {
+    const span = view.clues.filter((clue) => placeOf(view, clue) === place).length;
+    return `<th colspan="${String(span)}" scope="colgroup">${e(placeName.get(place) ?? place)}</th>`;
+  }).join("");
+  const heads = clues.map(
+    (clue) => `<th scope="col" class="clue" ${picking(token("clue", clue.id), clueTokens(view, clue.id))}><span class="num">${e(clue.number)}</span>${clue.witness === null ? "" : `<div class="mks"><span class="mk w" title="${e(text.clueGrid.heardFrom.replace("{name}", clue.witness))}">${e(t.status.witness)}</span></div>`}</th>`
+  ).join("");
+  const rows = view.suspects.map((suspect) => {
+    const where = suspect.place === null ? board.anywhere : suspect.place.id === view.location.id ? board.here : suspect.place.name;
+    const cells = clues.map((clue) => {
+      const effect = pairs.get(`${clue.id}
+${suspect.id}`);
+      if (effect !== void 0) {
+        const label = text.corkboard.effects[effect];
+        return `<td><span class="cell ${KIND[effect]}" role="img" aria-label="${e(label)}" title="${e(label)}">${SYMBOL[effect]}</span></td>`;
+      }
+      return clue.bearsOn.includes(suspect.id) ? `<td><span class="cell c-todo" role="img" aria-label="${e(t.unshown)}" title="${e(t.unshown)}">?</span></td>` : "<td></td>";
+    }).join("");
+    return `<tr${suspect.cleared ? ' class="cleared"' : ""}><th scope="row" class="who" ${picking(token("suspect", suspect.id), suspectTokens(view, suspect.id))}>${e(suspect.name)}<small>${e(board.whereabouts)}: ${e(where)}</small></th>${cells}</tr>`;
+  }).join("\n");
+  const used = clues.map((clue) => {
+    const numbers = linkNumbers(view, clue.id);
+    return numbers.length === 0 ? `<td class="unused" title="${e(t.none)}">\u2014</td>` : `<td class="used">${numbers.map(String).join(" ")}</td>`;
+  }).join("");
+  const legend = [
+    ...Object.keys(SYMBOL).map(
+      (effect) => `<span><b class="cell ${KIND[effect]}">${SYMBOL[effect]}</b>${e(text.corkboard.effects[effect])}</span>`
+    ),
+    `<span><b class="cell c-todo">?</b>${e(t.unshown)}</span>`
+  ].join("");
+  return `<h2>${e(t.title)}</h2>
+<div class="legend">${legend}</div>
+<div class="wrapx"><table class="matrix">
+<thead><tr class="place"><th class="who"></th>${groups}</tr><tr><th class="who"></th>${heads}</tr></thead>
+<tbody>
+${rows}
+<tr class="foot"><th scope="row" class="who">${e(t.linkedIn)}</th>${used}</tr>
+</tbody></table></div>
+<p class="note">${e(t.hint)}</p>`;
+}
+
+// packages/mcp/src/board/board-clues.ts
+var cardId = (clueId) => `card-${clueId}`;
+function filters(view, text, example) {
+  const e = escapeHtml;
+  const t = text.clueGrid;
+  const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
+  const places = [...new Set(view.clues.map((clue) => placeOf(view, clue)))];
+  const shownTo = new Set(view.history.shown.map(({ suspectId }) => suspectId));
+  const option = (value, label) => `<option value="${e(value)}">${e(label)}</option>`;
+  const suspects = view.suspects.filter(({ id }) => shownTo.has(id));
+  return `<div class="filters" role="search" aria-label="${e(t.filters)}">
+<label>${e(t.place)} <select id="f-place">${option("", t.any)}${places.map((id) => option(id, placeName.get(id) ?? id)).join("")}</select></label>
+<label>${e(t.suspect)} <select id="f-suspect">${option("", t.any)}${suspects.map(({ id, name }) => option(id, name)).join("")}</select></label>
+<label><input type="checkbox" id="f-garbled"> ${e(t.garbled)}</label>
+<label><input type="checkbox" id="f-unused"> ${e(t.unused)}</label>
+<label>${e(t.number)} <input type="search" id="f-number" placeholder="${e(t.numberHint.replace("{example}", example))}" size="12"></label>
+</div>`;
+}
+function card(view, clue, board, text, fresh) {
+  const e = escapeHtml;
+  const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
+  const turn = view.history.finds.find(({ clueId }) => clueId === clue.id)?.turn;
+  const place = placeOf(view, clue);
+  const where = `${text.corkboard.foundAt} ${placeName.get(place) ?? place}${turn === void 0 ? "" : ` \xB7 ${text.corkboard.step.replace("{n}", String(turn))}`}`;
+  const shown2 = shownPairs(view).filter(({ clueId }) => clueId === clue.id);
+  const linked = linkNumbers(view, clue.id).length > 0;
+  const status = text.matrix.status;
+  const marks = [
+    ...shown2.length === 0 ? [status.notShown] : [],
+    ...linked ? [] : [status.notLinked],
+    ...clue.witness === null ? [] : [text.clueGrid.heardFrom.replace("{name}", clue.witness)]
+  ];
+  const attrs = [
+    `id="${e(cardId(clue.id))}"`,
+    `data-pick="${e(token("clue", clue.id))}"`,
+    `data-rel="${e(rel(clueTokens(view, clue.id)))}"`,
+    `data-place="${e(place)}"`,
+    `data-shown="${e(shown2.map(({ suspectId }) => suspectId).join(" "))}"`,
+    `data-garbled="${clue.garbled ? "1" : "0"}"`,
+    `data-unused="${linked ? "0" : "1"}"`,
+    `data-number="${e(clue.number)}"`,
+    'tabindex="0" role="button"'
+  ].join(" ");
+  return `<div class="card clue-card${clue.witness === null ? "" : " sighting"}" ${attrs}>
+<span class="tag"><span class="num">${e(clue.number)}</span> \xB7 ${e(where)}</span>${fresh.clueIds.has(clue.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ""}
+<p class="text">${e(clue.description)}</p>${clue.garbled ? `
+<p class="warn">${e(board.garbled)}</p>` : ""}${marks.length === 0 ? "" : `
+<p class="marks">${marks.map((mark) => `<span class="mk">${e(mark)}</span>`).join(" ")}</p>`}
+</div>`;
+}
+function cardRules(view) {
+  const allowed = new Set(pickableTokens(view));
+  return view.clues.filter(({ id }) => allowed.has(token("clue", id))).map(
+    ({ id }) => `main[data-sel="${token("clue", id)}"] #${cardId(id)} .text{display:block;overflow:visible}`
+  ).join("\n");
+}
+function renderClues(view, board, text, fresh) {
+  const e = escapeHtml;
+  const [first] = view.clues;
+  const clues = first === void 0 ? "" : `<h2>${e(text.matrix.cards)} (${String(view.clues.length)})</h2>
+${filters(view, text, first.number)}
+<div class="grid">${view.clues.map((clue) => card(view, clue, board, text, fresh)).join("\n")}</div>
+<p class="empty" id="clue-none" hidden>${e(text.clueGrid.none)}</p>`;
+  return `${view.clues.length === 0 ? `<p class="empty">${e(board.noClues)}</p>` : renderMatrix(view, board, text)}
+${clues}`;
 }
 
 // packages/mcp/src/board/board-opened.ts
@@ -54116,7 +54253,7 @@ function renderOpened(view, board, text) {
     const links = view.history.links.filter(({ clueIds }) => clueIds.includes(clue.id)).map(
       ({ clueIds, result, turn }) => `<li>${e(clueIds.map(number4).join(" + "))} <span class="result">${e(words.results[result])}</span> <span class="tag">${e(step(turn))}</span></li>`
     );
-    const tried2 = links.length === 0 ? ` ${e(words.noLinks)}</p>` : `</p>
+    const tried = links.length === 0 ? ` ${e(words.noLinks)}</p>` : `</p>
 <ul class="tried">${links.join("\n")}</ul>`;
     return `<div class="opened" id="${e(openedId(clue.id))}" role="dialog" aria-label="${e(clue.number)}" tabindex="-1">
 <p class="tag">${e(clue.number)}</p>
@@ -54124,7 +54261,7 @@ function renderOpened(view, board, text) {
 <p class="warn">${e(board.garbled)}</p>` : ""}
 <p class="tag">${e(where)}</p>
 <p class="tag">${e(words.shownTo)}: ${e(shown2.length === 0 ? words.nobody : shown2.join(", "))}</p>
-<p class="tag">${e(words.linksOf)}:${tried2}
+<p class="tag">${e(words.linksOf)}:${tried}
 <p class="note">${e(words.closeHint)}</p>
 </div>`;
   }).join("\n");
@@ -54132,114 +54269,6 @@ function renderOpened(view, board, text) {
 function openedRules(view) {
   const allowed = new Set(pickableTokens(view));
   return view.clues.filter(({ id }) => allowed.has(`clue:${id}`)).map(({ id }) => `main[data-open="${id}"] #${openedId(id)}{display:block}`).join("\n");
-}
-
-// packages/mcp/src/board/board-clues.ts
-function tried(view, text) {
-  const e = escapeHtml;
-  if (view.history.links.length === 0) return `<p class="empty">${e(text.corkboard.noneTried)}</p>`;
-  const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
-  const number4 = numberOf(view);
-  const items = view.history.links.map(({ clueIds, result, turn }) => {
-    const names = clueIds.map((id) => `<span class="num">${e(number4(id))}</span>`).join(" + ");
-    const whole5 = clueIds.map((id) => `<p><span class="num">${e(number4(id))}</span> ${e(description.get(id) ?? id)}</p>`).join("");
-    return `<li data-rel="${e(rel(threadTokens(clueIds)))}">${names} <span class="result">${e(text.corkboard.results[result])}</span> <span class="tag">${e(text.corkboard.step.replace("{n}", String(turn)))}</span>
-<details><summary>${e(text.corkboard.fullText)}</summary>${whole5}</details></li>`;
-  });
-  return `<ul class="tried">${items.join("\n")}</ul>`;
-}
-function bearsOnLine(view, clue, text) {
-  const names = new Map(view.suspects.map(({ id, name }) => [id, name]));
-  const people = clue.bearsOn.map((id) => names.get(id) ?? id);
-  return people.length === 0 ? "" : `<p class="tag bears-on">${escapeHtml(text.clueGrid.bearsOn.replace("{names}", people.join(", ")))}</p>
-`;
-}
-var cardId = (clueId) => `card-${clueId}`;
-var placeOf = (view, clue) => view.history.finds.find(({ clueId }) => clueId === clue.id)?.locationId ?? clue.locationId;
-var linksOf = (view, clueId) => view.history.links.filter(({ clueIds }) => clueIds.includes(clueId));
-function filters(view, text, example) {
-  const e = escapeHtml;
-  const t = text.clueGrid;
-  const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
-  const places = [...new Set(view.clues.map((clue) => placeOf(view, clue)))];
-  const shownTo = new Set(view.history.shown.map(({ suspectId }) => suspectId));
-  const option = (value, label) => `<option value="${e(value)}">${e(label)}</option>`;
-  const suspects = view.suspects.filter(({ id }) => shownTo.has(id));
-  return `<div class="filters" role="search" aria-label="${e(t.filters)}">
-<label>${e(t.place)} <select id="f-place">${option("", t.any)}${places.map((id) => option(id, placeName.get(id) ?? id)).join("")}</select></label>
-<label>${e(t.suspect)} <select id="f-suspect">${option("", t.any)}${suspects.map(({ id, name }) => option(id, name)).join("")}</select></label>
-<label><input type="checkbox" id="f-garbled"> ${e(t.garbled)}</label>
-<label><input type="checkbox" id="f-unused"> ${e(t.unused)}</label>
-<label>${e(t.number)} <input type="search" id="f-number" placeholder="${e(t.numberHint.replace("{example}", example))}" size="12"></label>
-</div>`;
-}
-function card(view, clue, board, text, fresh) {
-  const e = escapeHtml;
-  const number4 = numberOf(view);
-  const placeName = new Map(view.map.places.map(({ id, name }) => [id, name]));
-  const suspectName = new Map(view.suspects.map(({ id, name }) => [id, name]));
-  const turn = view.history.finds.find(({ clueId }) => clueId === clue.id)?.turn;
-  const place = placeOf(view, clue);
-  const where = `${text.corkboard.foundAt} ${placeName.get(place) ?? place}${turn === void 0 ? "" : ` \xB7 ${text.corkboard.step.replace("{n}", String(turn))}`}`;
-  const shown2 = shownPairs(view).filter(({ clueId }) => clueId === clue.id);
-  const shownLine = shown2.length === 0 ? text.corkboard.nobody : shown2.map(
-    ({ suspectId, effect }) => `${suspectName.get(suspectId) ?? suspectId} (${text.corkboard.effects[effect]})`
-  ).join(", ");
-  const links = linksOf(view, clue.id);
-  const used = links.length === 0 ? text.clueGrid.notUsed : `${text.clueGrid.usedIn.replace("{n}", String(links.length))}: ${links.map(({ clueIds }) => clueIds.map(number4).join(" + ")).join("; ")}`;
-  const attrs = [
-    `id="${e(cardId(clue.id))}"`,
-    `data-pick="${e(token("clue", clue.id))}"`,
-    `data-rel="${e(rel(clueTokens(view, clue.id)))}"`,
-    `data-place="${e(place)}"`,
-    `data-shown="${e(shown2.map(({ suspectId }) => suspectId).join(" "))}"`,
-    `data-garbled="${clue.garbled ? "1" : "0"}"`,
-    `data-unused="${links.length === 0 ? "1" : "0"}"`,
-    `data-number="${e(clue.number)}"`,
-    'tabindex="0" role="button"'
-  ].join(" ");
-  return `<div class="card clue-card${clue.witness === null ? "" : " sighting"}" ${attrs}>
-<span class="tag"><span class="num">${e(clue.number)}</span> \xB7 ${e(where)}</span>${fresh.clueIds.has(clue.id) ? ` <span class="new">${e(text.fresh.mark)}</span>` : ""}
-<p class="text">${e(clue.description)}</p>${clue.witness === null ? "" : `
-<p class="tag witness-tag">${e(text.clueGrid.heardFrom.replace("{name}", clue.witness))}</p>`}${clue.garbled ? `
-<p class="warn">${e(board.garbled)}</p>` : ""}
-${bearsOnLine(view, clue, text)}<p class="tag">${e(text.corkboard.shownTo)}: ${e(shownLine)}</p>
-<p class="tag">${e(used)}</p>
-<p class="tag ways"><a href="#board">${e(text.clueGrid.toBoard)}</a> \xB7 <a href="#map">${e(text.clueGrid.toMap)}</a></p>
-</div>`;
-}
-function cardRules(view) {
-  const allowed = new Set(pickableTokens(view));
-  return view.clues.filter(({ id }) => allowed.has(token("clue", id))).map(
-    ({ id }) => `main[data-sel="${token("clue", id)}"] #${cardId(id)} .text{display:block;overflow:visible}`
-  ).join("\n");
-}
-function renderClues(view, board, text, fresh) {
-  const e = escapeHtml;
-  const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
-  const number4 = numberOf(view);
-  const [first] = view.clues;
-  const clues = first === void 0 ? `<p class="empty">${e(board.noClues)}</p>` : `${filters(view, text, first.number)}
-<div class="grid">${view.clues.map((clue) => card(view, clue, board, text, fresh)).join("\n")}</div>
-<p class="empty" id="clue-none" hidden>${e(text.clueGrid.none)}</p>`;
-  const insights = view.insights.length === 0 ? `<p class="empty">${e(board.noInsights)}</p>` : view.insights.map(({ insight, clueIds }) => {
-    const sources = clueIds.flatMap((id) => {
-      const line = description.get(id);
-      return line === void 0 ? [] : [`<span class="source"><span class="num">${e(number4(id))}</span> ${e(line)}</span>`];
-    });
-    const from = sources.length === 0 ? "" : `
-<p class="tag">${e(text.corkboard.drawnFrom)}:</p>
-${sources.join("\n")}`;
-    return `<div class="card" data-rel="${e(rel(threadTokens(clueIds)))}"><p>${e(insight)}</p>${from}</div>`;
-  }).join("\n");
-  return `<h2>${e(text.links.title)}</h2>
-${renderLinks(view, text)}
-<h2>${e(text.corkboard.tried)}</h2>
-${tried(view, text)}
-<h2>${e(board.clues)} (${String(view.clues.length)})</h2>
-${clues}
-<h2>${e(board.insights)} (${String(view.insights.length)})</h2>
-${insights}`;
 }
 
 // packages/mcp/src/board/board-cork.ts
@@ -54987,6 +55016,12 @@ function said(view, suspect, text) {
 ${lines.join("\n")}</div>`;
   }).join("\n");
 }
+function spoken(view, suspect, text) {
+  const title = escapeHtml(text.statements.title);
+  return suspect.statements.length === 0 ? `<h3>${title}</h3>
+${said(view, suspect, text)}` : `<details><summary>${title} (${String(suspect.statements.length)})</summary>
+${said(view, suspect, text)}</details>`;
+}
 function shown(view, suspect, text) {
   const e = escapeHtml;
   const entries = view.history.shown.filter(({ suspectId }) => suspectId === suspect.id);
@@ -54999,6 +55034,11 @@ function shown(view, suspect, text) {
       effect
     ) + (reaction === void 0 ? "" : ` <span class="reaction">${e(reaction)}</span>`)
   ).join(" ")}</p>`;
+}
+function unshown(view, suspect, text) {
+  const numbers = unshownFor(view, suspect.id).map(({ number: number4 }) => number4);
+  return numbers.length === 0 ? "" : `
+<p class="todo-line">${escapeHtml(text.statements.notShownYet.replace("{numbers}", numbers.join(", ")))}</p>`;
 }
 function renderSuspects(view, board, text, fresh) {
   const e = escapeHtml;
@@ -55016,12 +55056,67 @@ function renderSuspects(view, board, text, fresh) {
 <p class="tag">${e(board.whereabouts)}: ${e(where)}</p>${suspect.cleared ? `
 <p class="tag cleared-tag">${e(text.statements.cleared)}</p>` : ""}
 <p>${gauge(suspect, text)}</p></div></div>${closed}
-${claimed(view, suspect, text)}<h3>${e(text.statements.title)}</h3>
-${said(view, suspect, text)}
+${claimed(view, suspect, text)}${spoken(view, suspect, text)}
 <h3>${e(text.statements.shown)}</h3>
-${shown(view, suspect, text)}
+${shown(view, suspect, text)}${unshown(view, suspect, text)}
 </div>`;
   }).join("\n");
+}
+
+// packages/mcp/src/board/board-links.ts
+function renderOpenSlots(view, text) {
+  const { open: open3, size, group, allDrawn } = text.links;
+  const counts = /* @__PURE__ */ new Map();
+  for (const n of view.openLinks) counts.set(n, (counts.get(n) ?? 0) + 1);
+  const slots = [...counts].map(
+    ([n, count]) => `<span class="open-slot">${"<i></i>".repeat(n)} ${escapeHtml(group.replace("{count}", String(count)).replace("{size}", size.replace("{n}", String(n))))}</span>`
+  );
+  return `<h2>${escapeHtml(text.tree.open)}</h2>
+<div class="open-slots" aria-label="${escapeHtml(open3)}">${view.openLinks.length === 0 ? `<span class="empty">${escapeHtml(allDrawn)}</span>` : slots.join("")}</div>
+<p class="note">${escapeHtml(text.tree.note)}</p>`;
+}
+
+// packages/mcp/src/board/board-tree.ts
+var sameClues = (a, b) => a.length === b.length && a.every((id) => b.includes(id));
+function leadCard(lead, text) {
+  const words = text.leadPins;
+  const [state, status] = lead.done ? ["done", words.doneNow] : !lead.openNow ? ["shut", words.shutNow] : lead.opens.length === 0 ? ["idle", words.opensNothing] : ["", words.followNow];
+  return `<div class="lead ${state}" data-pick="${escapeHtml(token("lead", lead.id))}" data-rel="${escapeHtml(token("lead", lead.id))}" tabindex="0" role="button"><b>${escapeHtml(words.tag.toUpperCase())}</b>${escapeHtml(lead.reason)}<br><span class="tag">${escapeHtml(status)}</span></div>`;
+}
+function branch(view, text, clueIds, tried, insight) {
+  const e = escapeHtml;
+  const number4 = numberOf(view);
+  const description = new Map(view.clues.map(({ id, description: line }) => [id, line]));
+  const sources = clueIds.map((id) => {
+    const line = description.get(id) ?? id;
+    return `<div class="src" data-pick="${e(token("clue", id))}" data-rel="${e(rel(clueTokens(view, id)))}" tabindex="0" role="button"><span class="num">${e(number4(id))}</span><span class="t">${e(line)}</span></div>`;
+  }).join("");
+  const link = tried === null ? "" : `<div class="linkbox"><b>${e(text.tree.linkStep.replace("{n}", String(tried.n)).replace("{turn}", String(tried.turn)))}</b>${e(text.corkboard.results[tried.result])}</div>`;
+  const leads = insight === void 0 ? [] : view.leads.filter(({ source }) => source?.kind === "deduction" && source.insightId === insight.id);
+  const cold = tried?.result === "nothing";
+  return `<div class="branch${cold ? " cold" : ""}" data-rel="${e(rel(threadTokens(clueIds)))}">
+<div class="srcs">${sources}</div><div class="arrow" aria-hidden="true">\u25B6</div>${link === "" ? "<div></div>" : link}<div class="arrow" aria-hidden="true">\u25B6</div>
+<div class="insight">${insight === void 0 ? "\u2014" : e(insight.insight)}</div><div class="arrow" aria-hidden="true">${leads.length === 0 ? "" : "\u25B6"}</div>
+<div class="leads">${leads.map((lead) => leadCard(lead, text)).join("")}</div>
+</div>`;
+}
+function renderTree(view, text) {
+  const e = escapeHtml;
+  const t = text.tree;
+  const matched = /* @__PURE__ */ new Set();
+  const branches = view.history.links.map(({ clueIds, result, turn }, index) => {
+    const insight = view.insights.find((entry) => sameClues(entry.clueIds, clueIds));
+    if (insight !== void 0) matched.add(insight.id);
+    return branch(view, text, clueIds, { n: index + 1, turn, result }, insight);
+  });
+  for (const insight of view.insights) {
+    if (!matched.has(insight.id)) branches.push(branch(view, text, insight.clueIds, null, insight));
+  }
+  const body2 = branches.length === 0 ? `<p class="empty">${e(text.corkboard.noneTried)}</p>` : `<div class="cols"><span>${e(t.clues)}</span><span>${e(t.link)}</span><span>${e(t.insight)}</span><span>${e(t.lead)}</span></div>
+<div class="tree">${branches.join("\n")}</div>`;
+  return `<h2>${e(text.corkboard.tried)}</h2>
+${body2}
+${renderOpenSlots(view, text)}`;
 }
 
 // packages/mcp/src/board/board-text.ts
@@ -55031,7 +55126,7 @@ var BOARD_TEXT = {
 };
 
 // packages/mcp/src/board/render-board.ts
-var TAB_IDS = ["board", "suspects", "clues", "map", "chronicle", "hero", "file"];
+var TAB_IDS = ["board", "suspects", "clues", "insights", "map", "chronicle", "hero", "file"];
 var tabRules = TAB_IDS.map(
   (id) => `main:has(#${id}:target) nav a[href="#${id}"]{background:var(--accent);color:var(--card);border-color:var(--accent)}`
 ).join("\n");
@@ -55048,8 +55143,8 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){m.removeAtt
 })();`;
 var SCRIPT_HASH = createHash2("sha256").update(SCRIPT).digest("base64");
 var STYLE = `
-:root{color-scheme:light dark;--bg:#f4efe6;--card:#fffdf8;--ink:#2a2622;--muted:#7a7066;--line:#ddd3c3;--accent:#8a3b2a;--warn:#b26a00;--soft:#efe6d6;--paper:#fffef6;--paper-ink:#2a2622;--paper-tag:#7a6a58;--paper-rule:rgba(70,110,180,.22);--margin:#c2574a;--red:#b3261e;--blue:#2b5fa3;--shadow:rgba(0,0,0,.18);--parch:#efe3c4;--parch-edge:#b9a678;--street:#f8f1dd;--roof:#d6c298;--hatch:#9c8656}
-@media (prefers-color-scheme:dark){:root{--bg:#1b1917;--card:#252220;--ink:#ece4d8;--muted:#a09484;--line:#3a3430;--accent:#e08a70;--warn:#e0a040;--soft:#312c28;--paper:#2a2622;--paper-ink:#ece4d8;--paper-tag:#a8998a;--paper-rule:rgba(140,170,220,.16);--margin:#d9786a;--red:#f08a80;--blue:#8ab4f0;--shadow:rgba(0,0,0,.5);--parch:#2b2619;--parch-edge:#5a4d33;--street:#3d3524;--roof:#4a3f29;--hatch:#7a6a45}}
+:root{color-scheme:light dark;--green:#2f6a3a;--bg:#f4efe6;--card:#fffdf8;--ink:#2a2622;--muted:#7a7066;--line:#ddd3c3;--accent:#8a3b2a;--warn:#b26a00;--soft:#efe6d6;--paper:#fffef6;--paper-ink:#2a2622;--paper-tag:#7a6a58;--paper-rule:rgba(70,110,180,.22);--margin:#c2574a;--red:#b3261e;--blue:#2b5fa3;--shadow:rgba(0,0,0,.18);--parch:#efe3c4;--parch-edge:#b9a678;--street:#f8f1dd;--roof:#d6c298;--hatch:#9c8656}
+@media (prefers-color-scheme:dark){:root{--green:#7fc08a;--bg:#1b1917;--card:#252220;--ink:#ece4d8;--muted:#a09484;--line:#3a3430;--accent:#e08a70;--warn:#e0a040;--soft:#312c28;--paper:#2a2622;--paper-ink:#ece4d8;--paper-tag:#a8998a;--paper-rule:rgba(140,170,220,.16);--margin:#d9786a;--red:#f08a80;--blue:#8ab4f0;--shadow:rgba(0,0,0,.5);--parch:#2b2619;--parch-edge:#5a4d33;--street:#3d3524;--roof:#4a3f29;--hatch:#7a6a45}}
 *{box-sizing:border-box}
 body{margin:0;padding:24px 16px 48px;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,'Times New Roman',serif;overflow-wrap:anywhere}
 main{max-width:1040px;margin:0 auto}
@@ -55269,7 +55364,57 @@ svg.portrait.p0{--tone:#8a3b2a}svg.portrait.p1{--tone:#2b5fa3}svg.portrait.p2{--
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
 .grid .card{margin:0}
 .clue-card .text{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.ways a{color:var(--accent)}
+.marks{margin:6px 0 0}
+.mk{display:inline-block;margin:0 4px 2px 0;padding:1px 6px;border-radius:3px;background:var(--line);color:var(--ink);font:11px/1.4 system-ui,sans-serif}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 10px;font:12px system-ui,sans-serif;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.wrapx{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--card)}
+table.matrix{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;font:13px system-ui,sans-serif}
+.matrix th,.matrix td{padding:0;text-align:center;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+.matrix thead th{padding:6px 2px;background:var(--soft);font-weight:400;vertical-align:bottom}
+.matrix thead .place th{padding:4px;font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.matrix th.who{position:sticky;left:0;width:180px;min-width:150px;padding:8px 10px;background:var(--card);text-align:left;font-weight:600}
+.matrix thead th.who{background:var(--soft)}
+.matrix th.who small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.matrix td{min-width:44px;height:42px}
+.matrix tr.cleared th.who{opacity:.6}
+.matrix tr.foot th,.matrix tr.foot td{height:34px;background:var(--soft);font-size:12px}
+.matrix .used{color:var(--green);font-weight:700}
+.matrix .unused{color:var(--muted)}
+.matrix .mks{margin-top:3px}
+.cell{display:inline-grid;place-items:center;width:26px;height:26px;border:1.5px solid currentColor;border-radius:50%;font-weight:700;line-height:1}
+.c-breaks{color:var(--red);background:color-mix(in srgb,var(--red) 14%,transparent)}
+.c-conf{color:var(--blue)}
+.c-impl{color:var(--warn)}
+.c-none{color:var(--muted)}
+.c-todo{color:var(--accent);border-style:dashed}
+.tree{display:grid;gap:14px}
+.cols{display:grid;grid-template-columns:minmax(140px,1.1fr) 28px minmax(120px,.8fr) 28px minmax(180px,1.4fr) 28px minmax(110px,.8fr);padding:0 12px 6px;font:11px system-ui,sans-serif;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.cols span:nth-child(1){grid-column:1}.cols span:nth-child(2){grid-column:3}.cols span:nth-child(3){grid-column:5}.cols span:nth-child(4){grid-column:7}
+.branch{display:grid;grid-template-columns:minmax(140px,1.1fr) 28px minmax(120px,.8fr) 28px minmax(180px,1.4fr) 28px minmax(110px,.8fr);align-items:center;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:6px}
+.branch.cold{border-style:dashed;opacity:.65}
+.arrow{text-align:center;font-size:20px;color:var(--muted)}
+.srcs{display:grid;gap:5px}
+.src{display:flex;gap:8px;align-items:baseline;padding:4px 8px;background:var(--paper);border-left:3px double var(--margin);font:13px/1.35 system-ui,sans-serif}
+.linkbox{padding:8px;border:2px solid var(--red);border-radius:6px;text-align:center;font:12px/1.3 system-ui,sans-serif}
+.cold .linkbox{border-width:1.5px;border-style:dashed}
+.linkbox b{display:block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--red)}
+.insight{padding:10px 12px;border-radius:2px 2px 6px 2px;background:#fff3a8;color:#2a2622;box-shadow:2px 3px 3px var(--shadow);font:14px/1.45 'Segoe Print','Bradley Hand',Georgia,serif}
+.cold .insight{background:var(--soft);color:var(--muted);box-shadow:none}
+.leads{display:grid;gap:6px}
+.lead{padding:8px;border:1px solid #9db8d6;border-radius:6px;background:#e8f1f8;color:#2a2622;font:12px/1.35 system-ui,sans-serif}
+.lead b{display:block;font-size:11px;letter-spacing:.08em;color:#2b5fa3}
+.lead .tag{color:#2f6a3a;font-weight:700}
+.lead.shut{border-style:dashed;background:#dcd9d2}.lead.shut .tag{color:#b26a00}
+.lead.idle,.lead.done{background:#e3e0d8}.lead.idle .tag,.lead.done .tag{color:#6b6354}
+.open-slots{display:flex;flex-wrap:wrap;gap:12px;padding:12px;border:1px dashed var(--muted);border-radius:6px}
+.open-slot{display:inline-flex;align-items:center;gap:3px;font:12px system-ui,sans-serif;color:var(--muted)}
+.open-slot i{display:inline-block;width:22px;height:30px;border:1.5px dashed var(--muted);border-radius:3px}
+.chip.fx-todo{color:var(--accent);border-style:dashed}
+.todo-line{margin:6px 0 0;font:13px/1.4 system-ui,sans-serif;color:var(--accent)}
+.card.suspect details{margin:8px 0 0}
+.card.suspect summary{font:600 12px system-ui,sans-serif;color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+@media (max-width:760px){.branch{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}.cols{display:none}}
 @media (max-width:560px){body{padding:16px}h1{font-size:1.5rem}}
 @media print{body{background:#fff;color:#000}.opened{display:none!important}.tab{display:block!important}nav.tabs{display:none}.card,.graph,.cork{break-inside:avoid}}
 `;
@@ -55310,8 +55455,11 @@ ${renderCork(view, board, text)}
 <h2>${e(board.suspects)}</h2>
 ${renderSuspects(view, board, text, fresh)}
 </section>
-<section class="tab notebook" id="clues">
+<section class="tab" id="clues">
 ${renderClues(view, board, text, fresh)}
+</section>
+<section class="tab" id="insights">
+${renderTree(view, text)}
 </section>
 <section class="tab" id="map">
 <h2>${e(text.map.title)}</h2>

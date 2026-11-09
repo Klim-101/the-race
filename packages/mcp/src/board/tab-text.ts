@@ -11,6 +11,7 @@ export interface TabText {
     readonly map: string;
     readonly suspects: string;
     readonly clues: string;
+    readonly insights: string;
     readonly chronicle: string;
     readonly hero: string;
     /** The closed file, which exists only once the run is over. */
@@ -65,8 +66,6 @@ export interface TabText {
     /** One turn of the run ({n}). */
     readonly step: string;
     readonly shownTo: string;
-    /** The heading, on a conclusion, of the clues it was drawn from. */
-    readonly drawnFrom: string;
     /** On an opened clue card: the heading of the links it took part in, the line when none, how to close it. */
     readonly linksOf: string;
     readonly noLinks: string;
@@ -133,8 +132,6 @@ export interface TabText {
   readonly clueGrid: {
     /** A clue that a witness told: whose words it is ({name}). */
     readonly heardFrom: string;
-    /** The people a clue bears on ({names}). */
-    readonly bearsOn: string;
     readonly filters: string;
     readonly place: string;
     readonly suspect: string;
@@ -145,11 +142,30 @@ export interface TabText {
     /** A hint for the number box ({example}). */
     readonly numberHint: string;
     readonly none: string;
-    /** A clue used in links ({n}), and one used in none. */
-    readonly usedIn: string;
-    readonly notUsed: string;
-    readonly toBoard: string;
-    readonly toMap: string;
+  };
+  /** The table of people by clues: what showing each clue did, and the gaps. */
+  readonly matrix: {
+    readonly title: string;
+    /** A clue that bears on a person and was never shown to them. */
+    readonly unshown: string;
+    /** The row of the links a clue is in, and the word for a clue that is in none. */
+    readonly linkedIn: string;
+    readonly none: string;
+    readonly hint: string;
+    /** The heading of the short cards under the table. */
+    readonly cards: string;
+    readonly status: Record<'notShown' | 'notLinked' | 'witness', string>;
+  };
+  /** The tree of conclusions: from the clues of a link to the conclusion and the lead it earned. */
+  readonly tree: {
+    readonly clues: string;
+    readonly link: string;
+    readonly insight: string;
+    readonly lead: string;
+    /** A link by its number ({n}) and the turn ({turn}) it was tried. */
+    readonly linkStep: string;
+    readonly open: string;
+    readonly note: string;
   };
   readonly map: {
     readonly title: string;
@@ -187,10 +203,10 @@ export interface TabText {
     readonly brokenBy: string;
     readonly shown: string;
     readonly noneShown: string;
+    /** The clues that bear on a person and were not shown to them ({numbers}). */
+    readonly notShownYet: string;
   };
   readonly links: {
-    readonly title: string;
-    readonly none: string;
     /** The links still to be made by the number of clues each takes: the heading, one link ({n}) and the end. */
     readonly open: string;
     readonly size: string;

@@ -149,7 +149,7 @@ describe('a clue that a witness told, on the board', () => {
     expect(cards[1]).not.toContain('sighting');
     expect(cards[1]).not.toContain('Told by');
     expect(cards[2]).toContain('sighting');
-    expect(cards[2]).toContain('<p class="tag witness-tag">Told by Pip the vendor</p>');
+    expect(cards[2]).toContain('<span class="mk">Told by Pip the vendor</span>');
   });
 
   it('is pinned on the corkboard as a card of its own kind', () => {
@@ -173,9 +173,10 @@ describe('a clue that a witness told, on the board', () => {
   });
 });
 
-describe('the people a clue bears on, on its card', () => {
-  const tab = (clues: Record<string, unknown>[]): string =>
-    /id="clues">([\s\S]*?)<\/section>/.exec(renderEvidenceBoard(viewOf({ clues })))?.[1] ?? '';
+describe('the people a clue bears on, in the matching table and on their files', () => {
+  const page = (clues: Record<string, unknown>[]): string => renderEvidenceBoard(viewOf({ clues }));
+  const section = (html: string, id: string): string =>
+    new RegExp(`id="${id}">([\\s\\S]*?)</section>`).exec(html)?.[1] ?? '';
   const clue = (bearsOn: string[]) => ({
     id: 'key',
     locationId: 'stall',
@@ -186,15 +187,24 @@ describe('the people a clue bears on, on its card', () => {
     number: 'MIRA-01',
   });
 
-  it('names them, as the suspects are named on the board', () => {
-    expect(tab([clue(['a'])])).toContain('Bears on: Anna');
+  it('marks the cell of a person it bears on and was never shown to, and names the clue on their file', () => {
+    const html = page([clue(['a'])]);
+
+    expect(section(html, 'clues')).toContain('c-todo" role="img"');
+    expect(section(html, 'suspects')).toContain('Not shown, but bears on them: MIRA-01');
   });
 
   it('says nothing for a clue nobody is tied to', () => {
-    expect(tab([clue([])])).not.toContain('Bears on');
+    const html = page([clue([])]);
+
+    expect(section(html, 'clues')).not.toContain('c-todo" role="img"');
+    expect(section(html, 'suspects')).not.toContain('Not shown');
   });
 
-  it('falls back to the id for a suspect the view does not list', () => {
-    expect(tab([clue(['ghost'])])).toContain('Bears on: ghost');
+  it('draws no cell for a person the view does not list', () => {
+    const html = page([clue(['ghost'])]);
+
+    expect(section(html, 'clues')).not.toContain('c-todo" role="img"');
+    expect(section(html, 'suspects')).not.toContain('ghost');
   });
 });
