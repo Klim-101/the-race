@@ -34902,8 +34902,10 @@ var TimelineEntrySchema = external_exports.object({
 });
 var CASE_FORMS = ["whodunit", "abduction"];
 var CaseFormSchema = external_exports.enum(CASE_FORMS);
-function formForTheme(theme) {
-  return theme === "missing-person" ? "abduction" : "whodunit";
+var ABDUCTION_ONE_IN = 4;
+function formFor(theme, runSeed) {
+  if (theme === "missing-person") return "abduction";
+  return createRng(`${runSeed}:form`).roll(ABDUCTION_ONE_IN) === 1 ? "abduction" : "whodunit";
 }
 var VICTIM_KINDS = ["person", "pet"];
 var VictimKindSchema = external_exports.enum(VICTIM_KINDS);
@@ -56021,7 +56023,7 @@ async function chooseBrief(context2, pending, hero, dictionary, scenario) {
   const theme = choice?.theme ?? pending.theme ?? themeOfSeed(pending.seed, scenario.kind.themes);
   return {
     theme,
-    form: formForTheme(theme),
+    form: formFor(theme, pending.seed),
     tone: choice?.seed.tone ?? toneForSeed(pending.seed),
     seed: choice ? { id: choice.seed.id, kind: choice.seed.kind, premise: choice.seed.premise } : null,
     setting: chooseSetting(dictionary, pending.seed) ?? null
