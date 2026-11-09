@@ -3,12 +3,12 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
-import { restoreRng } from '../dice.js';
+import { createRng, D20_SIDES, restoreRng, type Rng } from '../dice.js';
 import { DAY_START_MINUTE } from '../run.js';
 import { ABDUCTION_RULESET_VERSION } from './abduction.js';
 import { resolveIntent } from './actions.js';
 import { DetectiveCaseSchema, type ClueMessage } from './case-schema.js';
-import { createDetectiveRun, type DetectiveRunState } from './run-state.js';
+import { createDetectiveRun, viewRun, type DetectiveRunState } from './run-state.js';
 import { CALL_WINDOW_MINUTES, deliverMessages } from './messages.js';
 
 const base = DetectiveCaseSchema.parse(buildCheeseCase());
@@ -160,5 +160,65 @@ describe('the schema of a message', () => {
 
     expect(DetectiveCaseSchema.safeParse(pigeon).success).toBe(false);
     expect(DetectiveCaseSchema.safeParse(zero).success).toBe(false);
+  });
+});
+
+describe('tracing a message', () => {
+  /** A seed whose first d20 roll is `die`. */
+  const dice = (die: number): Rng => {
+    for (let seed = 0; ; seed += 1) if (createRng(seed).roll(D20_SIDES) === die) return createRng(seed);
+  };
+  /** The message is a text from a number; studied, it shows a place that was not on the map. */
+  function tracing(): DetectiveRunState {
+    const raw = abductionCase(text);
+    raw.locations.push({
+      id: 'boathouse',
+      name: 'Old boathouse',
+      description: 'Damp planks and the smell of tar.',
+      connections: ['market-square'],
+      access: { kind: 'open' },
+      requiresLead: 'the-number',
+    });
+    (raw as unknown as { leads: object[] }).leads = [
+      {
+        id: 'the-number',
+        reason: 'The number is a pay phone by the boats.',
+        earnedBy: { kind: 'study', clueId: CLUE },
+      },
+    ];
+    const run = createDetectiveRun({
+      hero: buildHero(),
+      traits: [],
+      case: DetectiveCaseSchema.parse(raw),
+      seed: 'trace',
+      rngState: 1,
+      locale: 'en',
+    });
+    // Only the phone, so that the camera's twelve is the number to beat.
+    const phoneOnly = { ...run, kit: [{ id: 'phone' as const, state: 'owned' as const }] };
+    return deliverMessages({ ...phoneOnly, clock: { day: 1, minute: ARRIVES }, locationId: 'market-square' })
+      .run;
+  }
+  const mapOf = (run: DetectiveRunState): string[] => viewRun(run).map.places.map(({ id }) => id);
+  const studied = (run: DetectiveRunState, die: number) =>
+    resolveIntent(run, { kind: 'study', clueId: CLUE }, dice(die));
+
+  it('shows a place on the map when the message is studied well, and not before', () => {
+    const run = tracing();
+    // The phone's camera: perception 12.
+    const sharp = studied(run, 12 - buildHero().skills.perception);
+
+    expect(mapOf(run)).not.toContain('boathouse');
+    expect(sharp.ok && sharp.newLeadIds).toEqual(['the-number']);
+    expect(sharp.ok && mapOf(sharp.run)).toContain('boathouse');
+  });
+
+  it('costs time and shows nothing when the trace comes to nothing, and may be tried again', () => {
+    const run = tracing();
+    const blurred = studied(run, 12 - buildHero().skills.perception - 1);
+
+    expect(blurred.ok && blurred.newLeadIds).toEqual([]);
+    expect(blurred.ok && mapOf(blurred.run)).not.toContain('boathouse');
+    expect(blurred.ok && studied(blurred.run, 20).ok).toBe(true);
   });
 });

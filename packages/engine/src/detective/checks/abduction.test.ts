@@ -239,6 +239,76 @@ describe('the fairness of an abduction', () => {
       expect(codesOf(named(480 + 65 + 3 * MOVE_MINUTES))).toEqual([]);
     });
 
+    describe('by a message that comes by itself', () => {
+      /** The boathouse is shown by the lead that `earnedBy` earns; `change` may alter the message. */
+      const ledBy = (
+        earnedBy: object,
+        change: (message: { channel: string; arrivesAtMinute: number }) => void = () => undefined,
+      ): Raw =>
+        abduction((c) => {
+          withBoathouse(c);
+          (c.locations.find(({ id }) => id === 'boathouse') as { requiresLead?: string }).requiresLead =
+            'boathouse-lead';
+          (c as unknown as { leads: object[] }).leads = [
+            { id: 'boathouse-lead', reason: 'The line.', earnedBy },
+          ];
+          change((c.clues.find(({ id }) => id === 'ransom-text') as { message: never }).message);
+        });
+
+      it('leads when it is found, and when it is studied with any tool', () => {
+        const found = ledBy({ kind: 'clue', clueId: 'ransom-text' });
+        const studied = ledBy({ kind: 'study', clueId: 'ransom-text' });
+
+        expect(codesOf(found)).not.toContain('victim-place-unled');
+        expect(codesOf(studied)).not.toContain('victim-place-unled');
+        expect(issuesOf(studied)).toEqual([]);
+      });
+
+      it('does not lead when only a tool the hero may lack can study it', () => {
+        const picky = ledBy({ kind: 'study', clueId: 'ransom-text', tool: 'magnifier' });
+
+        expect(codesOf(picky)).toContain('victim-place-unled');
+      });
+
+      it('does not lead by a call, which may be missed, nor by a note, which has to be gone to', () => {
+        for (const channel of ['call', 'note']) {
+          const missed = ledBy({ kind: 'study', clueId: 'ransom-text' }, (message) => {
+            message.channel = channel;
+          });
+
+          expect(codesOf(missed), channel).toContain('victim-place-unled');
+        }
+      });
+
+      it('leads in time only when it has come, been studied and the way been walked before the deadline', () => {
+        const late = (arrivesAtMinute: number): Raw =>
+          ledBy({ kind: 'study', clueId: 'ransom-text' }, (message) => {
+            message.arrivesAtMinute = arrivesAtMinute;
+          });
+        // The hero starts at 08:00; the boathouse is a step from the start. Study 30 minutes, the walk MOVE_MINUTES.
+        const lastInTime = DEADLINE - 30 - MOVE_MINUTES;
+
+        expect(codesOf(late(lastInTime))).not.toContain('deadline-too-short');
+        expect(issuesOf(late(lastInTime + 1))).toMatchObject([
+          { code: 'deadline-too-short', path: 'truth.abduction.deadlineMinute' },
+        ]);
+      });
+
+      it('is not timed when the way is shut: another check says so', () => {
+        const shut = abduction((c) => {
+          withBoathouse(c, { kind: 'skill', check: { skill: 'social', difficulty: 30 } });
+          (c.locations.find(({ id }) => id === 'boathouse') as { requiresLead?: string }).requiresLead =
+            'boathouse-lead';
+          (c as unknown as { leads: object[] }).leads = [
+            { id: 'boathouse-lead', reason: 'The line.', earnedBy: { kind: 'clue', clueId: 'ransom-text' } },
+          ];
+        });
+
+        expect(codesOf(shut)).toContain('victim-place-unreachable');
+        expect(codesOf(shut)).not.toContain('deadline-too-short');
+      });
+    });
+
     it('is not timed by a clue that can only be had from a person: the plan of a search does not reach it', () => {
       const told = abduction((c) => {
         withBoathouse(c);
@@ -275,12 +345,13 @@ describe('the fairness of an abduction', () => {
     });
 
     it('is not led to by a lead that no clue of a chain earns, nor by a name in a text not yet written', () => {
+      // The blue glove is no clue of a chain and no message.
       const other = abduction((c) => {
         withBoathouse(c);
         (c.locations.find(({ id }) => id === 'boathouse') as { requiresLead?: string }).requiresLead =
           'boathouse-lead';
         (c as unknown as { leads: object[] }).leads = [
-          { id: 'boathouse-lead', reason: 'Tar.', earnedBy: { kind: 'clue', clueId: 'ransom-text' } },
+          { id: 'boathouse-lead', reason: 'Tar.', earnedBy: { kind: 'clue', clueId: 'blue-glove' } },
         ];
       });
       const frame = abduction((c) => {

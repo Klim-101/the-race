@@ -39402,9 +39402,11 @@ function checkAbduction(detectiveCase, hero, traits, obtainable, content) {
   const placeNames = places.map(({ name }) => name.toLowerCase());
   const chainClueIds = new Set(evidenceChains.flat());
   const opensTheWay = (clueId) => places.some(({ access }) => access.kind === "clue" && access.clueId === clueId);
-  const earnsTheLead = (clueId) => (detectiveCase.leads ?? []).some(
-    ({ id, earnedBy }) => places.some(({ requiresLead }) => requiresLead === id) && earnedBy.kind === "clue" && earnedBy.clueId === clueId
-  );
+  const earnsTheLead = (clueId) => {
+    const earned = (detectiveCase.leads ?? []).filter(({ id }) => places.some(({ requiresLead }) => requiresLead === id)).map(({ earnedBy }) => earnedBy);
+    if (earned.some((by) => by.kind === "clue" && by.clueId === clueId)) return "found";
+    return earned.some((by) => by.kind === "study" && by.tool === void 0 && by.clueId === clueId) ? "studied" : null;
+  };
   const canPass = canEverPass(hero, traits);
   const closed = closedSources(traits);
   const outside = computeObtainable(
@@ -39412,8 +39414,9 @@ function checkAbduction(detectiveCase, hero, traits, obtainable, content) {
     canPass,
     closed
   );
+  const isText = (clue) => clue.message?.channel === "text";
   const leading = detectiveCase.clues.filter(
-    (clue) => chainClueIds.has(clue.id) && clue.locationId !== whereabouts && outside.clueIds.has(clue.id) && (opensTheWay(clue.id) || earnsTheLead(clue.id) || content && placeNames.some((name) => clue.description.toLowerCase().includes(name)))
+    (clue) => clue.locationId !== whereabouts && outside.clueIds.has(clue.id) && (isText(clue) ? earnsTheLead(clue.id) !== null : chainClueIds.has(clue.id) && (opensTheWay(clue.id) || earnsTheLead(clue.id) !== null || content && placeNames.some((name) => clue.description.toLowerCase().includes(name))))
   );
   if (whereabouts !== detectiveCase.startLocationId) {
     if (leading.length === 0) {
@@ -39424,13 +39427,19 @@ function checkAbduction(detectiveCase, hero, traits, obtainable, content) {
       });
     } else {
       const toLead = leading.flatMap((clue) => {
+        const studying = earnsTheLead(clue.id) === "studied" ? STUDY_MINUTES : 0;
+        if (clue.message !== void 0) {
+          return steps === null ? [] : [
+            Math.max(0, clue.message.arrivesAtMinute - DAY_START_MINUTE) + studying + steps * MOVE_MINUTES
+          ];
+        }
         const gathered2 = minutesToGather(detectiveCase, /* @__PURE__ */ new Set([clue.id]), {
           canPass,
           closed,
           closures: []
         });
         const walk3 = stepsBetween(detectiveCase, obtainable, clue.locationId, whereabouts);
-        return gathered2 === null || walk3 === null ? [] : [gathered2 + walk3 * MOVE_MINUTES];
+        return gathered2 === null || walk3 === null ? [] : [gathered2 + studying + walk3 * MOVE_MINUTES];
       });
       const quickest = Math.min(...toLead);
       const said2 = issues.some(({ code }) => code === "deadline-too-short");
