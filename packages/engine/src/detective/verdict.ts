@@ -108,6 +108,11 @@ export type ShortfallClueState = (typeof SHORTFALL_CLUE_STATES)[number];
  */
 export interface Shortfall {
   readonly motive: { readonly held: boolean; readonly offered: boolean; readonly drawn: boolean };
+  /**
+   * Only for an abduction whose case has a conclusion about where the victim is: whether the hero had drawn it. A place
+   * named without it is a place guessed, and the accusation falls short of proof however right the place was.
+   */
+  readonly place?: { readonly drawn: boolean } | undefined;
   readonly evidence: {
     readonly held: boolean;
     readonly clues: readonly {
@@ -249,6 +254,9 @@ function shortfallOf(
       offered: proof.motiveInsightId !== null,
       drawn: run.insightIds.includes(solution.motiveDeductionId),
     },
+    ...(solution.whereaboutsDeductionId === undefined
+      ? {}
+      : { place: { drawn: run.insightIds.includes(solution.whereaboutsDeductionId) } }),
     evidence: {
       held: proof.evidenceComplete,
       clues: run.case.clues
@@ -320,8 +328,16 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
   const motiveRight = motiveInsightId === solution.motiveDeductionId;
   const laidOut = new Set(evidenceClueIds);
   const evidenceComplete = solution.evidenceChains.some((chain) => chain.every((id) => laidOut.has(id)));
+  // The place has to be reasoned to, as the motive is: a right place that was only picked proves nothing. A case that
+  // asks for no such conclusion (every case before it) is judged by the culprit, the motive and the proof alone.
+  const placeConcluded =
+    solution.whereaboutsDeductionId === undefined || run.insightIds.includes(solution.whereaboutsDeductionId);
   const verdict: Verdict =
-    !culpritRight || placeRight === false ? 'wrong' : motiveRight && evidenceComplete ? 'proven' : 'unproven';
+    !culpritRight || placeRight === false
+      ? 'wrong'
+      : motiveRight && evidenceComplete && placeConcluded
+        ? 'proven'
+        : 'unproven';
   const shortfall =
     verdict === 'unproven'
       ? shortfallOf(run, { motiveRight, motiveInsightId, evidenceComplete, laidOut })

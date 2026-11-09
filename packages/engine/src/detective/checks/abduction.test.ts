@@ -33,7 +33,31 @@ function messageClue(overrides: Record<string, unknown> = {}): Record<string, un
   };
 }
 
-function abduction(change: (built: Raw) => void = () => undefined): Raw {
+/**
+ * The place hidden by a lead is not the only one: another is shown by a lead of the same kind, with nothing of the victim
+ * in it. Added after the test has made its changes, unless the test is about its absence.
+ */
+function addDecoy(built: Raw): void {
+  const hidden = built.locations.find(({ id }) => id === 'boathouse') as
+    { requiresLead?: string } | undefined;
+  const leads = (built as unknown as { leads?: { id: string; earnedBy: object }[] }).leads;
+  const lead = leads?.find(({ id }) => id === hidden?.requiresLead);
+  if (lead === undefined) return;
+  (built.locations.find(({ id }) => id === 'market-square') as { connections: string[] }).connections.push(
+    'old-mill',
+  );
+  built.locations.push({
+    id: 'old-mill',
+    name: 'Old mill',
+    description: 'Dust, hay and a wheel that does not turn.',
+    connections: [],
+    access: { kind: 'open' },
+    requiresLead: 'mill-lead',
+  });
+  leads?.push({ id: 'mill-lead', reason: 'Hay.', earnedBy: lead.earnedBy } as never);
+}
+
+function abduction(change: (built: Raw) => void = () => undefined, decoy = true): Raw {
   const built = buildCheeseCase();
   built.form = 'abduction';
   built.truth.abduction = {
@@ -42,10 +66,18 @@ function abduction(change: (built: Raw) => void = () => undefined): Raw {
     deadlineMinute: DEADLINE,
   };
   built.clues.push(messageClue());
+  // The place is deduced: a sign of the victim linked to a detail of the place, found there.
+  built.deductions.push({
+    id: 'where-gouda',
+    clueIds: ['ransom-text', 'flour-crumbs'],
+    insight: 'The cat is kept at the cheese stall.',
+  });
+  (built.solution as { whereaboutsDeductionId?: string }).whereaboutsDeductionId = 'where-gouda';
   // The place is named by a clue of the other chain, found outside it: this is how the hero is led there.
   (built.clues.find(({ id }) => id === 'cart-tracks') as { description: string }).description +=
     ' Cheese rinds in the tracks, from the cheese stall.';
   change(built);
+  if (decoy) addDecoy(built);
   return built;
 }
 
@@ -54,6 +86,31 @@ function issuesOf(input: unknown, traits = [] as typeof DETECTIVE_TRAITS): CaseI
   return result.isValid ? [] : [...result.issues];
 }
 const codesOf = (input: unknown): string[] => issuesOf(input).map(({ code }) => code);
+
+/** A place off the square that no clue of a chain lies in, where the victim is kept. */
+const withBoathouse = (c: Raw, access: object = { kind: 'open' }): void => {
+  (c.locations.find(({ id }) => id === 'market-square') as { connections: string[] }).connections.push(
+    'boathouse',
+  );
+  c.locations.push({
+    id: 'boathouse',
+    name: 'Old boathouse',
+    description: 'Damp planks and the smell of tar.',
+    connections: [],
+    access,
+  });
+  c.truth.abduction = { ...(c.truth.abduction as object), whereabouts: 'boathouse' };
+  // A detail of the place, and the conclusion that links it to the message.
+  c.clues.push({
+    id: 'tar-barrel',
+    locationId: 'boathouse',
+    description: 'A barrel of tar, its lid warm from a lamp.',
+    discovery: null,
+    pointsTo: [],
+    isRedHerring: false,
+  });
+  c.deductions.find(({ id }) => id === 'where-gouda')!.clueIds = ['ransom-text', 'tar-barrel'];
+};
 
 describe('the fairness of an abduction', () => {
   it('accepts a fair abduction with its message', () => {
@@ -107,7 +164,10 @@ describe('the fairness of an abduction', () => {
           whereabouts: 'cheese-stall',
           deadlineMinute: 480 + MOVE_MINUTES - 1,
         };
-        c.clues = c.clues.filter(({ id }) => id !== 'ransom-text');
+        // The sign comes early, before the short deadline, and stays: the conclusion about the place takes it.
+        (
+          c.clues.find(({ id }) => id === 'ransom-text') as { message: { arrivesAtMinute: number } }
+        ).message.arrivesAtMinute = 490;
       });
 
       expect(codesOf(walk)).toContain('deadline-too-short');
@@ -132,7 +192,10 @@ describe('the fairness of an abduction', () => {
         c.truth.abduction = { ...(c.truth.abduction as object), deadlineMinute: 540 };
         // The deadline is on the first day, so the case is one day long.
         c.clock = { days: 1, worldEvents: [] };
-        c.clues = c.clues.filter(({ id }) => id !== 'ransom-text');
+        // The sign comes early, before the short deadline, and stays: the conclusion about the place takes it.
+        (
+          c.clues.find(({ id }) => id === 'ransom-text') as { message: { arrivesAtMinute: number } }
+        ).message.arrivesAtMinute = 490;
       });
 
       expect(issuesOf(short)).toMatchObject([
@@ -142,21 +205,6 @@ describe('the fairness of an abduction', () => {
   });
 
   describe('the victim place', () => {
-    /** A place off the square that no clue of a chain lies in, where the victim is kept. */
-    const withBoathouse = (c: Raw, access: object = { kind: 'open' }): void => {
-      (c.locations.find(({ id }) => id === 'market-square') as { connections: string[] }).connections.push(
-        'boathouse',
-      );
-      c.locations.push({
-        id: 'boathouse',
-        name: 'Old boathouse',
-        description: 'Damp planks and the smell of tar.',
-        connections: [],
-        access,
-      });
-      c.truth.abduction = { ...(c.truth.abduction as object), whereabouts: 'boathouse' };
-    };
-
     it('is one the hero can enter', () => {
       const shut = abduction((c) => {
         withBoathouse(c, { kind: 'skill', check: { skill: 'social', difficulty: 30 } });
@@ -227,7 +275,10 @@ describe('the fairness of an abduction', () => {
           c.truth.abduction = { ...(c.truth.abduction as object), deadlineMinute };
           // The deadline is on the first day, so the case is one day long.
           c.clock = { days: 1, worldEvents: [] };
-          c.clues = c.clues.filter(({ id }) => id !== 'ransom-text');
+          // The sign comes early, before the short deadline, and stays: the conclusion about the place takes it.
+          (
+            c.clues.find(({ id }) => id === 'ransom-text') as { message: { arrivesAtMinute: number } }
+          ).message.arrivesAtMinute = 490;
           c.clues.find(({ id }) => id === 'cart-tracks')!.description = 'Round tracks of something heavy.';
           (c.clues.find(({ id }) => id === 'oven-receipt') as { description: string }).description +=
             ' Tar on it, from the old boathouse.';
@@ -236,7 +287,8 @@ describe('the fairness of an abduction', () => {
       expect(issuesOf(named(480 + 100))).toMatchObject([
         { code: 'deadline-too-short', path: 'truth.abduction.deadlineMinute' },
       ]);
-      expect(codesOf(named(480 + 65 + 3 * MOVE_MINUTES))).toEqual([]);
+      // The conclusion about the place is drawn in the 10 minutes after the way is walked.
+      expect(codesOf(named(480 + 65 + 3 * MOVE_MINUTES + 10))).toEqual([]);
     });
 
     describe('by a message that comes by itself', () => {
@@ -285,8 +337,9 @@ describe('the fairness of an abduction', () => {
           ledBy({ kind: 'study', clueId: 'ransom-text' }, (message) => {
             message.arrivesAtMinute = arrivesAtMinute;
           });
-        // The hero starts at 08:00; the boathouse is a step from the start. Study 30 minutes, the walk MOVE_MINUTES.
-        const lastInTime = DEADLINE - 30 - MOVE_MINUTES;
+        // The hero starts at 08:00; the boathouse is a step from the start. Study 30 minutes, the walk MOVE_MINUTES,
+        // and the conclusion about the place, 10 minutes more, is drawn once the place has been seen.
+        const lastInTime = DEADLINE - 30 - MOVE_MINUTES - 10;
 
         expect(codesOf(late(lastInTime))).not.toContain('deadline-too-short');
         expect(issuesOf(late(lastInTime + 1))).toMatchObject([
@@ -413,24 +466,138 @@ describe('the fairness of an abduction', () => {
     });
   });
 
-  describe('a message', () => {
-    it('arrives before the deadline', () => {
-      const onTime = abduction((c) => {
-        (c.clues[c.clues.length - 1] as { message: object }).message = {
-          channel: 'call',
-          arrivesAtMinute: DEADLINE - 1,
-        };
+  describe('the conclusion about the place', () => {
+    const conclusionOf = (c: Raw) => c.deductions.find(({ id }) => id === 'where-gouda')!;
+    const messagesOf = (c: Raw, signs: string[]): void => {
+      conclusionOf(c).clueIds = signs;
+    };
+
+    it('is there: the place is deduced, and not picked off the map', () => {
+      const none = abduction((c) => {
+        delete (c.solution as { whereaboutsDeductionId?: string }).whereaboutsDeductionId;
       });
+
+      expect(issuesOf(none)).toMatchObject([
+        { code: 'place-conclusion-missing', path: 'solution.whereaboutsDeductionId' },
+      ]);
+    });
+
+    it('takes a sign of the victim, a text or a note and never a call, which may be missed', () => {
+      const call = abduction((c) => {
+        (c.clues.find(({ id }) => id === 'ransom-text') as { message: { channel: string } }).message.channel =
+          'call';
+      });
+      const note = abduction((c) => {
+        (c.clues.find(({ id }) => id === 'ransom-text') as { message: { channel: string } }).message.channel =
+          'note';
+      });
+      const bare = abduction((c) => {
+        messagesOf(c, ['flour-crumbs', 'blue-glove']);
+      });
+
+      expect(issuesOf(call)).toMatchObject([{ code: 'place-conclusion-missing' }]);
+      expect(issuesOf(call)[0]?.message).toContain('a call may be missed');
+      expect(issuesOf(bare)).toMatchObject([{ code: 'place-conclusion-missing' }]);
+      expect(codesOf(note)).not.toContain('place-conclusion-missing');
+    });
+
+    it('takes a detail found in the place itself, so that the hero has to go and see', () => {
+      const away = abduction((c) => {
+        messagesOf(c, ['ransom-text', 'cart-tracks']);
+      });
+
+      expect(issuesOf(away)).toMatchObject([{ code: 'place-conclusion-missing' }]);
+      expect(issuesOf(away)[0]?.message).toContain('itself');
+    });
+
+    it('is one the hero can draw before the deadline: the sign has come, the place been seen, the link made', () => {
       const late = abduction((c) => {
-        (c.clues[c.clues.length - 1] as { message: object }).message = {
-          channel: 'call',
-          arrivesAtMinute: DEADLINE,
+        c.truth.abduction = { ...(c.truth.abduction as object), deadlineMinute: 2 * 1440 + 100 };
+        c.clock = { days: 3, worldEvents: [] };
+        // The text comes with the deadline near enough to be read but too late to be linked in time.
+        (
+          c.clues.find(({ id }) => id === 'ransom-text') as { message: { arrivesAtMinute: number } }
+        ).message.arrivesAtMinute = 2 * 1440 + 95;
+      });
+
+      expect(issuesOf(late)).toMatchObject([
+        { code: 'deadline-too-short', path: 'truth.abduction.deadlineMinute' },
+      ]);
+      expect(issuesOf(late)[0]?.message).toContain('conclusion about where the victim is');
+    });
+
+    it('is not timed when the detail cannot be had at all: another check says so', () => {
+      const hidden = abduction((c) => {
+        withBoathouse(c);
+        (c.clues.find(({ id }) => id === 'tar-barrel') as { discovery: object }).discovery = {
+          skill: 'perception',
+          difficulty: 30,
         };
       });
 
-      expect(codesOf(onTime)).toEqual([]);
-      expect(issuesOf(late)).toMatchObject([
-        { code: 'message-after-deadline', path: 'clues[6].message.arrivesAtMinute' },
+      expect(codesOf(hidden)).not.toContain('deadline-too-short');
+    });
+
+    it('has a place shown by a lead and another place shown by a lead of the same kind', () => {
+      const lonely = (earnedBy: object, decoyEarnedBy?: object): Raw =>
+        abduction((c) => {
+          withBoathouse(c);
+          (c.locations.find(({ id }) => id === 'boathouse') as { requiresLead?: string }).requiresLead =
+            'boathouse-lead';
+          (c as unknown as { leads: object[] }).leads = [
+            { id: 'boathouse-lead', reason: 'Tar.', earnedBy },
+            ...(decoyEarnedBy === undefined
+              ? []
+              : [{ id: 'mill-lead', reason: 'Hay.', earnedBy: decoyEarnedBy }]),
+          ];
+          if (decoyEarnedBy !== undefined) {
+            (
+              c.locations.find(({ id }) => id === 'market-square') as { connections: string[] }
+            ).connections.push('old-mill');
+            c.locations.push({
+              id: 'old-mill',
+              name: 'Old mill',
+              description: 'Dust and hay.',
+              connections: [],
+              access: { kind: 'open' },
+              requiresLead: 'mill-lead',
+            });
+          }
+        }, false);
+      const found = { kind: 'clue', clueId: 'flour-crumbs' };
+
+      expect(issuesOf(lonely(found))).toMatchObject([
+        { code: 'place-without-decoy', path: 'truth.abduction.whereabouts' },
+      ]);
+      expect(codesOf(lonely(found, { kind: 'clue', clueId: 'ransom-text' }))).toEqual([]);
+      // A place shown by another kind of lead would be told apart from the real one at a glance.
+      expect(codesOf(lonely(found, { kind: 'locals', locationId: 'market-square' }))).toContain(
+        'place-without-decoy',
+      );
+    });
+
+    it('needs no other place when the place is known from the start', () => {
+      expect(codesOf(abduction())).toEqual([]);
+    });
+  });
+
+  describe('a message', () => {
+    it('arrives before the deadline', () => {
+      // A second message, a call that is no part of the conclusion about the place.
+      const calling = (arrivesAtMinute: number) =>
+        abduction((c) => {
+          c.clues.push(
+            messageClue({
+              id: 'last-call',
+              description: 'A call from a line that rings and rings.',
+              message: { channel: 'call', arrivesAtMinute },
+            }),
+          );
+        });
+
+      expect(codesOf(calling(DEADLINE - 1))).toEqual([]);
+      expect(issuesOf(calling(DEADLINE))).toMatchObject([
+        { code: 'message-after-deadline', path: 'clues[7].message.arrivesAtMinute' },
       ]);
     });
 

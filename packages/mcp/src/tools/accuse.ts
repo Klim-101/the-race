@@ -20,7 +20,7 @@ export const accuse = defineTool({
     '"stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ' +
     '("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, ' +
     'place): the run is over, so this is the only place the truth is ever shown. For "unproven" it also has a ' +
-    '`shortfall`: what the motive and the evidence lacked, clue by clue. Every verdict also has an ' +
+    '`shortfall`: what the motive and the evidence lacked, clue by clue, and in an abduction whether the conclusion about the place had been drawn (`place.drawn`). Every verdict also has an ' +
     '`epilogue`: the true `course` of the crime in order, the clues `missed` (never found, with their place, ' +
     'part and obstacle) and the false clues that `misled` the hero. Tell it as the closing story, in the form ' +
     'endings.md gives for the verdict, and add nothing the outcome does not contain.',

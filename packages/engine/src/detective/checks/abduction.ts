@@ -6,10 +6,18 @@ import { DAY_START_MINUTE, MINUTES_PER_DAY } from '../../run.js';
 import { findWeekday } from '../../text/weekdays.js';
 import { MOVE_MINUTES } from '../actions.js';
 import { STUDY_MINUTES } from '../ask.js';
+import { DEDUCE_MINUTES } from '../verdict.js';
 import type { DetectiveHero } from '../archetype.js';
 import type { CaseIssue } from '../case-issue.js';
 import type { DetectiveCase } from '../case-schema.js';
-import { canEverPass, closedSources, computeObtainable, type Obtainable } from '../obtainability.js';
+import type { InformationSource } from '../../traits.js';
+import {
+  canEverPass,
+  closedSources,
+  computeObtainable,
+  type CheckPolicy,
+  type Obtainable,
+} from '../obtainability.js';
 import { collectNarrativeTexts } from './texts.js';
 import { minutesToGather } from './flee-deadline.js';
 
@@ -45,6 +53,105 @@ function namesOf(name: string, id: string): string[] {
   return [id, name, ...name.split(/[\s,.]+/).filter((piece) => piece.length >= MIN_NAME_PIECE)].map((piece) =>
     piece.toLowerCase(),
   );
+}
+
+/**
+ * Where the victim is kept is a conclusion the hero draws, and not a place picked off the map: a sign of the victim (a
+ * text or a note, never a call, which may be missed) linked to a detail of the place (a clue found there), so that the
+ * hero has to go and see. The conclusion must be one the hero can draw before the deadline. And when the place is shown
+ * by a lead, another place is shown by a lead of the same kind, or a place that appears on the map would give itself away.
+ */
+function checkPlaceConclusion(
+  detectiveCase: DetectiveCase,
+  {
+    whereabouts,
+    canPass,
+    closed,
+    available,
+    reach,
+    issues,
+  }: {
+    readonly whereabouts: string;
+    readonly canPass: CheckPolicy;
+    readonly closed: ReadonlySet<InformationSource>;
+    readonly available: number;
+    readonly reach: number;
+    readonly issues: readonly CaseIssue[];
+  },
+): CaseIssue[] {
+  const found: CaseIssue[] = [];
+  const path = 'solution.whereaboutsDeductionId';
+  // The references are checked before this, so a conclusion that is named is there.
+  const conclusionClueIds = detectiveCase.deductions
+    .filter(({ id }) => id === detectiveCase.solution.whereaboutsDeductionId)
+    .flatMap(({ clueIds }) => clueIds);
+  if (detectiveCase.solution.whereaboutsDeductionId === undefined) {
+    found.push({
+      code: 'place-conclusion-missing',
+      path,
+      message:
+        'An abduction needs a conclusion about where the victim is: set "solution.whereaboutsDeductionId" to a deduction that links a message to a detail of the place.',
+    });
+  } else {
+    const clues = detectiveCase.clues.filter(({ id }) => conclusionClueIds.includes(id));
+    // The minutes at which each sign comes: a text or a note, never a call.
+    const signs = clues.flatMap(({ message }) =>
+      message !== undefined && message.channel !== 'call' ? [message.arrivesAtMinute] : [],
+    );
+    const details = clues.filter(
+      ({ locationId, message }) => locationId === whereabouts && message === undefined,
+    );
+    if (signs.length === 0) {
+      found.push({
+        code: 'place-conclusion-missing',
+        path,
+        message:
+          'The conclusion about where the victim is must take a message that shows a sign of the victim, a text or a note: a call may be missed.',
+      });
+    }
+    if (details.length === 0) {
+      found.push({
+        code: 'place-conclusion-missing',
+        path,
+        message: `The conclusion about where the victim is must take a clue found in "${whereabouts}" itself, a detail of the place: the hero has to go and see.`,
+      });
+    }
+    if (signs.length > 0 && details.length > 0 && !issues.some(({ code }) => code === 'deadline-too-short')) {
+      const conditions = { canPass, closed, closures: [] };
+      const seen = details.flatMap(({ id }) => {
+        const minutes = minutesToGather(detectiveCase, new Set([id]), conditions);
+        return minutes === null ? [] : [Math.max(minutes, reach)];
+      });
+      const heard = signs.map((arrives) => Math.max(0, arrives - DAY_START_MINUTE));
+      const drawn = Math.max(Math.min(...heard), Math.min(...seen)) + DEDUCE_MINUTES;
+      if (seen.length > 0 && drawn > available) {
+        found.push({
+          code: 'deadline-too-short',
+          path: 'truth.abduction.deadlineMinute',
+          message: `The conclusion about where the victim is can be drawn only after about ${String(drawn)} minutes (the sign has to come, the place be seen, the link be made), but the deadline leaves ${String(Math.max(0, available))} from 08:00 of day 1.`,
+        });
+      }
+    }
+  }
+  const leads = detectiveCase.leads ?? [];
+  const place = detectiveCase.locations.find(({ id }) => id === whereabouts);
+  const lead = leads.find(({ id }) => id === place?.requiresLead);
+  if (lead !== undefined) {
+    const decoys = detectiveCase.locations.filter(
+      ({ id, requiresLead }) =>
+        id !== whereabouts &&
+        id !== detectiveCase.startLocationId &&
+        leads.some((other) => other.id === requiresLead && other.earnedBy.kind === lead.earnedBy.kind),
+    );
+    if (decoys.length === 0) {
+      found.push({
+        code: 'place-without-decoy',
+        path: 'truth.abduction.whereabouts',
+        message: `"${whereabouts}" is shown by a lead of the kind "${lead.earnedBy.kind}", and no other place is: a new place on the map would point straight at it. Show one or two other places, with nothing of the victim in them, by a lead of the same kind.`,
+      });
+    }
+  }
+  return found;
 }
 
 /**
@@ -168,6 +275,8 @@ export function checkAbduction(
             earnsTheLead(clue.id) !== null ||
             (content && placeNames.some((name) => clue.description.toLowerCase().includes(name))))),
   );
+  // Minutes from 08:00 of day 1 by which the hero can stand in the place, by the quickest way they are led there.
+  let reach = 0;
   // A hero who starts in the place has no way to find.
   if (whereabouts !== detectiveCase.startLocationId) {
     if (leading.length === 0) {
@@ -198,6 +307,7 @@ export function checkAbduction(
         return gathered === null || walk === null ? [] : [gathered + studying + walk * MOVE_MINUTES];
       });
       const quickest = Math.min(...toLead);
+      if (toLead.length > 0) reach = quickest;
       // A deadline already found too short says so once.
       const said = issues.some(({ code }) => code === 'deadline-too-short');
       if (toLead.length > 0 && quickest > available && !said) {
@@ -209,6 +319,10 @@ export function checkAbduction(
       }
     }
   }
+
+  issues.push(
+    ...checkPlaceConclusion(detectiveCase, { whereabouts, canPass, closed, available, reach, issues }),
+  );
 
   if (content) {
     for (const { path, text } of collectNarrativeTexts(detectiveCase)) {

@@ -224,6 +224,9 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
     expect(locationIds, 'location', entry.locationId, `truth.timeline[${String(index)}].locationId`);
   });
   expect(deductionIds, 'deduction', solution.motiveDeductionId, 'solution.motiveDeductionId');
+  if (solution.whereaboutsDeductionId !== undefined) {
+    expect(deductionIds, 'deduction', solution.whereaboutsDeductionId, 'solution.whereaboutsDeductionId');
+  }
   solution.evidenceChains.forEach((chain, chainIndex) => {
     chain.forEach((id, clueIndex) => {
       expect(clueIds, 'clue', id, `solution.evidenceChains[${String(chainIndex)}][${String(clueIndex)}]`);

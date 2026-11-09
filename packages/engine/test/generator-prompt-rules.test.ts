@@ -106,6 +106,8 @@ const RULES: Record<CaseIssueCode, Taught> = {
   'deadline-too-short': /must leave the hero time to walk to `whereabouts`/,
   'message-after-deadline': /every message arrives before `deadlineMinute`/,
   'victim-place-unled': /some evidence chain must lead to `whereabouts`/,
+  'place-conclusion-missing': /`solution.whereaboutsDeductionId` names a deduction/,
+  'place-without-decoy': /another place or two are shown by a lead of the same kind/,
   'message-names-culprit': /a message never names the culprit/,
   'message-names-trait': /never names a trait of the hero, nor does it/,
   'weekday-named': /No text of the case names a weekday/,

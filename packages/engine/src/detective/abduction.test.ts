@@ -171,6 +171,80 @@ describe('the accusation of an abduction', () => {
     expect(resolution).toMatchObject({ ok: true, outcome: { verdict: 'unproven', placeRight: true } });
   });
 
+  describe('of a case that asks for the place to be deduced', () => {
+    const WHERE = 'where-gouda';
+    /** The abduction whose place is a conclusion, the hero holding or not holding it. */
+    function deducedRun(drawn: boolean): DetectiveRunState {
+      const built = { ...buildCheeseCase(), form: 'abduction' };
+      built.truth.abduction = {
+        victim: { kind: 'pet', name: 'Gouda, the cheese-shop cat' },
+        whereabouts: KEPT_AT,
+        deadlineMinute: DEADLINE,
+      };
+      built.deductions.push({
+        id: WHERE,
+        clueIds: [ALL_CLUES[0] ?? '', ALL_CLUES[1] ?? ''],
+        insight: 'There.',
+      });
+      (built.solution as { whereaboutsDeductionId?: string }).whereaboutsDeductionId = WHERE;
+      const run = createDetectiveRun({
+        hero: buildHero(),
+        traits: [],
+        case: DetectiveCaseSchema.parse(built),
+        seed: 'abduction',
+        rngState: 1,
+        locale: 'en',
+      });
+      const insights = [raw.solution.motiveDeductionId, ...(drawn ? [WHERE] : [])];
+      return { ...run, foundClueIds: ALL_CLUES, insightIds: insights };
+    }
+
+    it('is proven when the place was reasoned to', () => {
+      expect(accuseWith(deducedRun(true), CULPRIT, KEPT_AT)).toMatchObject({
+        ok: true,
+        outcome: { verdict: 'proven', placeRight: true },
+      });
+    });
+
+    it('is not proven when the place was right and only picked: a guess proves nothing', () => {
+      const resolution = accuseWith(deducedRun(false), CULPRIT, KEPT_AT);
+
+      expect(resolution).toMatchObject({
+        ok: true,
+        run: { status: 'lost', endReason: 'unproven' },
+        outcome: { verdict: 'unproven', placeRight: true, shortfall: { place: { drawn: false } } },
+      });
+    });
+
+    it('is told, once the place has been reasoned to but the proof fell short, that the place held', () => {
+      const resolution = accuseWith(deducedRun(true), CULPRIT, KEPT_AT, {
+        motiveInsightId: null,
+        evidenceClueIds: [],
+      });
+
+      expect(resolution).toMatchObject({
+        ok: true,
+        outcome: { verdict: 'unproven', shortfall: { place: { drawn: true } } },
+      });
+    });
+
+    it('asks nothing of the place in a case that never asked, so its shortfall has no word of it', () => {
+      const resolution = accuseWith(abductionRun(), CULPRIT, KEPT_AT, {
+        motiveInsightId: null,
+        evidenceClueIds: [],
+      });
+
+      expect(resolution.ok && resolution.outcome.shortfall).not.toHaveProperty('place');
+    });
+
+    it('is wrong, as ever, for a place that was not the place', () => {
+      expect(accuseWith(deducedRun(true), CULPRIT, ELSEWHERE)).toMatchObject({
+        ok: true,
+        outcome: { verdict: 'wrong', placeRight: false },
+      });
+    });
+  });
+
   it('is wrong when the culprit is right and the place is not', () => {
     expect(accuseWith(abductionRun(), CULPRIT, ELSEWHERE)).toMatchObject({
       ok: true,

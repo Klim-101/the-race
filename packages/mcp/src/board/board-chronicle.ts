@@ -154,6 +154,11 @@ function renderShortfall(shortfall: Shortfall, t: TabText['chronicle']['shortfal
   return `<div class="card">
 <h3>${e(t.title)}</h3>
 <p>${e(motiveLine)}</p>${
+    shortfall.place === undefined
+      ? ''
+      : `
+<p>${e(shortfall.place.drawn ? t.placeDrawn : t.placeUndrawn)}</p>`
+  }${
     evidence.held
       ? `
 <p>${e(t.evidenceHeld)}</p>`
