@@ -1,11 +1,8 @@
 {
   "board": {
     "pageTitle": "Evidence board",
-    "clues": "Evidence",
     "noClues": "Nothing on the board yet. The wall is embarrassingly bare.",
     "garbled": "read badly: read it again before it counts",
-    "insights": "Conclusions",
-    "noInsights": "No conclusions yet. Do try to have one.",
     "suspects": "The cast",
     "whereabouts": "Last seen",
     "anywhere": "anywhere, apparently",
@@ -78,8 +75,9 @@
     "tabs": {
       "board": "Board",
       "map": "Map",
-      "suspects": "Suspects",
-      "clues": "Clues and links",
+      "suspects": "Files",
+      "clues": "Matching",
+      "insights": "Conclusions",
       "chronicle": "Chronicle",
       "hero": "Hero and kit",
       "file": "Closed file"
@@ -150,6 +148,7 @@
       "brokenBy": "broken by",
       "shown": "Shown to them",
       "noneShown": "Nothing shown yet.",
+      "notShownYet": "Not shown, but bears on them: {numbers}",
       "title": "What they said",
       "none": "Nothing said yet.",
       "day": "day",
@@ -160,8 +159,6 @@
       }
     },
     "links": {
-      "title": "Links",
-      "none": "Nothing to connect yet.",
       "open": "Links still to be made",
       "size": "a link of {n}",
       "group": "{count} × {size}",
@@ -447,7 +444,6 @@
         "no-effect": "no effect"
       },
       "legend": "Red thread: a link tried. Blue thread: a clue shown to a person.",
-      "drawnFrom": "Drawn from",
       "linksOf": "Links it took part in",
       "noLinks": "none yet",
       "closeHint": "Click again, or press Esc, to put it back.",
@@ -523,7 +519,6 @@
     },
     "clueGrid": {
       "heardFrom": "Told by {name}",
-      "bearsOn": "Bears on: {names}",
       "filters": "Filter the clues",
       "place": "Found at",
       "suspect": "Shown to",
@@ -532,11 +527,25 @@
       "unused": "not yet used in a link",
       "number": "Number",
       "numberHint": "such as {example}",
-      "none": "No clue fits.",
-      "usedIn": "used in {n} links",
-      "notUsed": "not used in any link",
-      "toBoard": "On the corkboard",
-      "toMap": "On the map"
+      "none": "No clue fits."
+    },
+    "matrix": {
+      "title": "Who was shown what",
+      "unshown": "bears on them, not shown",
+      "linkedIn": "In links",
+      "none": "none",
+      "hint": "A dashed question mark: the clue bears on the person and you have not shown it to them. A dash at the bottom: the clue is in no link yet. Pick a number or a name to light everything tied to it.",
+      "cards": "Card index",
+      "status": { "notShown": "shown to nobody", "notLinked": "in no link", "witness": "witness" }
+    },
+    "tree": {
+      "clues": "Clues",
+      "link": "Link",
+      "insight": "Conclusion",
+      "lead": "Lead",
+      "linkStep": "Link {n} · turn {turn}",
+      "open": "Not yet linked",
+      "note": "The empty cells only count the links left and how many clues each takes. Which ones is yours to find out."
     }
   },
   "sighting": {

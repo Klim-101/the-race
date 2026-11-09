@@ -5,25 +5,19 @@ import type { DetectiveRunView } from '@the-race/engine';
 import { escapeHtml } from './escape-html.js';
 import type { TabText } from './tab-text.js';
 
-/** The links still to be made by size, as the engine says them: counts only, smallest first, never which clues. */
-function openLinks(view: DetectiveRunView, text: TabText): string {
+/**
+ * The links still to be made as empty slots, one box for each clue the link takes, smallest first. They are the
+ * engine's counts and sizes and nothing more: never which clues, and never which conclusion a link would draw.
+ */
+export function renderOpenSlots(view: DetectiveRunView, text: TabText): string {
   const { open, size, group, allDrawn } = text.links;
   const counts = new Map<number, number>();
   for (const n of view.openLinks) counts.set(n, (counts.get(n) ?? 0) + 1);
-  const groups = [...counts]
-    .map(([n, count]) =>
-      escapeHtml(group.replace('{count}', String(count)).replace('{size}', size.replace('{n}', String(n)))),
-    )
-    .join(', ');
-  return `<p class="card"><strong>${escapeHtml(open)}:</strong> ${view.openLinks.length === 0 ? escapeHtml(allDrawn) : groups}</p>
-`;
-}
-
-/** What is still to be linked; what each conclusion was drawn from is on the conclusion itself. */
-export function renderLinks(view: DetectiveRunView, text: TabText): string {
-  const open = openLinks(view, text);
-  if (view.clues.length === 0 && view.insights.length === 0) {
-    return `${open}<p class="empty">${escapeHtml(text.links.none)}</p>`;
-  }
-  return open;
+  const slots = [...counts].map(
+    ([n, count]) =>
+      `<span class="open-slot">${'<i></i>'.repeat(n)} ${escapeHtml(group.replace('{count}', String(count)).replace('{size}', size.replace('{n}', String(n))))}</span>`,
+  );
+  return `<h2>${escapeHtml(text.tree.open)}</h2>
+<div class="open-slots" aria-label="${escapeHtml(open)}">${view.openLinks.length === 0 ? `<span class="empty">${escapeHtml(allDrawn)}</span>` : slots.join('')}</div>
+<p class="note">${escapeHtml(text.tree.note)}</p>`;
 }

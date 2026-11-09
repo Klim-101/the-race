@@ -9,7 +9,7 @@
       "name": "the-race",
       "source": "./plugins/the-race",
       "description": "the RACE: a text roguelike you play in your own words. A deterministic engine owns the dice and the truth; the agent tells the story.",
-      "version": "0.70.0"
+      "version": "0.71.0"
     }
   ]
 }

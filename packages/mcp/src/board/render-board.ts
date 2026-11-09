@@ -13,6 +13,7 @@ import { openedRules } from './board-opened.js';
 import { renderHero } from './board-hero.js';
 import { renderMap } from './board-map.js';
 import { renderSuspects } from './board-suspects.js';
+import { renderTree } from './board-tree.js';
 import { planRules } from './board-plan.js';
 import { turnRules } from './board-strip.js';
 import { highlightRules } from './board-relations.js';
@@ -22,7 +23,7 @@ import { TAB_TEXT } from './tab-text.js';
 
 export { escapeHtml } from './escape-html.js';
 
-const TAB_IDS = ['board', 'suspects', 'clues', 'map', 'chronicle', 'hero', 'file'] as const;
+const TAB_IDS = ['board', 'suspects', 'clues', 'insights', 'map', 'chronicle', 'hero', 'file'] as const;
 
 // The tabs need no script: a panel is shown while it is the target of the address, and the first one when
 // none is, so a reload keeps the tab the player was on. A browser without `:has` shows every panel in turn.
@@ -48,8 +49,8 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){m.removeAtt
 const SCRIPT_HASH = createHash('sha256').update(SCRIPT).digest('base64');
 
 const STYLE = `
-:root{color-scheme:light dark;--bg:#f4efe6;--card:#fffdf8;--ink:#2a2622;--muted:#7a7066;--line:#ddd3c3;--accent:#8a3b2a;--warn:#b26a00;--soft:#efe6d6;--paper:#fffef6;--paper-ink:#2a2622;--paper-tag:#7a6a58;--paper-rule:rgba(70,110,180,.22);--margin:#c2574a;--red:#b3261e;--blue:#2b5fa3;--shadow:rgba(0,0,0,.18);--parch:#efe3c4;--parch-edge:#b9a678;--street:#f8f1dd;--roof:#d6c298;--hatch:#9c8656}
-@media (prefers-color-scheme:dark){:root{--bg:#1b1917;--card:#252220;--ink:#ece4d8;--muted:#a09484;--line:#3a3430;--accent:#e08a70;--warn:#e0a040;--soft:#312c28;--paper:#2a2622;--paper-ink:#ece4d8;--paper-tag:#a8998a;--paper-rule:rgba(140,170,220,.16);--margin:#d9786a;--red:#f08a80;--blue:#8ab4f0;--shadow:rgba(0,0,0,.5);--parch:#2b2619;--parch-edge:#5a4d33;--street:#3d3524;--roof:#4a3f29;--hatch:#7a6a45}}
+:root{color-scheme:light dark;--green:#2f6a3a;--bg:#f4efe6;--card:#fffdf8;--ink:#2a2622;--muted:#7a7066;--line:#ddd3c3;--accent:#8a3b2a;--warn:#b26a00;--soft:#efe6d6;--paper:#fffef6;--paper-ink:#2a2622;--paper-tag:#7a6a58;--paper-rule:rgba(70,110,180,.22);--margin:#c2574a;--red:#b3261e;--blue:#2b5fa3;--shadow:rgba(0,0,0,.18);--parch:#efe3c4;--parch-edge:#b9a678;--street:#f8f1dd;--roof:#d6c298;--hatch:#9c8656}
+@media (prefers-color-scheme:dark){:root{--green:#7fc08a;--bg:#1b1917;--card:#252220;--ink:#ece4d8;--muted:#a09484;--line:#3a3430;--accent:#e08a70;--warn:#e0a040;--soft:#312c28;--paper:#2a2622;--paper-ink:#ece4d8;--paper-tag:#a8998a;--paper-rule:rgba(140,170,220,.16);--margin:#d9786a;--red:#f08a80;--blue:#8ab4f0;--shadow:rgba(0,0,0,.5);--parch:#2b2619;--parch-edge:#5a4d33;--street:#3d3524;--roof:#4a3f29;--hatch:#7a6a45}}
 *{box-sizing:border-box}
 body{margin:0;padding:24px 16px 48px;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,'Times New Roman',serif;overflow-wrap:anywhere}
 main{max-width:1040px;margin:0 auto}
@@ -269,7 +270,57 @@ svg.portrait.p0{--tone:#8a3b2a}svg.portrait.p1{--tone:#2b5fa3}svg.portrait.p2{--
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
 .grid .card{margin:0}
 .clue-card .text{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.ways a{color:var(--accent)}
+.marks{margin:6px 0 0}
+.mk{display:inline-block;margin:0 4px 2px 0;padding:1px 6px;border-radius:3px;background:var(--line);color:var(--ink);font:11px/1.4 system-ui,sans-serif}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 10px;font:12px system-ui,sans-serif;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.wrapx{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--card)}
+table.matrix{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;font:13px system-ui,sans-serif}
+.matrix th,.matrix td{padding:0;text-align:center;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+.matrix thead th{padding:6px 2px;background:var(--soft);font-weight:400;vertical-align:bottom}
+.matrix thead .place th{padding:4px;font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.matrix th.who{position:sticky;left:0;width:180px;min-width:150px;padding:8px 10px;background:var(--card);text-align:left;font-weight:600}
+.matrix thead th.who{background:var(--soft)}
+.matrix th.who small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.matrix td{min-width:44px;height:42px}
+.matrix tr.cleared th.who{opacity:.6}
+.matrix tr.foot th,.matrix tr.foot td{height:34px;background:var(--soft);font-size:12px}
+.matrix .used{color:var(--green);font-weight:700}
+.matrix .unused{color:var(--muted)}
+.matrix .mks{margin-top:3px}
+.cell{display:inline-grid;place-items:center;width:26px;height:26px;border:1.5px solid currentColor;border-radius:50%;font-weight:700;line-height:1}
+.c-breaks{color:var(--red);background:color-mix(in srgb,var(--red) 14%,transparent)}
+.c-conf{color:var(--blue)}
+.c-impl{color:var(--warn)}
+.c-none{color:var(--muted)}
+.c-todo{color:var(--accent);border-style:dashed}
+.tree{display:grid;gap:14px}
+.cols{display:grid;grid-template-columns:minmax(140px,1.1fr) 28px minmax(120px,.8fr) 28px minmax(180px,1.4fr) 28px minmax(110px,.8fr);padding:0 12px 6px;font:11px system-ui,sans-serif;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.cols span:nth-child(1){grid-column:1}.cols span:nth-child(2){grid-column:3}.cols span:nth-child(3){grid-column:5}.cols span:nth-child(4){grid-column:7}
+.branch{display:grid;grid-template-columns:minmax(140px,1.1fr) 28px minmax(120px,.8fr) 28px minmax(180px,1.4fr) 28px minmax(110px,.8fr);align-items:center;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:6px}
+.branch.cold{border-style:dashed;opacity:.65}
+.arrow{text-align:center;font-size:20px;color:var(--muted)}
+.srcs{display:grid;gap:5px}
+.src{display:flex;gap:8px;align-items:baseline;padding:4px 8px;background:var(--paper);border-left:3px double var(--margin);font:13px/1.35 system-ui,sans-serif}
+.linkbox{padding:8px;border:2px solid var(--red);border-radius:6px;text-align:center;font:12px/1.3 system-ui,sans-serif}
+.cold .linkbox{border-width:1.5px;border-style:dashed}
+.linkbox b{display:block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--red)}
+.insight{padding:10px 12px;border-radius:2px 2px 6px 2px;background:#fff3a8;color:#2a2622;box-shadow:2px 3px 3px var(--shadow);font:14px/1.45 'Segoe Print','Bradley Hand',Georgia,serif}
+.cold .insight{background:var(--soft);color:var(--muted);box-shadow:none}
+.leads{display:grid;gap:6px}
+.lead{padding:8px;border:1px solid #9db8d6;border-radius:6px;background:#e8f1f8;color:#2a2622;font:12px/1.35 system-ui,sans-serif}
+.lead b{display:block;font-size:11px;letter-spacing:.08em;color:#2b5fa3}
+.lead .tag{color:#2f6a3a;font-weight:700}
+.lead.shut{border-style:dashed;background:#dcd9d2}.lead.shut .tag{color:#b26a00}
+.lead.idle,.lead.done{background:#e3e0d8}.lead.idle .tag,.lead.done .tag{color:#6b6354}
+.open-slots{display:flex;flex-wrap:wrap;gap:12px;padding:12px;border:1px dashed var(--muted);border-radius:6px}
+.open-slot{display:inline-flex;align-items:center;gap:3px;font:12px system-ui,sans-serif;color:var(--muted)}
+.open-slot i{display:inline-block;width:22px;height:30px;border:1.5px dashed var(--muted);border-radius:3px}
+.chip.fx-todo{color:var(--accent);border-style:dashed}
+.todo-line{margin:6px 0 0;font:13px/1.4 system-ui,sans-serif;color:var(--accent)}
+.card.suspect details{margin:8px 0 0}
+.card.suspect summary{font:600 12px system-ui,sans-serif;color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+@media (max-width:760px){.branch{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}.cols{display:none}}
 @media (max-width:560px){body{padding:16px}h1{font-size:1.5rem}}
 @media print{body{background:#fff;color:#000}.opened{display:none!important}.tab{display:block!important}nav.tabs{display:none}.card,.graph,.cork{break-inside:avoid}}
 `;
@@ -330,8 +381,11 @@ ${renderCork(view, board, text)}
 <h2>${e(board.suspects)}</h2>
 ${renderSuspects(view, board, text, fresh)}
 </section>
-<section class="tab notebook" id="clues">
+<section class="tab" id="clues">
 ${renderClues(view, board, text, fresh)}
+</section>
+<section class="tab" id="insights">
+${renderTree(view, text)}
 </section>
 <section class="tab" id="map">
 <h2>${e(text.map.title)}</h2>

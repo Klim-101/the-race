@@ -512,27 +512,27 @@ describe('the notebooks', () => {
     const clues = tab(page, 'clues');
 
     expect(clues).toContain('found at Stall · turn 2');
-    expect(clues).toContain('Shown to: Anna (broke a lie)');
-    expect(clues).toContain('Shown to: Boris (no effect)');
-    expect(clues).toContain('Shown to: not shown to anyone yet');
+    // Who was shown what is told by the matching table, a cell for each showing.
+    expect(clues).toContain('aria-label="broke a lie"');
+    expect(clues).toContain('aria-label="no effect"');
+    expect(clues).toContain('<span class="mk">shown to nobody</span>');
   });
 
   it('list the links tried, oldest first, with what came of each and nothing of how close it was', () => {
-    const clues = tab(page, 'clues');
-    const tried = /<ul class="tried">([\s\S]*?)<\/ul>/.exec(clues)?.[1] ?? '';
+    const tried = tab(page, 'insights');
 
-    expect(tried.match(/<li /g)).toHaveLength(3);
+    expect(tried.match(/<div class="branch/g)).toHaveLength(3);
     expect(tried.indexOf('led nowhere')).toBeLessThan(tried.indexOf('a conclusion'));
     expect(tried.indexOf('a conclusion')).toBeLessThan(tried.indexOf('already known'));
-    expect(tried).toContain('<span class="num">MIRA-01</span> + <span class="num">MIRA-02</span>');
-    expect(tried).toContain('<summary>Full text</summary>');
-    expect(tried).toContain('<span class="num">MIRA-01</span> A rusty key under the counter.');
+    expect(tried).toContain(
+      '<span class="num">MIRA-01</span><span class="t">A rusty key under the counter.</span>',
+    );
     expect(tried).toContain('turn 9');
     expect(tried).not.toMatch(/close|almost|near/i);
   });
 
   it('say so when no link has been tried', () => {
-    expect(tab(renderEvidenceBoard(viewOf()), 'clues')).toContain('No link has been tried yet.');
+    expect(tab(renderEvidenceBoard(viewOf()), 'insights')).toContain('No link has been tried yet.');
   });
 
   it('tell each person the clues they were shown, in order, and say nothing of a person shown nothing', () => {

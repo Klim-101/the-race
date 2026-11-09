@@ -4,6 +4,7 @@
 import type { DetectiveRunView } from '@the-race/engine';
 import { clock } from './board-chronicle.js';
 import type { Fresh } from './board-new.js';
+import { unshownFor } from './board-matrix.js';
 import { numberOf } from './board-opened.js';
 import { clueTokens, rel, suspectTokens, token } from './board-relations.js';
 import type { BoardText } from './board-text.js';
@@ -97,6 +98,16 @@ function said(view: DetectiveRunView, suspect: Suspect, text: TabText): string {
     .join('\n');
 }
 
+/** What the person said, folded by default: a person who has said nothing has nothing to fold. */
+function spoken(view: DetectiveRunView, suspect: Suspect, text: TabText): string {
+  const title = escapeHtml(text.statements.title);
+  return suspect.statements.length === 0
+    ? `<h3>${title}</h3>
+${said(view, suspect, text)}`
+    : `<details><summary>${title} (${String(suspect.statements.length)})</summary>
+${said(view, suspect, text)}</details>`;
+}
+
 /** What the person was shown, in the order it was shown, as chips coloured by what each did. */
 function shown(view: DetectiveRunView, suspect: Suspect, text: TabText): string {
   const e = escapeHtml;
@@ -113,6 +124,15 @@ function shown(view: DetectiveRunView, suspect: Suspect, text: TabText): string 
         ) + (reaction === undefined ? '' : ` <span class="reaction">${e(reaction)}</span>`),
     )
     .join(' ')}</p>`;
+}
+
+/** The clues that bear on the person and were never shown to them: where the next show is to be made. */
+function unshown(view: DetectiveRunView, suspect: Suspect, text: TabText): string {
+  const numbers = unshownFor(view, suspect.id).map(({ number }) => number);
+  return numbers.length === 0
+    ? ''
+    : `
+<p class="todo-line">${escapeHtml(text.statements.notShownYet.replace('{numbers}', numbers.join(', ')))}</p>`;
 }
 
 /** The suspects: a card for each, with a portrait, the place, the mood, what they said and what they were shown. */
@@ -150,10 +170,9 @@ export function renderSuspects(
         suspect.cleared ? `\n<p class="tag cleared-tag">${e(text.statements.cleared)}</p>` : ''
       }
 <p>${gauge(suspect, text)}</p></div></div>${closed}
-${claimed(view, suspect, text)}<h3>${e(text.statements.title)}</h3>
-${said(view, suspect, text)}
+${claimed(view, suspect, text)}${spoken(view, suspect, text)}
 <h3>${e(text.statements.shown)}</h3>
-${shown(view, suspect, text)}
+${shown(view, suspect, text)}${unshown(view, suspect, text)}
 </div>`;
     })
     .join('\n');
