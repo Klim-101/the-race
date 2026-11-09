@@ -225,6 +225,8 @@ describe('the fairness of an abduction', () => {
         abduction((c) => {
           withBoathouse(c);
           c.truth.abduction = { ...(c.truth.abduction as object), deadlineMinute };
+          // The deadline is on the first day, so the case is one day long.
+          c.clock = { days: 1, worldEvents: [] };
           c.clues = c.clues.filter(({ id }) => id !== 'ransom-text');
           c.clues.find(({ id }) => id === 'cart-tracks')!.description = 'Round tracks of something heavy.';
           (c.clues.find(({ id }) => id === 'oven-receipt') as { description: string }).description +=
