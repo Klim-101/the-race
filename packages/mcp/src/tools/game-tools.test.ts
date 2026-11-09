@@ -295,7 +295,11 @@ describe('the turn tools', () => {
       const seen = await call(runView, {}, context);
       const looked = await call(act, { turn: 0, intent: { kind: 'look' } }, context);
 
-      expect(seen.body).toMatchObject({ form: 'abduction', chronicle: { minutesToDeadline: 2820 - 480 } });
+      expect(seen.body).toMatchObject({
+        form: 'abduction',
+        crimeType: 'curious-theft',
+        chronicle: { minutesToDeadline: 2820 - 480 },
+      });
       expect(looked.body).toMatchObject({ view: { form: 'abduction', minutesToDeadline: 2820 - 485 } });
       expect(await call(act, { turn: 99, intent: { kind: 'look' } }, context)).toMatchObject({
         isError: true,

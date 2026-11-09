@@ -47,6 +47,7 @@ import {
   LeadTriggerSchema,
   formOf,
   type CaseForm,
+  type CrimeType,
   type DetectiveCase,
   type Exposure,
   type Lead,
@@ -818,6 +819,8 @@ export interface DetectiveRunView {
   readonly title: string;
   /** What kind of case it is; the cases of before the forms are whodunits. */
   readonly form: CaseForm;
+  /** The kind of crime the case is about, which the narrator tells the player while the types are being tested. */
+  readonly crimeType: CrimeType;
   readonly premise: string;
   readonly locale: Locale;
   readonly turn: number;
@@ -1286,6 +1289,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     pending: viewPending(run.pendingEffects, absoluteMinute(run.clock)),
     warnings: warningsOfMeters(meterReadings(run)),
     form: formOf(detectiveCase),
+    crimeType: detectiveCase.crimeType,
     chronicle: viewChronicle(run),
     news: detectiveCase.clock.worldEvents
       .filter(({ day }) => day <= run.clock.day)

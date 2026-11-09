@@ -37335,6 +37335,7 @@ function viewRun(run) {
     pending: viewPending(run.pendingEffects, absoluteMinute(run.clock)),
     warnings: warningsOfMeters(meterReadings(run)),
     form: formOf(detectiveCase),
+    crimeType: detectiveCase.crimeType,
     chronicle: viewChronicle(run),
     news: detectiveCase.clock.worldEvents.filter(({ day }) => day <= run.clock.day).map(({ description }) => description).concat(
       run.drawnEvents.flatMap(
