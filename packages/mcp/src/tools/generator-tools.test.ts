@@ -21,6 +21,7 @@ import {
   applyPatch,
   collectNarrativeTexts,
   createRng,
+  formFor,
   toJsonPointer,
   type DetectiveHero,
   type NewsSeed,
@@ -112,7 +113,7 @@ const TRAITS: Trait[] = DETECTIVE_TRAITS.filter((trait) =>
 function pendingRun(overrides: Partial<PendingRun> = {}): PendingRun {
   return PendingRunSchema.parse({
     schemaVersion: 1,
-    seed: 'seed-1',
+    seed: 'seed-3',
     locale: 'en',
     theme: 'curious-theft',
     rngState: 12345,
@@ -353,9 +354,9 @@ describe('the brief kept with the pending run', () => {
   };
   const NORWAY = { kind: 'country', real: ['Norway', 'Норвегия'], region: 'north' };
   const FREEDONIA = { kind: 'country', real: ['Freedonia'], region: 'island' };
-  /** A run seed for which a world of two countries picks the second: so that a late choice is never the first. */
+  /** A run seed for which a world of two countries picks the second, and which gives a whodunit: so that a late choice is never the first. */
   const SECOND_OF_TWO = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].find(
-    (seed) => createRng(`${seed}:setting`).roll(2) === 2,
+    (seed) => createRng(`${seed}:setting`).roll(2) === 2 && formFor('curious-theft', seed) === 'whodunit',
   );
   const newsOf = (fs: SaveFs, seeds: NewsSeed[]) =>
     saveSeedsForDay(SAVE_DIR, '2026-10-31', { seeds, realNames: [] }, fs);
@@ -586,7 +587,7 @@ describe("a scenario that is not the detective's", () => {
     { op: 'replace', path: '/steps/1/text', value: 'Leave by the river road.' },
   ];
   const withoutTheme = (): PendingRun => {
-    const pending: PendingRun = { ...pendingRun({ seed: 'seed-1' }) };
+    const pending: PendingRun = { ...pendingRun({ seed: 'seed-3' }) };
     delete pending.theme;
     return pending;
   };
@@ -606,7 +607,7 @@ describe("a scenario that is not the detective's", () => {
 
     const brief = await call('generator_brief', {});
 
-    expect(brief.body.theme).toBe(themeOfSeed('seed-1', ['storm', 'famine']));
+    expect(brief.body.theme).toBe(themeOfSeed('seed-3', ['storm', 'famine']));
     expect(['storm', 'famine']).toContain(brief.body.theme);
     expect((await loadPending(SAVE_DIR, fs))?.brief?.theme).toBe(brief.body.theme);
   });
@@ -637,7 +638,7 @@ describe("a scenario that is not the detective's", () => {
     expect(started).toHaveLength(1);
     expect(started[0]).toMatchObject({
       scenario: { title: 'The storm' },
-      seed: 'seed-1',
+      seed: 'seed-3',
       locale: 'en',
       setting: null,
       inspiration: { kind: SEED.kind, premise: SEED.premise },
@@ -710,13 +711,13 @@ describe('scenario_submit', () => {
     expect(result.text).toBe('{"accepted":true}');
 
     const loaded = await loadTheRun(SAVE_DIR, fs);
-    expect(loaded.ok && loaded.run.seed).toBe('seed-1');
+    expect(loaded.ok && loaded.run.seed).toBe('seed-3');
     // The run starts in a folder of its own, named for the moment it started and its seed.
-    expect(loaded.ok && loaded.runId).toBe('20261031-120000-seed-1');
-    expect(loaded.ok && loaded.run.runId).toBe('20261031-120000-seed-1');
+    expect(loaded.ok && loaded.runId).toBe('20261031-120000-seed-3');
+    expect(loaded.ok && loaded.run.runId).toBe('20261031-120000-seed-3');
     expect(
       [...fs.files.keys()].filter((path) => path.includes('state.json') && path.includes('runs')),
-    ).toEqual([runFiles(SAVE_DIR, '20261031-120000-seed-1').current]);
+    ).toEqual([runFiles(SAVE_DIR, '20261031-120000-seed-3').current]);
     expect(loaded.ok && loaded.log).toEqual([]);
     expect(loaded.ok && loaded.run.traits).toEqual(TRAITS);
     expect(loaded.ok && loaded.run.case.title).toBe(sample.title);
@@ -1200,12 +1201,12 @@ describe('scenario_submit', () => {
     it('is refused once a case is accepted, like a case, and changes nothing', async () => {
       const { fs, call } = await start(pendingRun());
       await submit(call, sample());
-      const before = fs.files.get(runFiles(SAVE_DIR, '20261031-120000-seed-1').current);
+      const before = fs.files.get(runFiles(SAVE_DIR, '20261031-120000-seed-3').current);
 
       const result = await patch(call, fix());
 
       expect(errorCode(result)).toBe('case-already-accepted');
-      expect(fs.files.get(runFiles(SAVE_DIR, '20261031-120000-seed-1').current)).toBe(before);
+      expect(fs.files.get(runFiles(SAVE_DIR, '20261031-120000-seed-3').current)).toBe(before);
     });
 
     it('goes on from the last case that was a JSON object, not from a text that was not or a list', async () => {
@@ -1591,7 +1592,7 @@ describe('scenario_submit', () => {
       ]);
       expect(log[0]).toMatchObject({
         date: '2026-10-31',
-        seed: 'seed-1',
+        seed: 'seed-3',
         locale: 'en',
         theme: 'curious-theft',
         archetype: 'detective',

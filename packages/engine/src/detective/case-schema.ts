@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { z } from 'zod';
+import { createRng } from '../dice.js';
 import { LocaleSchema } from '../locale.js';
 import { InformationSourceSchema, TraitTriggerSchema } from '../traits.js';
 import { WeatherSchema } from '../world/climate.js';
@@ -337,12 +338,18 @@ export const CASE_FORMS = ['whodunit', 'abduction'] as const;
 export const CaseFormSchema = z.enum(CASE_FORMS);
 export type CaseForm = z.infer<typeof CaseFormSchema>;
 
+/** One case in this many, of any theme, is an abduction: someone is kept out of the way to slow or force the matter. */
+export const ABDUCTION_ONE_IN = 4;
+
 /**
- * The form the engine gives a theme: a disappearance is told as an abduction, with a place and a deadline, and every
- * other crime as a whodunit. The generator is told the form and never picks it.
+ * The form the engine gives a case. A disappearance is always an abduction, with a place and a deadline; any other
+ * theme is one with a chance of one in `ABDUCTION_ONE_IN`, rolled on a stream of the run's seed of its own, so the
+ * form is the same on every call and never moves the dice the run is played with. The generator is told the form
+ * and never picks it.
  */
-export function formForTheme(theme: string): CaseForm {
-  return theme === 'missing-person' ? 'abduction' : 'whodunit';
+export function formFor(theme: string, runSeed: string): CaseForm {
+  if (theme === 'missing-person') return 'abduction';
+  return createRng(`${runSeed}:form`).roll(ABDUCTION_ONE_IN) === 1 ? 'abduction' : 'whodunit';
 }
 
 export const VICTIM_KINDS = ['person', 'pet'] as const;

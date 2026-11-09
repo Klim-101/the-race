@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
-import { DetectiveCaseSchema, formForTheme, formOf, type Abduction } from './case-schema.js';
+import { DetectiveCaseSchema, formFor, formOf, type Abduction } from './case-schema.js';
 import { validateCase } from './case-validator.js';
 import { DETECTIVE_SCENARIO } from './scenario.js';
 
@@ -119,8 +119,14 @@ describe('the form of a case', () => {
 });
 
 describe('the form the engine names', () => {
-  it('gives a disappearance the form of an abduction and every other crime a whodunit', () => {
-    expect(formForTheme('missing-person')).toBe('abduction');
+  it('always gives a disappearance the form of an abduction', () => {
+    for (let n = 0; n < 200; n += 1) {
+      expect(formFor('missing-person', `seed-${String(n)}`)).toBe('abduction');
+    }
+  });
+
+  it('gives every other crime an abduction one time in four, and the same form for the same seed', () => {
+    const runs = 4000;
     for (const theme of [
       'financial',
       'cyber',
@@ -129,7 +135,14 @@ describe('the form the engine names', () => {
       'corporate-espionage',
       'curious-theft',
     ]) {
-      expect(formForTheme(theme)).toBe('whodunit');
+      let abductions = 0;
+      for (let n = 0; n < runs; n += 1) {
+        const form = formFor(theme, `seed-${String(n)}`);
+        expect(formFor(theme, `seed-${String(n)}`)).toBe(form);
+        if (form === 'abduction') abductions += 1;
+      }
+      expect(abductions / runs).toBeGreaterThan(0.22);
+      expect(abductions / runs).toBeLessThan(0.28);
     }
   });
 

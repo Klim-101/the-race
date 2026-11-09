@@ -9,7 +9,7 @@ import {
   ToneSchema,
   chooseSetting,
   createRng,
-  formForTheme,
+  formFor,
   viewWorld,
   type Hero,
   type Tone,
@@ -115,7 +115,7 @@ export async function chooseBrief(
   const theme = choice?.theme ?? pending.theme ?? themeOfSeed(pending.seed, scenario.kind.themes);
   return {
     theme,
-    form: formForTheme(theme),
+    form: formFor(theme, pending.seed),
     tone: choice?.seed.tone ?? toneForSeed(pending.seed),
     seed: choice ? { id: choice.seed.id, kind: choice.seed.kind, premise: choice.seed.premise } : null,
     setting: chooseSetting(dictionary, pending.seed) ?? null,
