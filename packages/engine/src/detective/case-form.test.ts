@@ -10,7 +10,7 @@ import { DETECTIVE_SCENARIO } from './scenario.js';
 const ABDUCTION: Abduction = {
   victim: { kind: 'pet', name: 'Gouda, the cheese-shop cat' },
   whereabouts: 'cellar',
-  deadlineMinute: 2820,
+  deadlineMinute: 4260,
 };
 
 function issuesOf(input: unknown): { code: string; path: string; message: string }[] {
@@ -59,7 +59,7 @@ describe('the form of a case', () => {
     const parsed = DetectiveCaseSchema.parse(abduction());
 
     expect(formOf(parsed)).toBe('abduction');
-    expect(parsed.truth.abduction?.deadlineMinute).toBe(2820);
+    expect(parsed.truth.abduction?.deadlineMinute).toBe(4260);
   });
 
   it('accepts a person as the victim', () => {

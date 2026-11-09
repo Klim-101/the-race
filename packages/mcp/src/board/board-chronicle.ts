@@ -38,6 +38,15 @@ export function duration(minutes: number, text: TabText['chronicle']): string {
   return `${String(hours)} ${text.hours} ${String(minutes % 60)} ${text.minutes}`;
 }
 
+/** The deadline of an abduction on a line of its own: the day and the hour it falls at, and the time left; none for another case. */
+export function deadlineLine(view: DetectiveRunView, text: TabText): string {
+  const { deadline, minutesToDeadline } = view.chronicle;
+  if (deadline === null || minutesToDeadline === null) return '';
+  const t = text.chronicle;
+  const left = t.deadlineIn.replace('{time}', duration(minutesToDeadline, t));
+  return `<p>${escapeHtml(t.deadline)}: <strong>${escapeHtml(`${t.day} ${String(deadline.day)}, ${clock(deadline.minute)}`)}</strong> (${escapeHtml(left)})</p>`;
+}
+
 /** One turn in the player's own terms, from the words of the language. The text of a conclusion is the player's own. */
 export function turnText(turn: TurnView, text: TabText): string {
   const t = text.chronicle.turn;
@@ -181,12 +190,7 @@ export function renderChronicle(
   )[0];
   return `<div class="card">
 <p>${e(t.now)}: ${e(t.day)} ${String(view.clock.day)} / ${String(view.clock.totalDays)}, ${clock(view.clock.minute)}</p>
-<p>${e(t.left)}: <strong>${e(duration(view.chronicle.activeMinutesLeft, t))}</strong></p>${
-    view.chronicle.minutesToDeadline === null
-      ? ''
-      : `
-<p>${e(t.deadline)}: <strong>${e(duration(view.chronicle.minutesToDeadline, t))}</strong></p>`
-  }${view.weather === null ? '' : `\n<p>${e(t.weatherToday)}: ${e(named(t.weathers, view.weather))}</p>`}
+<p>${e(t.left)}: <strong>${e(duration(view.chronicle.activeMinutesLeft, t))}</strong></p>${deadlineLine(view, text)}${view.weather === null ? '' : `\n<p>${e(t.weatherToday)}: ${e(named(t.weathers, view.weather))}</p>`}
 </div>
 ${shortfall === undefined ? '' : renderShortfall(shortfall, t.shortfall)}<h3>${e(text.strip.title)}</h3>
 ${turns.length === 0 ? `<p class="empty">${e(t.noTurns)}</p>` : ''}${renderStrips(view, strip, turns, text)}

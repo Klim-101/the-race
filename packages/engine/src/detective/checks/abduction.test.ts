@@ -17,8 +17,8 @@ const CULPRIT_NAME = 'Orla Brenn';
 const LED_PLACE = (
   base.clues.find(({ id }) => id === base.solution.evidenceChains[0]?.[0]) as { locationId: string }
 ).locationId;
-/** 23:00 of the second day. */
-const DEADLINE = 2820;
+/** 23:00 of the third day, the last of the case. */
+const DEADLINE = 4260;
 
 function messageClue(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -82,6 +82,23 @@ describe('the fairness of an abduction', () => {
       expect(codesOf(last)).toEqual([]);
     });
 
+    it('falls on the last day of the case: the run ends there, so no day after it is shown', () => {
+      const early = abduction((c) => {
+        c.truth.abduction = { ...(c.truth.abduction as object), deadlineMinute: 2820 };
+      });
+
+      expect(issuesOf(early)).toMatchObject([{ code: 'deadline-out-of-range', path: 'clock.days' }]);
+      expect(issuesOf(early)[0]?.message).toContain('"clock.days" to 2');
+      // Midnight closing the last day is still that day.
+      expect(
+        codesOf(
+          abduction((c) => {
+            c.truth.abduction = { ...(c.truth.abduction as object), deadlineMinute: 3 * 1440 };
+          }),
+        ),
+      ).not.toContain('deadline-out-of-range');
+    });
+
     it('leaves the hero time to walk to the victim, from 08:00 of the first day', () => {
       // The place is a step from the start; the deadline falls before the hero can be there.
       const walk = abduction((c) => {
@@ -113,6 +130,8 @@ describe('the fairness of an abduction', () => {
     it('leaves the hero time to gather the cheapest chain of proof', () => {
       const short = abduction((c) => {
         c.truth.abduction = { ...(c.truth.abduction as object), deadlineMinute: 540 };
+        // The deadline is on the first day, so the case is one day long.
+        c.clock = { days: 1, worldEvents: [] };
         c.clues = c.clues.filter(({ id }) => id !== 'ransom-text');
       });
 
@@ -206,6 +225,8 @@ describe('the fairness of an abduction', () => {
         abduction((c) => {
           withBoathouse(c);
           c.truth.abduction = { ...(c.truth.abduction as object), deadlineMinute };
+          // The deadline is on the first day, so the case is one day long.
+          c.clock = { days: 1, worldEvents: [] };
           c.clues = c.clues.filter(({ id }) => id !== 'ransom-text');
           c.clues.find(({ id }) => id === 'cart-tracks')!.description = 'Round tracks of something heavy.';
           (c.clues.find(({ id }) => id === 'oven-receipt') as { description: string }).description +=
@@ -290,6 +311,37 @@ describe('the fairness of an abduction', () => {
     });
   });
 
+  describe('the weekdays', () => {
+    it('are named in no text: the premise, a clue or a message, wherever the text is', () => {
+      const named = abduction((c) => {
+        c.premise = 'The treaty is signed by 18:00 on Friday, or it is void.';
+        c.clues.find(({ id }) => id === 'ransom-text')!.description = 'A text: "Gouda is fine, come Monday."';
+      });
+      const issues = issuesOf(named).filter(({ code }) => code === 'weekday-named');
+
+      expect(issues.map(({ path }) => path)).toEqual(['premise', 'clues[6].description']);
+      expect(issues[0]?.message).toContain('Friday');
+    });
+
+    it('are judged only once the texts are written, and only in an abduction', () => {
+      const frame = abduction((c) => {
+        c.premise = 'Signed by Friday.';
+      });
+      const result = validateCase(frame, {
+        hero: buildHero(),
+        traits: [],
+        locale: 'en',
+        realNames: [],
+        frame: true,
+      });
+      const whodunit = buildCheeseCase();
+      whodunit.premise = 'Signed by Friday.';
+
+      expect(!result.isValid && result.issues.map(({ code }) => code)).not.toContain('weekday-named');
+      expect(codesOf(whodunit)).not.toContain('weekday-named');
+    });
+  });
+
   describe('a message', () => {
     it('arrives before the deadline', () => {
       const onTime = abduction((c) => {
@@ -368,7 +420,10 @@ describe('the fairness of an abduction', () => {
         }),
       );
 
-      expect(codes.includes('deadline-out-of-range'), `seed ${String(seed)}`).toBe(deadline > end);
+      const lastDay = Math.floor((deadline - 1) / 1440) + 1 === base.clock.days;
+      expect(codes.includes('deadline-out-of-range'), `seed ${String(seed)}`).toBe(
+        deadline > end || !lastDay,
+      );
       expect(codes.includes('message-after-deadline'), `seed ${String(seed)}`).toBe(arrives >= deadline);
     }
   });

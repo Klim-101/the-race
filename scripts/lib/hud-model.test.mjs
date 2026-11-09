@@ -18,6 +18,7 @@ import {
   applyResult,
   clockText,
   dayBar,
+  deadlineText,
   localeOf,
   mapRows,
   parseResult,
@@ -242,6 +243,51 @@ describe('applyResult', () => {
   });
 });
 
+describe('the deadline of an abduction in the HUD', () => {
+  const DEADLINE = { day: 3, minute: 18 * 60 };
+
+  it('is read from the chronicle of the full view and from the top of the short view of a turn', () => {
+    const full = applyResult(null, { ...FULL, chronicle: { deadline: DEADLINE, minutesToDeadline: 540 } });
+    const moved = applyResult(full, {
+      ...SHORT,
+      view: { ...SHORT.view, deadline: DEADLINE, minutesToDeadline: 525 },
+    });
+
+    expect(full).toMatchObject({ deadline: DEADLINE, minutesToDeadline: 540 });
+    expect(moved).toMatchObject({ deadline: DEADLINE, minutesToDeadline: 525 });
+  });
+
+  it('is none for a case with no deadline, and a view that says nothing of it leaves what the HUD had', () => {
+    const none = applyResult(null, { ...FULL, chronicle: { deadline: null, minutesToDeadline: null } });
+    const kept = applyResult(
+      applyResult(null, { ...FULL, chronicle: { deadline: DEADLINE, minutesToDeadline: 540 } }),
+      SHORT,
+    );
+
+    expect(none).toMatchObject({ deadline: null, minutesToDeadline: null });
+    expect(applyResult(null, FULL)).toMatchObject({ deadline: null, minutesToDeadline: null });
+    expect(kept).toMatchObject({ deadline: DEADLINE, minutesToDeadline: 540 });
+  });
+
+  it('ignores a deadline that is not a day and a minute', () => {
+    const odd = applyResult(null, {
+      ...FULL,
+      chronicle: { deadline: { day: 'x', minute: 1 }, minutesToDeadline: 'soon' },
+    });
+
+    expect(odd).toMatchObject({ deadline: null, minutesToDeadline: null });
+  });
+
+  it('is told on a line of its own, the day and the hour it falls at and the time left, in both languages', () => {
+    const hud = { deadline: DEADLINE, minutesToDeadline: 9 * 60 + 5 };
+
+    expect(deadlineText({ locale: 'ru', ...hud })).toBe('Срок: День 3, 18:00 (через 9 ч 5 мин)');
+    expect(deadlineText({ locale: 'en', ...hud })).toBe('Deadline: Day 3, 18:00 (in 9 h 5 min)');
+    expect(deadlineText({ locale: 'en', deadline: null, minutesToDeadline: null })).toBeNull();
+    expect(deadlineText({ locale: 'en', deadline: DEADLINE, minutesToDeadline: null })).toBeNull();
+  });
+});
+
 describe('the texts of the HUD', () => {
   it('shows the hour with a leading zero and the day as a bar', () => {
     expect(clockText({ minute: 8 * 60 + 5 })).toBe('08:05');
@@ -298,11 +344,13 @@ describe('what the HUD holds', () => {
     'clueCount',
     'composure',
     'day',
+    'deadline',
     'hiddenTraits',
     'links',
     'locale',
     'locationId',
     'minute',
+    'minutesToDeadline',
     'places',
     'title',
     'totalDays',

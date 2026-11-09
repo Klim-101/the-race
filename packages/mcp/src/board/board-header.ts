@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { MAX_REPUTATION, type DetectiveRunView } from '@the-race/engine';
-import { clock, duration } from './board-chronicle.js';
+import { clock, deadlineLine, duration } from './board-chronicle.js';
 import type { Fresh } from './board-new.js';
 import type { BoardText } from './board-text.js';
 import { escapeHtml } from './escape-html.js';
@@ -75,7 +75,7 @@ export function renderHeader(view: DetectiveRunView, board: BoardText, text: Tab
   return `<header class="head">
 <h1>${e(view.title)}</h1>
 <p class="meta">${e(words.turn.replace('{n}', String(view.turn)))} · ${e(day)} · ${e(board.status[view.status])} · ${e(board.detective)}: ${e(view.hero.name)}</p>
-<p class="meta">${e(words.timeLeft)}: <strong>${e(duration(view.chronicle.activeMinutesLeft, text.chronicle))}</strong> · ${e(words.condition)}: ${e(conditionWords(view, text).join(', '))}</p>${
+<p class="meta">${e(words.timeLeft)}: <strong>${e(duration(view.chronicle.activeMinutesLeft, text.chronicle))}</strong> · ${e(words.condition)}: ${e(conditionWords(view, text).join(', '))}</p>${deadlineLine(view, text).replace('<p>', '<p class="meta deadline">')}${
     lines.length === 0
       ? ''
       : `\n<div class="fresh"><span class="tag">${e(text.fresh.title)}</span><ul>${lines.map((line) => `<li>${e(line)}</li>`).join('')}</ul></div>`

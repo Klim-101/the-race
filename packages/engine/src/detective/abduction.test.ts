@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { createRng } from '../dice.js';
 import { MINUTES_PER_DAY } from '../run.js';
-import { ABDUCTION_RULESET_VERSION, minutesToDeadline, runMinuteOf } from './abduction.js';
+import { ABDUCTION_RULESET_VERSION, deadlineAt, minutesToDeadline, runMinuteOf } from './abduction.js';
 import { DetectiveCaseSchema } from './case-schema.js';
 import { settleClock } from './clock.js';
 import { createDetectiveRun, viewRun, type DetectiveRunState } from './run-state.js';
@@ -82,9 +82,35 @@ describe('the clock of an abduction', () => {
     expect(minutesToDeadline(abductionRun(ABDUCTION_RULESET_VERSION - 1))).toBeNull();
   });
 
-  it('puts the time left in the view of the run', () => {
-    expect(viewRun(at(abductionRun(), 2, 22 * 60)).chronicle.minutesToDeadline).toBe(60);
-    expect(viewRun(whodunitRun()).chronicle.minutesToDeadline).toBeNull();
+  it('tells the day and the hour the deadline falls at, as the hero reads them off the clock', () => {
+    expect(deadlineAt(abductionRun())).toEqual({ day: 2, minute: 23 * 60 });
+  });
+
+  it('shows the deadline that closes a day as the end of that day, not as the start of the next', () => {
+    const run = abductionRun();
+    const closing = {
+      ...run,
+      case: {
+        ...run.case,
+        truth: {
+          ...run.case.truth,
+          abduction: { ...run.case.truth.abduction!, deadlineMinute: 2 * MINUTES_PER_DAY },
+        },
+      },
+    };
+
+    expect(deadlineAt(closing)).toEqual({ day: 2, minute: MINUTES_PER_DAY });
+  });
+
+  it('puts the time left and the moment of the deadline in the view of the run', () => {
+    const view = viewRun(at(abductionRun(), 2, 22 * 60)).chronicle;
+
+    expect(view).toMatchObject({ minutesToDeadline: 60, deadline: { day: 2, minute: 23 * 60 } });
+    expect(viewRun(whodunitRun()).chronicle).toMatchObject({ minutesToDeadline: null, deadline: null });
+  });
+
+  it('has no moment for a deadline in a run of a ruleset before it', () => {
+    expect(deadlineAt(abductionRun(ABDUCTION_RULESET_VERSION - 1))).toBeNull();
   });
 
   it('keeps the run going while there is time', () => {

@@ -22,6 +22,9 @@ export type Hud = {
   day: number;
   totalDays: number;
   minute: number;
+  /** For an abduction, the day and the minute of the day of its deadline, and the minutes left; `null` for any other case. */
+  deadline: { day: number; minute: number } | null;
+  minutesToDeadline: number | null;
   turn: number;
   /** The place the hero is at: the `current` of the known map. */
   locationId: string;

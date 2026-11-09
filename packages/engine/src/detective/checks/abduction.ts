@@ -3,11 +3,13 @@
 
 import type { Trait } from '../../traits.js';
 import { DAY_START_MINUTE, MINUTES_PER_DAY } from '../../run.js';
+import { findWeekday } from '../../text/weekdays.js';
 import { MOVE_MINUTES } from '../actions.js';
 import type { DetectiveHero } from '../archetype.js';
 import type { CaseIssue } from '../case-issue.js';
 import type { DetectiveCase } from '../case-schema.js';
 import { canEverPass, closedSources, computeObtainable, type Obtainable } from '../obtainability.js';
+import { collectNarrativeTexts } from './texts.js';
 import { minutesToGather } from './flee-deadline.js';
 
 /** The shortest names a message is searched for: shorter pieces of a name (an initial, "Mr") are in too many words. */
@@ -46,13 +48,14 @@ function namesOf(name: string, id: string): string[] {
 
 /**
  * The fairness rules of an abduction, on top of those every case passes (two independent chains, no free culprit):
- * - the deadline falls inside the case, after the hero can have started (08:00 of day 1) and walked to the victim's
+ * - the deadline falls on the last day of the case, so that the days the hero sees are the days the hero has, after the hero can have started (08:00 of day 1) and walked to the victim's
  *   place by the shortest way, and after the cheapest chain of proof can have been gathered;
  * - the victim's place is one the hero can enter, and some chain of evidence leads to it: a clue of a chain, found
  *   outside that place, names it, opens the way in, or earns the lead that does. A clue that lies in the place cannot
  *   lead the hero there, and the way to the place is gathered, then walked, before the deadline;
  * - every message arrives before the deadline, and none names the culprit or a trait of the hero. What a message says is
- *   judged only once it is written (`content`).
+ *   judged only once it is written (`content`), as is the rule that no text names a weekday: the clock counts days, and
+ *   "Friday" is a date it cannot show.
  * A whodunit has none of this to judge.
  */
 export function checkAbduction(
@@ -73,6 +76,16 @@ export function checkAbduction(
       code: 'deadline-out-of-range',
       path: 'truth.abduction.deadlineMinute',
       message: `The deadline (${String(deadlineMinute)}) is past the end of the case: ${String(detectiveCase.clock.days)} days end at minute ${String(endOfCase)}. It counts from midnight of day 1, so 23:00 of day 2 is 2820.`,
+    });
+  }
+
+  // The run ends at the deadline, so a case of more days than that shows the hero days they cannot have.
+  const deadlineDay = Math.floor((deadlineMinute - 1) / MINUTES_PER_DAY) + 1;
+  if (deadlineMinute <= endOfCase && deadlineDay !== detectiveCase.clock.days) {
+    issues.push({
+      code: 'deadline-out-of-range',
+      path: 'clock.days',
+      message: `The deadline (${String(deadlineMinute)}) falls on day ${String(deadlineDay)}, but the case lasts ${String(detectiveCase.clock.days)} days. An abduction ends at its deadline, so set "clock.days" to ${String(deadlineDay)} (or move the deadline to the last day).`,
     });
   }
 
@@ -171,6 +184,18 @@ export function checkAbduction(
           message: `The way to "${whereabouts}" (the clue that leads there, then the walk) takes about ${String(quickest)} minutes, but the deadline leaves ${String(Math.max(0, available))} from 08:00 of day 1.`,
         });
       }
+    }
+  }
+
+  if (content) {
+    for (const { path, text } of collectNarrativeTexts(detectiveCase)) {
+      const weekday = findWeekday(text);
+      if (weekday === undefined) continue;
+      issues.push({
+        code: 'weekday-named',
+        path,
+        message: `This text names a weekday ("${weekday}"). The case counts days, not a calendar: write the day by its number and the hour, such as "by six in the evening of the third day".`,
+      });
     }
   }
 

@@ -85,6 +85,7 @@ export const ISSUE_ORDER = [
   'victim-place-unled',
   'message-names-culprit',
   'message-names-trait',
+  'weekday-named',
   'clue-draws-conclusion',
 ] as const;
 

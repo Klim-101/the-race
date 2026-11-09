@@ -128,7 +128,7 @@ function viewOf(overrides: Partial<View> = {}): View {
     openLinks: [],
     insights: [],
     leads: [],
-    chronicle: { activeMinutesLeft: 600, minutesToDeadline: null, events: [] },
+    chronicle: { activeMinutesLeft: 600, minutesToDeadline: null, deadline: null, events: [] },
     ...overrides,
   } as unknown as View;
 }
@@ -540,7 +540,9 @@ describe('the chronicle tab', () => {
   it('shows the day and the working time left', () => {
     const chronicle = tab(
       renderEvidenceBoard(
-        viewOf({ chronicle: { activeMinutesLeft: 1000, minutesToDeadline: null, events: [] } }),
+        viewOf({
+          chronicle: { activeMinutesLeft: 1000, minutesToDeadline: null, deadline: null, events: [] },
+        }),
       ),
       'chronicle',
     );
@@ -557,6 +559,7 @@ describe('the chronicle tab', () => {
           chronicle: {
             activeMinutesLeft: 600,
             minutesToDeadline: null,
+            deadline: null,
             events: [
               { day: 1, text: 'The market closes early.' },
               { day: 2, text: 'The mayor <resigns>.' },
@@ -744,6 +747,7 @@ describe('the chronicle tab', () => {
           chronicle: {
             activeMinutesLeft: 125,
             minutesToDeadline: null,
+            deadline: null,
             events: [{ day: 2, text: 'Рынок закрылся.' }],
           },
         }),
