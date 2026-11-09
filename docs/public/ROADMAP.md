@@ -63,7 +63,7 @@ One hero, one life, a world that remembers.
 
 - The tavern: three heroes offered per run
 - Hidden traits revealed by what happens in play
-- Permadeath, a hall of fallen heroes and legacy between runs
+- One life per case, a hall of fallen heroes and legacy between runs
 - Run reports, a status line, small per-turn token cost
 - Russian and English, with room for more languages
 

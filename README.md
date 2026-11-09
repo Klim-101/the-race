@@ -16,16 +16,16 @@ _The world changed overnight. Run._
 
 A detective game with one rule that most detective games avoid: **the narrator is not allowed to know who did it.**
 
-the RACE is a text roguelike that runs inside [Claude Code](https://claude.com/claude-code), on your own subscription. Each day's headlines are rebuilt into a case in a **mirror world**: the conflicts are real, the names are not. A handful of suspects, most of whom lie about something, and exactly one of whom did it. Your Claude Code plays the narrator. A piece of plain code that has never met a language model decides what is true.
+the RACE is a text roguelike that runs inside [Claude Code](https://claude.com/claude-code), on your own subscription. Each day's headlines are rebuilt into a case in a **mirror world**: the conflicts are real, the names are not. A handful of suspects, most of whom lie about something, and exactly one of whom did it. Some cases are a disappearance instead: a person or a pet is kept out of the way, and you must say who took them and where they are before a deadline. Your Claude Code plays the narrator. A piece of plain code that has never met a language model decides what is true.
 
 > **Status: alpha.** One full detective run is playable, from the tavern to the final accusation, in English or Russian. Rules and saves may still change between versions. See [what to expect](#what-to-expect).
 
 ## How a round goes
 
 1. **The tavern.** The narrator tells you what the town is talking about today (the day's news, retold in the mirror world), and three people offer themselves as your detective (a pharmacist, a schoolteacher and a translator, say). You pick one. Every hero carries traits you cannot see and did not choose; you find out who you are by playing.
-2. **The case.** A separate agent, in a context of its own, turns one of the day's seeds into a case and hands it straight to the engine. The engine checks that the case can be solved by anyone, whatever their kit and traits, before the run begins. You get a premise, a cast and a clock.
-3. **The investigation.** You walk a small town, glance round a room, then search one thing at a time: a desk, a cabinet, a bin, a safe. You talk to suspects, show them what you found, and watch lies fall. You link clues into conclusions. The board in your browser keeps the corkboard, the map and the notes.
-4. **The accusation.** You name the culprit, the motive and the evidence. The engine rules: proven, unproven or wrong. Only then does the story tell you what really happened.
+2. **The case.** A separate agent, in a context of its own, turns one of the day's seeds into a case and hands it straight to the engine. The engine checks that the case can be solved by anyone, whatever their kit and traits, before the run begins. You get a premise, a cast and a clock, and in a disappearance a deadline that ends the run.
+3. **The investigation.** You walk a small town, glance round a room, then search one thing at a time: a desk, a cabinet, a bin, a safe. You talk to suspects, show them what you found, and watch lies fall. You link clues into conclusions. In a disappearance messages reach you by themselves (a text, a call, a note left in a place), and a number or a line can be traced to see where it came from. The board in your browser keeps the corkboard, the map and the notes.
+4. **The accusation.** You name the culprit, the motive and the evidence, and in a disappearance the place where the victim is kept. The engine rules: proven, unproven or wrong. The place has to be reasoned to, not guessed: naming the right place without the conclusion that leads to it is only unproven. Only then does the story tell you what really happened.
 5. **The tally.** The run is written into a local profile. A win opens more tool slots for the next hero.
 
 You play by picking from a short list of moves or by saying what you want in your own words. Either way, one action goes to the engine, the engine rolls the dice, and the narrator tells you what came of it.
@@ -96,7 +96,7 @@ The model tends to agree with the player, and in a game about catching liars tha
 | **Does**       | Validates every scenario, rolls checks, decides win and loss    | Turns headlines into seeds, narrates, role-plays |
 | **Never does** | Call a model                                                    | See who the culprit is                           |
 
-- A scenario is a JSON document the engine validates **before** a run starts: every location reachable, every lie breakable, at least two independent ways to solve the case, every clue behind an obstacle also within reach without a tool, every lead earnable, no real names. The generator never sees the hero's kit or traits; the validator checks that the case can be solved whatever they are. If validation fails, the errors go back to the generator.
+- A scenario is a JSON document the engine validates **before** a run starts: every location reachable, every lie breakable, at least two independent ways to solve the case, every clue behind an obstacle also within reach without a tool, every lead earnable, no real names. In a disappearance also a place the hero can be led to and a conclusion about it they can draw before the deadline. The generator never sees the hero's kit or traits; the validator checks that the case can be solved whatever they are. If validation fails, the errors go back to the generator.
 - The case is generated by a separate subagent in its own context and handed straight to the engine. The narrator only gets the public view through typed tools, so it cannot give the culprit away.
 - Every run is reproducible: the same seed and the same choices give the same result, and a run is saved locally so it can be resumed in a new session.
 - Headlines come from RSS feeds and are treated as untrusted input. Only titles and short summaries are read, never full articles.
@@ -131,7 +131,7 @@ scripts           Repository checks (LLM SDK denylist, license allowlist)
 | 1     | Engine core: dice, heroes, run state, verdict              |
 | 2     | First playable run in Claude Code from a hand-written case |
 | 3     | News and the mirror world                                  |
-| 4     | Roguelike loop: tavern, permadeath, hall of fallen heroes  |
+| 4     | Roguelike loop: tavern, one life per case, hall of heroes  |
 | 5     | New archetypes: survivor, trader                           |
 | 6     | Public release and plugin marketplace listing              |
 
