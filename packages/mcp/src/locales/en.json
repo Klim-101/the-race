@@ -85,11 +85,17 @@
     "nav": "Sections of the board",
     "closedFile": {
       "title": "The closed file",
-      "verdicts": { "proven": "Proven", "unproven": "Unproven", "wrong": "Wrong person" },
+      "verdicts": {
+        "proven": "Proven",
+        "unproven": "Unproven",
+        "wrong": "Wrong person",
+        "wrong-place": "Wrong place"
+      },
       "culprit": "Who did it",
       "motive": "Why",
       "method": "How",
       "place": "Where",
+      "placeKept": "Where it was kept",
       "course": "How it really went",
       "pinned": "What was pinned",
       "noneFound": "Not a single clue was found.",
@@ -583,7 +589,7 @@
     "reasons": {
       "proven": "proven",
       "unproven": "unproven",
-      "wrong": "wrong person",
+      "wrong": "wrong accusation",
       "time-ran-out": "time ran out",
       "culprit-fled": "the culprit fled",
       "deadline-passed": "the deadline passed",

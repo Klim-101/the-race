@@ -360,6 +360,53 @@ describe('the closed file of a finished run, in the turns', () => {
     expect(file.missed).toEqual([]);
   });
 
+  describe('of an abduction', () => {
+    const KEPT_AT = 'storage-cellar';
+    const abducted = (whereaboutsId: string): { run: DetectiveRunState; log: RunLog } => {
+      const built = { ...buildCheeseCase(), form: 'abduction' };
+      built.truth.abduction = {
+        victim: { kind: 'pet', name: 'Gouda, the cheese-shop cat' },
+        whereabouts: KEPT_AT,
+        deadlineMinute: 2820,
+      };
+      const run = startRun(DetectiveCaseSchema.parse(built), 'closed-file-abduction');
+      const intent: Intent = {
+        kind: 'accuse',
+        culpritId: 'baker',
+        motiveInsightId: null,
+        evidenceClueIds: [],
+        whereaboutsId,
+      };
+      const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
+      if (!resolution.ok) throw new Error(`Refused: ${resolution.refusal.code}`);
+      return { run: resolution.run, log: recordResolution([], run, intent, resolution) };
+    };
+
+    it('tells the place the victim was kept in, and that the culprit was named rightly, for a wrong place', () => {
+      const { run, log } = abducted('cheese-stall');
+      const file = fileOf(run, log);
+
+      expect(file).toMatchObject({ verdict: 'wrong', culpritRight: true, placeRight: false });
+      expect(file.place).toBe('Storage cellar');
+    });
+
+    it('tells a right place as right', () => {
+      const { run, log } = abducted(KEPT_AT);
+
+      expect(fileOf(run, log)).toMatchObject({
+        culpritRight: true,
+        placeRight: true,
+        place: 'Storage cellar',
+      });
+    });
+  });
+
+  it('says nothing of a place being right when no place was asked', () => {
+    const { run, log } = accused('baker');
+
+    expect(fileOf(run, log)).not.toHaveProperty('placeRight');
+  });
+
   it('keeps the truth and shows no course for a log written before the epilogue', () => {
     const { run, log } = accused('baker');
     const [entry] = log;

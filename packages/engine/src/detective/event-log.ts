@@ -186,6 +186,8 @@ const OutcomeSchema = z.union([
     kind: z.literal('accuse'),
     verdict: z.enum(VERDICTS),
     culpritRight: z.boolean(),
+    // Only an abduction asks for a place; optional, so that a log from before it still reads.
+    placeRight: z.boolean().optional(),
     motiveRight: z.boolean(),
     evidenceComplete: z.boolean(),
     shortfall: z
@@ -232,6 +234,8 @@ const OutcomeSchema = z.union([
       motive: z.string(),
       method: z.string(),
       crimeLocationId: EntityIdSchema,
+      /** Only an abduction: where the victim was kept. */
+      whereaboutsId: EntityIdSchema.optional(),
     }),
   }),
 ]);

@@ -40751,6 +40751,8 @@ var OutcomeSchema = external_exports.union([
     kind: external_exports.literal("accuse"),
     verdict: external_exports.enum(VERDICTS),
     culpritRight: external_exports.boolean(),
+    // Only an abduction asks for a place; optional, so that a log from before it still reads.
+    placeRight: external_exports.boolean().optional(),
     motiveRight: external_exports.boolean(),
     evidenceComplete: external_exports.boolean(),
     shortfall: external_exports.object({
@@ -40792,7 +40794,9 @@ var OutcomeSchema = external_exports.union([
       culpritId: EntityIdSchema,
       motive: external_exports.string(),
       method: external_exports.string(),
-      crimeLocationId: EntityIdSchema
+      crimeLocationId: EntityIdSchema,
+      /** Only an abduction: where the victim was kept. */
+      whereaboutsId: EntityIdSchema.optional()
     })
   })
 ]);
@@ -41133,10 +41137,12 @@ function detailOf(run, entry) {
         shortfall: outcome.shortfall ?? null,
         file: {
           verdict: outcome.verdict,
+          culpritRight: outcome.culpritRight,
+          ...outcome.placeRight === void 0 ? {} : { placeRight: outcome.placeRight },
           culprit: nameOf(run, outcome.truth.culpritId),
           motive: outcome.truth.motive,
           method: outcome.truth.method,
-          place: placeName(outcome.truth.crimeLocationId),
+          place: placeName(outcome.truth.whereaboutsId ?? outcome.truth.crimeLocationId),
           course: (outcome.epilogue?.course ?? []).map(({ atMinute, actorId, locationId, action }) => ({
             atMinute,
             actor: nameOf(run, actorId),
@@ -52796,11 +52802,17 @@ var en_default3 = {
     nav: "Sections of the board",
     closedFile: {
       title: "The closed file",
-      verdicts: { proven: "Proven", unproven: "Unproven", wrong: "Wrong person" },
+      verdicts: {
+        proven: "Proven",
+        unproven: "Unproven",
+        wrong: "Wrong person",
+        "wrong-place": "Wrong place"
+      },
       culprit: "Who did it",
       motive: "Why",
       method: "How",
       place: "Where",
+      placeKept: "Where it was kept",
       course: "How it really went",
       pinned: "What was pinned",
       noneFound: "Not a single clue was found.",
@@ -53294,7 +53306,7 @@ var en_default3 = {
     reasons: {
       proven: "proven",
       unproven: "unproven",
-      wrong: "wrong person",
+      wrong: "wrong accusation",
       "time-ran-out": "time ran out",
       "culprit-fled": "the culprit fled",
       "deadline-passed": "the deadline passed",
@@ -53407,11 +53419,17 @@ var ru_default2 = {
     nav: "\u0420\u0430\u0437\u0434\u0435\u043B\u044B \u0434\u043E\u0441\u043A\u0438",
     closedFile: {
       title: "\u0417\u0430\u043A\u0440\u044B\u0442\u043E\u0435 \u0434\u0435\u043B\u043E",
-      verdicts: { proven: "\u0414\u043E\u043A\u0430\u0437\u0430\u043D\u043E", unproven: "\u041D\u0435 \u0434\u043E\u043A\u0430\u0437\u0430\u043D\u043E", wrong: "\u041D\u0435 \u0442\u043E\u0442 \u0447\u0435\u043B\u043E\u0432\u0435\u043A" },
+      verdicts: {
+        proven: "\u0414\u043E\u043A\u0430\u0437\u0430\u043D\u043E",
+        unproven: "\u041D\u0435 \u0434\u043E\u043A\u0430\u0437\u0430\u043D\u043E",
+        wrong: "\u041D\u0435 \u0442\u043E\u0442 \u0447\u0435\u043B\u043E\u0432\u0435\u043A",
+        "wrong-place": "\u041D\u0435 \u0442\u043E \u043C\u0435\u0441\u0442\u043E"
+      },
       culprit: "\u041A\u0442\u043E \u044D\u0442\u043E \u0441\u0434\u0435\u043B\u0430\u043B",
       motive: "\u041F\u043E\u0447\u0435\u043C\u0443",
       method: "\u041A\u0430\u043A",
       place: "\u0413\u0434\u0435",
+      placeKept: "\u0413\u0434\u0435 \u0434\u0435\u0440\u0436\u0430\u043B\u0438",
       course: "\u041A\u0430\u043A \u0432\u0441\u0451 \u0431\u044B\u043B\u043E \u043D\u0430 \u0441\u0430\u043C\u043E\u043C \u0434\u0435\u043B\u0435",
       pinned: "\u0427\u0442\u043E \u0431\u044B\u043B\u043E \u043F\u0440\u0438\u043A\u043E\u043B\u043E\u0442\u043E",
       noneFound: "\u041D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u043D\u0438 \u043E\u0434\u043D\u043E\u0439 \u0443\u043B\u0438\u043A\u0438.",
@@ -53909,7 +53927,7 @@ var ru_default2 = {
     reasons: {
       proven: "\u0434\u043E\u043A\u0430\u0437\u0430\u043D\u043E",
       unproven: "\u043D\u0435 \u0434\u043E\u043A\u0430\u0437\u0430\u043D\u043E",
-      wrong: "\u043D\u0435 \u0442\u043E\u0442 \u0447\u0435\u043B\u043E\u0432\u0435\u043A",
+      wrong: "\u043E\u0431\u0432\u0438\u043D\u0435\u043D\u0438\u0435 \u043D\u0435\u0432\u0435\u0440\u043D\u043E",
       "time-ran-out": "\u0432\u044B\u0448\u043B\u043E \u0432\u0440\u0435\u043C\u044F",
       "culprit-fled": "\u0432\u0438\u043D\u043E\u0432\u043D\u044B\u0439 \u0441\u043A\u0440\u044B\u043B\u0441\u044F",
       "deadline-passed": "\u0441\u0440\u043E\u043A \u0432\u044B\u0448\u0435\u043B",
@@ -54088,12 +54106,13 @@ function renderClosedFile(view, file2, text) {
   const e = escapeHtml;
   const t = text.closedFile;
   const led = new Set(file2.misled.map(({ number: number4 }) => number4));
+  const heading = file2.verdict === "wrong" && file2.culpritRight ? "wrong-place" : file2.verdict;
   return `<div class="card">
-<h3>${e(named(t.verdicts, file2.verdict))}</h3>
+<h3>${e(named(t.verdicts, heading))}</h3>
 <p><span class="tag">${e(t.culprit)}</span> ${e(file2.culprit)}</p>
 <p><span class="tag">${e(t.motive)}</span> ${e(file2.motive)}</p>
 <p><span class="tag">${e(t.method)}</span> ${e(file2.method)}</p>
-<p><span class="tag">${e(t.place)}</span> ${e(file2.place)}</p>
+<p><span class="tag">${e(file2.placeRight === void 0 ? t.place : t.placeKept)}</span> ${e(file2.place)}</p>
 </div>${file2.course.length === 0 ? "" : `
 <h3>${e(t.course)}</h3>
 <ol class="course">

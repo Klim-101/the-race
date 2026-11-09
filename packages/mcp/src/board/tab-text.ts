@@ -26,6 +26,8 @@ export interface TabText {
     readonly motive: string;
     readonly method: string;
     readonly place: string;
+    /** The same line for an abduction, where it is the place the victim was kept. */
+    readonly placeKept: string;
     readonly course: string;
     readonly pinned: string;
     readonly noneFound: string;
