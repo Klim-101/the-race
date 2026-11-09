@@ -43,6 +43,29 @@ function placeOf(value: unknown): HudPlace | undefined {
   };
 }
 
+/**
+ * The deadline of an abduction, where the game puts it: in the `chronicle` of the full view, at the top of the short
+ * view of a turn. A view that says nothing of it leaves what the HUD had; a case with none says `null`.
+ */
+function deadlineOf(
+  view: Record<string, unknown>,
+  hud: Hud | null,
+): Pick<Hud, 'deadline' | 'minutesToDeadline'> {
+  const source = isRecord(view['chronicle']) ? view['chronicle'] : view;
+  const at = source['deadline'];
+  const left = source['minutesToDeadline'];
+  return {
+    deadline:
+      isRecord(at) && typeof at['day'] === 'number' && typeof at['minute'] === 'number'
+        ? { day: at['day'], minute: at['minute'] }
+        : at === null
+          ? null
+          : (hud?.deadline ?? null),
+    minutesToDeadline:
+      typeof left === 'number' ? left : left === null ? null : (hud?.minutesToDeadline ?? null),
+  };
+}
+
 /** The hero's composure as a word, from the warnings the game shows while the bands apply; the worst band wins. */
 function composureOf(warnings: readonly unknown[]): Hud['composure'] {
   if (warnings.includes('ragged-nerves')) return 'ragged';
@@ -80,6 +103,7 @@ export function applyResult(hud: Hud | null, data: Record<string, unknown>): Hud
       : [],
   );
 
+  const { deadline, minutesToDeadline } = deadlineOf(view, hud);
   const warnings = view['warnings'];
   const hidden = view['hiddenTraitCount'];
   const clues = view['clues'];
@@ -90,6 +114,8 @@ export function applyResult(hud: Hud | null, data: Record<string, unknown>): Hud
     day,
     totalDays,
     minute,
+    deadline,
+    minutesToDeadline,
     turn: typeof view['turn'] === 'number' ? view['turn'] : (hud?.turn ?? 0),
     locationId: current,
     clueCount: typeof clueCount === 'number' ? clueCount : (hud?.clueCount ?? 0),
@@ -103,6 +129,10 @@ export function applyResult(hud: Hud | null, data: Record<string, unknown>): Hud
 export const LABELS = {
   ru: {
     day: 'День',
+    deadline: 'Срок',
+    in: 'через',
+    hours: 'ч',
+    minutes: 'мин',
     clues: 'улик',
     hiddenTraits: 'скрытых черт',
     nerves: { steady: 'нервы в порядке', frayed: 'нервы на взводе', ragged: 'нервы на пределе' },
@@ -116,6 +146,10 @@ export const LABELS = {
   },
   en: {
     day: 'Day',
+    deadline: 'Deadline',
+    in: 'in',
+    hours: 'h',
+    minutes: 'min',
     clues: 'clues',
     hiddenTraits: 'hidden traits',
     nerves: { steady: 'nerves steady', frayed: 'nerves frayed', ragged: 'nerves ragged' },
@@ -133,6 +167,15 @@ export function clockText(hud: Pick<Hud, 'minute'>): string {
   const hour = String(Math.floor(hud.minute / 60)).padStart(2, '0');
   const minute = String(hud.minute % 60).padStart(2, '0');
   return `${hour}:${minute}`;
+}
+
+/** The deadline of an abduction on a line of its own, as the day and hour it falls at and the time left; none for another case. */
+export function deadlineText(hud: Pick<Hud, 'locale' | 'deadline' | 'minutesToDeadline'>): string | null {
+  const { deadline, minutesToDeadline } = hud;
+  if (deadline === null || minutesToDeadline === null) return null;
+  const text = LABELS[hud.locale];
+  const left = `${String(Math.floor(minutesToDeadline / 60))} ${text.hours} ${String(minutesToDeadline % 60)} ${text.minutes}`;
+  return `${text.deadline}: ${text.day} ${String(deadline.day)}, ${clockText({ minute: deadline.minute })} (${text.in} ${left})`;
 }
 
 /** Day progress as a bar, e.g. `▓▓▓░░░░`. */

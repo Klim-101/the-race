@@ -35161,6 +35161,7 @@ var ISSUE_ORDER = [
   "victim-place-unled",
   "message-names-culprit",
   "message-names-trait",
+  "weekday-named",
   "clue-draws-conclusion"
 ];
 
@@ -36473,6 +36474,12 @@ var ABDUCTION_RULESET_VERSION = 28;
 function runMinuteOf(clock2) {
   return (clock2.day - 1) * MINUTES_PER_DAY + clock2.minute;
 }
+function deadlineAt(run) {
+  const { abduction } = run.case.truth;
+  if (abduction === void 0 || run.rulesetVersion < ABDUCTION_RULESET_VERSION) return null;
+  const day = Math.floor((abduction.deadlineMinute - 1) / MINUTES_PER_DAY) + 1;
+  return { day, minute: abduction.deadlineMinute - (day - 1) * MINUTES_PER_DAY };
+}
 function minutesToDeadline(run) {
   const { abduction } = run.case.truth;
   if (abduction === void 0 || run.rulesetVersion < ABDUCTION_RULESET_VERSION) return null;
@@ -37182,7 +37189,7 @@ function viewChronicle(run) {
     )
   ].sort((a, b) => a.day - b.day);
   const activeMinutesLeft = MINUTES_PER_DAY - run.clock.minute + Math.max(0, days - run.clock.day) * (MINUTES_PER_DAY - DAY_START_MINUTE);
-  return { activeMinutesLeft, minutesToDeadline: minutesToDeadline(run), events };
+  return { activeMinutesLeft, minutesToDeadline: minutesToDeadline(run), deadline: deadlineAt(run), events };
 }
 function signalViewOf(run) {
   const signal = signalOfRun(run);
@@ -39172,6 +39179,150 @@ function checkTrueClaims(detectiveCase) {
   );
 }
 
+// packages/engine/src/text/weekdays.ts
+var ENGLISH = /(?<![\p{L}])(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?(?![\p{L}])/iu;
+var RUSSIAN = /(?<![\p{L}])(?:понедельник|вторник|четверг|пятниц|суббот|воскресень)[\p{L}]*|(?<![\p{L}])(?:в|во|на|до|по|к|ко|с|со|от|за|перед|после|через)\s+сред(?:а|у|ы|е|ам|ами)(?![\p{L}])/iu;
+function findWeekday(text) {
+  return ENGLISH.exec(text)?.[0] ?? RUSSIAN.exec(text)?.[0];
+}
+
+// packages/engine/src/text/language.ts
+var LOCALE_PROFILES = {
+  en: "the of and to in is was were it that with for as on at by this his her their from have has had not but be are an or which who she he they we you there been would could into than then them its what when out up about over after before while because",
+  ru: "\u0438 \u0432 \u043D\u0435 \u043D\u0430 \u0447\u0442\u043E \u043E\u043D \u043E\u043D\u0430 \u043E\u043D\u0438 \u044F \u0441 \u043A\u0430\u043A \u044D\u0442\u043E \u043F\u043E \u043D\u043E \u0438\u0437 \u0437\u0430 \u043E\u0442 \u0432\u0441\u0435 \u0435\u0433\u043E \u0435\u0435 \u0438\u0445 \u0442\u043E \u0442\u0430\u043A \u0436\u0435 \u0434\u043B\u044F \u0431\u044B \u0431\u044B\u043B \u0431\u044B\u043B\u0430 \u0431\u044B\u043B\u0438 \u0431\u044B\u043B\u043E \u043C\u044B \u0432\u044B \u043C\u043D\u0435 \u0435\u043C\u0443 \u0435\u0439 \u0434\u043E \u043F\u0440\u0438 \u0438\u043B\u0438 \u0435\u0441\u043B\u0438 \u0442\u043E\u043B\u044C\u043A\u043E \u0443\u0436\u0435 \u0435\u0449\u0435 \u043D\u0438 \u0434\u0430 \u043D\u0435\u0442 \u043A\u043E\u0433\u0434\u0430 \u043A\u043E\u0442\u043E\u0440\u044B\u0439 \u043A\u043E\u0442\u043E\u0440\u0430\u044F \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u0447\u0442\u043E\u0431\u044B \u044D\u0442\u043E\u0442 \u044D\u0442\u0430 \u044D\u0442\u0438 \u0442\u0430\u043C \u0442\u0443\u0442 \u0431\u044B\u043B \u043F\u043E\u0434 \u043D\u0430\u0434 \u0431\u0435\u0437 \u0447\u0435\u0440\u0435\u0437 \u043F\u043E\u0442\u043E\u043C\u0443 \u0441\u0435\u0431\u044F \u0441\u0432\u043E\u0439 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0438\u043A\u0442\u043E \u043D\u0435\u0433\u043E \u043D\u0435\u0435 \u0438\u0445"
+};
+var REFERENCE_PROFILES = {
+  es: "el la los las de del que y en un una por con para es no se su al lo como m\xE1s pero sus le ya o fue este s\xED porque esta entre cuando muy sin sobre tambi\xE9n me hasta hay donde quien desde todo nos durante estaba noche hab\xEDa",
+  de: "der die das und ist nicht ein eine einen einem einer den dem des mit von zu auf f\xFCr im sich auch es dass als wie nach bei aus er sie wir ihr war wurde wird sind aber nur noch wenn oder um \xFCber vor durch hatte haben diese dieser",
+  fr: "le la les des du de un une et ne a ont pendant personne rien est en que qui dans pour pas sur au aux avec ce cette ces il elle ils elles nous vous je tu se sa son ses leur mais ou o\xF9 par plus comme tout fait \xEAtre avait sans sous chez entre tr\xE8s \xE9tait nuit",
+  it: "il lo la gli le di del della dei delle che e un una per con non si su da come pi\xF9 ma sono era questo questa nel nella alla al suo sua loro ha hanno anche quando senza sotto molto tra fra notte stato"
+};
+var MIN_WORDS_TO_JUDGE = 6;
+var MIN_FOREIGN_HITS = 3;
+var FOREIGN_TO_OWN_RATIO = 2;
+var WORD = new RegExp("\\p{L}+", "gu");
+function toWords(profile) {
+  return profile.split(" ");
+}
+var PROFILES = buildProfiles();
+function buildProfiles() {
+  const raw = new Map([
+    ...LOCALES.map((locale) => [locale, toWords(LOCALE_PROFILES[locale])]),
+    ...Object.entries(REFERENCE_PROFILES).map(([language, words]) => [
+      language,
+      toWords(words)
+    ])
+  ]);
+  const owners = /* @__PURE__ */ new Map();
+  for (const words of raw.values()) {
+    for (const word of new Set(words)) owners.set(word, (owners.get(word) ?? 0) + 1);
+  }
+  return new Map(
+    [...raw].map(([language, words]) => [language, new Set(words.filter((word) => owners.get(word) === 1))])
+  );
+}
+function isClearlyOtherLanguage(text, locale) {
+  const words = [...text.toLowerCase().matchAll(WORD)].map((match) => match[0]);
+  if (words.length < MIN_WORDS_TO_JUDGE) return false;
+  let ownHits = 0;
+  let foreignHits = 0;
+  for (const [language, stopwords] of PROFILES) {
+    const hits = words.filter((word) => stopwords.has(word)).length;
+    if (language === locale) ownHits = hits;
+    else foreignHits = Math.max(foreignHits, hits);
+  }
+  return foreignHits >= MIN_FOREIGN_HITS && foreignHits > ownHits * FOREIGN_TO_OWN_RATIO;
+}
+
+// packages/engine/src/text/check-texts.ts
+function checkLocale(caseLocale, locale) {
+  return caseLocale === locale ? [] : [
+    {
+      code: "locale-mismatch",
+      path: "locale",
+      message: `The case is in "${caseLocale}", but the run is in "${locale}".`
+    }
+  ];
+}
+function checkNarrativeTexts(texts, locale, realNames) {
+  const issues = [];
+  for (const { path, text } of texts) {
+    const realName = findRealName(text, realNames);
+    if (realName !== void 0) {
+      issues.push({
+        code: "real-name",
+        path,
+        message: `Replace the real-world name "${realName}" with its mirror-world name.`
+      });
+    }
+    if (!isInLocaleScript(text, locale)) {
+      issues.push({ code: "wrong-script", path, message: `Write this text in "${locale}".` });
+    } else if (isClearlyOtherLanguage(text, locale)) {
+      issues.push({ code: "wrong-language", path, message: `Write this text in the language "${locale}".` });
+    }
+  }
+  return issues;
+}
+
+// packages/engine/src/detective/checks/texts.ts
+function checkTexts(detectiveCase, locale, realNames, content) {
+  return [
+    ...checkLocale(detectiveCase.locale, locale),
+    ...content ? checkNarrativeTexts(collectNarrativeTexts(detectiveCase), locale, realNames) : []
+  ];
+}
+function collectNarrativeTexts(detectiveCase) {
+  const at3 = (path, text) => ({ path, text });
+  const { truth } = detectiveCase;
+  return [
+    at3("title", detectiveCase.title),
+    at3("premise", detectiveCase.premise),
+    ...detectiveCase.locations.flatMap((location, index) => [
+      at3(`locations[${String(index)}].name`, location.name),
+      at3(`locations[${String(index)}].description`, location.description),
+      ...(location.parts ?? []).map(
+        (part, partIndex) => at3(`locations[${String(index)}].parts[${String(partIndex)}].name`, part.name)
+      )
+    ]),
+    ...(detectiveCase.leads ?? []).map((lead, index) => at3(`leads[${String(index)}].reason`, lead.reason)),
+    ...(detectiveCase.witnesses ?? []).flatMap((witness, index) => [
+      at3(`witnesses[${String(index)}].name`, witness.name),
+      at3(`witnesses[${String(index)}].persona`, witness.persona)
+    ]),
+    ...detectiveCase.clues.map((clue, index) => at3(`clues[${String(index)}].description`, clue.description)),
+    ...detectiveCase.suspects.flatMap((suspect, index) => [
+      at3(`suspects[${String(index)}].name`, suspect.name),
+      at3(`suspects[${String(index)}].persona`, suspect.persona),
+      at3(`suspects[${String(index)}].secret`, suspect.secret),
+      at3(`suspects[${String(index)}].alibi`, suspect.alibi),
+      ...suspect.lies.map(
+        (lie, lieIndex) => at3(`suspects[${String(index)}].lies[${String(lieIndex)}].statement`, lie.statement)
+      ),
+      ...(suspect.claims ?? []).map(
+        (claim2, claimIndex) => at3(`suspects[${String(index)}].claims[${String(claimIndex)}]`, claim2)
+      ),
+      ...(suspect.reactions ?? []).map(
+        (reaction, reactionIndex) => at3(`suspects[${String(index)}].reactions[${String(reactionIndex)}].text`, reaction.text)
+      ),
+      ...suspect.lies.flatMap(
+        (lie, lieIndex) => lie.admission === void 0 ? [] : [at3(`suspects[${String(index)}].lies[${String(lieIndex)}].admission`, lie.admission)]
+      )
+    ]),
+    ...detectiveCase.deductions.map(
+      (deduction, index) => at3(`deductions[${String(index)}].insight`, deduction.insight)
+    ),
+    at3("truth.motive", truth.motive),
+    at3("truth.method", truth.method),
+    ...truth.timeline.map((entry, index) => at3(`truth.timeline[${String(index)}].action`, entry.action)),
+    ...detectiveCase.clock.worldEvents.map(
+      (event, index) => at3(`clock.worldEvents[${String(index)}].description`, event.description)
+    ),
+    ...(detectiveCase.randomEvents ?? []).map(
+      (event, index) => at3(`randomEvents[${String(index)}].description`, event.description)
+    )
+  ];
+}
+
 // packages/engine/src/detective/checks/abduction.ts
 var MIN_NAME_PIECE = 4;
 function stepsBetween(detectiveCase, obtainable, from, to) {
@@ -39204,6 +39355,14 @@ function checkAbduction(detectiveCase, hero, traits, obtainable, content) {
       code: "deadline-out-of-range",
       path: "truth.abduction.deadlineMinute",
       message: `The deadline (${String(deadlineMinute)}) is past the end of the case: ${String(detectiveCase.clock.days)} days end at minute ${String(endOfCase)}. It counts from midnight of day 1, so 23:00 of day 2 is 2820.`
+    });
+  }
+  const deadlineDay = Math.floor((deadlineMinute - 1) / MINUTES_PER_DAY) + 1;
+  if (deadlineMinute <= endOfCase && deadlineDay !== detectiveCase.clock.days) {
+    issues.push({
+      code: "deadline-out-of-range",
+      path: "clock.days",
+      message: `The deadline (${String(deadlineMinute)}) falls on day ${String(deadlineDay)}, but the case lasts ${String(detectiveCase.clock.days)} days. An abduction ends at its deadline, so set "clock.days" to ${String(deadlineDay)} (or move the deadline to the last day).`
     });
   }
   const steps = stepsBetween(detectiveCase, obtainable, detectiveCase.startLocationId, whereabouts);
@@ -39282,6 +39441,17 @@ function checkAbduction(detectiveCase, hero, traits, obtainable, content) {
           message: `The way to "${whereabouts}" (the clue that leads there, then the walk) takes about ${String(quickest)} minutes, but the deadline leaves ${String(Math.max(0, available))} from 08:00 of day 1.`
         });
       }
+    }
+  }
+  if (content) {
+    for (const { path, text } of collectNarrativeTexts(detectiveCase)) {
+      const weekday = findWeekday(text);
+      if (weekday === void 0) continue;
+      issues.push({
+        code: "weekday-named",
+        path,
+        message: `This text names a weekday ("${weekday}"). The case counts days, not a calendar: write the day by its number and the hour, such as "by six in the evening of the third day".`
+      });
     }
   }
   const culpritNames = detectiveCase.suspects.filter(({ id }) => id === culpritId).flatMap(({ name, id }) => namesOf(name, id));
@@ -40282,143 +40452,6 @@ function checkSolveChance(detectiveCase, hero, traits, obtainable) {
         Math.round(chance * 100)
       )}%, and at least ${String(Math.round(MIN_SOLVE_CHANCE * 100))}% is needed; lower the difficulty of the checks on the way to them.`
     }
-  ];
-}
-
-// packages/engine/src/text/language.ts
-var LOCALE_PROFILES = {
-  en: "the of and to in is was were it that with for as on at by this his her their from have has had not but be are an or which who she he they we you there been would could into than then them its what when out up about over after before while because",
-  ru: "\u0438 \u0432 \u043D\u0435 \u043D\u0430 \u0447\u0442\u043E \u043E\u043D \u043E\u043D\u0430 \u043E\u043D\u0438 \u044F \u0441 \u043A\u0430\u043A \u044D\u0442\u043E \u043F\u043E \u043D\u043E \u0438\u0437 \u0437\u0430 \u043E\u0442 \u0432\u0441\u0435 \u0435\u0433\u043E \u0435\u0435 \u0438\u0445 \u0442\u043E \u0442\u0430\u043A \u0436\u0435 \u0434\u043B\u044F \u0431\u044B \u0431\u044B\u043B \u0431\u044B\u043B\u0430 \u0431\u044B\u043B\u0438 \u0431\u044B\u043B\u043E \u043C\u044B \u0432\u044B \u043C\u043D\u0435 \u0435\u043C\u0443 \u0435\u0439 \u0434\u043E \u043F\u0440\u0438 \u0438\u043B\u0438 \u0435\u0441\u043B\u0438 \u0442\u043E\u043B\u044C\u043A\u043E \u0443\u0436\u0435 \u0435\u0449\u0435 \u043D\u0438 \u0434\u0430 \u043D\u0435\u0442 \u043A\u043E\u0433\u0434\u0430 \u043A\u043E\u0442\u043E\u0440\u044B\u0439 \u043A\u043E\u0442\u043E\u0440\u0430\u044F \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u0447\u0442\u043E\u0431\u044B \u044D\u0442\u043E\u0442 \u044D\u0442\u0430 \u044D\u0442\u0438 \u0442\u0430\u043C \u0442\u0443\u0442 \u0431\u044B\u043B \u043F\u043E\u0434 \u043D\u0430\u0434 \u0431\u0435\u0437 \u0447\u0435\u0440\u0435\u0437 \u043F\u043E\u0442\u043E\u043C\u0443 \u0441\u0435\u0431\u044F \u0441\u0432\u043E\u0439 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0438\u043A\u0442\u043E \u043D\u0435\u0433\u043E \u043D\u0435\u0435 \u0438\u0445"
-};
-var REFERENCE_PROFILES = {
-  es: "el la los las de del que y en un una por con para es no se su al lo como m\xE1s pero sus le ya o fue este s\xED porque esta entre cuando muy sin sobre tambi\xE9n me hasta hay donde quien desde todo nos durante estaba noche hab\xEDa",
-  de: "der die das und ist nicht ein eine einen einem einer den dem des mit von zu auf f\xFCr im sich auch es dass als wie nach bei aus er sie wir ihr war wurde wird sind aber nur noch wenn oder um \xFCber vor durch hatte haben diese dieser",
-  fr: "le la les des du de un une et ne a ont pendant personne rien est en que qui dans pour pas sur au aux avec ce cette ces il elle ils elles nous vous je tu se sa son ses leur mais ou o\xF9 par plus comme tout fait \xEAtre avait sans sous chez entre tr\xE8s \xE9tait nuit",
-  it: "il lo la gli le di del della dei delle che e un una per con non si su da come pi\xF9 ma sono era questo questa nel nella alla al suo sua loro ha hanno anche quando senza sotto molto tra fra notte stato"
-};
-var MIN_WORDS_TO_JUDGE = 6;
-var MIN_FOREIGN_HITS = 3;
-var FOREIGN_TO_OWN_RATIO = 2;
-var WORD = new RegExp("\\p{L}+", "gu");
-function toWords(profile) {
-  return profile.split(" ");
-}
-var PROFILES = buildProfiles();
-function buildProfiles() {
-  const raw = new Map([
-    ...LOCALES.map((locale) => [locale, toWords(LOCALE_PROFILES[locale])]),
-    ...Object.entries(REFERENCE_PROFILES).map(([language, words]) => [
-      language,
-      toWords(words)
-    ])
-  ]);
-  const owners = /* @__PURE__ */ new Map();
-  for (const words of raw.values()) {
-    for (const word of new Set(words)) owners.set(word, (owners.get(word) ?? 0) + 1);
-  }
-  return new Map(
-    [...raw].map(([language, words]) => [language, new Set(words.filter((word) => owners.get(word) === 1))])
-  );
-}
-function isClearlyOtherLanguage(text, locale) {
-  const words = [...text.toLowerCase().matchAll(WORD)].map((match) => match[0]);
-  if (words.length < MIN_WORDS_TO_JUDGE) return false;
-  let ownHits = 0;
-  let foreignHits = 0;
-  for (const [language, stopwords] of PROFILES) {
-    const hits = words.filter((word) => stopwords.has(word)).length;
-    if (language === locale) ownHits = hits;
-    else foreignHits = Math.max(foreignHits, hits);
-  }
-  return foreignHits >= MIN_FOREIGN_HITS && foreignHits > ownHits * FOREIGN_TO_OWN_RATIO;
-}
-
-// packages/engine/src/text/check-texts.ts
-function checkLocale(caseLocale, locale) {
-  return caseLocale === locale ? [] : [
-    {
-      code: "locale-mismatch",
-      path: "locale",
-      message: `The case is in "${caseLocale}", but the run is in "${locale}".`
-    }
-  ];
-}
-function checkNarrativeTexts(texts, locale, realNames) {
-  const issues = [];
-  for (const { path, text } of texts) {
-    const realName = findRealName(text, realNames);
-    if (realName !== void 0) {
-      issues.push({
-        code: "real-name",
-        path,
-        message: `Replace the real-world name "${realName}" with its mirror-world name.`
-      });
-    }
-    if (!isInLocaleScript(text, locale)) {
-      issues.push({ code: "wrong-script", path, message: `Write this text in "${locale}".` });
-    } else if (isClearlyOtherLanguage(text, locale)) {
-      issues.push({ code: "wrong-language", path, message: `Write this text in the language "${locale}".` });
-    }
-  }
-  return issues;
-}
-
-// packages/engine/src/detective/checks/texts.ts
-function checkTexts(detectiveCase, locale, realNames, content) {
-  return [
-    ...checkLocale(detectiveCase.locale, locale),
-    ...content ? checkNarrativeTexts(collectNarrativeTexts(detectiveCase), locale, realNames) : []
-  ];
-}
-function collectNarrativeTexts(detectiveCase) {
-  const at3 = (path, text) => ({ path, text });
-  const { truth } = detectiveCase;
-  return [
-    at3("title", detectiveCase.title),
-    at3("premise", detectiveCase.premise),
-    ...detectiveCase.locations.flatMap((location, index) => [
-      at3(`locations[${String(index)}].name`, location.name),
-      at3(`locations[${String(index)}].description`, location.description),
-      ...(location.parts ?? []).map(
-        (part, partIndex) => at3(`locations[${String(index)}].parts[${String(partIndex)}].name`, part.name)
-      )
-    ]),
-    ...(detectiveCase.leads ?? []).map((lead, index) => at3(`leads[${String(index)}].reason`, lead.reason)),
-    ...(detectiveCase.witnesses ?? []).flatMap((witness, index) => [
-      at3(`witnesses[${String(index)}].name`, witness.name),
-      at3(`witnesses[${String(index)}].persona`, witness.persona)
-    ]),
-    ...detectiveCase.clues.map((clue, index) => at3(`clues[${String(index)}].description`, clue.description)),
-    ...detectiveCase.suspects.flatMap((suspect, index) => [
-      at3(`suspects[${String(index)}].name`, suspect.name),
-      at3(`suspects[${String(index)}].persona`, suspect.persona),
-      at3(`suspects[${String(index)}].secret`, suspect.secret),
-      at3(`suspects[${String(index)}].alibi`, suspect.alibi),
-      ...suspect.lies.map(
-        (lie, lieIndex) => at3(`suspects[${String(index)}].lies[${String(lieIndex)}].statement`, lie.statement)
-      ),
-      ...(suspect.claims ?? []).map(
-        (claim2, claimIndex) => at3(`suspects[${String(index)}].claims[${String(claimIndex)}]`, claim2)
-      ),
-      ...(suspect.reactions ?? []).map(
-        (reaction, reactionIndex) => at3(`suspects[${String(index)}].reactions[${String(reactionIndex)}].text`, reaction.text)
-      ),
-      ...suspect.lies.flatMap(
-        (lie, lieIndex) => lie.admission === void 0 ? [] : [at3(`suspects[${String(index)}].lies[${String(lieIndex)}].admission`, lie.admission)]
-      )
-    ]),
-    ...detectiveCase.deductions.map(
-      (deduction, index) => at3(`deductions[${String(index)}].insight`, deduction.insight)
-    ),
-    at3("truth.motive", truth.motive),
-    at3("truth.method", truth.method),
-    ...truth.timeline.map((entry, index) => at3(`truth.timeline[${String(index)}].action`, entry.action)),
-    ...detectiveCase.clock.worldEvents.map(
-      (event, index) => at3(`clock.worldEvents[${String(index)}].description`, event.description)
-    ),
-    ...(detectiveCase.randomEvents ?? []).map(
-      (event, index) => at3(`randomEvents[${String(index)}].description`, event.description)
-    )
   ];
 }
 
@@ -52891,7 +52924,8 @@ var en_default3 = {
       now: "Now",
       day: "Day",
       left: "Working time left",
-      deadline: "Until the deadline",
+      deadline: "Deadline",
+      deadlineIn: "in {time}",
       hours: "h",
       minutes: "min",
       inspired: "What in the news the case grew from",
@@ -53512,7 +53546,8 @@ var ru_default2 = {
       now: "\u0421\u0435\u0439\u0447\u0430\u0441",
       day: "\u0414\u0435\u043D\u044C",
       left: "\u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0440\u0430\u0431\u043E\u0447\u0435\u0433\u043E \u0432\u0440\u0435\u043C\u0435\u043D\u0438",
-      deadline: "\u0414\u043E \u0441\u0440\u043E\u043A\u0430",
+      deadline: "\u0421\u0440\u043E\u043A",
+      deadlineIn: "\u0447\u0435\u0440\u0435\u0437 {time}",
       hours: "\u0447",
       minutes: "\u043C\u0438\u043D",
       inspired: "\u0418\u0437 \u0447\u0435\u0433\u043E \u0432\u044B\u0440\u043E\u0441\u043B\u043E \u0434\u0435\u043B\u043E (\u0438\u0437 \u043D\u043E\u0432\u043E\u0441\u0442\u0435\u0439)",
@@ -53973,6 +54008,13 @@ function duration3(minutes2, text) {
   const hours = Math.floor(minutes2 / 60);
   return `${String(hours)} ${text.hours} ${String(minutes2 % 60)} ${text.minutes}`;
 }
+function deadlineLine(view, text) {
+  const { deadline, minutesToDeadline: minutesToDeadline2 } = view.chronicle;
+  if (deadline === null || minutesToDeadline2 === null) return "";
+  const t = text.chronicle;
+  const left = t.deadlineIn.replace("{time}", duration3(minutesToDeadline2, t));
+  return `<p>${escapeHtml(t.deadline)}: <strong>${escapeHtml(`${t.day} ${String(deadline.day)}, ${clock(deadline.minute)}`)}</strong> (${escapeHtml(left)})</p>`;
+}
 function turnText(turn, text) {
   const t = text.chronicle.turn;
   const fill2 = (line, values) => Object.entries(values).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, value), line);
@@ -54069,8 +54111,7 @@ function renderChronicle(view, turns, text, fresh = NOTHING_NEW, strip = []) {
   )[0];
   return `<div class="card">
 <p>${e(t.now)}: ${e(t.day)} ${String(view.clock.day)} / ${String(view.clock.totalDays)}, ${clock(view.clock.minute)}</p>
-<p>${e(t.left)}: <strong>${e(duration3(view.chronicle.activeMinutesLeft, t))}</strong></p>${view.chronicle.minutesToDeadline === null ? "" : `
-<p>${e(t.deadline)}: <strong>${e(duration3(view.chronicle.minutesToDeadline, t))}</strong></p>`}${view.weather === null ? "" : `
+<p>${e(t.left)}: <strong>${e(duration3(view.chronicle.activeMinutesLeft, t))}</strong></p>${deadlineLine(view, text)}${view.weather === null ? "" : `
 <p>${e(t.weatherToday)}: ${e(named(t.weathers, view.weather))}</p>`}
 </div>
 ${shortfall === void 0 ? "" : renderShortfall(shortfall, t.shortfall)}<h3>${e(text.strip.title)}</h3>
@@ -54533,7 +54574,7 @@ function renderHeader(view, board, text, fresh) {
   return `<header class="head">
 <h1>${e(view.title)}</h1>
 <p class="meta">${e(words.turn.replace("{n}", String(view.turn)))} \xB7 ${e(day)} \xB7 ${e(board.status[view.status])} \xB7 ${e(board.detective)}: ${e(view.hero.name)}</p>
-<p class="meta">${e(words.timeLeft)}: <strong>${e(duration3(view.chronicle.activeMinutesLeft, text.chronicle))}</strong> \xB7 ${e(words.condition)}: ${e(conditionWords(view, text).join(", "))}</p>${lines.length === 0 ? "" : `
+<p class="meta">${e(words.timeLeft)}: <strong>${e(duration3(view.chronicle.activeMinutesLeft, text.chronicle))}</strong> \xB7 ${e(words.condition)}: ${e(conditionWords(view, text).join(", "))}</p>${deadlineLine(view, text).replace("<p>", '<p class="meta deadline">')}${lines.length === 0 ? "" : `
 <div class="fresh"><span class="tag">${e(text.fresh.title)}</span><ul>${lines.map((line) => `<li>${e(line)}</li>`).join("")}</ul></div>`}
 </header>`;
 }
@@ -55745,6 +55786,8 @@ var RunSummarySchema = external_exports.object({
   form: external_exports.enum(["whodunit", "abduction"]),
   /** The minutes left before the deadline of an abduction, `null` for a case that has none. */
   minutesToDeadline: external_exports.int().nullable(),
+  /** When that deadline falls: the day and the minute of the day, `null` for a case that has none. */
+  deadline: external_exports.object({ day: external_exports.int(), minute: external_exports.int() }).nullable(),
   status: external_exports.enum(["active", "won", "lost", "gave-up"]),
   endReason: external_exports.string().nullable(),
   clock: external_exports.object({ day: external_exports.int(), minute: external_exports.int(), totalDays: external_exports.int() }),
@@ -55782,6 +55825,7 @@ function summarizeRun(run) {
     turn: view.turn,
     form: view.form,
     minutesToDeadline: view.chronicle.minutesToDeadline,
+    deadline: view.chronicle.deadline,
     status: view.status,
     endReason: run.endReason,
     clock: view.clock,

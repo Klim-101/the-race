@@ -87,7 +87,7 @@ import {
   type GearId,
   type KitView,
 } from './gear.js';
-import { minutesToDeadline } from './abduction.js';
+import { deadlineAt, minutesToDeadline } from './abduction.js';
 import { clueNumber } from './clue-number.js';
 import { buildNeighbors } from './obtainability.js';
 import { isLocationClosed, suspectPlace } from './random-events.js';
@@ -848,6 +848,8 @@ export interface DetectiveRunView {
     readonly activeMinutesLeft: number;
     /** The minutes left before the deadline of an abduction, or `null` for a case that has none. */
     readonly minutesToDeadline: number | null;
+    /** The day and the minute of the day of that deadline, `null` for a case that has none. */
+    readonly deadline: { readonly day: number; readonly minute: number } | null;
     readonly events: readonly { readonly day: number; readonly text: string }[];
   };
   readonly hero: DetectiveHero;
@@ -1092,7 +1094,7 @@ function viewChronicle(run: DetectiveRunState): DetectiveRunView['chronicle'] {
     MINUTES_PER_DAY -
     run.clock.minute +
     Math.max(0, days - run.clock.day) * (MINUTES_PER_DAY - DAY_START_MINUTE);
-  return { activeMinutesLeft, minutesToDeadline: minutesToDeadline(run), events };
+  return { activeMinutesLeft, minutesToDeadline: minutesToDeadline(run), deadline: deadlineAt(run), events };
 }
 
 function signalViewOf(run: DetectiveRunState): DetectiveRunView['signal'] {

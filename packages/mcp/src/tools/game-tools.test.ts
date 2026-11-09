@@ -298,9 +298,11 @@ describe('the turn tools', () => {
       expect(seen.body).toMatchObject({
         form: 'abduction',
         crimeType: 'curious-theft',
-        chronicle: { minutesToDeadline: 2820 - 480 },
+        chronicle: { minutesToDeadline: 2820 - 480, deadline: { day: 2, minute: 23 * 60 } },
       });
-      expect(looked.body).toMatchObject({ view: { form: 'abduction', minutesToDeadline: 2820 - 485 } });
+      expect(looked.body).toMatchObject({
+        view: { form: 'abduction', minutesToDeadline: 2820 - 485, deadline: { day: 2, minute: 23 * 60 } },
+      });
       expect(await call(act, { turn: 99, intent: { kind: 'look' } }, context)).toMatchObject({
         isError: true,
       });
@@ -311,10 +313,10 @@ describe('the turn tools', () => {
       const result = await call(evidenceBoard, {}, context);
       const page = context.fs.files.get(result.body.path as string) ?? '';
 
-      expect(page).toContain('Until the deadline');
+      expect(page).toContain('Deadline: <strong>Day 2, 23:00</strong> (in 39 h 0 min)');
       const plain = await activeRun();
       const other = await call(evidenceBoard, {}, plain);
-      expect(plain.fs.files.get(other.body.path as string) ?? '').not.toContain('Until the deadline');
+      expect(plain.fs.files.get(other.body.path as string) ?? '').not.toContain('Deadline:');
     });
 
     it('takes the place of the accusation, and judges it with the culprit', async () => {

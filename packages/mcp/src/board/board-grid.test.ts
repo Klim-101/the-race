@@ -83,7 +83,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
     },
     leads: [],
     openLinks: [],
-    chronicle: { activeMinutesLeft: 600, events: [] },
+    chronicle: { activeMinutesLeft: 600, minutesToDeadline: null, deadline: null, events: [] },
     insights: [],
     clues: [],
     suspects: [],

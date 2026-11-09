@@ -223,7 +223,9 @@ export interface TabText {
     readonly weathers: Readonly<Record<string, string>>;
     readonly day: string;
     readonly left: string;
+    /** The label of the deadline of an abduction, and how long is left to it (`{time}` is hours and minutes). */
     readonly deadline: string;
+    readonly deadlineIn: string;
     readonly hours: string;
     readonly minutes: string;
     /** The heading of what the case grew from, the line when it grew from nothing, and the kinds of trouble. */

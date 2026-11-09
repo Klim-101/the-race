@@ -79,7 +79,7 @@ const PLAYED = {
     links: [{ from: 'market', to: 'archive' }],
   },
   openLinks: [],
-  chronicle: { activeMinutesLeft: 600, events: [] },
+  chronicle: { activeMinutesLeft: 600, minutesToDeadline: null, deadline: null, events: [] },
   clues: [clue('key', 'MIRA-01'), clue('flour', 'MIRA-02')],
   insights: [{ id: 'liar', insight: 'The baker lied.', clueIds: ['key', 'flour'] }],
   suspects: [

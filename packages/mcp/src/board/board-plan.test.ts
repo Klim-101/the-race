@@ -81,7 +81,7 @@ const VIEW = {
     },
   ],
   openLinks: [],
-  chronicle: { activeMinutesLeft: 900, events: [] },
+  chronicle: { activeMinutesLeft: 900, minutesToDeadline: null, deadline: null, events: [] },
   clues: [
     {
       id: 'key',

@@ -132,6 +132,25 @@ test('a turn tool moves the line with its short view and its map, with no run_vi
   await ui.unmount();
 });
 
+test('the deadline of an abduction is on a line of its own, in the band and in the pane', async ($, on) => {
+  on('tool.call', () =>
+    answered({
+      ...VIEW,
+      chronicle: { deadline: { day: 3, minute: 18 * 60 }, minutesToDeadline: 9 * 60 + 5 },
+    }),
+  );
+  await $.tool.call({ tool: `${TOOLS}run_view` } as never);
+  const words = /Deadline: Day 3, 18:00 \(in 9 h 5 min\)/;
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' });
+  expect((await ui.find({ type: 'Text', text: words }))?.text).toMatch(words);
+  await ui.unmount();
+
+  const pane = await $.ui.mount({ ...PANE, surface: 'terminal' });
+  expect((await pane.find({ type: 'Text', text: words }))?.text).toMatch(words);
+  await pane.unmount();
+});
+
 test('a survey keeps the band, and with no run there is no line', async ($, on) => {
   on('tool.call', () => answered(VIEW));
   // Where the HUD yields, the engine's own drawing stands in beneath it.

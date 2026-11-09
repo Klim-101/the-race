@@ -108,6 +108,7 @@ const RULES: Record<CaseIssueCode, Taught> = {
   'victim-place-unled': /some evidence chain must lead to `whereabouts`/,
   'message-names-culprit': /a message never names the culprit/,
   'message-names-trait': /never names a trait of the hero, nor does it/,
+  'weekday-named': /No text of the case names a weekday/,
   'solution-after-culprit-flees': /a `culprit-flees` must come after the solution is reachable/,
   'clue-draws-conclusion': /what is seen, read or measured, and never what it means/,
 };

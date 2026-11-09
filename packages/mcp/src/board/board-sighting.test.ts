@@ -60,6 +60,8 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
     openLinks: [],
     chronicle: {
       activeMinutesLeft: 900,
+      minutesToDeadline: null,
+      deadline: null,
       events: [
         { day: 1, text: 'The market opens.' },
         { day: 2, text: 'A storm closes the road.' },

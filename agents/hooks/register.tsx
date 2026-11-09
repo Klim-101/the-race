@@ -3,7 +3,16 @@
 
 import { atom, read, update } from 'claude-code';
 import type { Register } from 'claude-code';
-import { LABELS, applyResult, clockText, dayBar, localeOf, mapRows, parseResult } from './hud-model';
+import {
+  LABELS,
+  applyResult,
+  clockText,
+  dayBar,
+  deadlineText,
+  localeOf,
+  mapRows,
+  parseResult,
+} from './hud-model';
 
 // The HUD of the RACE: a line above the prompt with the day, the hour, the place and the clues, and a pane
 // (/race-hud) with the known map. It listens to the game's own tools, so the narrator passes it nothing and it
@@ -49,23 +58,27 @@ export const register: Register = (on) => {
     const { Box, Text } = $.ui.resolve(e);
     const text = LABELS[state.locale];
     const place = state.places.find(({ id }) => id === state.locationId)?.name ?? '';
+    const deadline = deadlineText(state);
     return (
-      <Box>
-        <Text color="yellow">
-          {text.day} {state.day}/{state.totalDays} {dayBar(state)} {clockText(state)}
-        </Text>
-        <Text> · {place}</Text>
-        <Text dimColor>
-          {' '}
-          · {text.clues} {state.clueCount} · {text.hiddenTraits} {state.hiddenTraits}
-        </Text>
-        <Text
-          color={state.composure === 'steady' ? undefined : 'yellow'}
-          dimColor={state.composure === 'steady'}
-        >
-          {' '}
-          · {text.nerves[state.composure]}
-        </Text>
+      <Box flexDirection="column">
+        <Box>
+          <Text color="yellow">
+            {text.day} {state.day}/{state.totalDays} {dayBar(state)} {clockText(state)}
+          </Text>
+          <Text> · {place}</Text>
+          <Text dimColor>
+            {' '}
+            · {text.clues} {state.clueCount} · {text.hiddenTraits} {state.hiddenTraits}
+          </Text>
+          <Text
+            color={state.composure === 'steady' ? undefined : 'yellow'}
+            dimColor={state.composure === 'steady'}
+          >
+            {' '}
+            · {text.nerves[state.composure]}
+          </Text>
+        </Box>
+        {deadline === null ? null : <Text color="red">{deadline}</Text>}
       </Box>
     );
   });
@@ -86,6 +99,7 @@ export const register: Register = (on) => {
     const { Box, Text } = $.ui.resolve(e);
     if (state === null) return <Text dimColor>{LABELS[await read($, language)].none}</Text>;
     const text = LABELS[state.locale];
+    const deadline = deadlineText(state);
     return (
       <Box flexDirection="column">
         <Text weight="bold">{state.title}</Text>
@@ -95,6 +109,7 @@ export const register: Register = (on) => {
         <Text dimColor>
           {text.clues} {state.clueCount} · {text.hiddenTraits} {state.hiddenTraits}
         </Text>
+        {deadline === null ? null : <Text color="red">{deadline}</Text>}
         <Text dimColor>{text.nerves[state.composure]}</Text>
         <Text> </Text>
         <Text dimColor>{text.map}</Text>

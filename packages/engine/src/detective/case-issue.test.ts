@@ -81,6 +81,7 @@ const PRIORITY_BEFORE: Record<CaseIssueCode, number> = {
   'victim-place-unled': 28.5,
   'message-names-culprit': 28.6,
   'message-names-trait': 28.7,
+  'weekday-named': 28.8,
   'clue-draws-conclusion': 29,
 };
 
