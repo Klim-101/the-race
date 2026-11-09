@@ -5,6 +5,7 @@ import type { Trait } from '../../traits.js';
 import { DAY_START_MINUTE, MINUTES_PER_DAY } from '../../run.js';
 import { findWeekday } from '../../text/weekdays.js';
 import { MOVE_MINUTES } from '../actions.js';
+import { STUDY_MINUTES } from '../ask.js';
 import type { DetectiveHero } from '../archetype.js';
 import type { CaseIssue } from '../case-issue.js';
 import type { DetectiveCase } from '../case-schema.js';
@@ -51,7 +52,8 @@ function namesOf(name: string, id: string): string[] {
  * - the deadline falls on the last day of the case, so that the days the hero sees are the days the hero has, after the hero can have started (08:00 of day 1) and walked to the victim's
  *   place by the shortest way, and after the cheapest chain of proof can have been gathered;
  * - the victim's place is one the hero can enter, and some chain of evidence leads to it: a clue of a chain, found
- *   outside that place, names it, opens the way in, or earns the lead that does. A clue that lies in the place cannot
+ *   outside that place, names it, opens the way in, or earns the lead that does; so does a text that comes by itself, found
+ *   or studied, which earns that lead. A clue that lies in the place cannot
  *   lead the hero there, and the way to the place is gathered, then walked, before the deadline;
  * - every message arrives before the deadline, and none names the culprit or a trait of the hero. What a message says is
  *   judged only once it is written (`content`), as is the rule that no text names a weekday: the clock counts days, and
@@ -132,13 +134,17 @@ export function checkAbduction(
   const chainClueIds = new Set(evidenceChains.flat());
   const opensTheWay = (clueId: string): boolean =>
     places.some(({ access }) => access.kind === 'clue' && access.clueId === clueId);
-  const earnsTheLead = (clueId: string): boolean =>
-    (detectiveCase.leads ?? []).some(
-      ({ id, earnedBy }) =>
-        places.some(({ requiresLead }) => requiresLead === id) &&
-        earnedBy.kind === 'clue' &&
-        earnedBy.clueId === clueId,
-    );
+  // How a clue earns the lead that shows the place: by being found, or by being studied with any tool (a tool the
+  // hero may lack does not count, as it does not for any lead).
+  const earnsTheLead = (clueId: string): 'found' | 'studied' | null => {
+    const earned = (detectiveCase.leads ?? [])
+      .filter(({ id }) => places.some(({ requiresLead }) => requiresLead === id))
+      .map(({ earnedBy }) => earnedBy);
+    if (earned.some((by) => by.kind === 'clue' && by.clueId === clueId)) return 'found';
+    return earned.some((by) => by.kind === 'study' && by.tool === undefined && by.clueId === clueId)
+      ? 'studied'
+      : null;
+  };
   // What the hero can gather without setting foot in the place: a clue that lies there cannot be what leads there.
   const canPass = canEverPass(hero, traits);
   const closed = closedSources(traits);
@@ -147,14 +153,20 @@ export function checkAbduction(
     canPass,
     closed,
   );
+  // A text that comes by itself can earn the lead too, found or traced (its number, its line): it need not be a clue of a
+  // chain, since it proves nothing, and it names nothing. A call may be missed and a note has to be gone to, so neither leads.
+  const isText = (clue: { message?: { channel: string } | undefined }): boolean =>
+    clue.message?.channel === 'text';
   const leading = detectiveCase.clues.filter(
     (clue) =>
-      chainClueIds.has(clue.id) &&
       clue.locationId !== whereabouts &&
       outside.clueIds.has(clue.id) &&
-      (opensTheWay(clue.id) ||
-        earnsTheLead(clue.id) ||
-        (content && placeNames.some((name) => clue.description.toLowerCase().includes(name)))),
+      (isText(clue)
+        ? earnsTheLead(clue.id) !== null
+        : chainClueIds.has(clue.id) &&
+          (opensTheWay(clue.id) ||
+            earnsTheLead(clue.id) !== null ||
+            (content && placeNames.some((name) => clue.description.toLowerCase().includes(name))))),
   );
   // A hero who starts in the place has no way to find.
   if (whereabouts !== detectiveCase.startLocationId) {
@@ -165,14 +177,25 @@ export function checkAbduction(
         message: `No chain of evidence leads to "${whereabouts}": a clue of a chain, found outside that place, must name it, open the way in or earn the lead to it. A clue that lies in the place does not count.`,
       });
     } else {
+      // Minutes from 08:00 of day 1 until the hero can stand in the place by that clue: a text is read once it has come.
       const toLead = leading.flatMap((clue) => {
+        const studying = earnsTheLead(clue.id) === 'studied' ? STUDY_MINUTES : 0;
+        if (clue.message !== undefined) {
+          return steps === null
+            ? []
+            : [
+                Math.max(0, clue.message.arrivesAtMinute - DAY_START_MINUTE) +
+                  studying +
+                  steps * MOVE_MINUTES,
+              ];
+        }
         const gathered = minutesToGather(detectiveCase, new Set([clue.id]), {
           canPass,
           closed,
           closures: [],
         });
         const walk = stepsBetween(detectiveCase, obtainable, clue.locationId, whereabouts);
-        return gathered === null || walk === null ? [] : [gathered + walk * MOVE_MINUTES];
+        return gathered === null || walk === null ? [] : [gathered + studying + walk * MOVE_MINUTES];
       });
       const quickest = Math.min(...toLead);
       // A deadline already found too short says so once.
