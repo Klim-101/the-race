@@ -83,6 +83,8 @@ export const ISSUE_ORDER = [
   'deadline-too-short',
   'message-after-deadline',
   'victim-place-unled',
+  'place-conclusion-missing',
+  'place-without-decoy',
   'message-names-culprit',
   'message-names-trait',
   'weekday-named',

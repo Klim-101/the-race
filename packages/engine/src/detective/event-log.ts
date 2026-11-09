@@ -193,6 +193,8 @@ const OutcomeSchema = z.union([
     shortfall: z
       .object({
         motive: z.object({ held: z.boolean(), offered: z.boolean(), drawn: z.boolean() }),
+        // Only an abduction asks for a conclusion about the place; an entry from before it has none.
+        place: z.object({ drawn: z.boolean() }).optional(),
         evidence: z.object({
           held: z.boolean(),
           clues: z.array(

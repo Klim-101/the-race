@@ -34933,7 +34933,13 @@ var TruthSchema = external_exports.object({
 var SolutionSchema = external_exports.object({
   motiveDeductionId: EntityIdSchema,
   /** Each chain is a set of clues that proves the culprit on its own. */
-  evidenceChains: external_exports.array(external_exports.array(EntityIdSchema).min(1))
+  evidenceChains: external_exports.array(external_exports.array(EntityIdSchema).min(1)),
+  /**
+   * Only for an abduction: the conclusion that the victim is kept where they are. A sign of the victim (a message) and a
+   * detail of the place, linked. An accusation that names the place without having drawn it is not proven. Optional, so
+   * that the cases of before it keep their seal and are judged as they were.
+   */
+  whereaboutsDeductionId: EntityIdSchema.optional()
 });
 var WorldEventEffectSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("culprit-flees") }),
@@ -35061,6 +35067,13 @@ var DetectiveCaseSchema = external_exports.object({
       message: "An abduction needs its victim, whereabouts and deadline."
     });
   }
+  if (!hasAbduction && detectiveCase.solution.whereaboutsDeductionId !== void 0) {
+    context2.addIssue({
+      code: "custom",
+      path: ["solution", "whereaboutsDeductionId"],
+      message: "Only an abduction has a conclusion about where the victim is."
+    });
+  }
   if (formOf(detectiveCase) === "whodunit" && hasAbduction) {
     context2.addIssue({
       code: "custom",
@@ -35159,6 +35172,8 @@ var ISSUE_ORDER = [
   "deadline-too-short",
   "message-after-deadline",
   "victim-place-unled",
+  "place-conclusion-missing",
+  "place-without-decoy",
   "message-names-culprit",
   "message-names-trait",
   "weekday-named",
@@ -38365,6 +38380,7 @@ function shortfallOf(run, proof) {
       offered: proof.motiveInsightId !== null,
       drawn: run.insightIds.includes(solution.motiveDeductionId)
     },
+    ...solution.whereaboutsDeductionId === void 0 ? {} : { place: { drawn: run.insightIds.includes(solution.whereaboutsDeductionId) } },
     evidence: {
       held: proof.evidenceComplete,
       clues: run.case.clues.filter(({ id }) => nearest.includes(id)).map(({ id, description }) => {
@@ -38417,7 +38433,8 @@ function accuse(run, input2, rng) {
   const motiveRight = motiveInsightId === solution.motiveDeductionId;
   const laidOut = new Set(evidenceClueIds);
   const evidenceComplete = solution.evidenceChains.some((chain) => chain.every((id) => laidOut.has(id)));
-  const verdict = !culpritRight || placeRight === false ? "wrong" : motiveRight && evidenceComplete ? "proven" : "unproven";
+  const placeConcluded = solution.whereaboutsDeductionId === void 0 || run.insightIds.includes(solution.whereaboutsDeductionId);
+  const verdict = !culpritRight || placeRight === false ? "wrong" : motiveRight && evidenceComplete && placeConcluded ? "proven" : "unproven";
   const shortfall = verdict === "unproven" ? shortfallOf(run, { motiveRight, motiveInsightId, evidenceComplete, laidOut }) : void 0;
   return {
     ok: true,
@@ -39344,6 +39361,79 @@ function namesOf(name, id) {
     (piece) => piece.toLowerCase()
   );
 }
+function checkPlaceConclusion(detectiveCase, {
+  whereabouts,
+  canPass,
+  closed,
+  available,
+  reach,
+  issues
+}) {
+  const found = [];
+  const path = "solution.whereaboutsDeductionId";
+  const conclusionClueIds = detectiveCase.deductions.filter(({ id }) => id === detectiveCase.solution.whereaboutsDeductionId).flatMap(({ clueIds }) => clueIds);
+  if (detectiveCase.solution.whereaboutsDeductionId === void 0) {
+    found.push({
+      code: "place-conclusion-missing",
+      path,
+      message: 'An abduction needs a conclusion about where the victim is: set "solution.whereaboutsDeductionId" to a deduction that links a message to a detail of the place.'
+    });
+  } else {
+    const clues = detectiveCase.clues.filter(({ id }) => conclusionClueIds.includes(id));
+    const signs = clues.flatMap(
+      ({ message }) => message !== void 0 && message.channel !== "call" ? [message.arrivesAtMinute] : []
+    );
+    const details = clues.filter(
+      ({ locationId, message }) => locationId === whereabouts && message === void 0
+    );
+    if (signs.length === 0) {
+      found.push({
+        code: "place-conclusion-missing",
+        path,
+        message: "The conclusion about where the victim is must take a message that shows a sign of the victim, a text or a note: a call may be missed."
+      });
+    }
+    if (details.length === 0) {
+      found.push({
+        code: "place-conclusion-missing",
+        path,
+        message: `The conclusion about where the victim is must take a clue found in "${whereabouts}" itself, a detail of the place: the hero has to go and see.`
+      });
+    }
+    if (signs.length > 0 && details.length > 0 && !issues.some(({ code }) => code === "deadline-too-short")) {
+      const conditions = { canPass, closed, closures: [] };
+      const seen = details.flatMap(({ id }) => {
+        const minutes2 = minutesToGather(detectiveCase, /* @__PURE__ */ new Set([id]), conditions);
+        return minutes2 === null ? [] : [Math.max(minutes2, reach)];
+      });
+      const heard = signs.map((arrives) => Math.max(0, arrives - DAY_START_MINUTE));
+      const drawn = Math.max(Math.min(...heard), Math.min(...seen)) + DEDUCE_MINUTES;
+      if (seen.length > 0 && drawn > available) {
+        found.push({
+          code: "deadline-too-short",
+          path: "truth.abduction.deadlineMinute",
+          message: `The conclusion about where the victim is can be drawn only after about ${String(drawn)} minutes (the sign has to come, the place be seen, the link be made), but the deadline leaves ${String(Math.max(0, available))} from 08:00 of day 1.`
+        });
+      }
+    }
+  }
+  const leads = detectiveCase.leads ?? [];
+  const place = detectiveCase.locations.find(({ id }) => id === whereabouts);
+  const lead = leads.find(({ id }) => id === place?.requiresLead);
+  if (lead !== void 0) {
+    const decoys = detectiveCase.locations.filter(
+      ({ id, requiresLead }) => id !== whereabouts && id !== detectiveCase.startLocationId && leads.some((other) => other.id === requiresLead && other.earnedBy.kind === lead.earnedBy.kind)
+    );
+    if (decoys.length === 0) {
+      found.push({
+        code: "place-without-decoy",
+        path: "truth.abduction.whereabouts",
+        message: `"${whereabouts}" is shown by a lead of the kind "${lead.earnedBy.kind}", and no other place is: a new place on the map would point straight at it. Show one or two other places, with nothing of the victim in them, by a lead of the same kind.`
+      });
+    }
+  }
+  return found;
+}
 function checkAbduction(detectiveCase, hero, traits, obtainable, content) {
   const { abduction, culpritId } = detectiveCase.truth;
   if (abduction === void 0) return [];
@@ -39418,6 +39508,7 @@ function checkAbduction(detectiveCase, hero, traits, obtainable, content) {
   const leading = detectiveCase.clues.filter(
     (clue) => clue.locationId !== whereabouts && outside.clueIds.has(clue.id) && (isText(clue) ? earnsTheLead(clue.id) !== null : chainClueIds.has(clue.id) && (opensTheWay(clue.id) || earnsTheLead(clue.id) !== null || content && placeNames.some((name) => clue.description.toLowerCase().includes(name))))
   );
+  let reach = 0;
   if (whereabouts !== detectiveCase.startLocationId) {
     if (leading.length === 0) {
       issues.push({
@@ -39442,6 +39533,7 @@ function checkAbduction(detectiveCase, hero, traits, obtainable, content) {
         return gathered2 === null || walk3 === null ? [] : [gathered2 + studying + walk3 * MOVE_MINUTES];
       });
       const quickest = Math.min(...toLead);
+      if (toLead.length > 0) reach = quickest;
       const said2 = issues.some(({ code }) => code === "deadline-too-short");
       if (toLead.length > 0 && quickest > available && !said2) {
         issues.push({
@@ -39452,6 +39544,9 @@ function checkAbduction(detectiveCase, hero, traits, obtainable, content) {
       }
     }
   }
+  issues.push(
+    ...checkPlaceConclusion(detectiveCase, { whereabouts, canPass, closed, available, reach, issues })
+  );
   if (content) {
     for (const { path, text } of collectNarrativeTexts(detectiveCase)) {
       const weekday = findWeekday(text);
@@ -40283,6 +40378,9 @@ function checkReferencesResolve(detectiveCase) {
     expect(locationIds, "location", entry.locationId, `truth.timeline[${String(index)}].locationId`);
   });
   expect(deductionIds, "deduction", solution.motiveDeductionId, "solution.motiveDeductionId");
+  if (solution.whereaboutsDeductionId !== void 0) {
+    expect(deductionIds, "deduction", solution.whereaboutsDeductionId, "solution.whereaboutsDeductionId");
+  }
   solution.evidenceChains.forEach((chain, chainIndex) => {
     chain.forEach((id, clueIndex) => {
       expect(clueIds, "clue", id, `solution.evidenceChains[${String(chainIndex)}][${String(clueIndex)}]`);
@@ -40799,6 +40897,8 @@ var OutcomeSchema = external_exports.union([
     evidenceComplete: external_exports.boolean(),
     shortfall: external_exports.object({
       motive: external_exports.object({ held: external_exports.boolean(), offered: external_exports.boolean(), drawn: external_exports.boolean() }),
+      // Only an abduction asks for a conclusion about the place; an entry from before it has none.
+      place: external_exports.object({ drawn: external_exports.boolean() }).optional(),
       evidence: external_exports.object({
         held: external_exports.boolean(),
         clues: external_exports.array(
@@ -52969,6 +53069,8 @@ var en_default3 = {
         motiveNoneUndrawn: "No motive was put forward, and the conclusion that explains it was never drawn.",
         motiveWrongDrawn: "Another conclusion was put forward as the motive; the right one had been drawn.",
         motiveWrongUndrawn: "Another conclusion was put forward as the motive; the right one was never drawn.",
+        placeDrawn: "The place was named rightly, and the conclusion about it had been drawn.",
+        placeUndrawn: "The place was named rightly, but the conclusion about it was never drawn: it was a guess, not proof.",
         evidenceHeld: "The evidence held.",
         evidenceNearest: "The chain of proof that came nearest, clue by clue:",
         states: {
@@ -53591,6 +53693,8 @@ var ru_default2 = {
         motiveNoneUndrawn: "\u041C\u043E\u0442\u0438\u0432 \u043D\u0435 \u043D\u0430\u0437\u0432\u0430\u043B\u0438, \u0430 \u0432\u044B\u0432\u043E\u0434, \u043A\u043E\u0442\u043E\u0440\u044B\u0439 \u0435\u0433\u043E \u043E\u0431\u044A\u044F\u0441\u043D\u044F\u0435\u0442, \u0442\u0430\u043A \u0438 \u043D\u0435 \u0431\u044B\u043B \u0441\u0434\u0435\u043B\u0430\u043D.",
         motiveWrongDrawn: "\u0412 \u043A\u0430\u0447\u0435\u0441\u0442\u0432\u0435 \u043C\u043E\u0442\u0438\u0432\u0430 \u043D\u0430\u0437\u0432\u0430\u043B\u0438 \u0434\u0440\u0443\u0433\u043E\u0439 \u0432\u044B\u0432\u043E\u0434; \u043D\u0443\u0436\u043D\u044B\u0439 \u0443\u0436\u0435 \u0431\u044B\u043B \u0441\u0434\u0435\u043B\u0430\u043D.",
         motiveWrongUndrawn: "\u0412 \u043A\u0430\u0447\u0435\u0441\u0442\u0432\u0435 \u043C\u043E\u0442\u0438\u0432\u0430 \u043D\u0430\u0437\u0432\u0430\u043B\u0438 \u0434\u0440\u0443\u0433\u043E\u0439 \u0432\u044B\u0432\u043E\u0434; \u043D\u0443\u0436\u043D\u044B\u0439 \u0442\u0430\u043A \u0438 \u043D\u0435 \u0431\u044B\u043B \u0441\u0434\u0435\u043B\u0430\u043D.",
+        placeDrawn: "\u041C\u0435\u0441\u0442\u043E \u043D\u0430\u0437\u0432\u0430\u043B\u0438 \u0432\u0435\u0440\u043D\u043E, \u0438 \u0432\u044B\u0432\u043E\u0434 \u043E \u043D\u0451\u043C \u0431\u044B\u043B \u0441\u0434\u0435\u043B\u0430\u043D.",
+        placeUndrawn: "\u041C\u0435\u0441\u0442\u043E \u043D\u0430\u0437\u0432\u0430\u043B\u0438 \u0432\u0435\u0440\u043D\u043E, \u043D\u043E \u0432\u044B\u0432\u043E\u0434 \u043E \u043D\u0451\u043C \u0442\u0430\u043A \u0438 \u043D\u0435 \u0431\u044B\u043B \u0441\u0434\u0435\u043B\u0430\u043D: \u044D\u0442\u043E \u0431\u044B\u043B\u0430 \u0434\u043E\u0433\u0430\u0434\u043A\u0430, \u0430 \u043D\u0435 \u0434\u043E\u043A\u0430\u0437\u0430\u0442\u0435\u043B\u044C\u0441\u0442\u0432\u043E.",
         evidenceHeld: "\u0423\u043B\u0438\u043A \u0445\u0432\u0430\u0442\u0438\u043B\u043E.",
         evidenceNearest: "\u0426\u0435\u043F\u043E\u0447\u043A\u0430 \u0434\u043E\u043A\u0430\u0437\u0430\u0442\u0435\u043B\u044C\u0441\u0442\u0432, \u043A \u043A\u043E\u0442\u043E\u0440\u043E\u0439 \u043F\u043E\u0434\u043E\u0448\u043B\u0438 \u0431\u043B\u0438\u0436\u0435 \u0432\u0441\u0435\u0433\u043E, \u043F\u043E \u0443\u043B\u0438\u043A\u0430\u043C:",
         states: {
@@ -54100,7 +54204,8 @@ function renderShortfall(shortfall, t) {
   const motiveLine = motive.held ? t.motiveHeld : motive.offered ? motive.drawn ? t.motiveWrongDrawn : t.motiveWrongUndrawn : motive.drawn ? t.motiveNoneDrawn : t.motiveNoneUndrawn;
   return `<div class="card">
 <h3>${e(t.title)}</h3>
-<p>${e(motiveLine)}</p>${evidence.held ? `
+<p>${e(motiveLine)}</p>${shortfall.place === void 0 ? "" : `
+<p>${e(shortfall.place.drawn ? t.placeDrawn : t.placeUndrawn)}</p>`}${evidence.held ? `
 <p>${e(t.evidenceHeld)}</p>` : `
 <p>${e(t.evidenceNearest)}</p>
 ${list(
@@ -55967,7 +56072,7 @@ async function playIntent(context2, turn, intent) {
 // packages/mcp/src/tools/accuse.ts
 var accuse2 = defineTool({
   name: "accuse",
-  description: 'The final accusation, and it ends the run for good: it cannot be undone. `culpritId` is a suspect from run_view, `motiveInsightId` the id of an insight the hero has made as the motive (or null for none) and `evidenceClueIds` the found clues laid out as proof. In an abduction (`form` of the view) it also takes `whereaboutsId`, the id of the place on the map where the hero says the victim is kept, which an abduction needs and no other case accepts. Call it only after the player has confirmed these choices; never to test a theory. The fields are exactly `turn`, `culpritId`, `motiveInsightId`, `evidenceClueIds` and, in an abduction, `whereaboutsId`, and they are easy to confuse with the neighbouring tools: `culpritId` is not `suspectId`, `motiveInsightId` is not `insightId`, `evidenceClueIds` is not `clueIds`; `turn` is a number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with "stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, place): the run is over, so this is the only place the truth is ever shown. For "unproven" it also has a `shortfall`: what the motive and the evidence lacked, clue by clue. Every verdict also has an `epilogue`: the true `course` of the crime in order, the clues `missed` (never found, with their place, part and obstacle) and the false clues that `misled` the hero. Tell it as the closing story, in the form endings.md gives for the verdict, and add nothing the outcome does not contain.',
+  description: 'The final accusation, and it ends the run for good: it cannot be undone. `culpritId` is a suspect from run_view, `motiveInsightId` the id of an insight the hero has made as the motive (or null for none) and `evidenceClueIds` the found clues laid out as proof. In an abduction (`form` of the view) it also takes `whereaboutsId`, the id of the place on the map where the hero says the victim is kept, which an abduction needs and no other case accepts. Call it only after the player has confirmed these choices; never to test a theory. The fields are exactly `turn`, `culpritId`, `motiveInsightId`, `evidenceClueIds` and, in an abduction, `whereaboutsId`, and they are easy to confuse with the neighbouring tools: `culpritId` is not `suspectId`, `motiveInsightId` is not `insightId`, `evidenceClueIds` is not `clueIds`; `turn` is a number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with "stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, place): the run is over, so this is the only place the truth is ever shown. For "unproven" it also has a `shortfall`: what the motive and the evidence lacked, clue by clue, and in an abduction whether the conclusion about the place had been drawn (`place.drawn`). Every verdict also has an `epilogue`: the true `course` of the crime in order, the clues `missed` (never found, with their place, part and obstacle) and the false clues that `misled` the hero. Tell it as the closing story, in the form endings.md gives for the verdict, and add nothing the outcome does not contain.',
   inputSchema: external_exports.object({
     turn: TurnSchema,
     culpritId: EntityIdSchema,

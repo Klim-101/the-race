@@ -79,6 +79,8 @@ const PRIORITY_BEFORE: Record<CaseIssueCode, number> = {
   'deadline-too-short': 28.3,
   'message-after-deadline': 28.4,
   'victim-place-unled': 28.5,
+  'place-conclusion-missing': 28.55,
+  'place-without-decoy': 28.56,
   'message-names-culprit': 28.6,
   'message-names-trait': 28.7,
   'weekday-named': 28.8,

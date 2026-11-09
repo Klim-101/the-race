@@ -26,6 +26,27 @@ function abduction(
   // A clue of a chain, found outside the stall, names it: this is how the hero is led to the victim.
   (built.clues.find(({ id }) => id === 'cart-tracks') as { description: string }).description +=
     ' Cheese rinds in the tracks, from the cheese stall.';
+  // The place is deduced: a message that is a sign of the victim, linked to a detail found at the stall. Only a case that
+  // is an abduction in full has them: a whodunit may have neither the message nor the conclusion.
+  const full = options.block !== null && (options.form === undefined || options.form === 'abduction');
+  if (full)
+    built.clues.push({
+      id: 'ransom-text',
+      locationId: 'market-square',
+      description: 'A text from an unknown number: "She is cold, but she is fine."',
+      discovery: null,
+      pointsTo: [],
+      isRedHerring: false,
+      message: { channel: 'text', arrivesAtMinute: 1600 },
+    });
+  if (full) {
+    built.deductions.push({
+      id: 'where-gouda',
+      clueIds: ['ransom-text', 'flour-crumbs'],
+      insight: 'The cat is kept at the cheese stall.',
+    });
+    (built.solution as { whereaboutsDeductionId?: string }).whereaboutsDeductionId = 'where-gouda';
+  }
   const result: Record<string, unknown> = { ...built };
   if (options.form !== null) result.form = options.form ?? 'abduction';
   const truth: Record<string, unknown> = { ...built.truth };
@@ -106,6 +127,18 @@ describe('the form of a case', () => {
     const built = abduction({ block: { deadlineMinute: 3 * 1440 + 60 } });
 
     expect(DetectiveCaseSchema.safeParse(built).success).toBe(true);
+  });
+
+  it('rejects a conclusion about the place that is no deduction of the case, and one in a whodunit', () => {
+    const unknown = abduction() as { solution: Record<string, unknown> };
+    unknown.solution = { ...unknown.solution, whereaboutsDeductionId: 'nowhere' };
+    const whodunit = buildCheeseCase() as unknown as { solution: Record<string, unknown> };
+    whodunit.solution = { ...whodunit.solution, whereaboutsDeductionId: 'motive-debt' };
+
+    expect(issuesOf(unknown)).toMatchObject([
+      { code: 'unknown-reference', path: 'solution.whereaboutsDeductionId' },
+    ]);
+    expect(issuesOf(whodunit)).toMatchObject([{ code: 'schema', path: 'solution.whereaboutsDeductionId' }]);
   });
 
   it('rejects a whereabouts that is not a place of the case', () => {

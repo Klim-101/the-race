@@ -255,6 +255,9 @@ export interface TabText {
       readonly motiveNoneUndrawn: string;
       readonly motiveWrongDrawn: string;
       readonly motiveWrongUndrawn: string;
+      /** For an abduction: the place was named, right, with the conclusion about it drawn or never drawn. */
+      readonly placeDrawn: string;
+      readonly placeUndrawn: string;
       readonly evidenceHeld: string;
       readonly evidenceNearest: string;
       /** Where a clue of that chain stood: laid out, found and left out, never found. */

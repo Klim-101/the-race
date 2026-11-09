@@ -387,6 +387,12 @@ export const SolutionSchema = z.object({
   motiveDeductionId: EntityIdSchema,
   /** Each chain is a set of clues that proves the culprit on its own. */
   evidenceChains: z.array(z.array(EntityIdSchema).min(1)),
+  /**
+   * Only for an abduction: the conclusion that the victim is kept where they are. A sign of the victim (a message) and a
+   * detail of the place, linked. An accusation that names the place without having drawn it is not proven. Optional, so
+   * that the cases of before it keep their seal and are judged as they were.
+   */
+  whereaboutsDeductionId: EntityIdSchema.optional(),
 });
 export type Solution = z.infer<typeof SolutionSchema>;
 
@@ -566,6 +572,13 @@ export const DetectiveCaseSchema = z
         code: 'custom',
         path: ['truth', 'abduction'],
         message: 'An abduction needs its victim, whereabouts and deadline.',
+      });
+    }
+    if (!hasAbduction && detectiveCase.solution.whereaboutsDeductionId !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['solution', 'whereaboutsDeductionId'],
+        message: 'Only an abduction has a conclusion about where the victim is.',
       });
     }
     if (formOf(detectiveCase) === 'whodunit' && hasAbduction) {

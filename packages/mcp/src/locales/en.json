@@ -210,6 +210,8 @@
         "motiveNoneUndrawn": "No motive was put forward, and the conclusion that explains it was never drawn.",
         "motiveWrongDrawn": "Another conclusion was put forward as the motive; the right one had been drawn.",
         "motiveWrongUndrawn": "Another conclusion was put forward as the motive; the right one was never drawn.",
+        "placeDrawn": "The place was named rightly, and the conclusion about it had been drawn.",
+        "placeUndrawn": "The place was named rightly, but the conclusion about it was never drawn: it was a guess, not proof.",
         "evidenceHeld": "The evidence held.",
         "evidenceNearest": "The chain of proof that came nearest, clue by clue:",
         "states": {

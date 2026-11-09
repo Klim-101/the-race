@@ -156,6 +156,24 @@ describe('how the proof fell short, on the chronicle of a finished run', () => {
     expect(chronicle).toContain('<span class="tag">never found</span> Description of card.');
   });
 
+  it('tells, for an abduction, whether the place was reasoned to or only guessed', () => {
+    const line = (drawn: boolean): string =>
+      chronicleOf(
+        renderEvidenceBoard(
+          viewOf(),
+          accused({
+            motive: { held: true, offered: true, drawn: true },
+            place: { drawn },
+            evidence: { held: true, clues: [] },
+          }),
+        ),
+      );
+
+    expect(line(true)).toContain('The place was named rightly, and the conclusion about it had been drawn.');
+    expect(line(false)).toContain('it was a guess, not proof.');
+    expect(chronicleOf(renderEvidenceBoard(viewOf(), accused(lacking)))).not.toContain('The place was named');
+  });
+
   it('tells each way the motive can fall short, and the evidence that held', () => {
     const line = (motive: Shortfall['motive']): string =>
       chronicleOf(renderEvidenceBoard(viewOf(), accused({ motive, evidence: { held: true, clues: [] } })));
