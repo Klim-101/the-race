@@ -66,6 +66,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
 
 const FILE: ClosedFile = {
   verdict: 'unproven',
+  culpritRight: true,
   culprit: 'Orla Brenn',
   motive: 'Debt to the miller.',
   method: 'Rolled the wheel into the cellar.',
@@ -124,6 +125,7 @@ describe('the closed file, on the board of a finished run', () => {
     const wrong: ClosedFile = {
       ...FILE,
       verdict: 'wrong',
+      culpritRight: false,
       missed: [],
       misled: [{ number: 'MIRA-02', description: 'A blue glove.' }],
     };
@@ -134,6 +136,17 @@ describe('the closed file, on the board of a finished run', () => {
     expect(tab.match(/led-astray/g)).toHaveLength(1);
     expect(tab).not.toContain('empty-card');
     expect(tab).toMatchSnapshot();
+  });
+
+  it('says the place was missed, not the person, when the culprit was named rightly in an abduction', () => {
+    const tab = fileTab(
+      pageOf(accused({ ...FILE, verdict: 'wrong', placeRight: false, place: 'Boat shed', missed: [] })),
+    );
+
+    expect(tab).toContain('Wrong place');
+    expect(tab).not.toContain('Wrong person');
+    expect(tab).toContain('Where it was kept');
+    expect(tab).toContain('Boat shed');
   });
 
   it('is short for a proven case: the truth and the course, nothing missed', () => {

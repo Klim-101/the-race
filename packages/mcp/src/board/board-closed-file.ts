@@ -19,12 +19,14 @@ export function renderClosedFile(view: DetectiveRunView, file: ClosedFile, text:
   const e = escapeHtml;
   const t = text.closedFile;
   const led = new Set(file.misled.map(({ number }) => number));
+  // A right culprit and a wrong place is its own heading: the verdict is `wrong` for both, but only one was missed.
+  const heading = file.verdict === 'wrong' && file.culpritRight ? 'wrong-place' : file.verdict;
   return `<div class="card">
-<h3>${e(named(t.verdicts, file.verdict))}</h3>
+<h3>${e(named(t.verdicts, heading))}</h3>
 <p><span class="tag">${e(t.culprit)}</span> ${e(file.culprit)}</p>
 <p><span class="tag">${e(t.motive)}</span> ${e(file.motive)}</p>
 <p><span class="tag">${e(t.method)}</span> ${e(file.method)}</p>
-<p><span class="tag">${e(t.place)}</span> ${e(file.place)}</p>
+<p><span class="tag">${e(file.placeRight === undefined ? t.place : t.placeKept)}</span> ${e(file.place)}</p>
 </div>${
     file.course.length === 0
       ? ''
