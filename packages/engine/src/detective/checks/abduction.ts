@@ -7,17 +7,22 @@ import { MOVE_MINUTES } from '../actions.js';
 import type { DetectiveHero } from '../archetype.js';
 import type { CaseIssue } from '../case-issue.js';
 import type { DetectiveCase } from '../case-schema.js';
-import { canEverPass, closedSources, type Obtainable } from '../obtainability.js';
+import { canEverPass, closedSources, computeObtainable, type Obtainable } from '../obtainability.js';
 import { minutesToGather } from './flee-deadline.js';
 
 /** The shortest names a message is searched for: shorter pieces of a name (an initial, "Mr") are in too many words. */
 const MIN_NAME_PIECE = 4;
 
-/** Steps of the shortest walk from the start to the victim's place through places the hero can enter; `null` for none. */
-function stepsToVictim(detectiveCase: DetectiveCase, obtainable: Obtainable, to: string): number | null {
-  const seen = new Set([detectiveCase.startLocationId]);
+/** Steps of the shortest walk from a place to the victim's through places the hero can enter; `null` for none. */
+function stepsBetween(
+  detectiveCase: DetectiveCase,
+  obtainable: Obtainable,
+  from: string,
+  to: string,
+): number | null {
+  const seen = new Set([from]);
   const queue = detectiveCase.locations
-    .filter(({ id }) => id === detectiveCase.startLocationId)
+    .filter(({ id }) => id === from)
     .map((location) => ({ location, steps: 0 }));
   for (const { location, steps } of queue) {
     if (location.id === to) return steps;
@@ -43,8 +48,9 @@ function namesOf(name: string, id: string): string[] {
  * The fairness rules of an abduction, on top of those every case passes (two independent chains, no free culprit):
  * - the deadline falls inside the case, after the hero can have started (08:00 of day 1) and walked to the victim's
  *   place by the shortest way, and after the cheapest chain of proof can have been gathered;
- * - the victim's place is one the hero can enter, and some chain of evidence leads to it: a clue of a chain lies there,
- *   names it, opens the way in, or earns the lead that does;
+ * - the victim's place is one the hero can enter, and some chain of evidence leads to it: a clue of a chain, found
+ *   outside that place, names it, opens the way in, or earns the lead that does. A clue that lies in the place cannot
+ *   lead the hero there, and the way to the place is gathered, then walked, before the deadline;
  * - every message arrives before the deadline, and none names the culprit or a trait of the hero. What a message says is
  *   judged only once it is written (`content`).
  * A whodunit has none of this to judge.
@@ -70,7 +76,7 @@ export function checkAbduction(
     });
   }
 
-  const steps = stepsToVictim(detectiveCase, obtainable, whereabouts);
+  const steps = stepsBetween(detectiveCase, obtainable, detectiveCase.startLocationId, whereabouts);
   const available = deadlineMinute - DAY_START_MINUTE;
   if (steps === null) {
     issues.push({
@@ -111,7 +117,6 @@ export function checkAbduction(
   const places = detectiveCase.locations.filter(({ id }) => id === whereabouts);
   const placeNames = places.map(({ name }) => name.toLowerCase());
   const chainClueIds = new Set(evidenceChains.flat());
-  const chainClues = detectiveCase.clues.filter(({ id }) => chainClueIds.has(id));
   const opensTheWay = (clueId: string): boolean =>
     places.some(({ access }) => access.kind === 'clue' && access.clueId === clueId);
   const earnsTheLead = (clueId: string): boolean =>
@@ -121,19 +126,52 @@ export function checkAbduction(
         earnedBy.kind === 'clue' &&
         earnedBy.clueId === clueId,
     );
-  const isLed = chainClues.some(
-    (clue) =>
-      clue.locationId === whereabouts ||
-      opensTheWay(clue.id) ||
-      earnsTheLead(clue.id) ||
-      (content && placeNames.some((name) => clue.description.toLowerCase().includes(name))),
+  // What the hero can gather without setting foot in the place: a clue that lies there cannot be what leads there.
+  const canPass = canEverPass(hero, traits);
+  const closed = closedSources(traits);
+  const outside = computeObtainable(
+    { ...detectiveCase, locations: detectiveCase.locations.filter(({ id }) => id !== whereabouts) },
+    canPass,
+    closed,
   );
-  if (!isLed) {
-    issues.push({
-      code: 'victim-place-unled',
-      path: 'truth.abduction.whereabouts',
-      message: `No chain of evidence leads to "${whereabouts}": a clue of a chain must lie there, name the place, open the way in or earn the lead to it.`,
-    });
+  const leading = detectiveCase.clues.filter(
+    (clue) =>
+      chainClueIds.has(clue.id) &&
+      clue.locationId !== whereabouts &&
+      outside.clueIds.has(clue.id) &&
+      (opensTheWay(clue.id) ||
+        earnsTheLead(clue.id) ||
+        (content && placeNames.some((name) => clue.description.toLowerCase().includes(name)))),
+  );
+  // A hero who starts in the place has no way to find.
+  if (whereabouts !== detectiveCase.startLocationId) {
+    if (leading.length === 0) {
+      issues.push({
+        code: 'victim-place-unled',
+        path: 'truth.abduction.whereabouts',
+        message: `No chain of evidence leads to "${whereabouts}": a clue of a chain, found outside that place, must name it, open the way in or earn the lead to it. A clue that lies in the place does not count.`,
+      });
+    } else {
+      const toLead = leading.flatMap((clue) => {
+        const gathered = minutesToGather(detectiveCase, new Set([clue.id]), {
+          canPass,
+          closed,
+          closures: [],
+        });
+        const walk = stepsBetween(detectiveCase, obtainable, clue.locationId, whereabouts);
+        return gathered === null || walk === null ? [] : [gathered + walk * MOVE_MINUTES];
+      });
+      const quickest = Math.min(...toLead);
+      // A deadline already found too short says so once.
+      const said = issues.some(({ code }) => code === 'deadline-too-short');
+      if (toLead.length > 0 && quickest > available && !said) {
+        issues.push({
+          code: 'deadline-too-short',
+          path: 'truth.abduction.deadlineMinute',
+          message: `The way to "${whereabouts}" (the clue that leads there, then the walk) takes about ${String(quickest)} minutes, but the deadline leaves ${String(Math.max(0, available))} from 08:00 of day 1.`,
+        });
+      }
+    }
   }
 
   const culpritNames = detectiveCase.suspects

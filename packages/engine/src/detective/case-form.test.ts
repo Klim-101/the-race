@@ -23,6 +23,9 @@ function abduction(
   options: { form?: string | null; block?: Record<string, unknown> | null } = {},
 ): Record<string, unknown> {
   const built = buildCheeseCase();
+  // A clue of a chain, found outside the stall, names it: this is how the hero is led to the victim.
+  (built.clues.find(({ id }) => id === 'cart-tracks') as { description: string }).description +=
+    ' Cheese rinds in the tracks, from the cheese stall.';
   const result: Record<string, unknown> = { ...built };
   if (options.form !== null) result.form = options.form ?? 'abduction';
   const truth: Record<string, unknown> = { ...built.truth };
