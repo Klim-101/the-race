@@ -42,6 +42,9 @@ function abduction(change: (built: Raw) => void = () => undefined): Raw {
     deadlineMinute: DEADLINE,
   };
   built.clues.push(messageClue());
+  // The place is named by a clue of the other chain, found outside it: this is how the hero is led there.
+  (built.clues.find(({ id }) => id === 'cart-tracks') as { description: string }).description +=
+    ' Cheese rinds in the tracks, from the cheese stall.';
   change(built);
   return built;
 }
@@ -144,13 +147,9 @@ describe('the fairness of an abduction', () => {
       expect(codesOf(shut)).not.toContain('deadline-too-short');
     });
 
-    it('is led to by some chain: a clue of a chain lies there, names it, opens the way in or earns the lead', () => {
+    it('is led to by some chain: a clue of a chain, found outside it, names it, opens the way in or earns the lead', () => {
       const unled = abduction((c) => {
         withBoathouse(c);
-      });
-      const lies = abduction((c) => {
-        withBoathouse(c);
-        c.clues.find(({ id }) => id === 'flour-crumbs')!.locationId = 'boathouse';
       });
       const named = abduction((c) => {
         withBoathouse(c);
@@ -173,7 +172,85 @@ describe('the fairness of an abduction', () => {
       expect(issuesOf(unled).find(({ code }) => code === 'victim-place-unled')?.path).toBe(
         'truth.abduction.whereabouts',
       );
-      for (const led of [lies, named, opens, leads]) expect(codesOf(led)).not.toContain('victim-place-unled');
+      for (const led of [named, opens, leads]) expect(codesOf(led)).not.toContain('victim-place-unled');
+    });
+
+    it('is not led to by a clue that lies in it, even a clue of a chain that names it', () => {
+      const lies = abduction((c) => {
+        withBoathouse(c);
+        const clue = c.clues.find(({ id }) => id === 'flour-crumbs') as {
+          description: string;
+          locationId: string;
+        };
+        clue.locationId = 'boathouse';
+        clue.description += ' Tar on it, from the old boathouse.';
+      });
+
+      expect(codesOf(lies)).toContain('victim-place-unled');
+    });
+
+    it('is not led to by a clue the hero could reach only by passing through it', () => {
+      // The mayor office is a door past the cheese stall: from outside the stall its clues cannot be had.
+      const behind = abduction((c) => {
+        c.clues.find(({ id }) => id === 'cart-tracks')!.description = 'Round tracks of something heavy.';
+        (c.clues.find(({ id }) => id === 'oven-receipt') as { description: string }).description +=
+          ' Folded in a leaflet of the cheese stall.';
+      });
+
+      expect(codesOf(behind)).toContain('victim-place-unled');
+    });
+
+    it('is walked to in time: the clue that leads there is gathered, then the way is walked', () => {
+      // The oven receipt (65 minutes) names the boathouse, which is three steps from the mayor office.
+      const named = (deadlineMinute: number): Raw =>
+        abduction((c) => {
+          withBoathouse(c);
+          c.truth.abduction = { ...(c.truth.abduction as object), deadlineMinute };
+          c.clues = c.clues.filter(({ id }) => id !== 'ransom-text');
+          c.clues.find(({ id }) => id === 'cart-tracks')!.description = 'Round tracks of something heavy.';
+          (c.clues.find(({ id }) => id === 'oven-receipt') as { description: string }).description +=
+            ' Tar on it, from the old boathouse.';
+        });
+
+      expect(issuesOf(named(480 + 100))).toMatchObject([
+        { code: 'deadline-too-short', path: 'truth.abduction.deadlineMinute' },
+      ]);
+      expect(codesOf(named(480 + 65 + 3 * MOVE_MINUTES))).toEqual([]);
+    });
+
+    it('is not timed by a clue that can only be had from a person: the plan of a search does not reach it', () => {
+      const told = abduction((c) => {
+        withBoathouse(c);
+        const crumbs = c.clues.find(({ id }) => id === 'flour-crumbs') as {
+          description: string;
+          discovery: object;
+        };
+        crumbs.discovery = { skill: 'perception', difficulty: 30 };
+        crumbs.description += ' Tar on it, from the old boathouse.';
+        (c.suspects.find(({ id }) => id === 'rival')!.lies[0] as { gives?: string }).gives = 'flour-crumbs';
+      });
+
+      expect(codesOf(told)).not.toContain('victim-place-unled');
+      expect(codesOf(told)).not.toContain('deadline-too-short');
+    });
+
+    it('is not timed by a way the hero cannot walk: another check says the place is shut', () => {
+      const shut = abduction((c) => {
+        withBoathouse(c, { kind: 'skill', check: { skill: 'social', difficulty: 30 } });
+        (c.clues.find(({ id }) => id === 'flour-crumbs') as { description: string }).description +=
+          ' Tar on it, from the old boathouse.';
+      });
+
+      expect(codesOf(shut)).toContain('victim-place-unreachable');
+      expect(codesOf(shut)).not.toContain('deadline-too-short');
+    });
+
+    it('needs no leading when the hero starts there', () => {
+      const here = abduction((c) => {
+        c.truth.abduction = { ...(c.truth.abduction as object), whereabouts: 'market-square' };
+      });
+
+      expect(codesOf(here)).not.toContain('victim-place-unled');
     });
 
     it('is not led to by a lead that no clue of a chain earns, nor by a name in a text not yet written', () => {
