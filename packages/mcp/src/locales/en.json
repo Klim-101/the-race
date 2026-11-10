@@ -80,7 +80,8 @@
       "insights": "Conclusions",
       "chronicle": "Chronicle",
       "hero": "Hero and kit",
-      "file": "Closed file"
+      "file": "Closed file",
+      "story": "Story"
     },
     "nav": "Sections of the board",
     "closedFile": {
