@@ -15,6 +15,7 @@ import { profileExport, profileImport, profileView } from './profile-tools.js';
 import { question } from './question.js';
 import { runGiveUp } from './run-give-up.js';
 import { runNew } from './run-new.js';
+import { runStory } from './run-story.js';
 import { runView } from './run-view.js';
 import { scenarioSubmit } from './scenario-submit.js';
 import { seedsSubmit } from './seeds-submit.js';
@@ -44,6 +45,7 @@ export const TOOLS: readonly Tool[] = [
   question,
   runGiveUp,
   runNew,
+  runStory,
   runView,
   scenarioSubmit,
   seedsSubmit,

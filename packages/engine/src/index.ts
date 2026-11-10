@@ -62,6 +62,7 @@ export { GENERATED_MAP, checkMapShape, type MapRules } from './detective/checks/
 export { GENERATED_DAYS, checkRunLength, type DayRules } from './detective/checks/run-length.js';
 export * from './detective/weather.js';
 export * from './achievements.js';
+export * from './story.js';
 export * from './profile.js';
 export * from './progress.js';
 export * from './detective/night.js';

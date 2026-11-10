@@ -16,6 +16,8 @@ export interface TabText {
     readonly hero: string;
     /** The closed file, which exists only once the run is over. */
     readonly file: string;
+    /** The story of a finished run, which the narrator tells and the server keeps. */
+    readonly story: string;
   };
   readonly nav: string;
   /** The closed file of a finished run: the truth, the course of the crime, the pinned clues and the empty cards. */

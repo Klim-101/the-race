@@ -41262,6 +41262,36 @@ function newlyEarned(before, after) {
   return earnedAchievements(after).filter((id) => !had.has(id));
 }
 
+// packages/engine/src/story.ts
+var STORY_LIMITS = {
+  titleMax: 80,
+  paragraphsMin: 3,
+  paragraphsMax: 12,
+  paragraphMax: 900
+};
+var StoryInputSchema = external_exports.object({
+  title: external_exports.string().trim().min(1).max(STORY_LIMITS.titleMax),
+  paragraphs: external_exports.array(external_exports.string().trim().min(1).max(STORY_LIMITS.paragraphMax)).min(STORY_LIMITS.paragraphsMin).max(STORY_LIMITS.paragraphsMax)
+});
+var StorySchema = StoryInputSchema.extend({
+  version: external_exports.literal(1),
+  runId: external_exports.string().min(1),
+  locale: external_exports.enum(["ru", "en"])
+});
+function storyOf(input2, runId, locale) {
+  return { version: 1, runId, locale, title: input2.title, paragraphs: input2.paragraphs };
+}
+function checkStory(input2, locale, realNames) {
+  return checkNarrativeTexts(
+    [
+      { path: "title", text: input2.title },
+      ...input2.paragraphs.map((text, index) => ({ path: `paragraphs/${String(index)}`, text }))
+    ],
+    locale,
+    realNames
+  );
+}
+
 // packages/engine/src/detective/day-strip.ts
 var NOTHING = { clueIds: [], placeId: null, suspectId: null };
 var KIND_OF = {
@@ -42204,8 +42234,27 @@ function runBoardFile(saveDir, runId) {
   return join3(runFiles(saveDir, runId).directory, BOARD_DIR, BOARD_FILE);
 }
 
-// packages/saves/src/run-seeds.ts
+// packages/saves/src/story-store.ts
 import { join as join4 } from "node:path";
+var runStoryFile = (saveDir, runId) => join4(runFiles(saveDir, runId).directory, "story.json");
+async function saveStory(saveDir, story, fs) {
+  await fs.mkdir(runFiles(saveDir, story.runId).directory);
+  await replaceFile(fs, runStoryFile(saveDir, story.runId), `${JSON.stringify(story, null, 2)}
+`);
+}
+async function loadStory(saveDir, runId, fs) {
+  const text = await fs.readFile(runStoryFile(saveDir, runId)).catch(() => void 0);
+  if (text === void 0) return void 0;
+  try {
+    const parsed = StorySchema.safeParse(JSON.parse(text));
+    return parsed.success && parsed.data.runId === runId ? parsed.data : void 0;
+  } catch {
+    return void 0;
+  }
+}
+
+// packages/saves/src/run-seeds.ts
+import { join as join5 } from "node:path";
 var RunSeedsSchema = external_exports.strictObject({
   schemaVersion: external_exports.literal(1),
   day: external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -42213,7 +42262,7 @@ var RunSeedsSchema = external_exports.strictObject({
   realNames: external_exports.array(external_exports.string().min(1).max(80)).max(2e3)
 });
 var RUN_SEEDS_FILE = "seeds.json";
-var runSeedsFile = (saveDir, runId) => join4(runFiles(saveDir, runId).directory, RUN_SEEDS_FILE);
+var runSeedsFile = (saveDir, runId) => join5(runFiles(saveDir, runId).directory, RUN_SEEDS_FILE);
 async function saveRunSeeds(saveDir, runId, entry, fs = nodeSaveFs) {
   const copy = RunSeedsSchema.parse({ schemaVersion: 1, ...entry });
   await fs.mkdir(runFiles(saveDir, runId).directory);
@@ -42319,7 +42368,7 @@ async function collectRunsStats(saveDir, updatedOn, fs = nodeSaveFs) {
 }
 
 // packages/saves/src/generation-log.ts
-import { join as join5 } from "node:path";
+import { join as join6 } from "node:path";
 var GENERATION_LOG_FILE = "generation-log.json";
 var MAX_LOG_ENTRIES = 1e3;
 var GENERATION_OUTCOMES = ["accepted", "framed", "rejected", "final"];
@@ -42356,7 +42405,7 @@ var GenerationStatsSchema = external_exports.strictObject({
   /** How many submissions each code rejected, the most frequent first. */
   codes: external_exports.array(external_exports.strictObject({ code: external_exports.string().min(1), count: external_exports.int().min(1) }))
 });
-var generationLogFile = (directory) => join5(directory, GENERATION_LOG_FILE);
+var generationLogFile = (directory) => join6(directory, GENERATION_LOG_FILE);
 async function loadGenerationLog(directory, fs) {
   try {
     const text = await fs.readFile(generationLogFile(directory));
@@ -42409,10 +42458,10 @@ function summarizeGeneration(entries) {
 }
 
 // packages/saves/src/damaged-seen.ts
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 var DAMAGED_SEEN_FILE = "damaged-seen.json";
 var DamagedSeenSchema = external_exports.strictObject({ schemaVersion: external_exports.literal(1), runIds: external_exports.array(external_exports.string()) });
-var damagedSeenFile = (saveDir) => join6(saveDir, DAMAGED_SEEN_FILE);
+var damagedSeenFile = (saveDir) => join7(saveDir, DAMAGED_SEEN_FILE);
 async function loadSeen(saveDir, fs) {
   try {
     const text = await fs.readFile(damagedSeenFile(saveDir));
@@ -42443,7 +42492,7 @@ async function takeUnseenDamaged(saveDir, damaged, fs) {
 }
 
 // packages/saves/src/seed-store.ts
-import { join as join7 } from "node:path";
+import { join as join8 } from "node:path";
 var SEED_DAYS_KEPT = 14;
 var DaySchema = external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 var DaySeedsSchema = external_exports.strictObject({
@@ -42456,7 +42505,7 @@ var SeedStoreSchema = external_exports.strictObject({
   namesEdition: external_exports.literal(NAME_RULES_EDITION),
   days: external_exports.record(DaySchema, DaySeedsSchema)
 });
-var seedsFile = (saveDir) => join7(saveDir, "seeds", "seeds.json");
+var seedsFile = (saveDir) => join8(saveDir, "seeds", "seeds.json");
 async function loadSeeds(saveDir, fs = nodeSaveFs) {
   try {
     const text = await fs.readFile(seedsFile(saveDir));
@@ -42475,7 +42524,7 @@ async function saveSeedsForDay(saveDir, day, entry, fs = nodeSaveFs) {
     namesEdition: NAME_RULES_EDITION,
     days: Object.fromEntries(kept)
   });
-  await fs.mkdir(join7(saveDir, "seeds"));
+  await fs.mkdir(join8(saveDir, "seeds"));
   await replaceFile(fs, seedsFile(saveDir), `${JSON.stringify(store, null, 2)}
 `);
 }
@@ -42486,8 +42535,8 @@ function seedsOnOrBefore(days, day) {
 }
 
 // packages/saves/src/world-store.ts
-import { join as join8 } from "node:path";
-var worldFile = (saveDir) => join8(saveDir, "world.json");
+import { join as join9 } from "node:path";
+var worldFile = (saveDir) => join9(saveDir, "world.json");
 async function loadWorld(saveDir, fs = nodeSaveFs, migrations = WORLD_MIGRATIONS) {
   let text;
   try {
@@ -42531,7 +42580,7 @@ async function saveWorld(saveDir, world, fs = nodeSaveFs) {
 
 // packages/saves/src/profile-store.ts
 import { homedir as homedir2 } from "node:os";
-import { join as join9, resolve as resolve3 } from "node:path";
+import { join as join10, resolve as resolve3 } from "node:path";
 var PROFILE_FILE = "profile.json";
 var PROFILE_EXPORT_FILE = "export.json";
 var PROFILE_IMPORT_FILE = "import.json";
@@ -42563,7 +42612,7 @@ async function readRecords(fs, path) {
   }
 }
 async function loadProfile(profileDir, fs = nodeSaveFs) {
-  const read = await readRecords(fs, join9(profileDir, PROFILE_FILE));
+  const read = await readRecords(fs, join10(profileDir, PROFILE_FILE));
   if (read.ok) return read;
   return read.reason === "missing" ? { ok: true, records: [] } : { ok: false, reason: read.reason };
 }
@@ -42571,7 +42620,7 @@ async function writeRecords(profileDir, fs, file2, records) {
   await fs.mkdir(profileDir);
   const data = `${JSON.stringify({ version: 1, records }, null, 2)}
 `;
-  await replaceFile(fs, join9(profileDir, file2), data);
+  await replaceFile(fs, join10(profileDir, file2), data);
 }
 async function recordRun(profileDir, record2, fs = nodeSaveFs) {
   const loaded = await loadProfile(profileDir, fs);
@@ -42584,12 +42633,12 @@ async function exportProfile(profileDir, fs = nodeSaveFs) {
   const loaded = await loadProfile(profileDir, fs);
   if (!loaded.ok) throw new RangeError(`The profile on disk is unusable (${loaded.reason}).`);
   await writeRecords(profileDir, fs, PROFILE_EXPORT_FILE, loaded.records);
-  return join9(profileDir, PROFILE_EXPORT_FILE);
+  return join10(profileDir, PROFILE_EXPORT_FILE);
 }
 async function importProfile(profileDir, fs = nodeSaveFs) {
   const own2 = await loadProfile(profileDir, fs);
   if (!own2.ok) return { ok: false, reason: "profile-unusable" };
-  const incoming = await readRecords(fs, join9(profileDir, PROFILE_IMPORT_FILE));
+  const incoming = await readRecords(fs, join10(profileDir, PROFILE_IMPORT_FILE));
   if (!incoming.ok) return { ok: false, reason: incoming.reason === "corrupt" ? "invalid" : "no-file" };
   const known = new Set(own2.records.map(({ runId }) => runId));
   const fresh = incoming.records.filter(({ runId }) => {
@@ -42604,12 +42653,12 @@ async function importProfile(profileDir, fs = nodeSaveFs) {
 // packages/saves/src/legacy-move.ts
 import { homedir as homedir3 } from "node:os";
 import { mkdir as mkdir2, readFile as readFile2, readdir as readdir2, rename as rename2, rm as rm2, stat, writeFile } from "node:fs/promises";
-import { dirname, join as join10, relative } from "node:path";
+import { dirname, join as join11, relative } from "node:path";
 async function listAll(directory, base) {
   const entries = await readdir2(directory, { withFileTypes: true });
   const nested = await Promise.all(
     entries.map(async (entry) => {
-      const path = join10(directory, entry.name);
+      const path = join11(directory, entry.name);
       return entry.isDirectory() ? listAll(path, base) : [relative(base, path)];
     })
   );
@@ -42640,7 +42689,7 @@ async function sameContent(fs, a, b) {
   const [left, right] = await Promise.all([fs.listFiles(a), fs.listFiles(b)]);
   if (left.length !== right.length || left.some((file2) => !right.includes(file2))) return false;
   for (const file2 of left) {
-    const [one, other] = await Promise.all([fs.readFile(join10(a, file2)), fs.readFile(join10(b, file2))]);
+    const [one, other] = await Promise.all([fs.readFile(join11(a, file2)), fs.readFile(join11(b, file2))]);
     if (one !== other) return false;
   }
   return true;
@@ -42658,7 +42707,7 @@ async function moveFolder(fs, from, to) {
     const staging = `${to}.moving`;
     await fs.removeDirectory(staging);
     try {
-      for (const file2 of files) await fs.writeFile(join10(staging, file2), await fs.readFile(join10(from, file2)));
+      for (const file2 of files) await fs.writeFile(join11(staging, file2), await fs.readFile(join11(from, file2)));
       if (!await sameContent(fs, from, staging))
         throw new RangeError("The copy does not match the original.");
       await fs.mkdir(dirname(to));
@@ -42678,7 +42727,7 @@ async function moveLegacySaves(inputs, fs = nodeMoveFs) {
   return moveFolder(fs, legacySaveDir(inputs), resolveSaveDir(inputs));
 }
 function moveLegacyRun(saveDir, fs = nodeMoveFs) {
-  return moveFolder(fs, join10(saveDir, "run"), join10(saveDir, RUNS_DIR, LEGACY_RUN_ID));
+  return moveFolder(fs, join11(saveDir, "run"), join11(saveDir, RUNS_DIR, LEGACY_RUN_ID));
 }
 function moveDefaultLegacySaves() {
   return moveLegacySaves({ env: process.env, platform: process.platform, homedir: homedir3() });
@@ -44471,14 +44520,14 @@ function createHttpGet(options) {
 }
 
 // packages/news/src/load-headlines.ts
-import { join as join11 } from "node:path";
+import { join as join12 } from "node:path";
 var DEFAULT_MAX_HEADLINES = 40;
 var DaySchema2 = external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 var CacheSchema = external_exports.object({
   day: DaySchema2,
   headlines: external_exports.array(external_exports.object({ title: external_exports.string(), summary: external_exports.string().optional() }))
 });
-var cacheFile = (saveDir, feed) => join11(saveDir, "news", `${feed.id}.json`);
+var cacheFile = (saveDir, feed) => join12(saveDir, "news", `${feed.id}.json`);
 async function readCache(input2, feed) {
   try {
     const text = await input2.saveFs.readFile(cacheFile(input2.saveDir, feed));
@@ -44493,7 +44542,7 @@ async function writeCache(input2, feed, headlines) {
   const file2 = cacheFile(input2.saveDir, feed);
   const temporary = `${file2}.tmp`;
   try {
-    await input2.saveFs.mkdir(join11(input2.saveDir, "news"));
+    await input2.saveFs.mkdir(join12(input2.saveDir, "news"));
     await input2.saveFs.writeFileSynced(temporary, JSON.stringify({ day: input2.day, headlines }));
     await input2.saveFs.rename(temporary, file2);
   } catch {
@@ -53059,7 +53108,8 @@ var en_default3 = {
       insights: "Conclusions",
       chronicle: "Chronicle",
       hero: "Hero and kit",
-      file: "Closed file"
+      file: "Closed file",
+      story: "Story"
     },
     nav: "Sections of the board",
     closedFile: {
@@ -53813,7 +53863,8 @@ var ru_default2 = {
       insights: "\u0412\u044B\u0432\u043E\u0434\u044B",
       chronicle: "\u0425\u0440\u043E\u043D\u0438\u043A\u0430",
       hero: "\u0413\u0435\u0440\u043E\u0439 \u0438 \u0441\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435",
-      file: "\u0417\u0430\u043A\u0440\u044B\u0442\u043E\u0435 \u0434\u0435\u043B\u043E"
+      file: "\u0417\u0430\u043A\u0440\u044B\u0442\u043E\u0435 \u0434\u0435\u043B\u043E",
+      story: "\u0420\u0430\u0441\u0441\u043A\u0430\u0437"
     },
     nav: "\u0420\u0430\u0437\u0434\u0435\u043B\u044B \u0434\u043E\u0441\u043A\u0438",
     closedFile: {
@@ -55711,7 +55762,17 @@ var BOARD_TEXT = {
 };
 
 // packages/mcp/src/board/render-board.ts
-var TAB_IDS = ["board", "suspects", "clues", "insights", "map", "chronicle", "hero", "file"];
+var TAB_IDS = [
+  "board",
+  "suspects",
+  "clues",
+  "insights",
+  "map",
+  "chronicle",
+  "hero",
+  "file",
+  "story"
+];
 var tabRules = TAB_IDS.map(
   (id) => `main:has(#${id}:target) nav a[href="#${id}"]{background:var(--accent);color:var(--card);border-color:var(--accent)}`
 ).join("\n");
@@ -55857,6 +55918,8 @@ main[data-sel] svg.board g[data-rel]{opacity:1;filter:grayscale(.7) brightness(.
 details{margin:4px 0 0}
 details summary{cursor:pointer;font:12px system-ui,sans-serif;color:var(--paper-tag)}
 details p{margin:4px 0}
+.tale{max-width:640px;margin-left:auto;margin-right:auto}
+.tale p{margin:0 0 1em;text-indent:1.5em}
 .notebook{max-width:640px;margin-left:auto;margin-right:auto}
 .notebook .card{background-color:var(--paper);background-image:linear-gradient(to bottom,transparent 27px,var(--paper-rule) 28px);background-size:100% 28px;border:0;border-left:3px double var(--margin);border-radius:2px;font-family:'Segoe Print','Bradley Hand',Georgia,serif;line-height:28px;padding:0 14px 0 18px;color:var(--paper-ink);box-shadow:1px 2px 4px var(--shadow)}
 .notebook .card p{margin:0}
@@ -56003,7 +56066,7 @@ table.matrix{border-collapse:separate;border-spacing:0;width:100%;min-width:640p
 @media (max-width:560px){body{padding:16px}h1{font-size:1.5rem}}
 @media print{body{background:#fff;color:#000}.opened{display:none!important}.tab{display:block!important}nav.tabs{display:none}.card,.graph,.cork{break-inside:avoid}}
 `;
-function renderEvidenceBoard(view, turns = [], previous, strip = []) {
+function renderEvidenceBoard(view, turns = [], previous, strip = [], story) {
   const board = BOARD_TEXT[view.locale];
   const text = TAB_TEXT[view.locale];
   const e = escapeHtml;
@@ -56031,7 +56094,9 @@ ${planRules(view)}</style>
 ${renderHeader(view, board, text, fresh)}
 <p class="premise">${e(view.premise)}</p>
 <p class="meta">${e(board.nowAt)}: <strong>${e(view.location.name)}</strong></p>
-<nav class="tabs" aria-label="${e(text.nav)}">${TAB_IDS.filter((id) => id !== "file" || closed !== void 0).map((id) => `<a href="#${id}">${e(text.tabs[id])}</a>`).join("")}</nav>
+<nav class="tabs" aria-label="${e(text.nav)}">${TAB_IDS.filter(
+    (id) => (id !== "file" || closed !== void 0) && (id !== "story" || story !== void 0)
+  ).map((id) => `<a href="#${id}">${e(text.tabs[id])}</a>`).join("")}</nav>
 <section class="tab" id="board">
 <h2>${e(text.corkboard.title)}</h2>
 ${renderCork(view, board, text)}
@@ -56062,6 +56127,10 @@ ${renderHero(view, board, text, fresh)}
 <section class="tab" id="file">
 <h2>${e(text.closedFile.title)}</h2>
 ${renderClosedFile(view, closed, text)}
+</section>`}${story === void 0 ? "" : `
+<section class="tab tale" id="story">
+<h2>${e(story.title)}</h2>
+${story.paragraphs.map((paragraph) => `<p>${e(paragraph)}</p>`).join("\n")}
 </section>`}
 </main>
 <script>${SCRIPT}</script>
@@ -56074,6 +56143,7 @@ ${renderClosedFile(view, closed, text)}
 async function writeBoard(context2, runId, run, log, before) {
   const path = runBoardFile(context2.saveDir, runId);
   await context2.saveFs.mkdir(dirname2(path));
+  const story = await loadStory(context2.saveDir, runId, context2.saveFs);
   await replaceFile(
     context2.saveFs,
     path,
@@ -56081,7 +56151,8 @@ async function writeBoard(context2, runId, run, log, before) {
       viewRun(run),
       viewTurns(run, log, log.length),
       before === void 0 ? void 0 : viewRun(before),
-      viewDayStrip(run, log)
+      viewDayStrip(run, log),
+      story
     )
   );
   return path;
@@ -56100,7 +56171,7 @@ async function keepBoard(context2, runId, run, log, before) {
 }
 
 // packages/mcp/src/hall.ts
-import { join as join12, relative as relative2, sep } from "node:path";
+import { join as join13, relative as relative2, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 // packages/mcp/src/hall-page.ts
@@ -56243,7 +56314,7 @@ ${renderAchievements(records, text, e)}
 
 // packages/mcp/src/hall.ts
 var HALL_PAGE = "hall.html";
-var hallFile = (profileDir) => join12(profileDir, HALL_PAGE);
+var hallFile = (profileDir) => join13(profileDir, HALL_PAGE);
 var hallLocation = (context2) => {
   const path = hallFile(context2.profileDir);
   return { path, link: pathToFileURL(path).href };
@@ -56277,7 +56348,7 @@ async function keepHall(context2) {
 }
 
 // packages/mcp/src/stats.ts
-import { basename, dirname as dirname3, join as join13, relative as relative3, sep as sep2 } from "node:path";
+import { basename, dirname as dirname3, join as join14, relative as relative3, sep as sep2 } from "node:path";
 
 // packages/mcp/src/stats-page.ts
 var STYLE3 = `
@@ -56404,11 +56475,11 @@ async function writeStats(context2) {
   await context2.saveFs.mkdir(directory);
   await replaceFile(
     context2.saveFs,
-    join13(directory, STATS_JSON),
+    join14(directory, STATS_JSON),
     `${JSON.stringify({ ...stats, generation }, null, 2)}
 `
   );
-  await replaceFile(context2.saveFs, join13(directory, STATS_PAGE), page);
+  await replaceFile(context2.saveFs, join14(directory, STATS_PAGE), page);
 }
 async function keepGenerationLog(context2, entry) {
   try {
@@ -56796,7 +56867,7 @@ function namesInHeadlines(news) {
 }
 
 // packages/mcp/src/pending-run.ts
-import { join as join14 } from "node:path";
+import { join as join15 } from "node:path";
 var PENDING_STAGES = ["frame", "text"];
 var PendingBriefSchema = external_exports.strictObject({
   theme: external_exports.string().min(1),
@@ -56834,7 +56905,7 @@ var PendingRunSchema = external_exports.object({
   brief: PendingBriefSchema.optional()
 });
 function pendingFile(saveDir) {
-  return join14(saveDir, "pending", "state.json");
+  return join15(saveDir, "pending", "state.json");
 }
 function themeOfSeed(seed, themes) {
   const pick5 = createRng(`${seed}:theme`).roll(themes.length) - 1;
@@ -56873,7 +56944,7 @@ async function loadPending(saveDir, fs) {
 async function savePending(saveDir, pending, fs) {
   const path = pendingFile(saveDir);
   const temporary = `${path}.tmp`;
-  await fs.mkdir(join14(saveDir, "pending"));
+  await fs.mkdir(join15(saveDir, "pending"));
   try {
     await fs.writeFileSynced(temporary, `${JSON.stringify(PendingRunSchema.parse(pending), null, 2)}
 `);
@@ -57417,6 +57488,49 @@ var runNew = defineTool({
   }
 });
 
+// packages/mcp/src/tools/run-story.ts
+import { pathToFileURL as pathToFileURL3 } from "node:url";
+var runStory = defineTool({
+  name: "run_story",
+  description: 'Keeps the story of a finished run, for the player to read on the evidence board in a tab of its own (the "Story" tab). Call it once, after the closing scene, on a run that has ended in any way; on a run still on it is refused with "run-active". The story is a short detective tale of the case as it went, in the language of the run: a `title` and 3 to 12 `paragraphs` of plain text (no markup), told from what the outcome and the view of the run hold and nothing else. It is checked like any text of a case: the language of the run, and no name from the real world; a rejected story names the paragraph to fix. Calling it again replaces the story. It changes nothing in the run. The result says whether the board was rewritten, and carries its `link` when it was.',
+  inputSchema: StoryInputSchema,
+  outputSchema: external_exports.object({
+    kept: external_exports.literal(true),
+    /** The board with the story in it, when it could be written: a path to say and a `file://` link to give. */
+    board: external_exports.object({ path: external_exports.string(), link: external_exports.string() }).optional()
+  }),
+  handler: async (input2, context2) => {
+    const { runId, run, log } = await requireRun(context2);
+    if (run.status === "active") {
+      throw new ToolFailure({
+        code: "run-active",
+        message: "The run is not over, so it has no story yet.",
+        remediation: "Tell the story only after the run has ended, with the closing scene."
+      });
+    }
+    const world = await requireWorld(context2);
+    const realNames = [
+      .../* @__PURE__ */ new Set([...worldRealNames(world), ...(await seedsOfRun(context2))?.realNames ?? []])
+    ];
+    const issues = checkStory(input2, run.locale, realNames);
+    if (issues.length > 0) {
+      throw new ToolFailure({
+        code: "story-rejected",
+        message: issues.map(({ path: path2, message }) => `${path2}: ${message}`).join(" "),
+        remediation: "Fix those parts of the story and call run_story again with the whole of it."
+      });
+    }
+    await saveStory(context2.saveDir, storyOf(input2, runId, run.locale), context2.saveFs);
+    try {
+      await writeBoard(context2, runId, run, log);
+    } catch {
+      return { kept: true };
+    }
+    const path = runBoardFile(context2.saveDir, runId);
+    return { kept: true, board: { path, link: pathToFileURL3(path).href } };
+  }
+});
+
 // packages/mcp/src/startup-notice.ts
 function takeNotices(context2) {
   const { savesMoved } = context2.notices;
@@ -57868,6 +57982,7 @@ var TOOLS = [
   question,
   runGiveUp,
   runNew,
+  runStory,
   runView,
   scenarioSubmit,
   seedsSubmit,
