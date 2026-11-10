@@ -11,6 +11,7 @@ import { createDetectiveRun, endRun, type DetectiveRunState } from './detective/
 import {
   PROFILE_RECORD_VERSION,
   ProfileRecordSchema,
+  archetypeOf,
   computeProfileStats,
   profileRecordOf,
   type ProfileRecord,
@@ -81,6 +82,44 @@ describe('profileRecordOf', () => {
     for (const secret of ['culpritId', 'motive', 'solution', 'timeline', 'deductions']) {
       expect(text).not.toContain(secret);
     }
+  });
+});
+
+describe('what the hall of heroes needs', () => {
+  const setting = {
+    id: 'valdmark',
+    name: { ru: 'Вальдмарк', en: 'Valdmark' },
+    climate: { zone: 'temperate', seasons: ['winter'], weather: ['frost'], hazards: [] },
+  };
+
+  it('names the kind of game and the theme of the case', () => {
+    const { run, log } = played('proven');
+    const made = profileRecordOf(run, log);
+
+    expect(made).toMatchObject({ archetype: 'detective', theme: run.case.crimeType });
+    expect(made).not.toHaveProperty('setting');
+  });
+
+  it('names the country of the run in both languages, without its climate', () => {
+    const { run, log } = played('proven');
+    const made = profileRecordOf(
+      { ...run, setting: setting as unknown as DetectiveRunState['setting'] },
+      log,
+    );
+
+    expect(made?.setting).toEqual({ id: 'valdmark', name: setting.name });
+    expect(JSON.stringify(made)).not.toContain('climate');
+    expect(ProfileRecordSchema.safeParse(made).success).toBe(true);
+  });
+
+  it('reads a record from before the field as a detective run, and still accepts it', () => {
+    const old: Record<string, unknown> = { ...record() };
+    delete old.archetype;
+    delete old.theme;
+
+    expect(ProfileRecordSchema.safeParse(old).success).toBe(true);
+    expect(archetypeOf(old)).toBe('detective');
+    expect(archetypeOf({ archetype: 'detective' })).toBe('detective');
   });
 });
 

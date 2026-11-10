@@ -41117,6 +41117,15 @@ var ProfileRecordSchema = external_exports.object({
   version: external_exports.literal(PROFILE_RECORD_VERSION),
   /** The run's own seed: one record for a run, so recording it twice or importing it twice adds nothing. */
   runId: external_exports.string().min(1),
+  /**
+   * The kind of game the run was. Every record before the second kind of game is a detective's, so a record without it
+   * is read as one (see `archetypeOf`); a page of the profile groups the runs by it and each kind says how it is shown.
+   */
+  archetype: ArchetypeSchema.optional(),
+  /** What the case was about, in the words of its archetype's themes: the crime type for a detective. */
+  theme: external_exports.string().min(1).optional(),
+  /** The country of the mirror world the run was set in, named in both languages; none for a run set nowhere. */
+  setting: external_exports.object({ id: external_exports.string().min(1), name: MirrorFormsSchema }).optional(),
   /** The id of the run's folder in the saves, for opening that run's report later; absent from older records. */
   folder: external_exports.string().optional(),
   locale: external_exports.enum(["ru", "en"]),
@@ -41144,6 +41153,9 @@ function profileRecordOf(run, log) {
   return {
     version: PROFILE_RECORD_VERSION,
     runId: run.seed,
+    archetype: run.archetype,
+    theme: run.case.crimeType,
+    ...run.setting === null ? {} : { setting: { id: run.setting.id, name: run.setting.name } },
     ...run.runId === void 0 ? {} : { folder: run.runId },
     locale: run.locale,
     title: run.case.title,

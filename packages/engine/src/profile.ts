@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { END_REASONS, EndReasonSchema, type EndReason } from './run.js';
 import { deriveStats, type RunLog } from './detective/event-log.js';
 import { DetectiveHeroSchema } from './detective/archetype.js';
+import { ArchetypeSchema, type Archetype } from './hero.js';
+import { MirrorFormsSchema } from './world/world.js';
 import type { DetectiveRunState } from './detective/run-state.js';
 
 // The player's profile is a list of the runs that are over, one small record each, and nothing else: no counter
@@ -19,6 +21,15 @@ export const ProfileRecordSchema = z.object({
   version: z.literal(PROFILE_RECORD_VERSION),
   /** The run's own seed: one record for a run, so recording it twice or importing it twice adds nothing. */
   runId: z.string().min(1),
+  /**
+   * The kind of game the run was. Every record before the second kind of game is a detective's, so a record without it
+   * is read as one (see `archetypeOf`); a page of the profile groups the runs by it and each kind says how it is shown.
+   */
+  archetype: ArchetypeSchema.optional(),
+  /** What the case was about, in the words of its archetype's themes: the crime type for a detective. */
+  theme: z.string().min(1).optional(),
+  /** The country of the mirror world the run was set in, named in both languages; none for a run set nowhere. */
+  setting: z.object({ id: z.string().min(1), name: MirrorFormsSchema }).optional(),
   /** The id of the run's folder in the saves, for opening that run's report later; absent from older records. */
   folder: z.string().optional(),
   locale: z.enum(['ru', 'en']),
@@ -42,6 +53,10 @@ export const ProfileRecordSchema = z.object({
 });
 export type ProfileRecord = z.infer<typeof ProfileRecordSchema>;
 
+/** The archetype of a record: a record from before the field was written is a detective's. */
+export const archetypeOf = (record: Pick<ProfileRecord, 'archetype'>): Archetype =>
+  record.archetype ?? 'detective';
+
 /**
  * The record of a run that is over, from its final state and its log. The numbers of play come from the log
  * (see `deriveStats`), the rest from the state; an active run has no record.
@@ -52,6 +67,9 @@ export function profileRecordOf(run: DetectiveRunState, log: RunLog): ProfileRec
   return {
     version: PROFILE_RECORD_VERSION,
     runId: run.seed,
+    archetype: run.archetype,
+    theme: run.case.crimeType,
+    ...(run.setting === null ? {} : { setting: { id: run.setting.id, name: run.setting.name } }),
     ...(run.runId === undefined ? {} : { folder: run.runId }),
     locale: run.locale,
     title: run.case.title,
