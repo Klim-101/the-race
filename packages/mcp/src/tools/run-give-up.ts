@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
 import { RunSummarySchema, TurnSchema, assertFreshTurn, requireRun, summarizeRun } from '../play.js';
 import { keepProfile } from '../profile.js';
+import { hallLocation, keepHall } from '../hall.js';
 import { keepStats } from '../stats.js';
 import { ToolFailure } from '../tool-error.js';
 
@@ -23,6 +24,8 @@ export const runGiveUp = defineTool({
   outputSchema: z.object({
     view: RunSummarySchema,
     stats: z.object({ turns: z.int(), minutes: z.int(), cluesFound: z.int(), insights: z.int() }),
+    /** The hall of heroes with this hero in it, when it could be written: a path to say and a `file://` link to give. */
+    hall: z.object({ path: z.string(), link: z.string() }).optional(),
   }),
   handler: async ({ turn }, context) => {
     const { run, log } = await requireRun(context);
@@ -39,7 +42,12 @@ export const runGiveUp = defineTool({
     if (ended !== run) await saveRun(context.saveDir, ended, context.saveFs);
     await keepProfile(context, ended, log);
     await keepStats(context);
+    const hall = (await keepHall(context)) ? hallLocation(context) : undefined;
     const { turns, minutes, cluesFound, insights } = deriveStats(log);
-    return { view: summarizeRun(ended), stats: { turns, minutes, cluesFound, insights } };
+    return {
+      view: summarizeRun(ended),
+      stats: { turns, minutes, cluesFound, insights },
+      ...(hall === undefined ? {} : { hall }),
+    };
   },
 });

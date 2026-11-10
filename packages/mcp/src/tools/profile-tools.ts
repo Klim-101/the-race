@@ -11,6 +11,7 @@ import {
 } from '@the-race/engine';
 import { exportProfile, importProfile } from '@the-race/saves';
 import { z } from 'zod';
+import { hallLocation, keepHall } from '../hall.js';
 import { defineTool } from '../define-tool.js';
 import { requireProfile } from '../profile.js';
 import { ToolFailure } from '../tool-error.js';
@@ -35,6 +36,8 @@ export const profileView = defineTool({
      * that is over, the last one too, so the hero who just played had one tool slot fewer after a win.
      */
     earned: z.object({ toolSlots: z.int(), traitSlots: z.int(), luckTokens: z.int() }),
+    /** The hall of heroes, written afresh for the call: a path to say and a `file://` link to give; absent if it could not be written. */
+    hall: z.object({ path: z.string(), link: z.string() }).optional(),
     recent: z.array(
       z.object({
         title: z.string(),
@@ -48,7 +51,9 @@ export const profileView = defineTool({
   }),
   handler: async (_input, context) => {
     const records = await requireProfile(context);
+    const hall = (await keepHall(context)) ? hallLocation(context) : undefined;
     return {
+      ...(hall === undefined ? {} : { hall }),
       stats: { ...computeProfileStats(records) },
       reasons: [...END_REASONS],
       earned: {
