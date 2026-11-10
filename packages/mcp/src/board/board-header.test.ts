@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { conditionWords } from './board-header.js';
 import { freshSince } from './board-new.js';
 import { leadTokens, pickableTokens, placeTokens } from './board-relations.js';
+import { LOCALE_TEXT } from '../locales/index.js';
 import { TAB_TEXT } from './tab-text.js';
 import { SCRIPT, renderEvidenceBoard } from './render-board.js';
 
@@ -58,6 +59,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
     revealedTraits: [],
     setting: null,
     inspiration: null,
+    remembers: null,
     news: [],
     location: { id: 'market', name: 'Market', description: '', exits: [] },
     map: {
@@ -335,5 +337,41 @@ describe('picking across the tabs', () => {
 
     expect(attrs.get('data-sel')).toBe('lead:cat');
     expect(attrs.has('data-open')).toBe(false);
+  });
+});
+
+describe('the hero the run remembers, in the header', () => {
+  const remembered = (remembers: View['remembers'], locale: 'en' | 'ru' = 'en'): string =>
+    /<p class="meta remembered">.*?<\/p>/.exec(renderEvidenceBoard(viewOf({ remembers, locale })))?.[0] ?? '';
+
+  it('says who they were and how it ended, with the country and the theme when the record has them', () => {
+    const line = remembered({
+      name: 'Bo Reyes',
+      background: 'police',
+      endReason: 'time-ran-out',
+      setting: { id: 'norland', name: { ru: 'Норланд', en: 'Norland' } },
+      theme: 'forgery',
+    });
+
+    expect(line).toContain('Remembered: <strong>Bo Reyes</strong>');
+    expect(line).toContain('time ran out');
+    expect(line).toContain('Norland');
+    expect(line).toMatch(/forgery|Forgery/);
+  });
+
+  it('is told in the language of the run, and leaves out what the record lacks', () => {
+    const line = remembered({ name: 'Bo Reyes', background: 'police', endReason: 'gave-up' }, 'ru');
+
+    expect(line).toContain('Помнят: <strong>Bo Reyes</strong>');
+    expect(line).toContain(LOCALE_TEXT.ru.stats.reasons['gave-up']);
+    expect(line.split(' · ')).toHaveLength(2);
+  });
+
+  it('is escaped, and is absent from a run that remembers no one', () => {
+    const line = remembered({ name: '<b>Bo</b>', background: 'police', endReason: 'proven' });
+
+    expect(line).toContain('&lt;b&gt;Bo&lt;/b&gt;');
+    expect(line).not.toContain('<b>');
+    expect(renderEvidenceBoard(viewOf({ remembers: null }))).not.toContain('class="meta remembered"');
   });
 });

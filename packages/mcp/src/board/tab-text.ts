@@ -47,6 +47,8 @@ export interface TabText {
     readonly day: string;
     readonly timeLeft: string;
     readonly condition: string;
+    /** The label of the line about the past hero the run remembers. */
+    readonly remembered: string;
     readonly reputationBands: Record<'good' | 'middling' | 'poor', string>;
     readonly nervesBands: Record<'steady' | 'strained' | 'frayed', string>;
     readonly sleepBands: Record<'rested' | 'tired' | 'exhausted', string>;
