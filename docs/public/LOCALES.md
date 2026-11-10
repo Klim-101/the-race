@@ -10,9 +10,15 @@ Two kinds of text are not in these files, on purpose:
 ## Adding a language
 
 1. Add the code to `LOCALES` in `packages/engine/src/locale.ts`.
-2. Copy `packages/mcp/src/locales/en.json` to `<code>.json` and translate the values, never the keys.
+2. Write `packages/mcp/src/locales/<code>.json`: translate the values of `en.json`, never the keys. By hand, or with the work file below.
 3. Import it in `packages/mcp/src/locales/index.ts` next to the others.
 4. Run `npm run typecheck` and `npm test`.
+
+### The work file
+
+`npm run locale:keys -- export <code>` writes `locale-work/<code>.keys.json` (git-ignored): every key of `en.json` with its English text, an empty `text` for the translation and `"reviewed": false`. Fill in `text` with whatever translator you trust, a person or a tool of your own; the project calls none and has none in the game. Keep every `{placeholder}` as it is. Then `npm run locale:keys -- import <code>` checks the file (nothing left empty, no key the English does not have, the same placeholders) and writes `<code>.json` in the order of `en.json`; if it finds a problem it names it and writes nothing.
+
+A text is trusted only once a person who reads the language has checked it and set `"reviewed": true`. Every text not marked so is listed in `<code>.unreviewed.json` beside the locale file, and `locales.test.ts` fails while any such file exists, so a machine translation cannot be merged by accident: the reviewer reads the texts, marks them, imports again (which removes the list when nothing is left), and commits. When `en.json` gains keys later, `export` again: what the language already says is carried over as reviewed and only the new keys are left to do.
 
 A key missing from a file, or an id of the engine without a word, does not compile; `locales.test.ts` also fails on a key that exists in one language and not in another, on an empty text and on a placeholder that one language fills in and another does not.
 

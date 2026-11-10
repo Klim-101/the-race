@@ -8,3 +8,6 @@ dev/private/
 
 # Working copies of agents and worktrees.
 .claude/worktrees/
+
+# The work files of a translation (see docs/public/LOCALES.md).
+locale-work/
