@@ -16,6 +16,7 @@ import { applyPatch, toJsonPointer, type PatchOp } from '../src/json-patch.js';
 import { SEED_CRIMES } from '../src/news/choose-seed.js';
 import type { NewsSeed } from '../src/news/seed.js';
 import { luckTokensOf, toolSlotsOf } from '../src/progress.js';
+import { chooseRemembered } from '../src/remembered.js';
 import type { ProfileRecord } from '../src/profile.js';
 import { SCENARIOS, scenarioOf, type ArchetypeRun } from '../src/scenarios.js';
 import type { ScenarioContext, ScenarioKind, StartRunInput } from '../src/scenario.js';
@@ -257,6 +258,36 @@ describe('the detective scenario', () => {
 
       expect(run.luckTokens).toEqual({ total: luckTokensOf(2), left: luckTokensOf(2) });
       expect(DETECTIVE_SCENARIO.startRun(START).luckTokens.total).toBe(luckTokensOf(0));
+    });
+
+    it('remembers a hero of the profile on the dice of its seed, and no one when the profile has none to give', () => {
+      const earlier = (name: string, won: boolean): ProfileRecord => ({
+        version: 1,
+        runId: `earlier-${name}`,
+        locale: 'en',
+        title: 'A case',
+        hero: { name, background: 'police', lifeState: undefined },
+        endReason: won ? 'proven' : 'time-ran-out',
+        won,
+        days: 3,
+        turns: 30,
+        minutes: 300,
+        cluesFound: 4,
+        insights: 1,
+        traitsRevealed: 0,
+        traitsTotal: 2,
+      });
+      const records = [earlier('Ada', false), earlier('Bo', true)];
+      const seeds = Array.from({ length: 60 }, (_, index) => `remember-${String(index)}`);
+
+      const runs = seeds.map((seed) => DETECTIVE_SCENARIO.startRun({ ...START, seed, records }));
+
+      for (const [index, run] of runs.entries()) {
+        expect(run.remembers).toEqual(chooseRemembered(records, seeds[index] ?? '') ?? null);
+      }
+      expect(runs.some(({ remembers }) => remembers?.name === 'Ada')).toBe(true);
+      expect(runs.some(({ remembers }) => remembers === null)).toBe(true);
+      expect(DETECTIVE_SCENARIO.startRun(START).remembers).toBeNull();
     });
   });
 });

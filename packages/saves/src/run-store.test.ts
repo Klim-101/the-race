@@ -66,6 +66,29 @@ describe('saveRun and loadRun', () => {
     expect(loaded.ok && loaded.run.kit.filter(({ suitcase }) => suitcase === true)).toHaveLength(3);
   });
 
+  it('loads a run that remembers a hero, which the replay of its log has to know', async () => {
+    const fs = memoryFs();
+    const started = newRun();
+    const remembers = { name: 'Bo Reyes', background: 'police', endReason: 'time-ran-out' } as const;
+    const run = createDetectiveRun({
+      hero: started.hero,
+      traits: started.traits,
+      case: started.case,
+      seed: started.seed,
+      runId: RUN_ID,
+      rngState: started.rngState,
+      locale: 'en',
+      remembers,
+    });
+    const { run: played, log } = playTurns(run, WALK);
+
+    await saveRun(DIR, played, fs, log);
+    const loaded = await loadRun(DIR, RUN_ID, fs);
+
+    expect(loaded).toMatchObject({ ok: true });
+    expect(loaded.ok && loaded.run.remembers).toEqual(remembers);
+  });
+
   it('keeps the generation before the current one', async () => {
     const fs = memoryFs();
     const first = newRun();

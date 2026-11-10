@@ -4,7 +4,7 @@
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { DETECTIVE_SKILL_PRESETS, DetectiveCaseSchema } from '@the-race/engine';
-import { runBoardFile, runFiles } from '@the-race/saves';
+import { runBoardFile, runFiles, saveRun } from '@the-race/saves';
 import { describe, expect, it } from 'vitest';
 import {
   HERO_CHOICES,
@@ -188,6 +188,18 @@ describe('run_view with a run', () => {
     await call(runNew, { locale: 'en' }, context).catch(() => undefined);
     const view = await call(runView, {}, context);
     expect(view.body).toMatchObject({ status: 'active', turn: 0, endReason: null });
+  });
+
+  it('shows the hero the run remembers, and none for a run that remembers no one', async () => {
+    const context = await activeRun();
+    expect((await call(runView, {}, context)).body).toMatchObject({ remembers: null });
+    const loaded = await loadTheRun(context.saveDir, context.fs);
+    if (!loaded.ok) throw new Error('No run.');
+    const remembers = { name: 'Bo Reyes', background: 'police', endReason: 'time-ran-out' } as const;
+
+    await saveRun(context.saveDir, { ...loaded.run, remembers }, context.fs, loaded.log);
+
+    expect((await call(runView, {}, context)).body).toMatchObject({ remembers });
   });
 
   it('shows a finished run, and says so when the only save is unusable', async () => {

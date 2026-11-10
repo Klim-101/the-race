@@ -111,7 +111,7 @@ function parseRunText(
 
 /**
  * Whether playing `log` from the start of the run reaches `run`. The start is rebuilt from the run itself:
- * hero, traits, case, seed, locale, setting and inspiration never change during a run, and the dice a run started with are the
+ * hero, traits, case, seed, locale, setting, inspiration and the hero remembered never change during a run, and the dice a run started with are the
  * dice before its first logged turn (or, with no turns, the dice it has now). So the log file needs to hold
  * nothing but the log.
  *
@@ -130,6 +130,7 @@ function replayed(run: DetectiveRunState, log: RunLog): DetectiveRunState | unde
       locale: run.locale,
       setting: run.setting,
       inspiration: run.inspiration,
+      remembers: run.remembers,
       runId: run.runId,
       toolSlots: run.toolSlots,
       luckTokens: run.luckTokens.total,
