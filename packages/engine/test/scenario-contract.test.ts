@@ -15,7 +15,7 @@ import { SHARED_ISSUE_CODES } from '../src/issues.js';
 import { applyPatch, toJsonPointer, type PatchOp } from '../src/json-patch.js';
 import { SEED_CRIMES } from '../src/news/choose-seed.js';
 import type { NewsSeed } from '../src/news/seed.js';
-import { toolSlotsOf } from '../src/progress.js';
+import { luckTokensOf, toolSlotsOf } from '../src/progress.js';
 import type { ProfileRecord } from '../src/profile.js';
 import { SCENARIOS, scenarioOf, type ArchetypeRun } from '../src/scenarios.js';
 import type { ScenarioContext, ScenarioKind, StartRunInput } from '../src/scenario.js';
@@ -206,6 +206,7 @@ describe('the detective scenario', () => {
           setting: null,
           inspiration: START.inspiration,
           toolSlots: toolSlotsOf([]),
+          luckTokens: luckTokensOf(0),
         }),
       );
     });
@@ -232,6 +233,30 @@ describe('the detective scenario', () => {
 
       expect(run.toolSlots).toBe(toolSlotsOf([won, won]));
       expect(run.toolSlots).toBeGreaterThan(DETECTIVE_SCENARIO.startRun(START).toolSlots);
+    });
+
+    it('gives the hero the luck tokens that their wins have earned', () => {
+      const won: ProfileRecord = {
+        version: 1,
+        runId: 'earlier',
+        locale: 'en',
+        title: 'A case',
+        hero: { name: 'Mira', background: 'analyst', lifeState: undefined },
+        endReason: 'proven',
+        won: true,
+        days: 1,
+        turns: 1,
+        minutes: 1,
+        cluesFound: 0,
+        insights: 0,
+        traitsRevealed: 0,
+        traitsTotal: 2,
+      };
+
+      const run = DETECTIVE_SCENARIO.startRun({ ...START, records: [won, won] });
+
+      expect(run.luckTokens).toEqual({ total: luckTokensOf(2), left: luckTokensOf(2) });
+      expect(DETECTIVE_SCENARIO.startRun(START).luckTokens.total).toBe(luckTokensOf(0));
     });
   });
 });

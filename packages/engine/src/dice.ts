@@ -55,6 +55,26 @@ export function createRng(seed: string | number): Rng {
   return restoreRng(typeof seed === 'string' ? hashSeed(seed) : seed >>> 0);
 }
 
+/**
+ * Dice with luck tokens in hand. A failed check rolled on them is rolled once more per token, and the second die
+ * stands. The purse is filled for one turn by the caller, which reads `spent` afterwards to pay the tokens.
+ */
+export interface LuckyRng extends Rng {
+  readonly luck: { left: number; spent: number };
+}
+
+/** The same dice with `tokens` luck tokens to spend; the sequence of dice is not touched. */
+export function withLuck(rng: Rng, tokens: number): LuckyRng {
+  return {
+    next: () => rng.next(),
+    roll: (sides) => rng.roll(sides),
+    state: () => rng.state(),
+    luck: { left: tokens, spent: 0 },
+  };
+}
+
+export const isLucky = (rng: Rng): rng is LuckyRng => 'luck' in rng;
+
 export interface SkillCheckResult<Skill extends string = string> {
   skill: Skill;
   die: number;
@@ -67,6 +87,8 @@ export interface SkillCheckResult<Skill extends string = string> {
   success: boolean;
   /** The state of the dice before this roll: with it the same roll can be replayed. */
   rngState: number;
+  /** Set when a luck token was spent on this check: the die that failed first. The die above is the second, which stands. */
+  rerolled?: { die: number };
 }
 
 /**
@@ -117,8 +139,16 @@ export function rollCheck<Skill extends string>(
   modifier = 0,
 ): SkillCheckResult<Skill> {
   const rngState = rng.state();
-  const die = rng.roll(D20_SIDES);
+  const first = rng.roll(D20_SIDES);
   const skillLevel = skills[check.skill];
+  // A failed check is rolled again when a luck token is in hand; the second die stands, so luck is used once per die.
+  const lucky =
+    isLucky(rng) && rng.luck.left > 0 && !isCheckSuccess(first, skillLevel, modifier, check.difficulty);
+  if (lucky) {
+    rng.luck.left -= 1;
+    rng.luck.spent += 1;
+  }
+  const die = lucky ? rng.roll(D20_SIDES) : first;
   const total = die + skillLevel + modifier;
   const critical = die === CRITICAL_SUCCESS_DIE ? 'success' : die === CRITICAL_FAILURE_DIE ? 'failure' : null;
   return {
@@ -131,5 +161,6 @@ export function rollCheck<Skill extends string>(
     critical,
     success: isCheckSuccess(die, skillLevel, modifier, check.difficulty),
     rngState,
+    ...(lucky ? { rerolled: { die: first } } : {}),
   };
 }

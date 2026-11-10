@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { chooseSeed } from '../news/choose-seed.js';
-import { toolSlotsOf } from '../progress.js';
+import { luckTokensOf, toolSlotsOf, winsOf } from '../progress.js';
 import type { ScenarioKind } from '../scenario.js';
 import { ISSUE_ORDER } from './case-issue.js';
 import { GENERATED_RULES } from './case-rules.js';
@@ -55,5 +55,7 @@ export const DETECTIVE_SCENARIO: ScenarioKind<
       inspiration: input.inspiration,
       // The tool slots the player's runs have earned this hero.
       toolSlots: toolSlotsOf(input.records),
+      // The luck tokens they have earned: one more for every win.
+      luckTokens: luckTokensOf(winsOf(input.records)),
     }),
 };

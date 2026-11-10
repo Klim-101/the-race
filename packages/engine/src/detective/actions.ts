@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { assertNever } from '../assert-never.js';
 import { endReasonOfMeters } from '../meters.js';
-import { rollCheck, type Rng, type SkillCheckResult } from '../dice.js';
+import { isLucky, rollCheck, withLuck, type Rng, type SkillCheckResult } from '../dice.js';
 import type { Hazard, Weather } from '../world/climate.js';
 import { collectModifier } from '../modifiers.js';
 import { distinctFelt, feltModifier, feltShield, type SignalFelt } from '../signals.js';
@@ -93,19 +93,30 @@ import {
   type DeduceOutcome,
 } from './verdict.js';
 
+/**
+ * `luck: true` on an intent that rolls a check spends a luck token if the first die fails: the check is rolled again
+ * and the second die stands. The token is spent only when the re-roll happens; with none left the intent is refused.
+ */
+const LuckSchema = z.boolean().optional();
+
 // What a player can ask for. A check of a skill happens inside the intents that need one, so there is no
 // free-standing "use a skill".
 export const IntentSchema = z.discriminatedUnion('kind', [
   /** A quick glance at the place: finds what lies in plain sight. */
   z.object({ kind: z.literal('look') }),
   /** Go to a neighbouring place; a locked door may need a key or a skill check. */
-  z.object({ kind: z.literal('move'), locationId: EntityIdSchema }),
+  z.object({ kind: z.literal('move'), locationId: EntityIdSchema, luck: LuckSchema }),
   /**
    * A thorough search. Of the whole place: every hidden clue gets a check. Of a place made of parts (from the
    * ruleset of parts on) it is a search of one part, named by `partId`, with the tool of the kit named by
    * `toolId` against an obstacle (left out, the kit's best fit is used).
    */
-  z.object({ kind: z.literal('search'), partId: EntityIdSchema.optional(), toolId: GearIdSchema.optional() }),
+  z.object({
+    kind: z.literal('search'),
+    partId: EntityIdSchema.optional(),
+    toolId: GearIdSchema.optional(),
+    luck: LuckSchema,
+  }),
   /** Question a suspect of the place, showing clues that may break their lies. */
   InterrogateIntentSchema,
   /** Link found clues into an insight. */
@@ -122,9 +133,15 @@ export const IntentSchema = z.discriminatedUnion('kind', [
     toolId: GearIdSchema.optional(),
     witnessId: EntityIdSchema.optional(),
     aboutSuspectId: EntityIdSchema.optional(),
+    luck: LuckSchema,
   }),
   /** Study a clue the hero holds with a tool of the kit, for a lead. */
-  z.object({ kind: z.literal('study'), clueId: EntityIdSchema, toolId: GearIdSchema.optional() }),
+  z.object({
+    kind: z.literal('study'),
+    clueId: EntityIdSchema,
+    toolId: GearIdSchema.optional(),
+    luck: LuckSchema,
+  }),
   /** Sit down at a teahouse or a cafe for a while: a little of the nerves comes back. */
   z.object({ kind: z.literal('sit') }),
   /** The final accusation, which ends the run. */
@@ -192,7 +209,8 @@ export type RefusalCode =
   | 'already-carried'
   | 'no-slot'
   | 'not-in-suitcase'
-  | 'pockets-full';
+  | 'pockets-full'
+  | 'no-luck';
 
 /** Why an intent was not carried out. Nothing changed and no time passed. */
 export interface Refusal {
@@ -766,8 +784,19 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
  * out is refused with a code, and then nothing changes and no dice are rolled.
  */
 export function resolveIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resolved {
-  const dispatched = dispatchIntent(run, input, rng);
-  if (!dispatched.ok) return dispatched;
+  const parsed = IntentSchema.safeParse(input);
+  const wantsLuck = parsed.success && 'luck' in parsed.data && parsed.data.luck === true;
+  if (wantsLuck && run.status === 'active' && run.luckTokens.left < 1) {
+    return { ok: false, refusal: { code: 'no-luck', message: 'The hero has no luck tokens left.' } };
+  }
+  // One token buys one re-roll in a turn: the first check that fails.
+  const dice = wantsLuck ? withLuck(rng, 1) : rng;
+  const rolled = dispatchIntent(run, input, dice);
+  if (!rolled.ok) return rolled;
+  const luckSpent = isLucky(dice) && dice.luck.spent > 0;
+  const dispatched = luckSpent
+    ? { ...rolled, run: { ...rolled.run, luckTokens: { ...run.luckTokens, left: run.luckTokens.left - 1 } } }
+    : rolled;
   const resolution = applyFatigue(run, dispatched, rng);
   // The turn is settled here, once, for every kind of intent: the night, scheduled events and the ways to lose.
   const slept = sleepIfDue(resolution, run.clock.day, rng);
@@ -777,13 +806,15 @@ export function resolveIntent(run: DetectiveRunState, input: unknown, rng: Rng):
   // Last, so that a message is read by a hero who is still on the case, at the place the turn left them in.
   const { run: settled, arrived: newMessages } = deliverMessages(clockSettled);
   const newLeadIds = settled.earnedLeads.slice(run.earnedLeads.length).map(({ leadId }) => leadId);
-  return { ...slept, run: settled, revealed: shown.revealed, newLeadIds, newMessages };
+  return { ...slept, run: settled, luckSpent, revealed: shown.revealed, newLeadIds, newMessages };
 }
 
 /** What `resolveIntent` returns: every carried-out turn says which hidden traits it showed, often none. */
 export type Resolved =
   | Extract<Resolution, { ok: false }>
   | (Extract<Resolution, { ok: true }> & {
+      /** A luck token was spent in this turn: a failed check was rolled again, and the second die stood. */
+      readonly luckSpent: boolean;
       readonly revealed: readonly Revealed[];
       /** The leads this turn earned, by id: the view says what each is. */
       readonly newLeadIds: readonly string[];

@@ -26,7 +26,7 @@ the RACE is a text roguelike that runs inside [Claude Code](https://claude.com/c
 2. **The case.** A separate agent, in a context of its own, turns one of the day's seeds into a case and hands it straight to the engine. The engine checks that the case can be solved by anyone, whatever their kit and traits, before the run begins. You get a premise, a cast and a clock, and in a disappearance a deadline that ends the run.
 3. **The investigation.** You walk a small town, glance round a room, then search one thing at a time: a desk, a cabinet, a bin, a safe. You talk to suspects, show them what you found, and watch lies fall. You link clues into conclusions. In a disappearance messages reach you by themselves (a text, a call, a note left in a place), and a number or a line can be traced to see where it came from. The board in your browser keeps the corkboard, the map and the notes.
 4. **The accusation.** You name the culprit, the motive and the evidence, and in a disappearance the place where the victim is kept. The engine rules: proven, unproven or wrong. The place has to be reasoned to, not guessed: naming the right place without the conclusion that leads to it is only unproven. Only then does the story tell you what really happened.
-5. **The tally.** The run is written into a local profile. A win opens more tool slots for the next hero.
+5. **The tally.** The run is written into a local profile. A win opens more tool slots, trait slots and luck tokens for the next hero.
 
 You play by picking from a short list of moves or by saying what you want in your own words. Either way, one action goes to the engine, the engine rolls the dice, and the narrator tells you what came of it.
 

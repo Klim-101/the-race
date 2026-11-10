@@ -137,6 +137,8 @@ export const TurnResultSchema = z.object({
   events: z.array(TurnEventSchema).default([]),
   /** What the signal did in this turn; empty for a hero without a signal and for a turn it did not touch. */
   felt: z.array(FeltSignalSchema).default([]),
+  /** A luck token was spent in this turn: a failed check was rolled again and the second die stood. */
+  luckSpent: z.boolean().default(false),
   /** The hidden traits this turn showed, each told once; empty on most turns. */
   revealed: z.array(RevealedTraitSchema).default([]),
   /** The leads this turn earned, in the hero's own words; the view lists them all. Often none. */
@@ -279,6 +281,7 @@ export async function playIntent(
     outcome: { ...resolution.outcome },
     events: eventsOfTurn(run, resolution.run),
     felt: feltOfTurn(run, resolution.felt ?? []),
+    luckSpent: resolution.luckSpent,
     revealed: revealedOfTurn(resolution.revealed),
     leads: resolution.newLeadIds.flatMap((leadId) =>
       caseLeads.filter(({ id }) => id === leadId).map(({ id, reason }) => ({ id, reason })),

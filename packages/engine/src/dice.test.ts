@@ -3,7 +3,15 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildHero } from '../test/fixtures/cheese-case.js';
-import { createRng, D20_SIDES, passChance, passChanceWithoutLuck, restoreRng, rollCheck } from './dice.js';
+import {
+  createRng,
+  D20_SIDES,
+  passChance,
+  passChanceWithoutLuck,
+  restoreRng,
+  rollCheck,
+  withLuck,
+} from './dice.js';
 
 describe('passChance', () => {
   it('counts the faces of the d20, with a natural 20 always in and a natural 1 always out', () => {
@@ -175,5 +183,52 @@ describe('rollCheck', () => {
     const control = createRng('one');
     control.roll(D20_SIDES);
     expect(rng.state()).toBe(control.state());
+  });
+});
+
+describe('withLuck', () => {
+  const check = { skill: 'perception', difficulty: 25 } as const;
+  const skills = { perception: 0 };
+
+  it('does not change the dice themselves', () => {
+    const plain = createRng(7);
+    const lucky = withLuck(createRng(7), 0);
+
+    expect([lucky.roll(20), lucky.next(), lucky.state()]).toEqual([
+      plain.roll(20),
+      plain.next(),
+      plain.state(),
+    ]);
+  });
+
+  it('rolls an unreachable check again once per token, and the second die stands', () => {
+    for (let seed = 0; seed < 200; seed += 1) {
+      const lucky = withLuck(createRng(seed), 1);
+      const plain = createRng(seed);
+      const first = plain.roll(20);
+      const second = plain.roll(20);
+
+      const result = rollCheck(lucky, skills, check);
+
+      if (first === 20) {
+        expect(result.rerolled).toBeUndefined();
+        expect(lucky.luck).toEqual({ left: 1, spent: 0 });
+      } else {
+        expect(result.rerolled).toEqual({ die: first });
+        expect(result.die).toBe(second);
+        expect(lucky.luck).toEqual({ left: 0, spent: 1 });
+        // The purse is empty now: the next failure stands.
+        expect(rollCheck(lucky, skills, check).rerolled).toBeUndefined();
+      }
+    }
+  });
+
+  it('never re-rolls a success', () => {
+    const lucky = withLuck(createRng(3), 5);
+
+    const result = rollCheck(lucky, skills, { skill: 'perception', difficulty: 1 }, 30);
+
+    expect(result.success).toBe(true);
+    expect(lucky.luck.spent).toBe(0);
   });
 });

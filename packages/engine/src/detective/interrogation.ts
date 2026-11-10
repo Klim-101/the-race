@@ -53,6 +53,8 @@ export const InterrogateIntentSchema = z.object({
   clueIds: z.array(EntityIdSchema).max(20).default([]),
   /** Conclusions the hero has drawn, put to the suspect as a question (from the ruleset of talks on). */
   insightIds: z.array(EntityIdSchema).max(10).optional(),
+  /** Spend a luck token to roll the check again if it fails (see `LuckSchema` in `actions.ts`). */
+  luck: z.boolean().optional(),
 });
 export type InterrogateIntent = z.infer<typeof InterrogateIntentSchema>;
 

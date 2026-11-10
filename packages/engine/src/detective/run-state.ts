@@ -62,7 +62,7 @@ import { suitcaseOf } from './suitcase.js';
 import { VENUE_RULESET_VERSION, sitsLeft } from './venue.js';
 import { offeredHere } from './stock.js';
 import { TraitSceneSchema, drawTraitScenes } from './trait-scenes.js';
-import { MAX_TOOL_SLOTS, START_TOOL_SLOTS } from '../progress.js';
+import { MAX_LUCK_TOKENS, MAX_TOOL_SLOTS, START_TOOL_SLOTS } from '../progress.js';
 import { isLeadEarned, isLeadOpen, isPlaceKnown, leadsEarnedBy } from './leads.js';
 import { SUSPECT_MOODS, isClosed, moodOf, moodWord } from './suspect-mood.js';
 import { SEARCH_BY_PART_RULESET_VERSION, partsOfPlace } from './search-parts.js';
@@ -234,6 +234,11 @@ export const DetectiveRunStateSchema = z
     kit: z.array(KitItemSchema).default([]),
     /** How many tools the suitcase holds, besides the phone and what the hero's trade gave; earned across runs. */
     toolSlots: z.int().min(1).max(MAX_TOOL_SLOTS).default(START_TOOL_SLOTS),
+    /** The luck tokens of the run: the supply it started with (earned across runs) and what is left. Old saves have none. */
+    luckTokens: z
+      .object({ total: z.int().min(0).max(MAX_LUCK_TOKENS), left: z.int().min(0).max(MAX_LUCK_TOKENS) })
+      .refine(({ total, left }) => left <= total, 'Tokens left cannot exceed the supply.')
+      .default({ total: 0, left: 0 }),
     /** Places that a scheduled event has closed; the hero cannot enter them any more. */
     closedLocationIds: z.array(EntityIdSchema).default([]),
     /** Random events the night has drawn, with the day of each; the pool of the case holds what they are. */
@@ -388,6 +393,8 @@ export interface NewDetectiveRun {
   readonly inspiration?: Inspiration | null | undefined;
   /** The tool slots the player's runs have earned this hero (see `progress.ts`); one for a hero with no runs behind them. */
   readonly toolSlots?: number | undefined;
+  /** The luck tokens the player's runs have earned this hero (see `progress.ts`); none when left out. */
+  readonly luckTokens?: number | undefined;
 }
 
 /** Whether a lie the suspect's alibi rests on has fallen, so the alibi no longer stands. */
@@ -429,6 +436,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
       input.seed,
       input.toolSlots ?? START_TOOL_SLOTS,
     ),
+    luckTokens: { total: input.luckTokens ?? 0, left: input.luckTokens ?? 0 },
     closedLocationIds: [],
     drawnEvents: [],
     signalEvents: [],
@@ -832,6 +840,8 @@ export interface DetectiveRunView {
   readonly kit: readonly KitView[];
   /** The slots of the suitcase, and how many hold a tool; the phone, the pockets and the hero's trade take none. */
   readonly toolSlots: { readonly total: number; readonly used: number };
+  /** The luck tokens of the run: each one lets a failed check of a turn be rolled again (`luck: true` on the intent). */
+  readonly luckTokens: { readonly total: number; readonly left: number };
   /** Consumables in hand, by count, with what the pockets carry at most. */
   readonly supplies: readonly SupplyView[];
   /** Prices that are on their way and have not landed yet. */
@@ -1287,6 +1297,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     condition: viewCondition(run.condition),
     kit: viewKit(run.kit),
     toolSlots: { total: run.toolSlots, used: suitcaseOf(run).length },
+    luckTokens: { ...run.luckTokens },
     supplies: viewSupplies(run.supplies),
     pending: viewPending(run.pendingEffects, absoluteMinute(run.clock)),
     warnings: warningsOfMeters(meterReadings(run)),

@@ -33046,6 +33046,15 @@ function restoreRng(state) {
 function createRng(seed) {
   return restoreRng(typeof seed === "string" ? hashSeed(seed) : seed >>> 0);
 }
+function withLuck(rng, tokens) {
+  return {
+    next: () => rng.next(),
+    roll: (sides) => rng.roll(sides),
+    state: () => rng.state(),
+    luck: { left: tokens, spent: 0 }
+  };
+}
+var isLucky = (rng) => "luck" in rng;
 function isCheckSuccess(die, skillLevel, modifier, difficulty) {
   if (die === CRITICAL_SUCCESS_DIE) return true;
   if (die === CRITICAL_FAILURE_DIE) return false;
@@ -33060,8 +33069,14 @@ function passChanceWithoutLuck(skillLevel, modifier, difficulty) {
 }
 function rollCheck(rng, skills, check2, modifier = 0) {
   const rngState = rng.state();
-  const die = rng.roll(D20_SIDES);
+  const first = rng.roll(D20_SIDES);
   const skillLevel = skills[check2.skill];
+  const lucky = isLucky(rng) && rng.luck.left > 0 && !isCheckSuccess(first, skillLevel, modifier, check2.difficulty);
+  if (lucky) {
+    rng.luck.left -= 1;
+    rng.luck.spent += 1;
+  }
+  const die = lucky ? rng.roll(D20_SIDES) : first;
   const total = die + skillLevel + modifier;
   const critical = die === CRITICAL_SUCCESS_DIE ? "success" : die === CRITICAL_FAILURE_DIE ? "failure" : null;
   return {
@@ -33073,7 +33088,8 @@ function rollCheck(rng, skills, check2, modifier = 0) {
     difficulty: check2.difficulty,
     critical,
     success: isCheckSuccess(die, skillLevel, modifier, check2.difficulty),
-    rngState
+    rngState,
+    ...lucky ? { rerolled: { die: first } } : {}
   };
 }
 
@@ -34401,6 +34417,8 @@ var MAX_TOOL_SLOTS = 5;
 var LOSSES_TO_LOSE_A_SLOT = 2;
 var START_TRAIT_SLOTS = 2;
 var MAX_TRAIT_SLOTS = 5;
+var START_LUCK_TOKENS = 1;
+var MAX_LUCK_TOKENS = 5;
 var POCKET_LIMITS = { coffee: 2, sedative: 7 };
 function toolSlotsOf(records) {
   let slots = START_TOOL_SLOTS;
@@ -34421,6 +34439,9 @@ function toolSlotsOf(records) {
 }
 function traitSlotsOf(wins) {
   return Math.min(MAX_TRAIT_SLOTS, START_TRAIT_SLOTS + wins);
+}
+function luckTokensOf(wins) {
+  return Math.min(MAX_LUCK_TOKENS, START_LUCK_TOKENS + wins);
 }
 function traitRuleFor(slots, seed) {
   const half = Math.floor(slots / 2);
@@ -36758,6 +36779,8 @@ var DetectiveRunStateSchema = external_exports.object({
   kit: external_exports.array(KitItemSchema).default([]),
   /** How many tools the suitcase holds, besides the phone and what the hero's trade gave; earned across runs. */
   toolSlots: external_exports.int().min(1).max(MAX_TOOL_SLOTS).default(START_TOOL_SLOTS),
+  /** The luck tokens of the run: the supply it started with (earned across runs) and what is left. Old saves have none. */
+  luckTokens: external_exports.object({ total: external_exports.int().min(0).max(MAX_LUCK_TOKENS), left: external_exports.int().min(0).max(MAX_LUCK_TOKENS) }).refine(({ total, left }) => left <= total, "Tokens left cannot exceed the supply.").default({ total: 0, left: 0 }),
   /** Places that a scheduled event has closed; the hero cannot enter them any more. */
   closedLocationIds: external_exports.array(EntityIdSchema).default([]),
   /** Random events the night has drawn, with the day of each; the pool of the case holds what they are. */
@@ -36929,6 +36952,7 @@ function createDetectiveRun(input2) {
       input2.seed,
       input2.toolSlots ?? START_TOOL_SLOTS
     ),
+    luckTokens: { total: input2.luckTokens ?? 0, left: input2.luckTokens ?? 0 },
     closedLocationIds: [],
     drawnEvents: [],
     signalEvents: [],
@@ -37353,6 +37377,7 @@ function viewRun(run) {
     condition: viewCondition(run.condition),
     kit: viewKit(run.kit),
     toolSlots: { total: run.toolSlots, used: suitcaseOf(run).length },
+    luckTokens: { ...run.luckTokens },
     supplies: viewSupplies(run.supplies),
     pending: viewPending(run.pendingEffects, absoluteMinute(run.clock)),
     warnings: warningsOfMeters(meterReadings(run)),
@@ -37808,7 +37833,9 @@ var InterrogateIntentSchema = external_exports.object({
   approach: InterrogationApproachSchema,
   clueIds: external_exports.array(EntityIdSchema).max(20).default([]),
   /** Conclusions the hero has drawn, put to the suspect as a question (from the ruleset of talks on). */
-  insightIds: external_exports.array(EntityIdSchema).max(10).optional()
+  insightIds: external_exports.array(EntityIdSchema).max(10).optional(),
+  /** Spend a luck token to roll the check again if it fails (see `LuckSchema` in `actions.ts`). */
+  luck: external_exports.boolean().optional()
 });
 var INTERROGATE_MINUTES = 20;
 var FAILED_INTERROGATION_MINUTES = 10;
@@ -38460,17 +38487,23 @@ function accuse(run, input2, rng) {
 }
 
 // packages/engine/src/detective/actions.ts
+var LuckSchema = external_exports.boolean().optional();
 var IntentSchema = external_exports.discriminatedUnion("kind", [
   /** A quick glance at the place: finds what lies in plain sight. */
   external_exports.object({ kind: external_exports.literal("look") }),
   /** Go to a neighbouring place; a locked door may need a key or a skill check. */
-  external_exports.object({ kind: external_exports.literal("move"), locationId: EntityIdSchema }),
+  external_exports.object({ kind: external_exports.literal("move"), locationId: EntityIdSchema, luck: LuckSchema }),
   /**
    * A thorough search. Of the whole place: every hidden clue gets a check. Of a place made of parts (from the
    * ruleset of parts on) it is a search of one part, named by `partId`, with the tool of the kit named by
    * `toolId` against an obstacle (left out, the kit's best fit is used).
    */
-  external_exports.object({ kind: external_exports.literal("search"), partId: EntityIdSchema.optional(), toolId: GearIdSchema.optional() }),
+  external_exports.object({
+    kind: external_exports.literal("search"),
+    partId: EntityIdSchema.optional(),
+    toolId: GearIdSchema.optional(),
+    luck: LuckSchema
+  }),
   /** Question a suspect of the place, showing clues that may break their lies. */
   InterrogateIntentSchema,
   /** Link found clues into an insight. */
@@ -38486,10 +38519,16 @@ var IntentSchema = external_exports.discriminatedUnion("kind", [
     kind: external_exports.literal("ask"),
     toolId: GearIdSchema.optional(),
     witnessId: EntityIdSchema.optional(),
-    aboutSuspectId: EntityIdSchema.optional()
+    aboutSuspectId: EntityIdSchema.optional(),
+    luck: LuckSchema
   }),
   /** Study a clue the hero holds with a tool of the kit, for a lead. */
-  external_exports.object({ kind: external_exports.literal("study"), clueId: EntityIdSchema, toolId: GearIdSchema.optional() }),
+  external_exports.object({
+    kind: external_exports.literal("study"),
+    clueId: EntityIdSchema,
+    toolId: GearIdSchema.optional(),
+    luck: LuckSchema
+  }),
   /** Sit down at a teahouse or a cafe for a while: a little of the nerves comes back. */
   external_exports.object({ kind: external_exports.literal("sit") }),
   /** The final accusation, which ends the run. */
@@ -38850,8 +38889,16 @@ function resolveMove(run, rng, locationId) {
   };
 }
 function resolveIntent(run, input2, rng) {
-  const dispatched = dispatchIntent(run, input2, rng);
-  if (!dispatched.ok) return dispatched;
+  const parsed = IntentSchema.safeParse(input2);
+  const wantsLuck = parsed.success && "luck" in parsed.data && parsed.data.luck === true;
+  if (wantsLuck && run.status === "active" && run.luckTokens.left < 1) {
+    return { ok: false, refusal: { code: "no-luck", message: "The hero has no luck tokens left." } };
+  }
+  const dice = wantsLuck ? withLuck(rng, 1) : rng;
+  const rolled = dispatchIntent(run, input2, dice);
+  if (!rolled.ok) return rolled;
+  const luckSpent = isLucky(dice) && dice.luck.spent > 0;
+  const dispatched = luckSpent ? { ...rolled, run: { ...rolled.run, luckTokens: { ...run.luckTokens, left: run.luckTokens.left - 1 } } } : rolled;
   const resolution = applyFatigue(run, dispatched, rng);
   const slept = sleepIfDue(resolution, run.clock.day, rng);
   const indebted = collectDebt(slept.run, run.clock.day);
@@ -38859,7 +38906,7 @@ function resolveIntent(run, input2, rng) {
   const clockSettled = settleClock(drawDayEvents(shown2.run, run.clock, rng).run, run.clock.day);
   const { run: settled, arrived: newMessages } = deliverMessages(clockSettled);
   const newLeadIds = settled.earnedLeads.slice(run.earnedLeads.length).map(({ leadId }) => leadId);
-  return { ...slept, run: settled, revealed: shown2.revealed, newLeadIds, newMessages };
+  return { ...slept, run: settled, luckSpent, revealed: shown2.revealed, newLeadIds, newMessages };
 }
 function sleepIfDue(resolution, day, rng) {
   const { run } = resolution;
@@ -40738,7 +40785,9 @@ var DETECTIVE_SCENARIO = {
     setting: input2.setting,
     inspiration: input2.inspiration,
     // The tool slots the player's runs have earned this hero.
-    toolSlots: toolSlotsOf(input2.records)
+    toolSlots: toolSlotsOf(input2.records),
+    // The luck tokens they have earned: one more for every win.
+    luckTokens: luckTokensOf(winsOf(input2.records))
   })
 };
 
@@ -40756,7 +40805,9 @@ var SkillCheckResultSchema = external_exports.object({
   difficulty: external_exports.int(),
   critical: external_exports.enum(["success", "failure"]).nullable(),
   success: external_exports.boolean(),
-  rngState: external_exports.int().min(0).max(4294967295)
+  rngState: external_exports.int().min(0).max(4294967295),
+  /** The die that failed before a luck token was spent; `die` is the second, which stood. */
+  rerolled: external_exports.object({ die: external_exports.int().min(1) }).optional()
 });
 var CheckDetailSchema = external_exports.object({
   subject: external_exports.object({ kind: external_exports.enum(["clue", "location", "suspect", "part"]), id: external_exports.string().min(1) }),
@@ -41967,7 +42018,8 @@ function replayed(run, log) {
       setting: run.setting,
       inspiration: run.inspiration,
       runId: run.runId,
-      toolSlots: run.toolSlots
+      toolSlots: run.toolSlots,
+      luckTokens: run.luckTokens.total
     }),
     // A save keeps the versions it was made with; replay must not fail over a version stamp.
     schemaVersion: run.schemaVersion,
@@ -55975,6 +56027,8 @@ var TurnResultSchema = external_exports.object({
   events: external_exports.array(TurnEventSchema).default([]),
   /** What the signal did in this turn; empty for a hero without a signal and for a turn it did not touch. */
   felt: external_exports.array(FeltSignalSchema).default([]),
+  /** A luck token was spent in this turn: a failed check was rolled again and the second die stood. */
+  luckSpent: external_exports.boolean().default(false),
   /** The hidden traits this turn showed, each told once; empty on most turns. */
   revealed: external_exports.array(RevealedTraitSchema).default([]),
   /** The leads this turn earned, in the hero's own words; the view lists them all. Often none. */
@@ -56059,6 +56113,7 @@ async function playIntent(context2, turn, intent) {
     outcome: { ...resolution.outcome },
     events: eventsOfTurn(run, resolution.run),
     felt: feltOfTurn(run, resolution.felt ?? []),
+    luckSpent: resolution.luckSpent,
     revealed: revealedOfTurn(resolution.revealed),
     leads: resolution.newLeadIds.flatMap(
       (leadId) => caseLeads.filter(({ id }) => id === leadId).map(({ id, reason }) => ({ id, reason }))
@@ -56093,13 +56148,15 @@ var accuse2 = defineTool({
 });
 
 // packages/mcp/src/tools/act.ts
+var LuckSchema2 = external_exports.boolean().optional();
 var ActIntentSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("look") }),
-  external_exports.object({ kind: external_exports.literal("move"), locationId: EntityIdSchema }),
+  external_exports.object({ kind: external_exports.literal("move"), locationId: EntityIdSchema, luck: LuckSchema2 }),
   external_exports.object({
     kind: external_exports.literal("search"),
     partId: EntityIdSchema.optional(),
-    toolId: GearIdSchema.optional()
+    toolId: GearIdSchema.optional(),
+    luck: LuckSchema2
   }),
   external_exports.object({ kind: external_exports.literal("rest") }),
   external_exports.object({ kind: external_exports.literal("sit") }),
@@ -56107,16 +56164,22 @@ var ActIntentSchema = external_exports.discriminatedUnion("kind", [
     kind: external_exports.literal("ask"),
     toolId: GearIdSchema.optional(),
     witnessId: EntityIdSchema.optional(),
-    aboutSuspectId: EntityIdSchema.optional()
+    aboutSuspectId: EntityIdSchema.optional(),
+    luck: LuckSchema2
   }),
-  external_exports.object({ kind: external_exports.literal("study"), clueId: EntityIdSchema, toolId: GearIdSchema.optional() }),
+  external_exports.object({
+    kind: external_exports.literal("study"),
+    clueId: EntityIdSchema,
+    toolId: GearIdSchema.optional(),
+    luck: LuckSchema2
+  }),
   UseIntentSchema,
   TakeIntentSchema,
   RereadIntentSchema
 ]);
 var act = defineTool({
   name: "act",
-  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it; or, with `witnessId` of a person run_view lists under `witnesses`, ask that person what they saw, and with `aboutSuspectId` only about that one suspect), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit), take (`stockId` of something run_view lists under `location.offers`: a tool for the suitcase, with `dropId` of a tool of the suitcase to put down when it is full, or a supply for the pockets) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn. The clues and conclusions the turn gave are in `clues` and `insights` with their texts, so a turn needs no run_view to be told. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
+  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it; or, with `witnessId` of a person run_view lists under `witnesses`, ask that person what they saw, and with `aboutSuspectId` only about that one suspect), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit), take (`stockId` of something run_view lists under `location.offers`: a tool for the suitcase, with `dropId` of a tool of the suitcase to put down when it is full, or a supply for the pockets) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn. The clues and conclusions the turn gave are in `clues` and `insights` with their texts, so a turn needs no run_view to be told. With `luck: true` on move, search, ask or study the hero spends a luck token (`luckTokens.left` in run_view) if the first die of a check fails: the check is rolled again and the second die stands, and the token is spent only then (`luckSpent` in the result); with none left the call is refused with "no-luck". Offer it only when the player asks to push their luck. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
   inputSchema: external_exports.object({ turn: TurnSchema, intent: ActIntentSchema }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, intent }, context2) => playIntent(context2, turn, intent)
@@ -56653,7 +56716,7 @@ var profileView = defineTool({
      * What the runs have earned the next hero: tool slots in the suitcase and hidden trait slots. It counts every run
      * that is over, the last one too, so the hero who just played had one tool slot fewer after a win.
      */
-    earned: external_exports.object({ toolSlots: external_exports.int(), traitSlots: external_exports.int() }),
+    earned: external_exports.object({ toolSlots: external_exports.int(), traitSlots: external_exports.int(), luckTokens: external_exports.int() }),
     recent: external_exports.array(
       external_exports.object({
         title: external_exports.string(),
@@ -56670,7 +56733,11 @@ var profileView = defineTool({
     return {
       stats: { ...computeProfileStats(records) },
       reasons: [...END_REASONS],
-      earned: { toolSlots: toolSlotsOf(records), traitSlots: traitSlotsOf(winsOf(records)) },
+      earned: {
+        toolSlots: toolSlotsOf(records),
+        traitSlots: traitSlotsOf(winsOf(records)),
+        luckTokens: luckTokensOf(winsOf(records))
+      },
       recent: records.slice(-RECENT_RUNS).reverse().map(({ title, hero, endReason, won, days }) => ({
         title,
         hero: hero.name,
@@ -56717,13 +56784,14 @@ var profileImport = defineTool({
 // packages/mcp/src/tools/question.ts
 var question = defineTool({
   name: "question",
-  description: 'Questions a suspect who is in the hero\'s current place. `suspectId` is from the suspects of run_view; `approach` is "pressure" (lean on them) or "social" (win them over); `clueIds` are found clues the hero shows them, which may break a lie, and `insightIds` are conclusions the hero has drawn (the `insights` of run_view), put to them as a question, which break a lie more surely; or none for a plain talk. Takes game time and may cost reputation, and a pressure with nothing to stand on closes the suspect for a while. Call it once per conversation, while the run is active. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes. The result `outcome` says whether the hero got through, the suspect\'s `alibi` to voice, the `effect` of each shown clue or conclusion (`breaks-lie`, `confirms`, `implicates` or `no-effect`), the `mood` the talk left the suspect in, the lies that fell and a slipped `secret`; the clues a suspect handed over are in `clues` with their texts; never imply the suspect holds anything you were not told. Do not use it to move, search or link clues.',
+  description: 'Questions a suspect who is in the hero\'s current place. `suspectId` is from the suspects of run_view; `approach` is "pressure" (lean on them) or "social" (win them over); `clueIds` are found clues the hero shows them, which may break a lie, and `insightIds` are conclusions the hero has drawn (the `insights` of run_view), put to them as a question, which break a lie more surely; or none for a plain talk. Takes game time and may cost reputation, and a pressure with nothing to stand on closes the suspect for a while. With `luck: true` the hero spends a luck token if the first die of the talk fails: it is rolled again and the second die stands (`luckSpent` in the result; refused with "no-luck" when none is left). Call it once per conversation, while the run is active. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes. The result `outcome` says whether the hero got through, the suspect\'s `alibi` to voice, the `effect` of each shown clue or conclusion (`breaks-lie`, `confirms`, `implicates` or `no-effect`), the `mood` the talk left the suspect in, the lies that fell and a slipped `secret`; the clues a suspect handed over are in `clues` with their texts; never imply the suspect holds anything you were not told. Do not use it to move, search or link clues.',
   inputSchema: external_exports.object({
     turn: TurnSchema,
     suspectId: EntityIdSchema,
     approach: InterrogationApproachSchema,
     clueIds: external_exports.array(EntityIdSchema).max(20).default([]),
-    insightIds: external_exports.array(EntityIdSchema).max(10).default([])
+    insightIds: external_exports.array(EntityIdSchema).max(10).default([]),
+    luck: external_exports.boolean().optional()
   }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, ...rest }, context2) => playIntent(context2, turn, { kind: "interrogate", ...rest })
