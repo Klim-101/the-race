@@ -15,3 +15,5 @@ Two kinds of text are not in these files, on purpose:
 4. Run `npm run typecheck` and `npm test`.
 
 A key missing from a file, or an id of the engine without a word, does not compile; `locales.test.ts` also fails on a key that exists in one language and not in another, on an empty text and on a placeholder that one language fills in and another does not.
+
+`en` is the reference: every other language is compared with it key by key (`compareLocale`), so a key removed from `en` fails the test in every other file at once, as a key only they have. A `<code>.json` file left in the folder without its code in `LOCALES` fails too, so a step of the list above cannot be forgotten without CI saying which.

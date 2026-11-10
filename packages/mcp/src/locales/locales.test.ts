@@ -1,41 +1,28 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { readdirSync } from 'node:fs';
 import { BACKGROUNDS, DETECTIVE, LIFE_STATES, LOCALES } from '@the-race/engine';
 import { describe, expect, it } from 'vitest';
 import { LOCALE_TEXT } from './index.js';
-
-/** Every path to a string in a locale, such as `tabs.map.title`, with the string. */
-function leaves(node: unknown, path = ''): [string, string][] {
-  if (typeof node === 'string') return [[path, node]];
-  return Object.entries(node as object).flatMap(([key, child]) =>
-    leaves(child, path === '' ? key : `${path}.${key}`),
-  );
-}
-
-const placeholders = (text: string): string[] =>
-  [...text.matchAll(/\{(\w+)\}/g)].map(([, name]) => name ?? '');
+import { compareLocale } from './locale-check.js';
 
 describe('locale files', () => {
-  const english = leaves(LOCALE_TEXT.en);
-
   it('hold a text for every language the engine knows', () => {
     expect(Object.keys(LOCALE_TEXT).sort()).toEqual([...LOCALES].sort());
   });
 
-  it.each(LOCALES)('%s has exactly the keys of en, no more and no fewer', (locale) => {
-    expect(leaves(LOCALE_TEXT[locale]).map(([path]) => path)).toEqual(english.map(([path]) => path));
+  it.each(LOCALES)('%s has exactly the keys of en, none empty, and the same placeholders', (locale) => {
+    expect(compareLocale(LOCALE_TEXT.en, LOCALE_TEXT[locale])).toEqual([]);
   });
 
-  it.each(LOCALES)('%s leaves no text empty', (locale) => {
-    expect(leaves(LOCALE_TEXT[locale]).filter(([, text]) => text.trim() === '')).toEqual([]);
-  });
+  it('has a file for every language and no file for a language the engine does not know', () => {
+    // A file dropped into the folder but never added to LOCALES would be checked by nothing; say so here.
+    const files = readdirSync(new URL('.', import.meta.url))
+      .filter((name) => name.endsWith('.json'))
+      .map((name) => name.slice(0, -'.json'.length));
 
-  it.each(LOCALES)('%s fills in the same placeholders as en', (locale) => {
-    const own = new Map(leaves(LOCALE_TEXT[locale]));
-    for (const [path, text] of english) {
-      expect([path, placeholders(own.get(path) ?? '').sort()]).toEqual([path, placeholders(text).sort()]);
-    }
+    expect(files.sort()).toEqual([...LOCALES].sort());
   });
 
   it.each(LOCALES)('%s has a word for every background and every life state of the engine', (locale) => {
