@@ -70,6 +70,10 @@ Every result is compact JSON, sent twice: as text content and as `structuredCont
 
 `toToolError` is the one place where a thrown error or an engine refusal becomes that shape. An engine refusal keeps its own `code`; an unexpected error becomes `internal-error` with a fixed message.
 
+### Size
+
+What the narrator reads is the input of every turn, so `turn-budget.test.ts` holds it to numbers: the result of a turn (`act`, `question`) stays under 3,000 characters, `run_view` under 12,000, and the descriptions and input schemas of all the tools together under 40,000. The result of a turn is the same size on the hundredth turn as on the tenth: it carries the summary of the run (the places, the clock, the counts) and only what that turn gave (its clues, conclusions and events), never the history. What the full view grows by is what the world and the case bring (a day's events, a clue found), bounded by the case and not by the number of turns. A change that needs more room raises a number in that test, and says why.
+
 ## Adding a tool
 
 One tool, one file in `src/tools/`:
