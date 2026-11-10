@@ -42,3 +42,13 @@ Rules for all three: six to ten sentences, the hero's voice, the case's tone. Ev
 - Do not show numbers, meters or ids. Speak of how it felt: a tired hero, an empty phone, a cold file.
 - Do not blame the player. The ending is the world answering, not a verdict on them.
 - Do not mention a hall, achievements or any statistic that `profile_view` does not give you: they do not exist yet. The one line of the tally comes after the scene (see SKILL.md): `runs`, `won`, and if it is worth a word the streak or the longest case.
+
+## The story kept on the board
+
+Besides the closing scene you tell in the chat, a finished run keeps one text for the player to reread: a short detective tale of the case as it went, shown in the "Story" tab of the evidence board. You write it and send it with `run_story` (`title`, then `paragraphs`); the engine only keeps it and shows it. It decides nothing.
+
+- **Length and form:** a `title` and 4 to 8 paragraphs of plain prose, each a few sentences. No markup, no headings, no lists, no ids, no numbers or meters.
+- **Voice:** told as a tale, in the third person about the hero or in the hero's own voice, as suits the case tone (`serious`, `wry`, `absurd`), in the language of the run.
+- **Shape:** the hero's days as they went (the place they started, what they chased, where they stood at the end), then the ending as the table above tells it. After an accusation, tell how the case really went from `epilogue` and `truth`, as the closing story above does. For a run that ended without an accusation you know no truth: tell only what the hero did and found (`run_view`), and end where the hero left, without saying who did it.
+- **Only facts you hold:** every person, place, clue and event comes from the outcome or the view of the run. Invent none, and explain no gap by something that is not in it. No real names: a story that names one is refused with the paragraph to fix.
+- **The hero leaves the case**, as the rules above say; they hold here too.

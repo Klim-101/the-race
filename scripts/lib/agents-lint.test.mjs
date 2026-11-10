@@ -25,6 +25,7 @@ const NARRATOR_TOOLS = [
   'deduce',
   'accuse',
   'run_give_up',
+  'run_story',
   'evidence_board',
   'tavern_news',
   'profile_view',

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createHash } from 'node:crypto';
-import type { DetectiveRunView, StripTurn, TurnView } from '@the-race/engine';
+import type { DetectiveRunView, Story, StripTurn, TurnView } from '@the-race/engine';
 import { renderChronicle } from './board-chronicle.js';
 import { closedFileOf, renderClosedFile } from './board-closed-file.js';
 import { cardRules, renderClues } from './board-clues.js';
@@ -23,7 +23,17 @@ import { TAB_TEXT } from './tab-text.js';
 
 export { escapeHtml } from './escape-html.js';
 
-const TAB_IDS = ['board', 'suspects', 'clues', 'insights', 'map', 'chronicle', 'hero', 'file'] as const;
+const TAB_IDS = [
+  'board',
+  'suspects',
+  'clues',
+  'insights',
+  'map',
+  'chronicle',
+  'hero',
+  'file',
+  'story',
+] as const;
 
 // The tabs need no script: a panel is shown while it is the target of the address, and the first one when
 // none is, so a reload keeps the tab the player was on. A browser without `:has` shows every panel in turn.
@@ -178,6 +188,8 @@ main[data-sel] svg.board g[data-rel]{opacity:1;filter:grayscale(.7) brightness(.
 details{margin:4px 0 0}
 details summary{cursor:pointer;font:12px system-ui,sans-serif;color:var(--paper-tag)}
 details p{margin:4px 0}
+.tale{max-width:640px;margin-left:auto;margin-right:auto}
+.tale p{margin:0 0 1em;text-indent:1.5em}
 .notebook{max-width:640px;margin-left:auto;margin-right:auto}
 .notebook .card{background-color:var(--paper);background-image:linear-gradient(to bottom,transparent 27px,var(--paper-rule) 28px);background-size:100% 28px;border:0;border-left:3px double var(--margin);border-radius:2px;font-family:'Segoe Print','Bradley Hand',Georgia,serif;line-height:28px;padding:0 14px 0 18px;color:var(--paper-ink);box-shadow:1px 2px 4px var(--shadow)}
 .notebook .card p{margin:0}
@@ -331,13 +343,15 @@ table.matrix{border-collapse:separate;border-spacing:0;width:100%;min-width:640p
  * narrator may not know. Six tabs switched by the address alone: the corkboard (the people and the clues,
  * with thread for the links tried and the clues shown), the suspects and the clues as notebooks, the known
  * map, the chronicle, and the hero, under one header. Picking a clue, a person, a place or a lead lights what
- * ties to it on any tab. Given the view before the last turn, it marks what that turn changed.
+ * ties to it on any tab. Given the view before the last turn, it marks what that turn changed. A
+ * finished run may carry its story, told by the narrator, as a tab of its own.
  */
 export function renderEvidenceBoard(
   view: DetectiveRunView,
   turns: readonly TurnView[] = [],
   previous?: DetectiveRunView,
   strip: readonly StripTurn[] = [],
+  story?: Story,
 ): string {
   const board = BOARD_TEXT[view.locale];
   const text = TAB_TEXT[view.locale];
@@ -370,7 +384,9 @@ ${planRules(view)}</style>
 ${renderHeader(view, board, text, fresh)}
 <p class="premise">${e(view.premise)}</p>
 <p class="meta">${e(board.nowAt)}: <strong>${e(view.location.name)}</strong></p>
-<nav class="tabs" aria-label="${e(text.nav)}">${TAB_IDS.filter((id) => id !== 'file' || closed !== undefined)
+<nav class="tabs" aria-label="${e(text.nav)}">${TAB_IDS.filter(
+    (id) => (id !== 'file' || closed !== undefined) && (id !== 'story' || story !== undefined),
+  )
     .map((id) => `<a href="#${id}">${e(text.tabs[id])}</a>`)
     .join('')}</nav>
 <section class="tab" id="board">
@@ -406,6 +422,14 @@ ${renderHero(view, board, text, fresh)}
 <section class="tab" id="file">
 <h2>${e(text.closedFile.title)}</h2>
 ${renderClosedFile(view, closed, text)}
+</section>`
+  }${
+    story === undefined
+      ? ''
+      : `
+<section class="tab tale" id="story">
+<h2>${e(story.title)}</h2>
+${story.paragraphs.map((paragraph) => `<p>${e(paragraph)}</p>`).join('\n')}
 </section>`
   }
 </main>

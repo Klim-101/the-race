@@ -11,6 +11,7 @@ export {
 export { defaultGameFolder, resolveGameFolder } from './game-folder.js';
 export { nodeSaveFs, replaceFile, type SaveFs } from './save-fs.js';
 export { BOARD_DIR, BOARD_FILE, runBoardFile } from './board-dir.js';
+export { loadStory, runStoryFile, saveStory } from './story-store.js';
 export {
   runFiles,
   loadRun,

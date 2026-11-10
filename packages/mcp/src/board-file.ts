@@ -3,7 +3,7 @@
 
 import { dirname } from 'node:path';
 import { viewDayStrip, viewRun, viewTurns, type DetectiveRunState, type RunLog } from '@the-race/engine';
-import { replaceFile, runBoardFile } from '@the-race/saves';
+import { loadStory, replaceFile, runBoardFile } from '@the-race/saves';
 import { renderEvidenceBoard } from './board/render-board.js';
 import type { ServerContext } from './context.js';
 
@@ -21,6 +21,8 @@ export async function writeBoard(
 ): Promise<string> {
   const path = runBoardFile(context.saveDir, runId);
   await context.saveFs.mkdir(dirname(path));
+  // The story of a finished run, when the narrator has told one; none for a run still on.
+  const story = await loadStory(context.saveDir, runId, context.saveFs);
   await replaceFile(
     context.saveFs,
     path,
@@ -29,6 +31,7 @@ export async function writeBoard(
       viewTurns(run, log, log.length),
       before === undefined ? undefined : viewRun(before),
       viewDayStrip(run, log),
+      story,
     ),
   );
   return path;
