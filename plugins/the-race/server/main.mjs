@@ -41262,6 +41262,17 @@ function newlyEarned(before, after) {
   return earnedAchievements(after).filter((id) => !had.has(id));
 }
 
+// packages/engine/src/remembered.ts
+var RememberedHeroSchema = external_exports.object({
+  name: ProfileRecordSchema.shape.hero.shape.name,
+  background: ProfileRecordSchema.shape.hero.shape.background,
+  endReason: ProfileRecordSchema.shape.endReason,
+  /** The country of the old case, as the record has it; none for a run set nowhere. */
+  setting: ProfileRecordSchema.shape.setting,
+  /** What the old case was about, as the record has it. */
+  theme: ProfileRecordSchema.shape.theme
+});
+
 // packages/engine/src/story.ts
 var STORY_LIMITS = {
   titleMax: 80,
