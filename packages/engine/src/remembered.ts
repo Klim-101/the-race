@@ -3,7 +3,10 @@
 
 import { z } from 'zod';
 import { createRng } from './dice.js';
-import { ProfileRecordSchema, type ProfileRecord } from './profile.js';
+import { DetectiveHeroSchema } from './detective/archetype.js';
+import type { ProfileRecord } from './profile.js';
+import { EndReasonSchema } from './run.js';
+import { MirrorFormsSchema } from './world/world.js';
 
 // A run may remember a hero the player has played before: the world keeps them, and now and then it says so. This only
 // decides who. It is flavour and never a clue, so what it returns is the public record of that run and nothing more
@@ -13,15 +16,19 @@ import { ProfileRecordSchema, type ProfileRecord } from './profile.js';
 /** Roughly one run in this many remembers someone. */
 export const REMEMBER_ONE_IN = 3;
 
-/** What a run knows of the hero it remembers: the public record of that run, cut down to what can be told. */
-export const RememberedHeroSchema = z.object({
-  name: ProfileRecordSchema.shape.hero.shape.name,
-  background: ProfileRecordSchema.shape.hero.shape.background,
-  endReason: ProfileRecordSchema.shape.endReason,
+/**
+ * What a run knows of the hero it remembers: the public record of that run, cut down to what can be told. It is made of
+ * the pieces of the record and not of the record's schema, which would make the run state and the profile import each
+ * other; `rememberedOf` below is typed against both, so the two cannot drift apart.
+ */
+export const RememberedHeroSchema = z.strictObject({
+  name: z.string().min(1),
+  background: DetectiveHeroSchema.shape.background,
+  endReason: EndReasonSchema,
   /** The country of the old case, as the record has it; none for a run set nowhere. */
-  setting: ProfileRecordSchema.shape.setting,
+  setting: z.strictObject({ id: z.string().min(1), name: MirrorFormsSchema }).optional(),
   /** What the old case was about, as the record has it. */
-  theme: ProfileRecordSchema.shape.theme,
+  theme: z.string().min(1).optional(),
 });
 export type RememberedHero = z.infer<typeof RememberedHeroSchema>;
 

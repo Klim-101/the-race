@@ -31,6 +31,7 @@ import {
   GENERATION_LOG_FILE,
   loadGenerationLog,
   loadRunSeeds,
+  recordRun,
   runFiles,
   saveSeedsForDay,
   type GenerationStats,
@@ -221,6 +222,38 @@ describe('generator_brief', () => {
     expect(brief.body.seedIsUntrusted).toMatch(/untrusted/);
     for (const trait of DETECTIVE_TRAITS) expect(brief.text).not.toContain(trait.id);
     expect(brief.text).not.toMatch(/trait/i);
+  });
+
+  it('says nothing of a hero the profile could have the run remember', async () => {
+    const fs = memoryFs();
+    const past = {
+      version: 1,
+      runId: 'earlier-run',
+      locale: 'en',
+      title: 'The Zephyrine Ledger',
+      hero: { name: 'Zephyrine Quill', background: 'police' },
+      endReason: 'time-ran-out',
+      won: false,
+      days: 3,
+      turns: 30,
+      minutes: 300,
+      cluesFound: 4,
+      insights: 1,
+      traitsRevealed: 0,
+      traitsTotal: 2,
+    } as const;
+    await recordRun(TEST_PROFILE_DIR, past, fs);
+    await recordRun(
+      TEST_PROFILE_DIR,
+      { ...past, runId: 'latest-run', hero: { ...past.hero, name: 'Nils Ardent' } },
+      fs,
+    );
+    const { call } = await start(pendingRun(), fs);
+
+    const brief = await call('generator_brief', {});
+
+    expect(brief.isError).toBe(false);
+    for (const word of ['Zephyrine', 'Quill', 'Ledger', 'remember']) expect(brief.text).not.toContain(word);
   });
 
   it('takes a theme of the detective from the seed of the run when the run has none and the news gave no seed', async () => {

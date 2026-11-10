@@ -35521,57 +35521,6 @@ function chooseSeed(seeds, hero) {
   return chosen && { seed: chosen.seed, crimeType: chosen.crimeType };
 }
 
-// packages/engine/src/detective/weather.ts
-var ROAD_RULESET_VERSION = 8;
-var WEATHER_MINUTES = {
-  mild: 0,
-  warm: 0,
-  hot: 5,
-  humid: 5,
-  windy: 5,
-  fog: 5,
-  "dry-heat": 10,
-  "cold-rain": 10,
-  snow: 10,
-  frost: 10,
-  storms: 15
-};
-var EVENT_WEATHER_RULESET_VERSION = 23;
-var HAZARD_RULESET_VERSION = 24;
-var HAZARD_WEATHERS = {
-  blizzard: ["snow"],
-  ice: ["frost", "snow"],
-  "heavy-rain": ["cold-rain", "storms"],
-  heatwave: ["hot", "dry-heat"],
-  drought: ["dry-heat"],
-  gale: ["windy", "storms"],
-  fog: ["fog"],
-  "dust-wind": ["windy", "dry-heat"]
-};
-var isActive = (run) => run.rulesetVersion >= ROAD_RULESET_VERSION;
-function at(items, index) {
-  return items[index];
-}
-function weatherOfDay(run, day) {
-  if (!isActive(run) || run.setting === null) return void 0;
-  if (run.rulesetVersion >= EVENT_WEATHER_RULESET_VERSION) {
-    const named2 = run.case.clock.worldEvents.find(
-      (event) => event.day === day && event.weather !== void 0
-    );
-    if (named2?.weather !== void 0) return named2.weather;
-  }
-  const { seasons } = run.setting.climate;
-  const index = createRng(`${run.seed}:season`).roll(seasons.length) - 1;
-  const roll2 = createRng(`${run.seed}:weather:${String(day)}`).roll(10);
-  if (roll2 <= 6) return at(seasons, index).weather;
-  if (roll2 <= 8) return "mild";
-  return at(seasons, (index + 1) % seasons.length).weather;
-}
-function hazardOfDay(run, weather) {
-  if (run.rulesetVersion < HAZARD_RULESET_VERSION || run.setting === null) return void 0;
-  return run.setting.climate.hazards.find((hazard) => HAZARD_WEATHERS[hazard].includes(weather));
-}
-
 // packages/engine/src/text/real-names.ts
 var MIN_LENGTH_FOR_INFLECTION = 5;
 var MAX_ENDING_LETTERS = 3;
@@ -35602,54 +35551,6 @@ function normalize(text) {
 }
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-// packages/engine/src/news/seed.ts
-var HeadlineIdSchema = external_exports.string().regex(/^h[0-9a-f]{8}$/, "Use a headline id such as h3f2a9c1d.");
-var SEED_KINDS = [
-  "shortage",
-  "scandal",
-  "outage",
-  "leak",
-  "market-shock",
-  "dispute",
-  "reform",
-  "curiosity"
-];
-var SeedKindSchema = external_exports.enum(SEED_KINDS);
-var MAX_SEED_HEADLINES = 3;
-var MAX_SEEDS = 12;
-var NewsSeedSchema = external_exports.strictObject({
-  id: EntityIdSchema,
-  headlineIds: external_exports.array(HeadlineIdSchema).min(1).max(MAX_SEED_HEADLINES),
-  kind: SeedKindSchema,
-  tone: ToneSchema,
-  premise: external_exports.string().trim().min(20).max(240)
-});
-var NewsSeedsSchema = external_exports.array(NewsSeedSchema).min(1).max(MAX_SEEDS).refine((seeds) => new Set(seeds.map(({ id }) => id)).size === seeds.length, {
-  message: "Two seeds share an id."
-});
-function validateSeeds(seeds, context2) {
-  const known = new Set(context2.headlineIds);
-  return seeds.flatMap((seed) => {
-    const issues = [];
-    const unknown2 = seed.headlineIds.filter((id) => !known.has(id));
-    if (unknown2.length > 0) {
-      issues.push({
-        code: "unknown-headline",
-        seedId: seed.id,
-        message: `Seed "${seed.id}" refers to ${unknown2.join(", ")}, which you were not given.`
-      });
-    }
-    if (findRealName(seed.premise, context2.realNames) !== void 0) {
-      issues.push({
-        code: "real-name",
-        seedId: seed.id,
-        message: `The premise of seed "${seed.id}" names a real person, place or organisation. Say the pattern without a name.`
-      });
-    }
-    return issues;
-  });
 }
 
 // packages/engine/src/text/script.ts
@@ -35855,6 +35756,135 @@ function viewWorld(world, locale) {
     name: WORLD_NAMES[locale],
     entries: world.entries.map(({ id, kind, mirror }) => ({ id, kind, name: mirror[locale] }))
   };
+}
+
+// packages/engine/src/remembered.ts
+var REMEMBER_ONE_IN = 3;
+var RememberedHeroSchema = external_exports.strictObject({
+  name: external_exports.string().min(1),
+  background: DetectiveHeroSchema.shape.background,
+  endReason: EndReasonSchema,
+  /** The country of the old case, as the record has it; none for a run set nowhere. */
+  setting: external_exports.strictObject({ id: external_exports.string().min(1), name: MirrorFormsSchema }).optional(),
+  /** What the old case was about, as the record has it. */
+  theme: external_exports.string().min(1).optional()
+});
+var fell = (record2) => !record2.won && record2.endReason !== "gave-up";
+var rememberedOf = (record2) => ({
+  name: record2.hero.name,
+  background: record2.hero.background,
+  endReason: record2.endReason,
+  ...record2.setting === void 0 ? {} : { setting: record2.setting },
+  ...record2.theme === void 0 ? {} : { theme: record2.theme }
+});
+function chooseRemembered(records, runSeed) {
+  const rng = createRng(`${runSeed}:remember`);
+  const earlier = records.slice(0, -1);
+  const fallen = earlier.filter(fell);
+  const pool = fallen.length > 0 ? fallen : earlier;
+  const remembers = rng.roll(REMEMBER_ONE_IN) === 1;
+  const pick5 = rng.roll(Math.max(pool.length, 1)) - 1;
+  const chosen = pool[pick5];
+  return remembers && chosen !== void 0 ? rememberedOf(chosen) : void 0;
+}
+
+// packages/engine/src/detective/weather.ts
+var ROAD_RULESET_VERSION = 8;
+var WEATHER_MINUTES = {
+  mild: 0,
+  warm: 0,
+  hot: 5,
+  humid: 5,
+  windy: 5,
+  fog: 5,
+  "dry-heat": 10,
+  "cold-rain": 10,
+  snow: 10,
+  frost: 10,
+  storms: 15
+};
+var EVENT_WEATHER_RULESET_VERSION = 23;
+var HAZARD_RULESET_VERSION = 24;
+var HAZARD_WEATHERS = {
+  blizzard: ["snow"],
+  ice: ["frost", "snow"],
+  "heavy-rain": ["cold-rain", "storms"],
+  heatwave: ["hot", "dry-heat"],
+  drought: ["dry-heat"],
+  gale: ["windy", "storms"],
+  fog: ["fog"],
+  "dust-wind": ["windy", "dry-heat"]
+};
+var isActive = (run) => run.rulesetVersion >= ROAD_RULESET_VERSION;
+function at(items, index) {
+  return items[index];
+}
+function weatherOfDay(run, day) {
+  if (!isActive(run) || run.setting === null) return void 0;
+  if (run.rulesetVersion >= EVENT_WEATHER_RULESET_VERSION) {
+    const named2 = run.case.clock.worldEvents.find(
+      (event) => event.day === day && event.weather !== void 0
+    );
+    if (named2?.weather !== void 0) return named2.weather;
+  }
+  const { seasons } = run.setting.climate;
+  const index = createRng(`${run.seed}:season`).roll(seasons.length) - 1;
+  const roll2 = createRng(`${run.seed}:weather:${String(day)}`).roll(10);
+  if (roll2 <= 6) return at(seasons, index).weather;
+  if (roll2 <= 8) return "mild";
+  return at(seasons, (index + 1) % seasons.length).weather;
+}
+function hazardOfDay(run, weather) {
+  if (run.rulesetVersion < HAZARD_RULESET_VERSION || run.setting === null) return void 0;
+  return run.setting.climate.hazards.find((hazard) => HAZARD_WEATHERS[hazard].includes(weather));
+}
+
+// packages/engine/src/news/seed.ts
+var HeadlineIdSchema = external_exports.string().regex(/^h[0-9a-f]{8}$/, "Use a headline id such as h3f2a9c1d.");
+var SEED_KINDS = [
+  "shortage",
+  "scandal",
+  "outage",
+  "leak",
+  "market-shock",
+  "dispute",
+  "reform",
+  "curiosity"
+];
+var SeedKindSchema = external_exports.enum(SEED_KINDS);
+var MAX_SEED_HEADLINES = 3;
+var MAX_SEEDS = 12;
+var NewsSeedSchema = external_exports.strictObject({
+  id: EntityIdSchema,
+  headlineIds: external_exports.array(HeadlineIdSchema).min(1).max(MAX_SEED_HEADLINES),
+  kind: SeedKindSchema,
+  tone: ToneSchema,
+  premise: external_exports.string().trim().min(20).max(240)
+});
+var NewsSeedsSchema = external_exports.array(NewsSeedSchema).min(1).max(MAX_SEEDS).refine((seeds) => new Set(seeds.map(({ id }) => id)).size === seeds.length, {
+  message: "Two seeds share an id."
+});
+function validateSeeds(seeds, context2) {
+  const known = new Set(context2.headlineIds);
+  return seeds.flatMap((seed) => {
+    const issues = [];
+    const unknown2 = seed.headlineIds.filter((id) => !known.has(id));
+    if (unknown2.length > 0) {
+      issues.push({
+        code: "unknown-headline",
+        seedId: seed.id,
+        message: `Seed "${seed.id}" refers to ${unknown2.join(", ")}, which you were not given.`
+      });
+    }
+    if (findRealName(seed.premise, context2.realNames) !== void 0) {
+      issues.push({
+        code: "real-name",
+        seedId: seed.id,
+        message: `The premise of seed "${seed.id}" names a real person, place or organisation. Say the pattern without a name.`
+      });
+    }
+    return issues;
+  });
 }
 
 // packages/engine/src/world/setting.ts
@@ -36581,11 +36611,11 @@ function viewClaims(run, detectiveCase, suspectId) {
   const suspect = detectiveCase.suspects.find(({ id }) => id === suspectId);
   return run.claims.filter((claim2) => claim2.suspectId === suspectId).map(({ day, text }) => {
     const lie = suspect?.lies.find(({ statement }) => statement === text);
-    const fell = lie !== void 0 && run.concededLieIds.includes(lie.id);
+    const fell2 = lie !== void 0 && run.concededLieIds.includes(lie.id);
     return {
       day,
       text,
-      broken: fell ? {
+      broken: fell2 ? {
         clueIds: [
           ...new Set(
             run.history.shown.filter(
@@ -36818,7 +36848,9 @@ var DetectiveRunStateSchema = external_exports.object({
   /** Scenes the engine added to places for the hero's traits (see `trait-scenes.ts`). Old saves have none. */
   traitScenes: external_exports.array(TraitSceneSchema).default([]),
   /** The pattern of news the case grew from, when it grew from one. Old saves have none. */
-  inspiration: InspirationSchema.nullable().default(null)
+  inspiration: InspirationSchema.nullable().default(null),
+  /** The past hero the run remembers: flavour only, never part of the case. Old saves have none. */
+  remembers: RememberedHeroSchema.nullable().default(null)
 }).superRefine((run, context2) => {
   if (!isCaseSealIntact(run)) {
     context2.addIssue({
@@ -36971,7 +37003,8 @@ function createDetectiveRun(input2) {
     history: emptyHistory(),
     takenStockIds: [],
     traitScenes: drawTraitScenes(input2.case, input2.traits, input2.seed),
-    inspiration: input2.inspiration ?? null
+    inspiration: input2.inspiration ?? null,
+    remembers: input2.remembers ?? null
   });
 }
 function assertActive(run) {
@@ -37398,6 +37431,7 @@ function viewRun(run) {
     revealedTraits: run.traits.filter(({ id }) => run.revealedTraitIds.includes(id)),
     setting: run.setting && { name: run.setting.name[run.locale], climate: run.setting.climate },
     inspiration: run.inspiration,
+    remembers: run.remembers,
     location: {
       id: location.id,
       name: location.name,
@@ -37867,8 +37901,8 @@ function isAbout(detectiveCase, clueId, suspectId) {
   const clue = detectiveCase.clues.find(({ id }) => id === clueId);
   return clue !== void 0 && [...clue.about ?? [], ...clue.pointsTo].includes(suspectId);
 }
-function effectOf(fell, confirms, implicates, modern) {
-  if (fell) return "breaks-lie";
+function effectOf(fell2, confirms, implicates, modern) {
+  if (fell2) return "breaks-lie";
   if (modern && confirms) return "confirms";
   return modern && implicates ? "implicates" : "no-effect";
 }
@@ -40784,6 +40818,8 @@ var DETECTIVE_SCENARIO = {
     locale: input2.locale,
     setting: input2.setting,
     inspiration: input2.inspiration,
+    // The hero of an earlier run the world remembers, now and then: flavour, chosen on the dice of the run's seed.
+    remembers: chooseRemembered(input2.records, input2.seed) ?? null,
     // The tool slots the player's runs have earned this hero.
     toolSlots: toolSlotsOf(input2.records),
     // The luck tokens they have earned: one more for every win.
@@ -41261,17 +41297,6 @@ function newlyEarned(before, after) {
   const had = new Set(earnedAchievements(before));
   return earnedAchievements(after).filter((id) => !had.has(id));
 }
-
-// packages/engine/src/remembered.ts
-var RememberedHeroSchema = external_exports.object({
-  name: ProfileRecordSchema.shape.hero.shape.name,
-  background: ProfileRecordSchema.shape.hero.shape.background,
-  endReason: ProfileRecordSchema.shape.endReason,
-  /** The country of the old case, as the record has it; none for a run set nowhere. */
-  setting: ProfileRecordSchema.shape.setting,
-  /** What the old case was about, as the record has it. */
-  theme: ProfileRecordSchema.shape.theme
-});
 
 // packages/engine/src/story.ts
 var STORY_LIMITS = {
@@ -42126,6 +42151,7 @@ function replayed(run, log) {
       locale: run.locale,
       setting: run.setting,
       inspiration: run.inspiration,
+      remembers: run.remembers,
       runId: run.runId,
       toolSlots: run.toolSlots,
       luckTokens: run.luckTokens.total

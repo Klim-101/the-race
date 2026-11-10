@@ -24,6 +24,7 @@ import { TraitSchema, type Trait } from '../traits.js';
 import type { ClimateProfile, Weather } from '../world/climate.js';
 import { weatherOfDay } from './weather.js';
 import { SeedKindSchema } from '../news/seed.js';
+import { RememberedHeroSchema, type RememberedHero } from '../remembered.js';
 import { SettingSchema, type Setting } from '../world/setting.js';
 import { companionName } from './tavern.js';
 import { DETECTIVE, DetectiveHeroSchema, type DetectiveHero } from './archetype.js';
@@ -277,6 +278,8 @@ export const DetectiveRunStateSchema = z
     traitScenes: z.array(TraitSceneSchema).default([]),
     /** The pattern of news the case grew from, when it grew from one. Old saves have none. */
     inspiration: InspirationSchema.nullable().default(null),
+    /** The past hero the run remembers: flavour only, never part of the case. Old saves have none. */
+    remembers: RememberedHeroSchema.nullable().default(null),
   })
   .superRefine((run, context) => {
     if (!isCaseSealIntact(run)) {
@@ -391,6 +394,8 @@ export interface NewDetectiveRun {
   readonly setting?: Setting | null | undefined;
   /** The seed of the day the case was built on; none when the news gave no seed. */
   readonly inspiration?: Inspiration | null | undefined;
+  /** The past hero the run remembers, chosen by the engine from the profile (see `chooseRemembered`). */
+  readonly remembers?: RememberedHero | null | undefined;
   /** The tool slots the player's runs have earned this hero (see `progress.ts`); one for a hero with no runs behind them. */
   readonly toolSlots?: number | undefined;
   /** The luck tokens the player's runs have earned this hero (see `progress.ts`); none when left out. */
@@ -456,6 +461,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     takenStockIds: [],
     traitScenes: drawTraitScenes(input.case, input.traits, input.seed),
     inspiration: input.inspiration ?? null,
+    remembers: input.remembers ?? null,
   });
 }
 
@@ -882,6 +888,8 @@ export interface DetectiveRunView {
   readonly setting: { readonly name: string; readonly climate: ClimateProfile } | null;
   /** What in the news the case grew from: the kind of trouble and the invented sentence, never a headline. */
   readonly inspiration: Inspiration | null;
+  /** A past hero the world remembers in this run: the public record of that run, or none. Never a clue. */
+  readonly remembers: RememberedHero | null;
   readonly location: {
     readonly id: string;
     readonly name: string;
@@ -1323,6 +1331,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     revealedTraits: run.traits.filter(({ id }) => run.revealedTraitIds.includes(id)),
     setting: run.setting && { name: run.setting.name[run.locale], climate: run.setting.climate },
     inspiration: run.inspiration,
+    remembers: run.remembers,
     location: {
       id: location.id,
       name: location.name,
