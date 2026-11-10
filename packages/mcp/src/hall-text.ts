@@ -1,6 +1,8 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import type { AchievementId, AchievementKind } from '@the-race/engine';
+
 /** What the hall of heroes says, in the words of one language (see `locales/`). */
 export interface HallText {
   readonly title: string;
@@ -33,4 +35,14 @@ export interface HallText {
   /** Play time: `{h}` hours and `{m}` minutes of the game's clock. */
   readonly duration: string;
   readonly minutesOnly: string;
+  /** The part of the page about achievements. A word for every id of the catalogue is needed: a missing one does not build. */
+  readonly achievements: {
+    readonly title: string;
+    readonly locked: string;
+    /** What a secret one is called, and told, until it is earned. */
+    readonly secretName: string;
+    readonly secretHint: string;
+    readonly kinds: Readonly<Record<AchievementKind, string>>;
+    readonly items: Readonly<Record<AchievementId, { readonly name: string; readonly description: string }>>;
+  };
 }

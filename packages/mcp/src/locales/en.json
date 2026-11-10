@@ -676,6 +676,77 @@
       "curious-theft": "a curious theft"
     },
     "duration": "{h} h {m} min",
-    "minutesOnly": "{m} min"
+    "minutesOnly": "{m} min",
+    "achievements": {
+      "title": "Achievements",
+      "locked": "Not earned yet",
+      "secretName": "A secret",
+      "secretHint": "Earned by something you have not tried yet.",
+      "kinds": {
+        "mastery": "Mastery",
+        "challenge": "Challenge",
+        "collection": "Collection",
+        "secret": "Secret",
+        "legacy": "Legacy"
+      },
+      "items": {
+        "first-case": {
+          "name": "First case",
+          "description": "Prove your first case."
+        },
+        "swift-hand": {
+          "name": "Swift hand",
+          "description": "Prove a case within a single day."
+        },
+        "few-words": {
+          "name": "Few words",
+          "description": "Prove a case in twenty turns or fewer."
+        },
+        "know-thyself": {
+          "name": "Know thyself",
+          "description": "Prove a case after every trait of the hero has shown itself."
+        },
+        "long-haul": {
+          "name": "The long haul",
+          "description": "Prove a case that took five days or more."
+        },
+        "three-in-a-row": {
+          "name": "Three in a row",
+          "description": "Prove three cases one after another."
+        },
+        "five-in-a-row": {
+          "name": "Five in a row",
+          "description": "Prove five cases one after another."
+        },
+        "many-trades": {
+          "name": "Many trades",
+          "description": "Prove cases with heroes of four different trades."
+        },
+        "many-lands": {
+          "name": "Many lands",
+          "description": "Prove cases in three different countries."
+        },
+        "many-crimes": {
+          "name": "A taste for variety",
+          "description": "Prove four different kinds of case."
+        },
+        "by-the-book": {
+          "name": "By the book",
+          "description": "Prove a case in ten turns or fewer."
+        },
+        "full-house": {
+          "name": "Full house",
+          "description": "Prove every kind of case there is."
+        },
+        "old-hand": {
+          "name": "Old hand",
+          "description": "Prove ten cases."
+        },
+        "living-legend": {
+          "name": "Living legend",
+          "description": "Prove twenty-five cases."
+        }
+      }
+    }
   }
 }

@@ -8,8 +8,10 @@ import { describe, expect, it } from 'vitest';
 import { TEST_PROFILE_DIR } from '../test/fake-context.js';
 import { call, gameContext, installCase, prepareHero } from '../test/game.js';
 import { hallFile } from './hall.js';
+import { earnedByRun } from './play.js';
 import { renderHallPage } from './hall-page.js';
 import { accuse } from './tools/accuse.js';
+import { act } from './tools/act.js';
 import { profileView } from './tools/profile-tools.js';
 import { runGiveUp } from './tools/run-give-up.js';
 
@@ -202,5 +204,59 @@ describe('the hall is written when a run ends', () => {
     expect(result.isError).toBe(false);
     expect(result.body).not.toHaveProperty('hall');
     expect(context.fs.files.has(hallPath)).toBe(false);
+  });
+});
+
+describe('achievements on the page', () => {
+  it('tells the earned ones, shows the others as still to earn, and keeps a secret one secret', () => {
+    const page = renderHallPage([record({ days: 3, turns: 40 })], '2026-10-31', () => undefined);
+
+    expect(page).toContain('Achievements: 1/14');
+    expect(page).toContain('First case');
+    expect(page).toContain('Prove your first case.');
+    expect(page).toContain('Swift hand');
+    expect(page).toContain('Not earned yet');
+    expect(page).toContain('A secret');
+    expect(page).not.toContain('By the book');
+    expect(page).not.toContain('Prove a case in ten turns or fewer.');
+  });
+
+  it('names a secret one once it is earned', () => {
+    const page = renderHallPage([record({ days: 1, turns: 8 })], '2026-10-31', () => undefined);
+
+    expect(page).toContain('By the book');
+    expect(page).toContain('Prove a case in ten turns or fewer.');
+  });
+
+  it('is in Russian for a run played in Russian, and an empty hall still lists them to earn', () => {
+    expect(renderHallPage([record({ locale: 'ru' })], '2026-10-31', () => undefined)).toContain(
+      'Первое дело',
+    );
+    expect(renderHallPage([], '2026-10-31', () => undefined)).toContain('Achievements: 0/14');
+  });
+});
+
+describe('what a run earned, told to the narrator', () => {
+  const slow = (): ProfileRecord => record({ days: 3, turns: 40 });
+
+  it('is what the run added to the profile, with its words in the language of the run', () => {
+    expect(earnedByRun('en', [], [slow()])).toEqual([
+      { id: 'first-case', name: 'First case', description: 'Prove your first case.' },
+    ]);
+    expect(earnedByRun('ru', [], [slow()])[0]).toMatchObject({
+      id: 'first-case',
+      name: 'Первое дело',
+    });
+    expect(earnedByRun('en', [slow()], [slow(), slow()])).toEqual([]);
+  });
+
+  it('is empty on every turn but the one that ends the run, and for a run that was lost', async () => {
+    const context = await activeRun();
+
+    const playing = await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+    const accused = await call(accuse, { ...accusation, turn: 1 }, context);
+
+    expect(playing.body).toMatchObject({ achievements: [] });
+    expect(accused.body).toMatchObject({ achievements: [] });
   });
 });

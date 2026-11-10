@@ -32922,11 +32922,11 @@ function endReasonOfMeters(readings) {
   for (const { definition, value } of readings) {
     for (const { below, atLeast, when = [], effects } of definition.thresholds) {
       if (effects.endsRun === void 0 || !inBand({ below, atLeast }, value)) continue;
-      const holds = when.every(({ meter: meter2, ...band }) => {
+      const holds2 = when.every(({ meter: meter2, ...band }) => {
         const other = values.get(meter2);
         return other !== void 0 && inBand(band, other);
       });
-      if (holds) return effects.endsRun.reason;
+      if (holds2) return effects.endsRun.reason;
     }
   }
   return null;
@@ -38295,7 +38295,7 @@ function epilogueOf(run, accusedId, shortfall) {
   );
   const missed = clues.filter(({ id }) => neverFound.has(id)).map((clue) => {
     const place = locations.find(({ id }) => id === clue.locationId);
-    const part = place?.parts?.find(({ holds }) => holds === clue.id);
+    const part = place?.parts?.find(({ holds: holds2 }) => holds2 === clue.id);
     return {
       clueId: clue.id,
       description: clue.description,
@@ -41205,6 +41205,61 @@ function computeProfileStats(records) {
     currentStreak: current,
     bestStreak: best
   };
+}
+
+// packages/engine/src/achievements.ts
+var ACHIEVEMENTS = [
+  { id: "first-case", kind: "mastery", rule: { type: "wins", atLeast: 1 } },
+  { id: "swift-hand", kind: "mastery", rule: { type: "win", where: { maxDays: 1 } } },
+  { id: "few-words", kind: "mastery", rule: { type: "win", where: { maxTurns: 20 } } },
+  { id: "know-thyself", kind: "mastery", rule: { type: "win", where: { allTraitsRevealed: true } } },
+  { id: "long-haul", kind: "challenge", rule: { type: "win", where: { minDays: 5 } } },
+  { id: "three-in-a-row", kind: "challenge", rule: { type: "streak", atLeast: 3 } },
+  { id: "five-in-a-row", kind: "challenge", rule: { type: "streak", atLeast: 5 } },
+  { id: "many-trades", kind: "collection", rule: { type: "distinct", field: "background", atLeast: 4 } },
+  { id: "many-lands", kind: "collection", rule: { type: "distinct", field: "setting", atLeast: 3 } },
+  { id: "many-crimes", kind: "collection", rule: { type: "distinct", field: "theme", atLeast: 4 } },
+  { id: "by-the-book", kind: "secret", rule: { type: "win", where: { maxTurns: 10 } } },
+  { id: "full-house", kind: "secret", rule: { type: "distinct", field: "theme", atLeast: 7 } },
+  { id: "old-hand", kind: "legacy", rule: { type: "wins", atLeast: 10 } },
+  { id: "living-legend", kind: "legacy", rule: { type: "wins", atLeast: 25 } }
+];
+var holds = (record2, where) => (where.maxDays === void 0 || record2.days <= where.maxDays) && (where.minDays === void 0 || record2.days >= where.minDays) && (where.maxTurns === void 0 || record2.turns <= where.maxTurns) && (where.allTraitsRevealed === void 0 || record2.traitsTotal > 0 && record2.traitsRevealed === record2.traitsTotal);
+var valueOf = (record2, field) => {
+  switch (field) {
+    case "background":
+      return record2.hero.background;
+    case "theme":
+      return record2.theme;
+    case "setting":
+      return record2.setting?.id;
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever2(field);
+  }
+};
+function ruleHolds(rule, records) {
+  const wins = records.filter(({ won }) => won);
+  switch (rule.type) {
+    case "wins":
+      return wins.length >= rule.atLeast;
+    case "streak":
+      return computeProfileStats(records).bestStreak >= rule.atLeast;
+    case "win":
+      return wins.some((record2) => holds(record2, rule.where));
+    case "distinct":
+      return new Set(wins.flatMap((record2) => valueOf(record2, rule.field) ?? [])).size >= rule.atLeast;
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever2(rule);
+  }
+}
+function earnedAchievements(records) {
+  return ACHIEVEMENTS.filter(({ rule }) => ruleHolds(rule, records)).map(({ id }) => id);
+}
+function newlyEarned(before, after) {
+  const had = new Set(earnedAchievements(before));
+  return earnedAchievements(after).filter((id) => !had.has(id));
 }
 
 // packages/engine/src/detective/day-strip.ts
@@ -53600,7 +53655,78 @@ var en_default3 = {
       "curious-theft": "a curious theft"
     },
     duration: "{h} h {m} min",
-    minutesOnly: "{m} min"
+    minutesOnly: "{m} min",
+    achievements: {
+      title: "Achievements",
+      locked: "Not earned yet",
+      secretName: "A secret",
+      secretHint: "Earned by something you have not tried yet.",
+      kinds: {
+        mastery: "Mastery",
+        challenge: "Challenge",
+        collection: "Collection",
+        secret: "Secret",
+        legacy: "Legacy"
+      },
+      items: {
+        "first-case": {
+          name: "First case",
+          description: "Prove your first case."
+        },
+        "swift-hand": {
+          name: "Swift hand",
+          description: "Prove a case within a single day."
+        },
+        "few-words": {
+          name: "Few words",
+          description: "Prove a case in twenty turns or fewer."
+        },
+        "know-thyself": {
+          name: "Know thyself",
+          description: "Prove a case after every trait of the hero has shown itself."
+        },
+        "long-haul": {
+          name: "The long haul",
+          description: "Prove a case that took five days or more."
+        },
+        "three-in-a-row": {
+          name: "Three in a row",
+          description: "Prove three cases one after another."
+        },
+        "five-in-a-row": {
+          name: "Five in a row",
+          description: "Prove five cases one after another."
+        },
+        "many-trades": {
+          name: "Many trades",
+          description: "Prove cases with heroes of four different trades."
+        },
+        "many-lands": {
+          name: "Many lands",
+          description: "Prove cases in three different countries."
+        },
+        "many-crimes": {
+          name: "A taste for variety",
+          description: "Prove four different kinds of case."
+        },
+        "by-the-book": {
+          name: "By the book",
+          description: "Prove a case in ten turns or fewer."
+        },
+        "full-house": {
+          name: "Full house",
+          description: "Prove every kind of case there is."
+        },
+        "old-hand": {
+          name: "Old hand",
+          description: "Prove ten cases."
+        },
+        "living-legend": {
+          name: "Living legend",
+          description: "Prove twenty-five cases."
+        }
+      }
+    }
   }
 };
 
@@ -54283,7 +54409,78 @@ var ru_default2 = {
       "curious-theft": "\u0441\u0442\u0440\u0430\u043D\u043D\u0430\u044F \u043A\u0440\u0430\u0436\u0430"
     },
     duration: "{h} \u0447 {m} \u043C\u0438\u043D",
-    minutesOnly: "{m} \u043C\u0438\u043D"
+    minutesOnly: "{m} \u043C\u0438\u043D",
+    achievements: {
+      title: "\u0414\u043E\u0441\u0442\u0438\u0436\u0435\u043D\u0438\u044F",
+      locked: "\u0415\u0449\u0451 \u043D\u0435 \u043F\u043E\u043B\u0443\u0447\u0435\u043D\u043E",
+      secretName: "\u0421\u0435\u043A\u0440\u0435\u0442",
+      secretHint: "\u041D\u0430\u0433\u0440\u0430\u0434\u0430 \u0437\u0430 \u0442\u043E, \u0447\u0442\u043E \u0432\u044B \u0435\u0449\u0451 \u043D\u0435 \u043F\u0440\u043E\u0431\u043E\u0432\u0430\u043B\u0438.",
+      kinds: {
+        mastery: "\u041C\u0430\u0441\u0442\u0435\u0440\u0441\u0442\u0432\u043E",
+        challenge: "\u0418\u0441\u043F\u044B\u0442\u0430\u043D\u0438\u0435",
+        collection: "\u041A\u043E\u043B\u043B\u0435\u043A\u0446\u0438\u044F",
+        secret: "\u0421\u0435\u043A\u0440\u0435\u0442",
+        legacy: "\u041D\u0430\u0441\u043B\u0435\u0434\u0438\u0435"
+      },
+      items: {
+        "first-case": {
+          name: "\u041F\u0435\u0440\u0432\u043E\u0435 \u0434\u0435\u043B\u043E",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u0441\u0432\u043E\u0451 \u043F\u0435\u0440\u0432\u043E\u0435 \u0434\u0435\u043B\u043E."
+        },
+        "swift-hand": {
+          name: "\u0411\u044B\u0441\u0442\u0440\u0430\u044F \u0440\u0443\u043A\u0430",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u0434\u0435\u043B\u043E \u0437\u0430 \u043E\u0434\u0438\u043D \u0434\u0435\u043D\u044C."
+        },
+        "few-words": {
+          name: "\u041D\u0435\u043C\u043D\u043E\u0433\u043E \u0441\u043B\u043E\u0432",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u0434\u0435\u043B\u043E \u043D\u0435 \u0431\u043E\u043B\u044C\u0448\u0435 \u0447\u0435\u043C \u0437\u0430 \u0434\u0432\u0430\u0434\u0446\u0430\u0442\u044C \u0445\u043E\u0434\u043E\u0432."
+        },
+        "know-thyself": {
+          name: "\u041F\u043E\u0437\u043D\u0430\u0439 \u0441\u0435\u0431\u044F",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u0434\u0435\u043B\u043E, \u043A\u043E\u0433\u0434\u0430 \u0432\u0441\u0435 \u0447\u0435\u0440\u0442\u044B \u0433\u0435\u0440\u043E\u044F \u0443\u0436\u0435 \u043F\u0440\u043E\u044F\u0432\u0438\u043B\u0438\u0441\u044C."
+        },
+        "long-haul": {
+          name: "\u0414\u043E\u043B\u0433\u0438\u0439 \u043F\u0443\u0442\u044C",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u0434\u0435\u043B\u043E, \u043A\u043E\u0442\u043E\u0440\u043E\u0435 \u0437\u0430\u043D\u044F\u043B\u043E \u043F\u044F\u0442\u044C \u0434\u043D\u0435\u0439 \u0438 \u0431\u043E\u043B\u044C\u0448\u0435."
+        },
+        "three-in-a-row": {
+          name: "\u0422\u0440\u0438 \u043F\u043E\u0434\u0440\u044F\u0434",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u0442\u0440\u0438 \u0434\u0435\u043B\u0430 \u043E\u0434\u043D\u043E \u0437\u0430 \u0434\u0440\u0443\u0433\u0438\u043C."
+        },
+        "five-in-a-row": {
+          name: "\u041F\u044F\u0442\u044C \u043F\u043E\u0434\u0440\u044F\u0434",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u043F\u044F\u0442\u044C \u0434\u0435\u043B \u043E\u0434\u043D\u043E \u0437\u0430 \u0434\u0440\u0443\u0433\u0438\u043C."
+        },
+        "many-trades": {
+          name: "\u041C\u043D\u043E\u0433\u043E \u0440\u0435\u043C\u0451\u0441\u0435\u043B",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u0434\u0435\u043B\u0430 \u0433\u0435\u0440\u043E\u044F\u043C\u0438 \u0447\u0435\u0442\u044B\u0440\u0451\u0445 \u0440\u0430\u0437\u043D\u044B\u0445 \u043F\u0440\u043E\u0444\u0435\u0441\u0441\u0438\u0439."
+        },
+        "many-lands": {
+          name: "\u041C\u043D\u043E\u0433\u043E \u0437\u0435\u043C\u0435\u043B\u044C",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u0434\u0435\u043B\u0430 \u0432 \u0442\u0440\u0451\u0445 \u0440\u0430\u0437\u043D\u044B\u0445 \u0441\u0442\u0440\u0430\u043D\u0430\u0445."
+        },
+        "many-crimes": {
+          name: "\u0412\u043A\u0443\u0441 \u043A \u0440\u0430\u0437\u043D\u043E\u043E\u0431\u0440\u0430\u0437\u0438\u044E",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u0447\u0435\u0442\u044B\u0440\u0435 \u0440\u0430\u0437\u043D\u044B\u0445 \u0432\u0438\u0434\u0430 \u0434\u0435\u043B."
+        },
+        "by-the-book": {
+          name: "\u041F\u043E \u0443\u0447\u0435\u0431\u043D\u0438\u043A\u0443",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u0434\u0435\u043B\u043E \u043D\u0435 \u0431\u043E\u043B\u044C\u0448\u0435 \u0447\u0435\u043C \u0437\u0430 \u0434\u0435\u0441\u044F\u0442\u044C \u0445\u043E\u0434\u043E\u0432."
+        },
+        "full-house": {
+          name: "\u041F\u043E\u043B\u043D\u044B\u0439 \u043D\u0430\u0431\u043E\u0440",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u0434\u0435\u043B\u0430 \u0432\u0441\u0435\u0445 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044E\u0449\u0438\u0445 \u0432\u0438\u0434\u043E\u0432."
+        },
+        "old-hand": {
+          name: "\u0421\u0442\u0430\u0440\u043E\u0436\u0438\u043B",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u0434\u0435\u0441\u044F\u0442\u044C \u0434\u0435\u043B."
+        },
+        "living-legend": {
+          name: "\u0416\u0438\u0432\u0430\u044F \u043B\u0435\u0433\u0435\u043D\u0434\u0430",
+          description: "\u0420\u0430\u0441\u043A\u0440\u043E\u0439\u0442\u0435 \u0434\u0432\u0430\u0434\u0446\u0430\u0442\u044C \u043F\u044F\u0442\u044C \u0434\u0435\u043B."
+        }
+      }
+    }
   }
 };
 
@@ -55927,6 +56124,11 @@ td small{display:block;color:var(--muted)}
 a{color:var(--accent)}
 .won{color:var(--accent);font-weight:bold}
 .empty{color:var(--muted)}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin:0;padding:0;list-style:none}
+.badges li{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:10px 14px}
+.badges .kind{color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}
+.badges strong{display:block}
+.badges .locked{opacity:.55}
 @media print{body{background:#fff;color:#000}}
 `;
 var NONE2 = "\u2013";
@@ -55968,6 +56170,20 @@ var ROWS = {
     }
   }
 };
+function renderAchievements(records, text, e) {
+  const words = text.achievements;
+  const earned = new Set(earnedAchievements(records));
+  const cards = ACHIEVEMENTS.map(({ id, kind }) => {
+    const done = earned.has(id);
+    const hidden = kind === "secret" && !done;
+    const item = words.items[id];
+    return `<li class="${done ? "earned" : "locked"}"><span class="kind">${e(words.kinds[kind])}</span><strong>${e(hidden ? words.secretName : item.name)}</strong>${e(hidden ? words.secretHint : item.description)}${done ? "" : `<small>${e(words.locked)}</small>`}</li>`;
+  });
+  return `<h2>${e(words.title)}: ${String(earned.size)}/${String(ACHIEVEMENTS.length)}</h2>
+<ul class="badges">
+${cards.join("\n")}
+</ul>`;
+}
 function renderHallPage(records, updatedOn, boardHref) {
   const locale = records.at(-1)?.locale ?? "en";
   const text = LOCALE_TEXT[locale].hall;
@@ -56018,6 +56234,7 @@ ${body2}
 <li><strong>${String(stats.longestRunDays)}</strong>${e(text.totals.longest)}</li>
 </ul>
 ${sections.length === 0 ? `<p class="empty">${e(text.none)}</p>` : sections.join("\n")}
+${renderAchievements(records, text, e)}
 </main>
 </body>
 </html>
@@ -56324,6 +56541,8 @@ var TurnResultSchema = external_exports.object({
    * `file://` address to give as a link.
    */
   hall: external_exports.object({ path: external_exports.string(), link: external_exports.string() }).optional(),
+  /** The achievements the run that ended in this turn earned, with their words; empty on every other turn. */
+  achievements: external_exports.array(external_exports.object({ id: external_exports.string(), name: external_exports.string(), description: external_exports.string() })).default([]),
   /** A luck token was spent in this turn: a failed check was rolled again and the second die stood. */
   luckSpent: external_exports.boolean().default(false),
   /** The hidden traits this turn showed, each told once; empty on most turns. */
@@ -56371,6 +56590,10 @@ function assertFreshTurn(run, turn) {
     });
   }
 }
+function earnedByRun(locale, before, after) {
+  const items = LOCALE_TEXT[locale].hall.achievements.items;
+  return newlyEarned(before, after).map((id) => ({ id, ...items[id] }));
+}
 function feltOfTurn(run, felt) {
   const signal = run.hero.signalId;
   return signal === void 0 ? [] : felt.map(
@@ -56400,19 +56623,22 @@ async function playIntent(context2, turn, intent) {
   assertFreshTurn(run, turn);
   const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
   if (!resolution.ok) throw new ToolFailure(refusalToToolError(resolution.refusal));
+  const ending = run.status === "active" && resolution.run.status !== "active";
+  const recordsBefore = ending ? await recordsOrNone(context2) : [];
   const caseLeads = resolution.run.case.leads ?? [];
   const recorded = recordResolution(log, run, intent, resolution);
   await saveRun(context2.saveDir, resolution.run, context2.saveFs, recorded);
   await keepProfile(context2, resolution.run, recorded);
   await keepBoard(context2, runId, resolution.run, recorded, run);
-  const ended = run.status === "active" && resolution.run.status !== "active";
-  if (ended) await keepStats(context2);
-  const hall = ended && await keepHall(context2) ? hallLocation(context2) : void 0;
+  if (ending) await keepStats(context2);
+  const hall = ending && await keepHall(context2) ? hallLocation(context2) : void 0;
+  const achievements = ending ? earnedByRun(run.locale, recordsBefore, await recordsOrNone(context2)) : [];
   return {
     outcome: { ...resolution.outcome },
     events: eventsOfTurn(run, resolution.run),
     felt: feltOfTurn(run, resolution.felt ?? []),
     ...hall === void 0 ? {} : { hall },
+    achievements,
     luckSpent: resolution.luckSpent,
     revealed: revealedOfTurn(resolution.revealed),
     leads: resolution.newLeadIds.flatMap(

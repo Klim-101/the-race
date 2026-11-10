@@ -61,6 +61,7 @@ export * from './detective/road.js';
 export { GENERATED_MAP, checkMapShape, type MapRules } from './detective/checks/map-shape.js';
 export { GENERATED_DAYS, checkRunLength, type DayRules } from './detective/checks/run-length.js';
 export * from './detective/weather.js';
+export * from './achievements.js';
 export * from './profile.js';
 export * from './progress.js';
 export * from './detective/night.js';
