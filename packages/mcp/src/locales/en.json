@@ -116,9 +116,21 @@
       "day": "Day {day} of {total}, {time}",
       "timeLeft": "Working time left",
       "condition": "Condition",
-      "reputationBands": { "good": "good name", "middling": "name in doubt", "poor": "name in tatters" },
-      "nervesBands": { "steady": "steady nerves", "strained": "nerves on edge", "frayed": "nerves frayed" },
-      "sleepBands": { "rested": "rested", "tired": "tired", "exhausted": "exhausted" }
+      "reputationBands": {
+        "good": "good name",
+        "middling": "name in doubt",
+        "poor": "name in tatters"
+      },
+      "nervesBands": {
+        "steady": "steady nerves",
+        "strained": "nerves on edge",
+        "frayed": "nerves frayed"
+      },
+      "sleepBands": {
+        "rested": "rested",
+        "tired": "tired",
+        "exhausted": "exhausted"
+      }
     },
     "fresh": {
       "title": "New in the last turn",
@@ -144,7 +156,12 @@
       "legend": "Streets and squares are the open ground; a block is a building, with all its known rooms in it. The red pin and outline are where you are. Only what the detective has seen is on the map."
     },
     "statements": {
-      "moods": { "calm": "calm", "shaken": "shaken", "cornered": "cornered", "broken": "broken" },
+      "moods": {
+        "calm": "calm",
+        "shaken": "shaken",
+        "cornered": "cornered",
+        "broken": "broken"
+      },
       "closedUntil": "will not talk until day {day}, {time}",
       "cleared": "Cleared: could not have done it",
       "claims": "What they claim",
@@ -545,7 +562,11 @@
       "none": "none",
       "hint": "A dashed question mark: the clue bears on the person and you have not shown it to them. A dash at the bottom: the clue is in no link yet. Pick a number or a name to light everything tied to it.",
       "cards": "Card index",
-      "status": { "notShown": "shown to nobody", "notLinked": "in no link", "witness": "witness" }
+      "status": {
+        "notShown": "shown to nobody",
+        "notLinked": "in no link",
+        "witness": "witness"
+      }
     },
     "tree": {
       "clues": "Clues",
@@ -614,5 +635,47 @@
       "code": "Rule",
       "rejections": "Rejections"
     }
+  },
+  "hall": {
+    "title": "Hall of heroes",
+    "updated": "Updated",
+    "none": "No hero has finished a case yet.",
+    "openBoard": "Open the board",
+    "totals": {
+      "runs": "heroes",
+      "wins": "cases won",
+      "streak": "best streak of wins",
+      "longest": "days in the longest case"
+    },
+    "archetypes": {
+      "detective": "Detectives"
+    },
+    "columns": {
+      "hero": "Hero",
+      "case": "Case",
+      "country": "Country",
+      "result": "Result",
+      "days": "Days",
+      "time": "Time on the case",
+      "clues": "Clues",
+      "traits": "Traits shown",
+      "board": "Board"
+    },
+    "results": {
+      "won": "won",
+      "lost": "lost",
+      "gave-up": "given up"
+    },
+    "themes": {
+      "financial": "a financial crime",
+      "cyber": "a cyber crime",
+      "political-leak": "a political leak",
+      "missing-person": "a missing person",
+      "forgery": "a forgery",
+      "corporate-espionage": "corporate espionage",
+      "curious-theft": "a curious theft"
+    },
+    "duration": "{h} h {m} min",
+    "minutesOnly": "{m} min"
   }
 }

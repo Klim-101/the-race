@@ -16,6 +16,7 @@ import {
 import { loadCurrentRun, saveRun, type LoadFailureReason } from '@the-race/saves';
 import { z } from 'zod';
 import { keepBoard } from './board-file.js';
+import { keepHall, hallLocation } from './hall.js';
 import { keepStats } from './stats.js';
 import type { ServerContext } from './context.js';
 import { keepProfile } from './profile.js';
@@ -137,6 +138,11 @@ export const TurnResultSchema = z.object({
   events: z.array(TurnEventSchema).default([]),
   /** What the signal did in this turn; empty for a hero without a signal and for a turn it did not touch. */
   felt: z.array(FeltSignalSchema).default([]),
+  /**
+   * Only in the turn that ended the run: the hall of heroes, now with this hero in it, as a path to show in words and a
+   * `file://` address to give as a link.
+   */
+  hall: z.object({ path: z.string(), link: z.string() }).optional(),
   /** A luck token was spent in this turn: a failed check was rolled again and the second die stood. */
   luckSpent: z.boolean().default(false),
   /** The hidden traits this turn showed, each told once; empty on most turns. */
@@ -276,11 +282,15 @@ export async function playIntent(
   await keepProfile(context, resolution.run, recorded);
   await keepBoard(context, runId, resolution.run, recorded, run);
   // The page of all the runs changes when a run ends, and only then.
-  if (run.status === 'active' && resolution.run.status !== 'active') await keepStats(context);
+  const ended = run.status === 'active' && resolution.run.status !== 'active';
+  if (ended) await keepStats(context);
+  // The hall is written from the profile, which has just taken the run in; a link is given only for a page that is there.
+  const hall = ended && (await keepHall(context)) ? hallLocation(context) : undefined;
   return {
     outcome: { ...resolution.outcome },
     events: eventsOfTurn(run, resolution.run),
     felt: feltOfTurn(run, resolution.felt ?? []),
+    ...(hall === undefined ? {} : { hall }),
     luckSpent: resolution.luckSpent,
     revealed: revealedOfTurn(resolution.revealed),
     leads: resolution.newLeadIds.flatMap((leadId) =>

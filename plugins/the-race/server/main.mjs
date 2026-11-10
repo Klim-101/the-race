@@ -3913,50 +3913,50 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative3, options, skipNormalization) {
+    function resolveComponent(base, relative4, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative3 = parse3(serialize(relative3, options), options);
+        relative4 = parse3(serialize(relative4, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative3.scheme) {
-        target.scheme = relative3.scheme;
-        target.userinfo = relative3.userinfo;
-        target.host = relative3.host;
-        target.port = relative3.port;
-        target.path = removeDotSegments(relative3.path || "");
-        target.query = relative3.query;
+      if (!options.tolerant && relative4.scheme) {
+        target.scheme = relative4.scheme;
+        target.userinfo = relative4.userinfo;
+        target.host = relative4.host;
+        target.port = relative4.port;
+        target.path = removeDotSegments(relative4.path || "");
+        target.query = relative4.query;
       } else {
-        if (relative3.userinfo !== void 0 || relative3.host !== void 0 || relative3.port !== void 0) {
-          target.userinfo = relative3.userinfo;
-          target.host = relative3.host;
-          target.port = relative3.port;
-          target.path = removeDotSegments(relative3.path || "");
-          target.query = relative3.query;
+        if (relative4.userinfo !== void 0 || relative4.host !== void 0 || relative4.port !== void 0) {
+          target.userinfo = relative4.userinfo;
+          target.host = relative4.host;
+          target.port = relative4.port;
+          target.path = removeDotSegments(relative4.path || "");
+          target.query = relative4.query;
         } else {
-          if (!relative3.path) {
+          if (!relative4.path) {
             target.path = base.path;
-            if (relative3.query !== void 0) {
-              target.query = relative3.query;
+            if (relative4.query !== void 0) {
+              target.query = relative4.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative3.path[0] === "/") {
-              target.path = removeDotSegments(relative3.path);
+            if (relative4.path[0] === "/") {
+              target.path = removeDotSegments(relative4.path);
             } else {
               const baseHasAuthority = base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0;
               if (baseHasAuthority && !base.path) {
-                target.path = "/" + relative3.path;
+                target.path = "/" + relative4.path;
               } else if (!base.path) {
-                target.path = relative3.path;
+                target.path = relative4.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative3.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative4.path;
               }
               target.path = base.scheme === void 0 && !baseHasAuthority && target.path[0] !== "/" ? removeDotSegmentsRelative(target.path) : removeDotSegments(target.path);
             }
-            target.query = relative3.query;
+            target.query = relative4.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3964,7 +3964,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative3.fragment;
+      target.fragment = relative4.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -41147,6 +41147,7 @@ var ProfileRecordSchema = external_exports.object({
   traitsRevealed: external_exports.int().min(0),
   traitsTotal: external_exports.int().min(0)
 });
+var archetypeOf = (record2) => record2.archetype ?? "detective";
 function profileRecordOf(run, log) {
   if (run.status === "active" || run.endReason === null) return void 0;
   const { turns, minutes: minutes2, cluesFound, insights } = deriveStats(log);
@@ -53039,9 +53040,21 @@ var en_default3 = {
       day: "Day {day} of {total}, {time}",
       timeLeft: "Working time left",
       condition: "Condition",
-      reputationBands: { good: "good name", middling: "name in doubt", poor: "name in tatters" },
-      nervesBands: { steady: "steady nerves", strained: "nerves on edge", frayed: "nerves frayed" },
-      sleepBands: { rested: "rested", tired: "tired", exhausted: "exhausted" }
+      reputationBands: {
+        good: "good name",
+        middling: "name in doubt",
+        poor: "name in tatters"
+      },
+      nervesBands: {
+        steady: "steady nerves",
+        strained: "nerves on edge",
+        frayed: "nerves frayed"
+      },
+      sleepBands: {
+        rested: "rested",
+        tired: "tired",
+        exhausted: "exhausted"
+      }
     },
     fresh: {
       title: "New in the last turn",
@@ -53067,7 +53080,12 @@ var en_default3 = {
       legend: "Streets and squares are the open ground; a block is a building, with all its known rooms in it. The red pin and outline are where you are. Only what the detective has seen is on the map."
     },
     statements: {
-      moods: { calm: "calm", shaken: "shaken", cornered: "cornered", broken: "broken" },
+      moods: {
+        calm: "calm",
+        shaken: "shaken",
+        cornered: "cornered",
+        broken: "broken"
+      },
       closedUntil: "will not talk until day {day}, {time}",
       cleared: "Cleared: could not have done it",
       claims: "What they claim",
@@ -53468,7 +53486,11 @@ var en_default3 = {
       none: "none",
       hint: "A dashed question mark: the clue bears on the person and you have not shown it to them. A dash at the bottom: the clue is in no link yet. Pick a number or a name to light everything tied to it.",
       cards: "Card index",
-      status: { notShown: "shown to nobody", notLinked: "in no link", witness: "witness" }
+      status: {
+        notShown: "shown to nobody",
+        notLinked: "in no link",
+        witness: "witness"
+      }
     },
     tree: {
       clues: "Clues",
@@ -53537,6 +53559,48 @@ var en_default3 = {
       code: "Rule",
       rejections: "Rejections"
     }
+  },
+  hall: {
+    title: "Hall of heroes",
+    updated: "Updated",
+    none: "No hero has finished a case yet.",
+    openBoard: "Open the board",
+    totals: {
+      runs: "heroes",
+      wins: "cases won",
+      streak: "best streak of wins",
+      longest: "days in the longest case"
+    },
+    archetypes: {
+      detective: "Detectives"
+    },
+    columns: {
+      hero: "Hero",
+      case: "Case",
+      country: "Country",
+      result: "Result",
+      days: "Days",
+      time: "Time on the case",
+      clues: "Clues",
+      traits: "Traits shown",
+      board: "Board"
+    },
+    results: {
+      won: "won",
+      lost: "lost",
+      "gave-up": "given up"
+    },
+    themes: {
+      financial: "a financial crime",
+      cyber: "a cyber crime",
+      "political-leak": "a political leak",
+      "missing-person": "a missing person",
+      forgery: "a forgery",
+      "corporate-espionage": "corporate espionage",
+      "curious-theft": "a curious theft"
+    },
+    duration: "{h} h {m} min",
+    minutesOnly: "{m} min"
   }
 };
 
@@ -53659,13 +53723,21 @@ var ru_default2 = {
       day: "\u0414\u0435\u043D\u044C {day} \u0438\u0437 {total}, {time}",
       timeLeft: "\u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0440\u0430\u0431\u043E\u0447\u0435\u0433\u043E \u0432\u0440\u0435\u043C\u0435\u043D\u0438",
       condition: "\u0421\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u0435",
-      reputationBands: { good: "\u0434\u043E\u0431\u0440\u043E\u0435 \u0438\u043C\u044F", middling: "\u0438\u043C\u044F \u043F\u043E\u0434 \u0441\u043E\u043C\u043D\u0435\u043D\u0438\u0435\u043C", poor: "\u0438\u043C\u044F \u0432 \u043A\u043B\u043E\u0447\u044C\u044F" },
+      reputationBands: {
+        good: "\u0434\u043E\u0431\u0440\u043E\u0435 \u0438\u043C\u044F",
+        middling: "\u0438\u043C\u044F \u043F\u043E\u0434 \u0441\u043E\u043C\u043D\u0435\u043D\u0438\u0435\u043C",
+        poor: "\u0438\u043C\u044F \u0432 \u043A\u043B\u043E\u0447\u044C\u044F"
+      },
       nervesBands: {
         steady: "\u043D\u0435\u0440\u0432\u044B \u0432 \u043F\u043E\u0440\u044F\u0434\u043A\u0435",
         strained: "\u043D\u0435\u0440\u0432\u044B \u043D\u0430 \u043F\u0440\u0435\u0434\u0435\u043B\u0435",
         frayed: "\u043D\u0435\u0440\u0432\u044B \u0438\u0441\u0442\u0440\u0451\u043F\u0430\u043D\u044B"
       },
-      sleepBands: { rested: "\u0432\u044B\u0441\u043F\u0430\u043B\u0441\u044F", tired: "\u0443\u0441\u0442\u0430\u043B", exhausted: "\u0432\u0430\u043B\u0438\u0442\u0441\u044F \u0441 \u043D\u043E\u0433" }
+      sleepBands: {
+        rested: "\u0432\u044B\u0441\u043F\u0430\u043B\u0441\u044F",
+        tired: "\u0443\u0441\u0442\u0430\u043B",
+        exhausted: "\u0432\u0430\u043B\u0438\u0442\u0441\u044F \u0441 \u043D\u043E\u0433"
+      }
     },
     fresh: {
       title: "\u041D\u043E\u0432\u043E\u0435 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u0445\u043E\u0434",
@@ -53691,7 +53763,12 @@ var ru_default2 = {
       legend: "\u0423\u043B\u0438\u0446\u044B \u0438 \u043F\u043B\u043E\u0449\u0430\u0434\u0438 \u2014 \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0435 \u043C\u0435\u0441\u0442\u043E; \u0431\u043B\u043E\u043A \u2014 \u0437\u0434\u0430\u043D\u0438\u0435 \u0441\u043E \u0432\u0441\u0435\u043C\u0438 \u0438\u0437\u0432\u0435\u0441\u0442\u043D\u044B\u043C\u0438 \u043A\u043E\u043C\u043D\u0430\u0442\u0430\u043C\u0438. \u041A\u0440\u0430\u0441\u043D\u0430\u044F \u043C\u0435\u0442\u043A\u0430 \u0438 \u043E\u0431\u0432\u043E\u0434\u043A\u0430 \u2014 \u0433\u0434\u0435 \u0432\u044B \u0441\u0435\u0439\u0447\u0430\u0441. \u041D\u0430 \u043A\u0430\u0440\u0442\u0435 \u0442\u043E\u043B\u044C\u043A\u043E \u0442\u043E, \u0447\u0442\u043E \u0432\u0438\u0434\u0435\u043B \u0434\u0435\u0442\u0435\u043A\u0442\u0438\u0432."
     },
     statements: {
-      moods: { calm: "\u0441\u043F\u043E\u043A\u043E\u0435\u043D", shaken: "\u0440\u0430\u0441\u0442\u0435\u0440\u044F\u043D", cornered: "\u0437\u0430\u0433\u043D\u0430\u043D \u0432 \u0443\u0433\u043E\u043B", broken: "\u0441\u043B\u043E\u043C\u043B\u0435\u043D" },
+      moods: {
+        calm: "\u0441\u043F\u043E\u043A\u043E\u0435\u043D",
+        shaken: "\u0440\u0430\u0441\u0442\u0435\u0440\u044F\u043D",
+        cornered: "\u0437\u0430\u0433\u043D\u0430\u043D \u0432 \u0443\u0433\u043E\u043B",
+        broken: "\u0441\u043B\u043E\u043C\u043B\u0435\u043D"
+      },
       closedUntil: "\u043D\u0435 \u0437\u0430\u0433\u043E\u0432\u043E\u0440\u0438\u0442 \u0434\u043E {day}-\u0433\u043E \u0434\u043D\u044F, {time}",
       cleared: "\u0418\u0441\u043A\u043B\u044E\u0447\u0451\u043D: \u043D\u0435 \u043C\u043E\u0433 \u044D\u0442\u043E\u0433\u043E \u0441\u0434\u0435\u043B\u0430\u0442\u044C",
       claims: "\u0427\u0442\u043E \u043E\u043D\u0438 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0430\u044E\u0442",
@@ -54092,7 +54169,11 @@ var ru_default2 = {
       none: "\u043D\u0438 \u0432 \u043E\u0434\u043D\u043E\u0439",
       hint: "\u041F\u0443\u043D\u043A\u0442\u0438\u0440\u043D\u044B\u0439 \u0437\u043D\u0430\u043A \u0432\u043E\u043F\u0440\u043E\u0441\u0430: \u0443\u043B\u0438\u043A\u0430 \u043A\u0430\u0441\u0430\u0435\u0442\u0441\u044F \u0447\u0435\u043B\u043E\u0432\u0435\u043A\u0430, \u0430 \u0432\u044B \u0435\u0451 \u0435\u043C\u0443 \u0435\u0449\u0451 \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u043B\u0438. \u041F\u0440\u043E\u0447\u0435\u0440\u043A \u0432\u043D\u0438\u0437\u0443: \u0443\u043B\u0438\u043A\u0430 \u043F\u043E\u043A\u0430 \u043D\u0435 \u0432\u043E\u0448\u043B\u0430 \u043D\u0438 \u0432 \u043E\u0434\u043D\u0443 \u0441\u0432\u044F\u0437\u043A\u0443. \u041D\u0430\u0436\u043C\u0438\u0442\u0435 \u043D\u0430 \u043D\u043E\u043C\u0435\u0440 \u0438\u043B\u0438 \u0438\u043C\u044F, \u0438 \u043F\u043E\u0434\u0441\u0432\u0435\u0442\u0438\u0442\u0441\u044F \u0432\u0441\u0451, \u0447\u0442\u043E \u0441 \u043D\u0438\u043C\u0438 \u0441\u0432\u044F\u0437\u0430\u043D\u043E.",
       cards: "\u041A\u0430\u0440\u0442\u043E\u0442\u0435\u043A\u0430",
-      status: { notShown: "\u043D\u0438\u043A\u043E\u043C\u0443 \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u0430", notLinked: "\u043D\u0435 \u0432 \u0441\u0432\u044F\u0437\u043A\u0430\u0445", witness: "\u0441\u0432\u0438\u0434\u0435\u0442\u0435\u043B\u044C" }
+      status: {
+        notShown: "\u043D\u0438\u043A\u043E\u043C\u0443 \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u0430",
+        notLinked: "\u043D\u0435 \u0432 \u0441\u0432\u044F\u0437\u043A\u0430\u0445",
+        witness: "\u0441\u0432\u0438\u0434\u0435\u0442\u0435\u043B\u044C"
+      }
     },
     tree: {
       clues: "\u0423\u043B\u0438\u043A\u0438",
@@ -54161,6 +54242,48 @@ var ru_default2 = {
       code: "\u041F\u0440\u0430\u0432\u0438\u043B\u043E",
       rejections: "\u041E\u0442\u043A\u0430\u0437\u043E\u0432"
     }
+  },
+  hall: {
+    title: "\u0417\u0430\u043B \u0433\u0435\u0440\u043E\u0435\u0432",
+    updated: "\u041E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u043E",
+    none: "\u041D\u0438 \u043E\u0434\u0438\u043D \u0433\u0435\u0440\u043E\u0439 \u0435\u0449\u0451 \u043D\u0435 \u0437\u0430\u043A\u043E\u043D\u0447\u0438\u043B \u0434\u0435\u043B\u043E.",
+    openBoard: "\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0434\u043E\u0441\u043A\u0443",
+    totals: {
+      runs: "\u0433\u0435\u0440\u043E\u0435\u0432",
+      wins: "\u0440\u0430\u0441\u043A\u0440\u044B\u0442\u044B\u0445 \u0434\u0435\u043B",
+      streak: "\u043B\u0443\u0447\u0448\u0430\u044F \u0441\u0435\u0440\u0438\u044F \u043F\u043E\u0431\u0435\u0434",
+      longest: "\u0434\u043D\u0435\u0439 \u0432 \u0441\u0430\u043C\u043E\u043C \u0434\u043E\u043B\u0433\u043E\u043C \u0434\u0435\u043B\u0435"
+    },
+    archetypes: {
+      detective: "\u0414\u0435\u0442\u0435\u043A\u0442\u0438\u0432\u044B"
+    },
+    columns: {
+      hero: "\u0413\u0435\u0440\u043E\u0439",
+      case: "\u0414\u0435\u043B\u043E",
+      country: "\u0421\u0442\u0440\u0430\u043D\u0430",
+      result: "\u0418\u0442\u043E\u0433",
+      days: "\u0414\u043D\u0435\u0439",
+      time: "\u0412\u0440\u0435\u043C\u044F \u043D\u0430 \u0434\u0435\u043B\u0435",
+      clues: "\u0423\u043B\u0438\u043A\u0438",
+      traits: "\u0427\u0435\u0440\u0442\u044B \u0440\u0430\u0441\u043A\u0440\u044B\u0442\u044B",
+      board: "\u0414\u043E\u0441\u043A\u0430"
+    },
+    results: {
+      won: "\u0440\u0430\u0441\u043A\u0440\u044B\u0442\u043E",
+      lost: "\u043F\u0440\u043E\u0432\u0430\u043B",
+      "gave-up": "\u0441\u0434\u0430\u043B\u0441\u044F"
+    },
+    themes: {
+      financial: "\u0444\u0438\u043D\u0430\u043D\u0441\u043E\u0432\u043E\u0435 \u043F\u0440\u0435\u0441\u0442\u0443\u043F\u043B\u0435\u043D\u0438\u0435",
+      cyber: "\u043A\u0438\u0431\u0435\u0440\u043F\u0440\u0435\u0441\u0442\u0443\u043F\u043B\u0435\u043D\u0438\u0435",
+      "political-leak": "\u043F\u043E\u043B\u0438\u0442\u0438\u0447\u0435\u0441\u043A\u0430\u044F \u0443\u0442\u0435\u0447\u043A\u0430",
+      "missing-person": "\u043F\u0440\u043E\u043F\u0430\u0432\u0448\u0438\u0439 \u0447\u0435\u043B\u043E\u0432\u0435\u043A",
+      forgery: "\u043F\u043E\u0434\u0434\u0435\u043B\u043A\u0430",
+      "corporate-espionage": "\u043A\u043E\u0440\u043F\u043E\u0440\u0430\u0442\u0438\u0432\u043D\u044B\u0439 \u0448\u043F\u0438\u043E\u043D\u0430\u0436",
+      "curious-theft": "\u0441\u0442\u0440\u0430\u043D\u043D\u0430\u044F \u043A\u0440\u0430\u0436\u0430"
+    },
+    duration: "{h} \u0447 {m} \u043C\u0438\u043D",
+    minutesOnly: "{m} \u043C\u0438\u043D"
   }
 };
 
@@ -55779,11 +55902,168 @@ async function keepBoard(context2, runId, run, log, before) {
   }
 }
 
+// packages/mcp/src/hall.ts
+import { join as join12, relative as relative2, sep } from "node:path";
+import { pathToFileURL } from "node:url";
+
+// packages/mcp/src/hall-page.ts
+var STYLE2 = `
+:root{color-scheme:light dark;--bg:#f4efe6;--card:#fffdf8;--ink:#2a2622;--muted:#7a7066;--line:#ddd3c3;--accent:#8a3b2a}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1917;--card:#252220;--ink:#ece4d8;--muted:#a09484;--line:#3a3430;--accent:#e08a70}}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 16px 48px;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,'Times New Roman',serif;overflow-wrap:anywhere}
+main{max-width:1040px;margin:0 auto}
+h1{margin:0 0 4px;font-size:1.8rem}
+.meta{color:var(--muted);margin:0 0 16px}
+.totals{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 20px;padding:0;list-style:none}
+.totals li{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:8px 14px}
+.totals strong{display:block;font-size:1.4rem}
+h2{margin:32px 0 12px;font-size:1.3rem}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line)}
+th,td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:normal;font-size:.9rem}
+td small{display:block;color:var(--muted)}
+a{color:var(--accent)}
+.won{color:var(--accent);font-weight:bold}
+.empty{color:var(--muted)}
+@media print{body{background:#fff;color:#000}}
+`;
+var NONE2 = "\u2013";
+var playTime = (minutes2, text) => {
+  const hours = Math.floor(minutes2 / 60);
+  const rest = minutes2 % 60;
+  return hours === 0 ? text.minutesOnly.replace("{m}", String(rest)) : text.duration.replace("{h}", String(hours)).replace("{m}", String(rest));
+};
+var resultOf = (record2) => record2.won ? "won" : record2.endReason === "gave-up" ? "gave-up" : "lost";
+var ROWS = {
+  detective: {
+    headers: ({ columns }) => [
+      columns.hero,
+      columns.case,
+      columns.country,
+      columns.result,
+      columns.days,
+      columns.time,
+      columns.clues,
+      columns.traits,
+      columns.board
+    ],
+    cells: (record2, { text, locale, e, boardHref }) => {
+      const reasons = LOCALE_TEXT[locale].stats.reasons;
+      const backgrounds = LOCALE_TEXT[locale].tabs.hero.backgrounds;
+      const result = resultOf(record2);
+      const href = boardHref(record2);
+      return [
+        `${e(record2.hero.name)}<small>${e(named(backgrounds, record2.hero.background))}</small>`,
+        `${e(record2.title)}${record2.theme === void 0 ? "" : `<small>${e(named(text.themes, record2.theme))}</small>`}`,
+        record2.setting === void 0 ? NONE2 : e(record2.setting.name[locale]),
+        `<span class="${result}">${e(text.results[result])}</span><small>${e(named(reasons, record2.endReason))}</small>`,
+        String(record2.days),
+        e(playTime(record2.minutes, text)),
+        String(record2.cluesFound),
+        `${String(record2.traitsRevealed)}/${String(record2.traitsTotal)}`,
+        href === void 0 ? NONE2 : `<a href="${e(href)}">${e(text.openBoard)}</a>`
+      ];
+    }
+  }
+};
+function renderHallPage(records, updatedOn, boardHref) {
+  const locale = records.at(-1)?.locale ?? "en";
+  const text = LOCALE_TEXT[locale].hall;
+  const e = escapeHtml;
+  const stats = computeProfileStats(records);
+  const context2 = { text, locale, e, boardHref };
+  const byKind = /* @__PURE__ */ new Map();
+  for (const record2 of records) {
+    byKind.set(archetypeOf(record2), [record2, ...byKind.get(archetypeOf(record2)) ?? []]);
+  }
+  const kinds = Object.keys(ROWS);
+  const sections = kinds.flatMap((kind) => {
+    const own2 = byKind.get(kind) ?? [];
+    if (own2.length === 0) return [];
+    const rows = ROWS[kind];
+    const head = rows.headers(text).map((header) => `<th>${e(header)}</th>`).join("");
+    const body2 = own2.map((record2) => {
+      const cells = rows.cells(record2, context2).map((cell) => `<td>${cell}</td>`);
+      return `<tr>${cells.join("")}</tr>`;
+    }).join("\n");
+    return [
+      `<h2>${e(named(text.archetypes, kind))}</h2>
+<div class="scroll"><table>
+<thead><tr>${head}</tr></thead>
+<tbody>
+${body2}
+</tbody>
+</table></div>`
+    ];
+  });
+  return `<!doctype html>
+<html lang="${locale}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+<title>${e(text.title)}</title>
+<style>${STYLE2}</style>
+</head>
+<body>
+<main>
+<h1>${e(text.title)}</h1>
+<p class="meta">${e(text.updated)}: ${e(updatedOn)}</p>
+<ul class="totals">
+<li><strong>${String(stats.runs)}</strong>${e(text.totals.runs)}</li>
+<li><strong>${String(stats.won)}</strong>${e(text.totals.wins)}</li>
+<li><strong>${String(stats.bestStreak)}</strong>${e(text.totals.streak)}</li>
+<li><strong>${String(stats.longestRunDays)}</strong>${e(text.totals.longest)}</li>
+</ul>
+${sections.length === 0 ? `<p class="empty">${e(text.none)}</p>` : sections.join("\n")}
+</main>
+</body>
+</html>
+`;
+}
+
+// packages/mcp/src/hall.ts
+var HALL_PAGE = "hall.html";
+var hallFile = (profileDir) => join12(profileDir, HALL_PAGE);
+var hallLocation = (context2) => {
+  const path = hallFile(context2.profileDir);
+  return { path, link: pathToFileURL(path).href };
+};
+async function writeHall(context2) {
+  const loaded = await loadProfile(context2.profileDir, context2.saveFs);
+  if (!loaded.ok) throw new Error(`The profile cannot be read (${loaded.reason}).`);
+  const boards = /* @__PURE__ */ new Map();
+  for (const { folder } of loaded.records) {
+    if (folder === void 0) continue;
+    const board = runBoardFile(context2.saveDir, folder);
+    if (await context2.saveFs.readFile(board).catch(() => void 0) !== void 0) {
+      boards.set(folder, relative2(context2.profileDir, board).split(sep).join("/"));
+    }
+  }
+  const page = renderHallPage(
+    loaded.records,
+    context2.today(),
+    ({ folder }) => folder === void 0 ? void 0 : boards.get(folder)
+  );
+  await context2.saveFs.mkdir(context2.profileDir);
+  await replaceFile(context2.saveFs, hallFile(context2.profileDir), page);
+}
+async function keepHall(context2) {
+  try {
+    await writeHall(context2);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // packages/mcp/src/stats.ts
-import { basename, dirname as dirname3, join as join12, relative as relative2, sep } from "node:path";
+import { basename, dirname as dirname3, join as join13, relative as relative3, sep as sep2 } from "node:path";
 
 // packages/mcp/src/stats-page.ts
-var STYLE2 = `
+var STYLE3 = `
 :root{color-scheme:light dark;--bg:#f4efe6;--card:#fffdf8;--ink:#2a2622;--muted:#7a7066;--line:#ddd3c3;--accent:#8a3b2a;--warn:#b26a00}
 @media (prefers-color-scheme:dark){:root{--bg:#1b1917;--card:#252220;--ink:#ece4d8;--muted:#a09484;--line:#3a3430;--accent:#e08a70;--warn:#e0a040}}
 *{box-sizing:border-box}
@@ -55866,7 +56146,7 @@ function renderStatsPage(stats, generation, boardHref) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
 <title>${e(text.title)}</title>
-<style>${STYLE2}</style>
+<style>${STYLE3}</style>
 </head>
 <body>
 <main>
@@ -55902,16 +56182,16 @@ async function writeStats(context2) {
   const page = renderStatsPage(
     stats,
     generation,
-    (runId) => relative2(directory, runBoardFile(context2.saveDir, runId)).split(sep).join("/")
+    (runId) => relative3(directory, runBoardFile(context2.saveDir, runId)).split(sep2).join("/")
   );
   await context2.saveFs.mkdir(directory);
   await replaceFile(
     context2.saveFs,
-    join12(directory, STATS_JSON),
+    join13(directory, STATS_JSON),
     `${JSON.stringify({ ...stats, generation }, null, 2)}
 `
   );
-  await replaceFile(context2.saveFs, join12(directory, STATS_PAGE), page);
+  await replaceFile(context2.saveFs, join13(directory, STATS_PAGE), page);
 }
 async function keepGenerationLog(context2, entry) {
   try {
@@ -56039,6 +56319,11 @@ var TurnResultSchema = external_exports.object({
   events: external_exports.array(TurnEventSchema).default([]),
   /** What the signal did in this turn; empty for a hero without a signal and for a turn it did not touch. */
   felt: external_exports.array(FeltSignalSchema).default([]),
+  /**
+   * Only in the turn that ended the run: the hall of heroes, now with this hero in it, as a path to show in words and a
+   * `file://` address to give as a link.
+   */
+  hall: external_exports.object({ path: external_exports.string(), link: external_exports.string() }).optional(),
   /** A luck token was spent in this turn: a failed check was rolled again and the second die stood. */
   luckSpent: external_exports.boolean().default(false),
   /** The hidden traits this turn showed, each told once; empty on most turns. */
@@ -56120,11 +56405,14 @@ async function playIntent(context2, turn, intent) {
   await saveRun(context2.saveDir, resolution.run, context2.saveFs, recorded);
   await keepProfile(context2, resolution.run, recorded);
   await keepBoard(context2, runId, resolution.run, recorded, run);
-  if (run.status === "active" && resolution.run.status !== "active") await keepStats(context2);
+  const ended = run.status === "active" && resolution.run.status !== "active";
+  if (ended) await keepStats(context2);
+  const hall = ended && await keepHall(context2) ? hallLocation(context2) : void 0;
   return {
     outcome: { ...resolution.outcome },
     events: eventsOfTurn(run, resolution.run),
     felt: feltOfTurn(run, resolution.felt ?? []),
+    ...hall === void 0 ? {} : { hall },
     luckSpent: resolution.luckSpent,
     revealed: revealedOfTurn(resolution.revealed),
     leads: resolution.newLeadIds.flatMap(
@@ -56208,7 +56496,7 @@ var deduce2 = defineTool({
 
 // packages/mcp/src/tools/evidence-board.ts
 import { dirname as dirname4 } from "node:path";
-import { pathToFileURL } from "node:url";
+import { pathToFileURL as pathToFileURL2 } from "node:url";
 var evidenceBoard = defineTool({
   name: "evidence_board",
   description: "Writes the evidence board: a single HTML page the player opens in a browser, in six tabs: a corkboard with the people as photographs, the clues as cards and thread for the links tried and the clues shown, the suspects and the clues as notebooks (where each clue was found, to whom it was shown, the links tried), the map of the places the detective knows with the news of the world, the conclusions, a chronicle (the time left, what the world has done, what is still open and the last turns the player took) and the hero with their condition, kit and the climate of the country. It holds exactly what the player may know and nothing more. It is written in the folder of the run, under `board/`, and the player opens it in a browser. Call it for the link: the first time a clue is found, when the player asks to see the evidence, the board or the notes, and for a run resumed in a new session. The server rewrites the page after every turn, so there is no need to call it to refresh it. It changes nothing in the run and costs no time. Each run has a page of its own, always the same file, so a tab the player left open shows the new state after a reload; a new run has a new page. The result carries `link`, a file:// address to give to the player as a clickable link, and `path`, the same page as a path to show in words. Never open, read or search the file yourself.",
@@ -56234,7 +56522,7 @@ var evidenceBoard = defineTool({
     }
     return {
       path,
-      link: pathToFileURL(path).href,
+      link: pathToFileURL2(path).href,
       clueCount: view.clues.length,
       insightCount: view.insights.length
     };
@@ -56282,7 +56570,7 @@ function namesInHeadlines(news) {
 }
 
 // packages/mcp/src/pending-run.ts
-import { join as join13 } from "node:path";
+import { join as join14 } from "node:path";
 var PENDING_STAGES = ["frame", "text"];
 var PendingBriefSchema = external_exports.strictObject({
   theme: external_exports.string().min(1),
@@ -56320,7 +56608,7 @@ var PendingRunSchema = external_exports.object({
   brief: PendingBriefSchema.optional()
 });
 function pendingFile(saveDir) {
-  return join13(saveDir, "pending", "state.json");
+  return join14(saveDir, "pending", "state.json");
 }
 function themeOfSeed(seed, themes) {
   const pick5 = createRng(`${seed}:theme`).roll(themes.length) - 1;
@@ -56359,7 +56647,7 @@ async function loadPending(saveDir, fs) {
 async function savePending(saveDir, pending, fs) {
   const path = pendingFile(saveDir);
   const temporary = `${path}.tmp`;
-  await fs.mkdir(join13(saveDir, "pending"));
+  await fs.mkdir(join14(saveDir, "pending"));
   try {
     await fs.writeFileSynced(temporary, `${JSON.stringify(PendingRunSchema.parse(pending), null, 2)}
 `);
@@ -56729,6 +57017,8 @@ var profileView = defineTool({
      * that is over, the last one too, so the hero who just played had one tool slot fewer after a win.
      */
     earned: external_exports.object({ toolSlots: external_exports.int(), traitSlots: external_exports.int(), luckTokens: external_exports.int() }),
+    /** The hall of heroes, written afresh for the call: a path to say and a `file://` link to give; absent if it could not be written. */
+    hall: external_exports.object({ path: external_exports.string(), link: external_exports.string() }).optional(),
     recent: external_exports.array(
       external_exports.object({
         title: external_exports.string(),
@@ -56742,7 +57032,9 @@ var profileView = defineTool({
   }),
   handler: async (_input, context2) => {
     const records = await requireProfile(context2);
+    const hall = await keepHall(context2) ? hallLocation(context2) : void 0;
     return {
+      ...hall === void 0 ? {} : { hall },
       stats: { ...computeProfileStats(records) },
       reasons: [...END_REASONS],
       earned: {
@@ -56816,7 +57108,9 @@ var runGiveUp = defineTool({
   inputSchema: external_exports.object({ turn: TurnSchema }),
   outputSchema: external_exports.object({
     view: RunSummarySchema,
-    stats: external_exports.object({ turns: external_exports.int(), minutes: external_exports.int(), cluesFound: external_exports.int(), insights: external_exports.int() })
+    stats: external_exports.object({ turns: external_exports.int(), minutes: external_exports.int(), cluesFound: external_exports.int(), insights: external_exports.int() }),
+    /** The hall of heroes with this hero in it, when it could be written: a path to say and a `file://` link to give. */
+    hall: external_exports.object({ path: external_exports.string(), link: external_exports.string() }).optional()
   }),
   handler: async ({ turn }, context2) => {
     const { run, log } = await requireRun(context2);
@@ -56832,8 +57126,13 @@ var runGiveUp = defineTool({
     if (ended !== run) await saveRun(context2.saveDir, ended, context2.saveFs);
     await keepProfile(context2, ended, log);
     await keepStats(context2);
+    const hall = await keepHall(context2) ? hallLocation(context2) : void 0;
     const { turns, minutes: minutes2, cluesFound, insights } = deriveStats(log);
-    return { view: summarizeRun(ended), stats: { turns, minutes: minutes2, cluesFound, insights } };
+    return {
+      view: summarizeRun(ended),
+      stats: { turns, minutes: minutes2, cluesFound, insights },
+      ...hall === void 0 ? {} : { hall }
+    };
   }
 });
 
