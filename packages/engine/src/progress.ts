@@ -19,6 +19,13 @@ export const LOSSES_TO_LOSE_A_SLOT = 2;
 export const START_TRAIT_SLOTS = 2;
 export const MAX_TRAIT_SLOTS = 5;
 
+/**
+ * The luck tokens a hero starts a run with, and the most there can be. Each lets the player roll one failed check
+ * again; the supply is filled anew for every run.
+ */
+export const START_LUCK_TOKENS = 1;
+export const MAX_LUCK_TOKENS = 5;
+
 /** What the pockets hold at most: the coffee and the pills (the sedative) the hero can carry. */
 export const POCKET_LIMITS = { coffee: 2, sedative: 7 } as const;
 
@@ -48,6 +55,11 @@ export function toolSlotsOf(records: readonly ProfileRecord[]): number {
 /** The hidden trait slots a hero has after `wins` victories: two at first, one more for each win, up to five. */
 export function traitSlotsOf(wins: number): number {
   return Math.min(MAX_TRAIT_SLOTS, START_TRAIT_SLOTS + wins);
+}
+
+/** The luck tokens a hero has after `wins` victories: one at first, one more for each win, up to five. */
+export function luckTokensOf(wins: number): number {
+  return Math.min(MAX_LUCK_TOKENS, START_LUCK_TOKENS + wins);
 }
 
 /**

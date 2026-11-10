@@ -12,14 +12,18 @@ import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
 import { TurnResultSchema, TurnSchema, playIntent } from '../play.js';
 
+/** Spend a luck token to roll a failed check again; see the description of `act`. */
+const LuckSchema = z.boolean().optional();
+
 /** The intents `act` carries; talking, deducing and accusing have tools of their own. */
 const ActIntentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('look') }),
-  z.object({ kind: z.literal('move'), locationId: EntityIdSchema }),
+  z.object({ kind: z.literal('move'), locationId: EntityIdSchema, luck: LuckSchema }),
   z.object({
     kind: z.literal('search'),
     partId: EntityIdSchema.optional(),
     toolId: GearIdSchema.optional(),
+    luck: LuckSchema,
   }),
   z.object({ kind: z.literal('rest') }),
   z.object({ kind: z.literal('sit') }),
@@ -28,8 +32,14 @@ const ActIntentSchema = z.discriminatedUnion('kind', [
     toolId: GearIdSchema.optional(),
     witnessId: EntityIdSchema.optional(),
     aboutSuspectId: EntityIdSchema.optional(),
+    luck: LuckSchema,
   }),
-  z.object({ kind: z.literal('study'), clueId: EntityIdSchema, toolId: GearIdSchema.optional() }),
+  z.object({
+    kind: z.literal('study'),
+    clueId: EntityIdSchema,
+    toolId: GearIdSchema.optional(),
+    luck: LuckSchema,
+  }),
   UseIntentSchema,
   TakeIntentSchema,
   RereadIntentSchema,
@@ -45,7 +55,7 @@ export const act = defineTool({
     'ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" ' +
     'and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` ' +
     '(what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary ' +
-    'of the run after the turn. The clues and conclusions the turn gave are in `clues` and `insights` with their texts, so a turn needs no run_view to be told. A refusal (a locked door, an unknown id) ' +
+    'of the run after the turn. The clues and conclusions the turn gave are in `clues` and `insights` with their texts, so a turn needs no run_view to be told. With `luck: true` on move, search, ask or study the hero spends a luck token (`luckTokens.left` in run_view) if the first die of a check fails: the check is rolled again and the second die stands, and the token is spent only then (`luckSpent` in the result); with none left the call is refused with "no-luck". Offer it only when the player asks to push their luck. A refusal (a locked door, an unknown id) ' +
     'changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) ' +
     'or accuse (accuse).',
   inputSchema: z.object({ turn: TurnSchema, intent: ActIntentSchema }),

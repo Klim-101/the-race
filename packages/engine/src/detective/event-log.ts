@@ -42,6 +42,8 @@ const SkillCheckResultSchema = z.object({
   critical: z.enum(['success', 'failure']).nullable(),
   success: z.boolean(),
   rngState: z.int().min(0).max(0xffffffff),
+  /** The die that failed before a luck token was spent; `die` is the second, which stood. */
+  rerolled: z.object({ die: z.int().min(1) }).optional(),
 });
 
 const CheckDetailSchema = z.object({

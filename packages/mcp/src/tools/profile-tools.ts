@@ -1,7 +1,14 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import { END_REASONS, computeProfileStats, toolSlotsOf, traitSlotsOf, winsOf } from '@the-race/engine';
+import {
+  END_REASONS,
+  computeProfileStats,
+  luckTokensOf,
+  toolSlotsOf,
+  traitSlotsOf,
+  winsOf,
+} from '@the-race/engine';
 import { exportProfile, importProfile } from '@the-race/saves';
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
@@ -27,7 +34,7 @@ export const profileView = defineTool({
      * What the runs have earned the next hero: tool slots in the suitcase and hidden trait slots. It counts every run
      * that is over, the last one too, so the hero who just played had one tool slot fewer after a win.
      */
-    earned: z.object({ toolSlots: z.int(), traitSlots: z.int() }),
+    earned: z.object({ toolSlots: z.int(), traitSlots: z.int(), luckTokens: z.int() }),
     recent: z.array(
       z.object({
         title: z.string(),
@@ -44,7 +51,11 @@ export const profileView = defineTool({
     return {
       stats: { ...computeProfileStats(records) },
       reasons: [...END_REASONS],
-      earned: { toolSlots: toolSlotsOf(records), traitSlots: traitSlotsOf(winsOf(records)) },
+      earned: {
+        toolSlots: toolSlotsOf(records),
+        traitSlots: traitSlotsOf(winsOf(records)),
+        luckTokens: luckTokensOf(winsOf(records)),
+      },
       recent: records
         .slice(-RECENT_RUNS)
         .reverse()
