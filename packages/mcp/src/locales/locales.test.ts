@@ -7,6 +7,9 @@ import { describe, expect, it } from 'vitest';
 import { LOCALE_TEXT } from './index.js';
 import { compareLocale } from './locale-check.js';
 
+// What `npm run locale:keys -- import` writes beside a language whose texts no person has reviewed yet.
+const UNREVIEWED = '.unreviewed.json';
+
 describe('locale files', () => {
   it('hold a text for every language the engine knows', () => {
     expect(Object.keys(LOCALE_TEXT).sort()).toEqual([...LOCALES].sort());
@@ -16,10 +19,17 @@ describe('locale files', () => {
     expect(compareLocale(LOCALE_TEXT.en, LOCALE_TEXT[locale])).toEqual([]);
   });
 
+  it('has no machine translation still waiting for a person to review it', () => {
+    // The list is deleted by the reviewer, once every text in it has been read by someone who knows the language.
+    const waiting = readdirSync(new URL('.', import.meta.url)).filter((name) => name.endsWith(UNREVIEWED));
+
+    expect(waiting).toEqual([]);
+  });
+
   it('has a file for every language and no file for a language the engine does not know', () => {
     // A file dropped into the folder but never added to LOCALES would be checked by nothing; say so here.
     const files = readdirSync(new URL('.', import.meta.url))
-      .filter((name) => name.endsWith('.json'))
+      .filter((name) => name.endsWith('.json') && !name.endsWith(UNREVIEWED))
       .map((name) => name.slice(0, -'.json'.length));
 
     expect(files.sort()).toEqual([...LOCALES].sort());

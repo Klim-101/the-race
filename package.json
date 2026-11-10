@@ -21,6 +21,7 @@
     "lint:generated": "node scripts/generate-plugin.mjs --check",
     "bundle": "node scripts/bundle-server.mjs",
     "bundle:check": "node scripts/bundle-server.mjs --check",
+    "locale:keys": "node scripts/locale-keys.mjs",
     "licenses:check": "node scripts/check-licenses.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
