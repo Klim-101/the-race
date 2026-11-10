@@ -3,6 +3,9 @@
 
 import {
   MESSAGE_CHANNELS,
+  newlyEarned,
+  type Locale,
+  type ProfileRecord,
   recordResolution,
   resolveIntent,
   restoreRng,
@@ -16,10 +19,11 @@ import {
 import { loadCurrentRun, saveRun, type LoadFailureReason } from '@the-race/saves';
 import { z } from 'zod';
 import { keepBoard } from './board-file.js';
+import { LOCALE_TEXT } from './locales/index.js';
 import { keepHall, hallLocation } from './hall.js';
 import { keepStats } from './stats.js';
 import type { ServerContext } from './context.js';
-import { keepProfile } from './profile.js';
+import { keepProfile, recordsOrNone } from './profile.js';
 import { ToolFailure, refusalToToolError } from './tool-error.js';
 
 /**
@@ -143,6 +147,8 @@ export const TurnResultSchema = z.object({
    * `file://` address to give as a link.
    */
   hall: z.object({ path: z.string(), link: z.string() }).optional(),
+  /** The achievements the run that ended in this turn earned, with their words; empty on every other turn. */
+  achievements: z.array(z.object({ id: z.string(), name: z.string(), description: z.string() })).default([]),
   /** A luck token was spent in this turn: a failed check was rolled again and the second die stood. */
   luckSpent: z.boolean().default(false),
   /** The hidden traits this turn showed, each told once; empty on most turns. */
@@ -213,6 +219,16 @@ export function assertFreshTurn(run: DetectiveRunState, turn: number): void {
   }
 }
 
+/** The achievements a run earned, from the profile before it and after it, in the words of the run's language. */
+export function earnedByRun(
+  locale: Locale,
+  before: readonly ProfileRecord[],
+  after: readonly ProfileRecord[],
+): { id: string; name: string; description: string }[] {
+  const items = LOCALE_TEXT[locale].hall.achievements.items;
+  return newlyEarned(before, after).map((id) => ({ id, ...items[id] }));
+}
+
 /** The engine's `felt` effects of a turn, named by the signal of the hero and put into words. */
 function feltOfTurn(run: DetectiveRunState, felt: readonly SignalFelt[]): z.input<typeof FeltSignalSchema>[] {
   const signal = run.hero.signalId;
@@ -276,21 +292,25 @@ export async function playIntent(
   assertFreshTurn(run, turn);
   const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
   if (!resolution.ok) throw new ToolFailure(refusalToToolError(resolution.refusal));
+  const ending = run.status === 'active' && resolution.run.status !== 'active';
+  // What the profile held before this run was put into it, to tell what the run earned.
+  const recordsBefore = ending ? await recordsOrNone(context) : [];
   const caseLeads = resolution.run.case.leads ?? [];
   const recorded = recordResolution(log, run, intent, resolution);
   await saveRun(context.saveDir, resolution.run, context.saveFs, recorded);
   await keepProfile(context, resolution.run, recorded);
   await keepBoard(context, runId, resolution.run, recorded, run);
   // The page of all the runs changes when a run ends, and only then.
-  const ended = run.status === 'active' && resolution.run.status !== 'active';
-  if (ended) await keepStats(context);
+  if (ending) await keepStats(context);
   // The hall is written from the profile, which has just taken the run in; a link is given only for a page that is there.
-  const hall = ended && (await keepHall(context)) ? hallLocation(context) : undefined;
+  const hall = ending && (await keepHall(context)) ? hallLocation(context) : undefined;
+  const achievements = ending ? earnedByRun(run.locale, recordsBefore, await recordsOrNone(context)) : [];
   return {
     outcome: { ...resolution.outcome },
     events: eventsOfTurn(run, resolution.run),
     felt: feltOfTurn(run, resolution.felt ?? []),
     ...(hall === undefined ? {} : { hall }),
+    achievements,
     luckSpent: resolution.luckSpent,
     revealed: revealedOfTurn(resolution.revealed),
     leads: resolution.newLeadIds.flatMap((leadId) =>

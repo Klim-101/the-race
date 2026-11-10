@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  ACHIEVEMENTS,
   archetypeOf,
+  earnedAchievements,
   computeProfileStats,
   type Archetype,
   type Locale,
@@ -33,6 +35,11 @@ td small{display:block;color:var(--muted)}
 a{color:var(--accent)}
 .won{color:var(--accent);font-weight:bold}
 .empty{color:var(--muted)}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin:0;padding:0;list-style:none}
+.badges li{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:10px 14px}
+.badges .kind{color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}
+.badges strong{display:block}
+.badges .locked{opacity:.55}
 @media print{body{background:#fff;color:#000}}
 `;
 
@@ -98,6 +105,26 @@ const ROWS = {
     },
   },
 } as const satisfies Record<Archetype, ArchetypeRows>;
+
+/** The achievements: the earned ones told, the others shown as still to earn, a secret one without its words. */
+function renderAchievements(
+  records: readonly ProfileRecord[],
+  text: HallText,
+  e: (value: string) => string,
+): string {
+  const words = text.achievements;
+  const earned = new Set<string>(earnedAchievements(records));
+  const cards = ACHIEVEMENTS.map(({ id, kind }) => {
+    const done = earned.has(id);
+    const hidden = kind === 'secret' && !done;
+    const item = words.items[id];
+    return `<li class="${done ? 'earned' : 'locked'}"><span class="kind">${e(words.kinds[kind])}</span><strong>${e(hidden ? words.secretName : item.name)}</strong>${e(hidden ? words.secretHint : item.description)}${done ? '' : `<small>${e(words.locked)}</small>`}</li>`;
+  });
+  return `<h2>${e(words.title)}: ${String(earned.size)}/${String(ACHIEVEMENTS.length)}</h2>
+<ul class="badges">
+${cards.join('\n')}
+</ul>`;
+}
 
 /**
  * The hall of heroes: every hero the player has played, newest first, grouped by the kind of game, with the totals.
@@ -166,6 +193,7 @@ ${body}
 <li><strong>${String(stats.longestRunDays)}</strong>${e(text.totals.longest)}</li>
 </ul>
 ${sections.length === 0 ? `<p class="empty">${e(text.none)}</p>` : sections.join('\n')}
+${renderAchievements(records, text, e)}
 </main>
 </body>
 </html>
