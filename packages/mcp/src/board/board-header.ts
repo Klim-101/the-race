@@ -6,6 +6,7 @@ import { clock, deadlineLine, duration } from './board-chronicle.js';
 import type { Fresh } from './board-new.js';
 import type { BoardText } from './board-text.js';
 import { escapeHtml } from './escape-html.js';
+import { LOCALE_TEXT } from '../locales/index.js';
 import { named, type TabText } from './tab-text.js';
 
 type Words = TabText['header'];
@@ -61,6 +62,24 @@ function freshLines(view: DetectiveRunView, fresh: Fresh, text: TabText): string
 }
 
 /**
+ * The line about the past hero the run remembers, from the public record alone: who they were and how it ended, with the
+ * country and the case's theme when the record has them. It is flavour and says nothing of this case.
+ */
+function rememberedLine(view: DetectiveRunView, text: TabText): string {
+  const { remembers } = view;
+  if (remembers === null) return '';
+  const e = escapeHtml;
+  const { stats, hall } = LOCALE_TEXT[view.locale];
+  const parts = [
+    e(named(stats.reasons, remembers.endReason)),
+    ...(remembers.setting === undefined ? [] : [e(remembers.setting.name[view.locale])]),
+    ...(remembers.theme === undefined ? [] : [e(named(hall.themes, remembers.theme))]),
+  ];
+  return `
+<p class="meta remembered">${e(text.header.remembered)}: <strong>${e(remembers.name)}</strong>, ${e(named(text.hero.backgrounds, remembers.background))} · ${parts.join(' · ')}</p>`;
+}
+
+/**
  * The header over every tab, made from the public view alone: the title, the turn the page shows, the day and
  * the hour, the working time left, the hero's reputation and condition in words, and what the last turn changed.
  */
@@ -75,7 +94,7 @@ export function renderHeader(view: DetectiveRunView, board: BoardText, text: Tab
   return `<header class="head">
 <h1>${e(view.title)}</h1>
 <p class="meta">${e(words.turn.replace('{n}', String(view.turn)))} · ${e(day)} · ${e(board.status[view.status])} · ${e(board.detective)}: ${e(view.hero.name)}</p>
-<p class="meta">${e(words.timeLeft)}: <strong>${e(duration(view.chronicle.activeMinutesLeft, text.chronicle))}</strong> · ${e(words.condition)}: ${e(conditionWords(view, text).join(', '))}</p>${deadlineLine(view, text).replace('<p>', '<p class="meta deadline">')}${
+<p class="meta">${e(words.timeLeft)}: <strong>${e(duration(view.chronicle.activeMinutesLeft, text.chronicle))}</strong> · ${e(words.condition)}: ${e(conditionWords(view, text).join(', '))}</p>${deadlineLine(view, text).replace('<p>', '<p class="meta deadline">')}${rememberedLine(view, text)}${
     lines.length === 0
       ? ''
       : `\n<div class="fresh"><span class="tag">${e(text.fresh.title)}</span><ul>${lines.map((line) => `<li>${e(line)}</li>`).join('')}</ul></div>`

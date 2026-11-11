@@ -53182,6 +53182,7 @@ var en_default3 = {
       day: "Day {day} of {total}, {time}",
       timeLeft: "Working time left",
       condition: "Condition",
+      remembered: "Remembered",
       reputationBands: {
         good: "good name",
         middling: "name in doubt",
@@ -53937,6 +53938,7 @@ var ru_default2 = {
       day: "\u0414\u0435\u043D\u044C {day} \u0438\u0437 {total}, {time}",
       timeLeft: "\u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0440\u0430\u0431\u043E\u0447\u0435\u0433\u043E \u0432\u0440\u0435\u043C\u0435\u043D\u0438",
       condition: "\u0421\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u0435",
+      remembered: "\u041F\u043E\u043C\u043D\u044F\u0442",
       reputationBands: {
         good: "\u0434\u043E\u0431\u0440\u043E\u0435 \u0438\u043C\u044F",
         middling: "\u0438\u043C\u044F \u043F\u043E\u0434 \u0441\u043E\u043C\u043D\u0435\u043D\u0438\u0435\u043C",
@@ -55152,6 +55154,19 @@ function freshLines(view, fresh, text) {
     )
   ];
 }
+function rememberedLine(view, text) {
+  const { remembers } = view;
+  if (remembers === null) return "";
+  const e = escapeHtml;
+  const { stats, hall } = LOCALE_TEXT[view.locale];
+  const parts = [
+    e(named(stats.reasons, remembers.endReason)),
+    ...remembers.setting === void 0 ? [] : [e(remembers.setting.name[view.locale])],
+    ...remembers.theme === void 0 ? [] : [e(named(hall.themes, remembers.theme))]
+  ];
+  return `
+<p class="meta remembered">${e(text.header.remembered)}: <strong>${e(remembers.name)}</strong>, ${e(named(text.hero.backgrounds, remembers.background))} \xB7 ${parts.join(" \xB7 ")}</p>`;
+}
 function renderHeader(view, board, text, fresh) {
   const e = escapeHtml;
   const words = text.header;
@@ -55160,7 +55175,7 @@ function renderHeader(view, board, text, fresh) {
   return `<header class="head">
 <h1>${e(view.title)}</h1>
 <p class="meta">${e(words.turn.replace("{n}", String(view.turn)))} \xB7 ${e(day)} \xB7 ${e(board.status[view.status])} \xB7 ${e(board.detective)}: ${e(view.hero.name)}</p>
-<p class="meta">${e(words.timeLeft)}: <strong>${e(duration3(view.chronicle.activeMinutesLeft, text.chronicle))}</strong> \xB7 ${e(words.condition)}: ${e(conditionWords(view, text).join(", "))}</p>${deadlineLine(view, text).replace("<p>", '<p class="meta deadline">')}${lines.length === 0 ? "" : `
+<p class="meta">${e(words.timeLeft)}: <strong>${e(duration3(view.chronicle.activeMinutesLeft, text.chronicle))}</strong> \xB7 ${e(words.condition)}: ${e(conditionWords(view, text).join(", "))}</p>${deadlineLine(view, text).replace("<p>", '<p class="meta deadline">')}${rememberedLine(view, text)}${lines.length === 0 ? "" : `
 <div class="fresh"><span class="tag">${e(text.fresh.title)}</span><ul>${lines.map((line) => `<li>${e(line)}</li>`).join("")}</ul></div>`}
 </header>`;
 }

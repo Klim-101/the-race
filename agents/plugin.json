@@ -1,6 +1,6 @@
 {
   "name": "the-race",
-  "version": "0.72.0",
+  "version": "0.73.0",
   "description": "the RACE: a text roguelike you play in your own words. A deterministic engine owns the dice and the truth; the agent tells the story.",
   "author": {
     "name": "The RACE Authors"

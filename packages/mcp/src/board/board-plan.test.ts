@@ -51,6 +51,7 @@ const VIEW = {
   revealedTraits: [],
   setting: null,
   inspiration: null,
+  remembers: null,
   news: [],
   location: { id: 'hall', name: 'Room hall', description: '', exits: [] },
   map: {

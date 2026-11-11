@@ -117,6 +117,7 @@
       "day": "Day {day} of {total}, {time}",
       "timeLeft": "Working time left",
       "condition": "Condition",
+      "remembered": "Remembered",
       "reputationBands": {
         "good": "good name",
         "middling": "name in doubt",
