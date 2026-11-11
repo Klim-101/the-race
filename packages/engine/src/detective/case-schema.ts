@@ -90,6 +90,13 @@ export const PlacePartSchema = z.object({
   obstacle: ObstacleKindSchema.nullable(),
   /** The clue (or the red herring) the part holds; `null` for a part with nothing in it. */
   holds: EntityIdSchema.nullable(),
+  /**
+   * What a search of a part that holds nothing shows instead of nothing: a small true thing that proves nothing (a cigarette
+   * end, a torn flyer, a receipt), so that finding something no longer means finding the thing. Only a part with nothing in
+   * it has one. It is a narrative text and never a clue: it has no id, is not on the board's clues and is never shown to a
+   * suspect. Optional, so that the cases of before it keep their seal.
+   */
+  trace: NarrativeTextSchema.optional(),
   /** Whether a glance round the room shows it. */
   inQuickLook: z.boolean(),
   /** The lead that must be earned before the part is shown, if any. */
@@ -192,6 +199,11 @@ export const LocationSchema = z.object({
    * keep their seal; a place without parts is searched as a whole, as it always was.
    */
   parts: z.array(PlacePartSchema).optional(),
+  /**
+   * The same small true thing for a glance round the place or a search of the whole place that finds no clue, which is all a
+   * place without parts has to show. Optional for the same reason.
+   */
+  litter: NarrativeTextSchema.optional(),
   /** What the place keeps for the hero. Optional, so that the cases of before it keep their seal. */
   stock: z.array(StockEntrySchema).optional(),
 });
@@ -577,6 +589,17 @@ export const DetectiveCaseSchema = z
           message: 'Only an abduction has messages that come by themselves.',
         });
       }
+    });
+    detectiveCase.locations.forEach((location, index) => {
+      (location.parts ?? []).forEach((part, partIndex) => {
+        if (part.trace !== undefined && part.holds !== null) {
+          context.addIssue({
+            code: 'custom',
+            path: ['locations', index, 'parts', partIndex, 'trace'],
+            message: 'A part that holds a clue has no trace: the clue is what a search of it shows.',
+          });
+        }
+      });
     });
     const hasAbduction = detectiveCase.truth.abduction !== undefined;
     if (formOf(detectiveCase) === 'abduction' && !hasAbduction) {

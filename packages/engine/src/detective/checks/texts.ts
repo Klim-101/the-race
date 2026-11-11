@@ -36,9 +36,13 @@ export function collectNarrativeTexts(detectiveCase: DetectiveCase): NarrativeTe
     ...detectiveCase.locations.flatMap((location, index) => [
       at(`locations[${String(index)}].name`, location.name),
       at(`locations[${String(index)}].description`, location.description),
-      ...(location.parts ?? []).map((part, partIndex) =>
+      ...(location.litter === undefined ? [] : [at(`locations[${String(index)}].litter`, location.litter)]),
+      ...(location.parts ?? []).flatMap((part, partIndex) => [
         at(`locations[${String(index)}].parts[${String(partIndex)}].name`, part.name),
-      ),
+        ...(part.trace === undefined
+          ? []
+          : [at(`locations[${String(index)}].parts[${String(partIndex)}].trace`, part.trace)]),
+      ]),
     ]),
     ...(detectiveCase.leads ?? []).map((lead, index) => at(`leads[${String(index)}].reason`, lead.reason)),
     ...(detectiveCase.witnesses ?? []).flatMap((witness, index) => [
