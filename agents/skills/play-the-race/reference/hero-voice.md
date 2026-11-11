@@ -45,6 +45,8 @@ A word or a clause now and then, never a theme of every paragraph.
 | `in-debt`        | Counts the cost of coffee and the days; sleeps badly and says so lightly. |
 | `newly-arrived`  | The town is new; notes the street names; a stranger and used to it.       |
 | `on-probation`   | Someone is watching, so careful with scenes; steadies the nerves.         |
+| `night-shift`    | The day is a second shift; slow to start, quick at the lights of evening. |
+| `sleepless`      | Awake at the wrong hours; sharp edges, a mind that will not switch off.   |
 
 ## The mood: `signal.voice`
 

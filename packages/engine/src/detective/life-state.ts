@@ -6,7 +6,7 @@ import type { ConsumableId } from './consumables.js';
 import type { GearId } from './gear.js';
 
 // What the hero is going through when the run begins, beside who they were. A state shifts the start a little,
-// by one piece of kit or one supply and never by a penalty, so every state can be played; the wording of each
+// by one piece of kit or one supply, and a state that starts the hero tired always has such a gift beside the debt, so every state can be played; the wording of each
 // is in the locale files. A hero made before this existed has none.
 
 export const LIFE_STATES = [
@@ -16,6 +16,8 @@ export const LIFE_STATES = [
   'in-debt',
   'newly-arrived',
   'on-probation',
+  'night-shift',
+  'sleepless',
 ] as const;
 export const LifeStateSchema = z.enum(LIFE_STATES);
 export type LifeState = z.infer<typeof LifeStateSchema>;
@@ -25,6 +27,8 @@ export interface LifeStateShift {
   readonly gear?: GearId;
   /** A supply they carry because of it. */
   readonly supply?: ConsumableId;
+  /** Sleep debt they begin with: a state that starts the hero tired always comes with a gift beside it. */
+  readonly sleepDebt?: number;
 }
 
 export const LIFE_STATE_SHIFTS: Readonly<Record<LifeState, LifeStateShift>> = {
@@ -40,4 +44,8 @@ export const LIFE_STATE_SHIFTS: Readonly<Record<LifeState, LifeStateShift>> = {
   'newly-arrived': { gear: 'notebook', supply: 'coffee' },
   // Nerves kept in check by prescription.
   'on-probation': { supply: 'sedative' },
+  // Worked nights, so the day is a second shift, and the coffee is the habit of it.
+  'night-shift': { supply: 'coffee', sleepDebt: 3 },
+  // Nights lie awake, and a notebook is where the thoughts go; the debt has already begun to tell.
+  sleepless: { gear: 'notebook', sleepDebt: 4 },
 };

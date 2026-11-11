@@ -8,7 +8,8 @@ import { CRIME_TYPES, DetectiveCaseSchema } from './case-schema.js';
 import { BACKGROUND_SUPPLIES, CONSUMABLE_IDS, initialSupplies } from './consumables.js';
 import { BACKGROUNDS, BACKGROUND_KITS, GEAR_IDS, initialKit } from './gear.js';
 import { LIFE_STATES, LIFE_STATE_SHIFTS } from './life-state.js';
-import { createDetectiveRun } from './run-state.js';
+import { initialCondition } from './condition.js';
+import { createDetectiveRun, viewRun } from './run-state.js';
 import { BACKGROUND_BUILDS, DETECTIVE_SKILL_PRESETS } from './skill-presets.js';
 
 describe('the backgrounds', () => {
@@ -63,6 +64,39 @@ describe('the life states', () => {
     expect(initialSupplies('sommelier', 'just-dismissed')).toEqual({ alcohol: 2 });
     expect(initialSupplies('bus-driver', 'on-probation')).toEqual({ coffee: 2, sedative: 1 });
     expect(initialSupplies('police', 'retired')).toEqual({ coffee: 1 });
+  });
+
+  it('begin tired only where the state says so, and always with a gift beside the debt', () => {
+    const tired = LIFE_STATES.filter((state) => (LIFE_STATE_SHIFTS[state].sleepDebt ?? 0) > 0);
+
+    expect(tired).toEqual(['night-shift', 'sleepless']);
+    for (const state of tired) {
+      expect(initialCondition(state).sleepDebt).toBe(LIFE_STATE_SHIFTS[state].sleepDebt);
+      const { gear, supply } = LIFE_STATE_SHIFTS[state];
+      expect(gear !== undefined || supply !== undefined).toBe(true);
+    }
+    expect(initialCondition().sleepDebt).toBe(0);
+    expect(initialCondition('retired').sleepDebt).toBe(0);
+    expect(initialCondition('night-shift').nerves).toBe(initialCondition().nerves);
+  });
+
+  it('start the run with that debt, and show it as tired in the view of a hero who has some', () => {
+    const run = (lifeState?: (typeof LIFE_STATES)[number]) =>
+      createDetectiveRun({
+        hero: { ...buildHero(), ...(lifeState === undefined ? {} : { lifeState }) },
+        traits: [],
+        case: DetectiveCaseSchema.parse(buildCheeseCase()),
+        seed: 'tired',
+        rngState: 1,
+        locale: 'en',
+      });
+
+    expect(run().condition.sleepDebt).toBe(0);
+    expect(run('night-shift').condition.sleepDebt).toBe(3);
+    expect(run('sleepless').condition.sleepDebt).toBe(4);
+    expect(viewRun(run('sleepless')).condition.sleepDebt).toBe(4);
+    // The coffee of the night shift is in the pocket, so the debt can be worked off.
+    expect(run('night-shift').supplies.coffee).toBeGreaterThanOrEqual(1);
   });
 
   it('start a run with the kit and supplies of the hero, and an old hero with no state is unchanged', () => {

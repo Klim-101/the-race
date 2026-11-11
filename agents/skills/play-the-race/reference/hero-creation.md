@@ -44,7 +44,7 @@ Say these in the player's language; the ids are never shown.
 | `investigative-blogger` | Investigative blogger: sources, screenshots and no editor to stop them.     | Блогер-расследователь: источники, скриншоты и никакого редактора над душой. |
 | `street-private-eye`    | Street private eye: cheap office, wide network, no badge.                   | Частный сыщик: дешёвая контора, широкие связи, никакого значка.             |
 
-A card may also carry a `lifeState`, what the hero is going through at the start. Add it in half a sentence after who they were, and never as a handicap: it is a place to begin from.
+A card may also carry a `lifeState`, what the hero is going through at the start. Add it in half a sentence after who they were, and never as a handicap: it is a place to begin from. `night-shift` and `sleepless` begin a little tired (the hero's view says it in words, never as a number): tell that as a fact about who they are, with the gift beside it, and never as a reason to pity them.
 
 | id (life state)  | English                                                             | Русский                                                        |
 | ---------------- | ------------------------------------------------------------------- | -------------------------------------------------------------- |
@@ -54,6 +54,8 @@ A card may also carry a `lifeState`, what the hero is going through at the start
 | `in-debt`        | In debt: long nights, a lot of coffee.                              | В долгах: долгие ночи, много кофе.                             |
 | `newly-arrived`  | Newly arrived: a notebook for the streets, a stranger to everyone.  | Недавно в городе: блокнот для улиц и чужой для всех.           |
 | `on-probation`   | On probation: someone is watching, so the nerves are kept in check. | На испытательном сроке: за ним следят, нервы держит лекарство. |
+| `night-shift`    | Worked nights: the day is a second shift, and coffee is the habit.  | Работал по ночам: день — вторая смена, а кофе — привычка.      |
+| `sleepless`      | Sleepless: nights awake, a notebook for the thoughts.               | Мучается бессонницей: ночи без сна, блокнот для мыслей.        |
 
 | id (signal)     | English                                                                           | Русский                                                                                        |
 | --------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |

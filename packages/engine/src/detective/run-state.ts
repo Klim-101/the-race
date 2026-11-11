@@ -432,7 +432,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     foundClueIds: [],
     insightIds: [],
     concededLieIds: [],
-    condition: initialCondition(),
+    condition: initialCondition(input.hero.lifeState),
     actionStrain: { day: 1, spent: 0 },
     toolSlots: input.toolSlots ?? START_TOOL_SLOTS,
     kit: startingKit(
