@@ -18,9 +18,16 @@ export const SEED_CRIMES: Readonly<Record<SeedKind, readonly CrimeType[]>> = {
   curiosity: ['curious-theft', 'missing-person', 'forgery'],
 };
 
+/**
+ * The kinds of seed a violent case (a homicide) may grow from: a dispute or a scandal, and never a disaster or a recent
+ * tragedy. `SEED_CRIMES` does not list the homicide themes until the generator is taught the form; then they are added to
+ * exactly these kinds.
+ */
+export const HOMICIDE_SEEDS: readonly SeedKind[] = ['dispute', 'scandal'];
+
 /** The crimes a hero's former trade makes a natural fit. A leaning, not a rule: any crime can still come up. */
 export const BACKGROUND_CRIMES: Readonly<Record<Background, readonly CrimeType[]>> = {
-  police: ['missing-person', 'curious-theft', 'forgery'],
+  police: ['missing-person', 'curious-theft', 'forgery', 'attempted-murder', 'murder'],
   journalist: ['political-leak', 'corporate-espionage', 'missing-person'],
   locksmith: ['curious-theft', 'forgery', 'corporate-espionage'],
   analyst: ['financial', 'cyber', 'forgery'],

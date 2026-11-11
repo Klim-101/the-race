@@ -689,7 +689,9 @@
       "missing-person": "a missing person",
       "forgery": "a forgery",
       "corporate-espionage": "corporate espionage",
-      "curious-theft": "a curious theft"
+      "curious-theft": "a curious theft",
+      "attempted-murder": "an attempted murder",
+      "murder": "a murder"
     },
     "duration": "{h} h {m} min",
     "minutesOnly": "{m} min",

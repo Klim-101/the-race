@@ -34726,6 +34726,7 @@ function viewPending(pending, nowMinute) {
 
 // packages/engine/src/detective/case-schema.ts
 var CASE_SCHEMA_VERSION = 1;
+var HOMICIDE_THEMES = ["attempted-murder", "murder"];
 var CRIME_TYPES = [
   "financial",
   "cyber",
@@ -34733,9 +34734,13 @@ var CRIME_TYPES = [
   "missing-person",
   "forgery",
   "corporate-espionage",
-  "curious-theft"
+  "curious-theft",
+  ...HOMICIDE_THEMES
 ];
 var CrimeTypeSchema = external_exports.enum(CRIME_TYPES);
+var GENERAL_CRIME_TYPES = CRIME_TYPES.filter(
+  (crime) => !HOMICIDE_THEMES.includes(crime)
+);
 var TONES = ["serious", "wry", "absurd"];
 var ToneSchema = external_exports.enum(TONES);
 var EntityIdSchema = external_exports.string().regex(/^[a-z][a-z0-9-]*$/, "Use lowercase kebab-case ids.");
@@ -34958,15 +34963,22 @@ var TimelineEntrySchema = external_exports.object({
   locationId: EntityIdSchema,
   action: NarrativeTextSchema
 });
-var CASE_FORMS = ["whodunit", "abduction"];
+var CASE_FORMS = ["whodunit", "abduction", "homicide"];
 var CaseFormSchema = external_exports.enum(CASE_FORMS);
 var ABDUCTION_ONE_IN = 4;
 function formFor(theme, runSeed) {
+  if (HOMICIDE_THEMES.includes(theme)) return "homicide";
   if (theme === "missing-person") return "abduction";
   return createRng(`${runSeed}:form`).roll(ABDUCTION_ONE_IN) === 1 ? "abduction" : "whodunit";
 }
 var VICTIM_KINDS = ["person", "pet"];
 var VictimKindSchema = external_exports.enum(VICTIM_KINDS);
+var HOMICIDE_FATES = ["attempt", "death"];
+var HomicideFateSchema = external_exports.enum(HOMICIDE_FATES);
+var HomicideSchema = external_exports.object({
+  victim: external_exports.object({ name: NarrativeTextSchema }),
+  fate: HomicideFateSchema
+});
 var AbductionSchema = external_exports.object({
   victim: external_exports.object({ kind: VictimKindSchema, name: NarrativeTextSchema }),
   /** The location where the victim is kept. */
@@ -34986,7 +34998,9 @@ var TruthSchema = external_exports.object({
   crimeAtMinute: external_exports.int().min(0),
   timeline: external_exports.array(TimelineEntrySchema).min(1),
   /** Present exactly when the case's form is `abduction`. */
-  abduction: AbductionSchema.optional()
+  abduction: AbductionSchema.optional(),
+  /** Present exactly when the case's form is `homicide`. */
+  homicide: HomicideSchema.optional()
 });
 var SolutionSchema = external_exports.object({
   motiveDeductionId: EntityIdSchema,
@@ -35144,11 +35158,26 @@ var DetectiveCaseSchema = external_exports.object({
       message: "Only an abduction has a conclusion about where the victim is."
     });
   }
-  if (formOf(detectiveCase) === "whodunit" && hasAbduction) {
+  if (formOf(detectiveCase) !== "abduction" && hasAbduction) {
     context2.addIssue({
       code: "custom",
       path: ["truth", "abduction"],
       message: "Only an abduction has a victim, whereabouts and deadline."
+    });
+  }
+  const hasHomicide = detectiveCase.truth.homicide !== void 0;
+  if (formOf(detectiveCase) === "homicide" && !hasHomicide) {
+    context2.addIssue({
+      code: "custom",
+      path: ["truth", "homicide"],
+      message: "A homicide needs its victim and what became of them."
+    });
+  }
+  if (formOf(detectiveCase) !== "homicide" && hasHomicide) {
+    context2.addIssue({
+      code: "custom",
+      path: ["truth", "homicide"],
+      message: "Only a homicide has a victim who was hurt or killed."
     });
   }
 });
@@ -35536,7 +35565,7 @@ var SEED_CRIMES = {
   curiosity: ["curious-theft", "missing-person", "forgery"]
 };
 var BACKGROUND_CRIMES = {
-  police: ["missing-person", "curious-theft", "forgery"],
+  police: ["missing-person", "curious-theft", "forgery", "attempted-murder", "murder"],
   journalist: ["political-leak", "corporate-espionage", "missing-person"],
   locksmith: ["curious-theft", "forgery", "corporate-espionage"],
   analyst: ["financial", "cyber", "forgery"],
@@ -41036,7 +41065,7 @@ function validateCase(input2, context2) {
         {
           code: "form-mismatch",
           path: "form",
-          message: context2.form === "abduction" ? 'The brief asks for an abduction: set "form" to "abduction" and give "truth.abduction".' : 'The brief asks for a whodunit: leave "form" out (or "whodunit") and give no "truth.abduction".'
+          message: context2.form === "abduction" ? 'The brief asks for an abduction: set "form" to "abduction" and give "truth.abduction".' : context2.form === "homicide" ? 'The brief asks for a homicide: set "form" to "homicide" and give "truth.homicide".' : 'The brief asks for a whodunit: leave "form" out (or "whodunit") and give no "truth.abduction" or "truth.homicide".'
         }
       ]
     };
@@ -41088,7 +41117,7 @@ function validateCase(input2, context2) {
 
 // packages/engine/src/detective/scenario.ts
 var DETECTIVE_SCENARIO = {
-  themes: CRIME_TYPES,
+  themes: GENERAL_CRIME_TYPES,
   issueOrder: ISSUE_ORDER,
   chooseTheme(seeds, hero, runSeed) {
     const choice = chooseSeed(seeds, { background: hero.background, runSeed });
@@ -54070,7 +54099,9 @@ var en_default3 = {
       "missing-person": "a missing person",
       forgery: "a forgery",
       "corporate-espionage": "corporate espionage",
-      "curious-theft": "a curious theft"
+      "curious-theft": "a curious theft",
+      "attempted-murder": "an attempted murder",
+      murder: "a murder"
     },
     duration: "{h} h {m} min",
     minutesOnly: "{m} min",
@@ -54840,7 +54871,9 @@ var ru_default2 = {
       "missing-person": "\u043F\u0440\u043E\u043F\u0430\u0432\u0448\u0438\u0439 \u0447\u0435\u043B\u043E\u0432\u0435\u043A",
       forgery: "\u043F\u043E\u0434\u0434\u0435\u043B\u043A\u0430",
       "corporate-espionage": "\u043A\u043E\u0440\u043F\u043E\u0440\u0430\u0442\u0438\u0432\u043D\u044B\u0439 \u0448\u043F\u0438\u043E\u043D\u0430\u0436",
-      "curious-theft": "\u0441\u0442\u0440\u0430\u043D\u043D\u0430\u044F \u043A\u0440\u0430\u0436\u0430"
+      "curious-theft": "\u0441\u0442\u0440\u0430\u043D\u043D\u0430\u044F \u043A\u0440\u0430\u0436\u0430",
+      "attempted-murder": "\u043F\u043E\u043A\u0443\u0448\u0435\u043D\u0438\u0435",
+      murder: "\u0443\u0431\u0438\u0439\u0441\u0442\u0432\u043E"
     },
     duration: "{h} \u0447 {m} \u043C\u0438\u043D",
     minutesOnly: "{m} \u043C\u0438\u043D",
@@ -56944,7 +56977,7 @@ var RunSummarySchema = external_exports.object({
   locale: external_exports.enum(["ru", "en"]),
   turn: external_exports.int().min(0),
   /** `abduction` for a case with a deadline and a place to name, else `whodunit`. */
-  form: external_exports.enum(["whodunit", "abduction"]),
+  form: CaseFormSchema,
   /** The minutes left before the deadline of an abduction, `null` for a case that has none. */
   minutesToDeadline: external_exports.int().nullable(),
   /** When that deadline falls: the day and the minute of the day, `null` for a case that has none. */

@@ -82,7 +82,9 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
           message:
             context.form === 'abduction'
               ? 'The brief asks for an abduction: set "form" to "abduction" and give "truth.abduction".'
-              : 'The brief asks for a whodunit: leave "form" out (or "whodunit") and give no "truth.abduction".',
+              : context.form === 'homicide'
+                ? 'The brief asks for a homicide: set "form" to "homicide" and give "truth.homicide".'
+                : 'The brief asks for a whodunit: leave "form" out (or "whodunit") and give no "truth.abduction" or "truth.homicide".',
         },
       ],
     };

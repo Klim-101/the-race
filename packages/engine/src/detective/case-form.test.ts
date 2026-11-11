@@ -3,7 +3,17 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
-import { DetectiveCaseSchema, formFor, formOf, type Abduction } from './case-schema.js';
+import {
+  CASE_FORMS,
+  CRIME_TYPES,
+  DetectiveCaseSchema,
+  GENERAL_CRIME_TYPES,
+  HOMICIDE_FATES,
+  HOMICIDE_THEMES,
+  formFor,
+  formOf,
+  type Abduction,
+} from './case-schema.js';
 import { validateCase } from './case-validator.js';
 import { DETECTIVE_SCENARIO } from './scenario.js';
 
@@ -220,5 +230,98 @@ describe('the form the engine names', () => {
     expect(check('whodunit')).not.toMatchObject({ issues: [{ code: 'form-mismatch' }] });
     expect(check('murder')).not.toMatchObject({ issues: [{ code: 'form-mismatch' }] });
     expect(check(undefined)).not.toMatchObject({ issues: [{ code: 'form-mismatch' }] });
+  });
+});
+
+const HOMICIDE = { victim: { name: 'Pieter Vane, the stallholder' }, fate: 'attempt' } as const;
+
+/** The cheese case as a homicide; a `null` leaves the form or the block out. */
+function homicide(options: { form?: string | null; block?: Record<string, unknown> | null } = {}) {
+  const built = buildCheeseCase();
+  const result: Record<string, unknown> = { ...built };
+  if (options.form !== null) result.form = options.form ?? 'homicide';
+  const truth: Record<string, unknown> = { ...built.truth };
+  if (options.block !== null) truth.homicide = { ...HOMICIDE, ...options.block };
+  result.truth = truth;
+  return result;
+}
+
+describe('the form homicide', () => {
+  it('is one of the forms, with two fates, and the themes that ask for it are crime types', () => {
+    expect(CASE_FORMS).toContain('homicide');
+    expect([...HOMICIDE_FATES]).toEqual(['attempt', 'death']);
+    expect([...HOMICIDE_THEMES]).toEqual(['attempted-murder', 'murder']);
+    for (const theme of HOMICIDE_THEMES) expect(CRIME_TYPES).toContain(theme);
+    for (const theme of HOMICIDE_THEMES) expect(GENERAL_CRIME_TYPES).not.toContain(theme);
+    expect(GENERAL_CRIME_TYPES).toHaveLength(CRIME_TYPES.length - HOMICIDE_THEMES.length);
+  });
+
+  it('is chosen by the engine from the theme, on every seed, and by no other theme', () => {
+    for (let index = 0; index < 60; index += 1) {
+      const seed = `homicide-${String(index)}`;
+      expect(formFor('attempted-murder', seed)).toBe('homicide');
+      expect(formFor('murder', seed)).toBe('homicide');
+      expect(formFor('forgery', seed)).not.toBe('homicide');
+      expect(formFor('missing-person', seed)).toBe('abduction');
+    }
+  });
+
+  it('is what a run with no seed never falls back on: the scenario names only the ordinary themes', () => {
+    for (const theme of HOMICIDE_THEMES) expect(DETECTIVE_SCENARIO.themes).not.toContain(theme);
+  });
+
+  it('is accepted with its victim and what became of them, whichever fate', () => {
+    for (const fate of HOMICIDE_FATES) {
+      const parsed = DetectiveCaseSchema.parse(homicide({ block: { fate } }));
+
+      expect(formOf(parsed)).toBe('homicide');
+      expect(parsed.truth.homicide).toEqual({ ...HOMICIDE, fate });
+    }
+  });
+
+  it('needs its victim and fate, and the schema refuses a fate it does not know', () => {
+    expect(DetectiveCaseSchema.safeParse(homicide({ block: null })).success).toBe(false);
+    expect(DetectiveCaseSchema.safeParse(homicide({ block: { fate: 'unknown' } })).success).toBe(false);
+    expect(DetectiveCaseSchema.safeParse(homicide({ block: { victim: { name: ' ' } } })).success).toBe(false);
+  });
+
+  it('is only in a case of that form: no other form has the block, and a case with none is as it was', () => {
+    for (const form of [null, 'whodunit']) {
+      expect(DetectiveCaseSchema.safeParse(homicide({ form })).success).toBe(false);
+    }
+    expect(DetectiveCaseSchema.safeParse(homicide({ form: 'abduction' })).success).toBe(false);
+    expect(JSON.stringify(DetectiveCaseSchema.parse(buildCheeseCase()))).not.toContain('homicide');
+  });
+
+  it('is refused for an abduction that also says it is one, since a case has a single form', () => {
+    const both = homicide();
+    (both.truth as Record<string, unknown>).abduction = ABDUCTION;
+
+    expect(DetectiveCaseSchema.safeParse(both).success).toBe(false);
+  });
+
+  it('is told apart from a whodunit when the brief asks for it, in a message the generator can act on', () => {
+    const asked = validateCase(buildCheeseCase(), {
+      hero: buildHero(),
+      traits: [],
+      locale: 'en',
+      realNames: [],
+      form: 'homicide',
+    });
+
+    expect(!asked.isValid && asked.issues).toEqual([
+      expect.objectContaining({
+        code: 'form-mismatch',
+        message: expect.stringContaining('truth.homicide') as unknown,
+      }),
+    ]);
+    const other = validateCase(homicide(), {
+      hero: buildHero(),
+      traits: [],
+      locale: 'en',
+      realNames: [],
+      form: 'whodunit',
+    });
+    expect(!other.isValid && other.issues[0]?.message).toContain('truth.homicide');
   });
 });

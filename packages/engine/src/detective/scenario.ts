@@ -7,7 +7,7 @@ import { luckTokensOf, toolSlotsOf, winsOf } from '../progress.js';
 import type { ScenarioKind } from '../scenario.js';
 import { ISSUE_ORDER } from './case-issue.js';
 import { GENERATED_RULES } from './case-rules.js';
-import { CRIME_TYPES, CaseFormSchema, type DetectiveCase } from './case-schema.js';
+import { GENERAL_CRIME_TYPES, CaseFormSchema, type DetectiveCase } from './case-schema.js';
 import { validateCase } from './case-validator.js';
 import { readCaseOrFrame } from './frame.js';
 import { createDetectiveRun, type DetectiveRunState } from './run-state.js';
@@ -22,7 +22,7 @@ export const DETECTIVE_SCENARIO: ScenarioKind<
   DetectiveRunState,
   (description: SightingDescription) => string
 > = {
-  themes: CRIME_TYPES,
+  themes: GENERAL_CRIME_TYPES,
   issueOrder: ISSUE_ORDER,
   chooseTheme(seeds, hero, runSeed) {
     // The engine picks the seed and the crime, so the same news gives other heroes other cases.

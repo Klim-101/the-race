@@ -12,6 +12,9 @@ import { GearIdSchema } from './gear.js';
 
 export const CASE_SCHEMA_VERSION = 1;
 
+/** The themes of a case that is a violent one: the victim is hurt (`attempted-murder`) or killed (`murder`), always off screen. */
+export const HOMICIDE_THEMES = ['attempted-murder', 'murder'] as const;
+
 export const CRIME_TYPES = [
   'financial',
   'cyber',
@@ -20,9 +23,18 @@ export const CRIME_TYPES = [
   'forgery',
   'corporate-espionage',
   'curious-theft',
+  ...HOMICIDE_THEMES,
 ] as const;
 export const CrimeTypeSchema = z.enum(CRIME_TYPES);
 export type CrimeType = z.infer<typeof CrimeTypeSchema>;
+
+/**
+ * The themes a run may fall back on when the news gave no seed: every crime but the violent ones, which come only from a
+ * seed of a kind that suits them (see `HOMICIDE_SEEDS` in `choose-seed.ts`).
+ */
+export const GENERAL_CRIME_TYPES: readonly CrimeType[] = CRIME_TYPES.filter(
+  (crime) => !(HOMICIDE_THEMES as readonly string[]).includes(crime),
+);
 
 export const TONES = ['serious', 'wry', 'absurd'] as const;
 export const ToneSchema = z.enum(TONES);
@@ -350,9 +362,10 @@ export type TimelineEntry = z.infer<typeof TimelineEntrySchema>;
 
 /**
  * What kind of case it is. A `whodunit` asks who did it; an `abduction` asks where the victim is kept, before a
- * deadline. A case that does not say (every case before the forms) is a `whodunit`: see `formOf`.
+ * deadline; a `homicide` asks who hurt or killed the victim and with what. A case that does not say (every case before
+ * the forms) is a `whodunit`: see `formOf`.
  */
-export const CASE_FORMS = ['whodunit', 'abduction'] as const;
+export const CASE_FORMS = ['whodunit', 'abduction', 'homicide'] as const;
 export const CaseFormSchema = z.enum(CASE_FORMS);
 export type CaseForm = z.infer<typeof CaseFormSchema>;
 
@@ -366,6 +379,7 @@ export const ABDUCTION_ONE_IN = 4;
  * and never picks it.
  */
 export function formFor(theme: string, runSeed: string): CaseForm {
+  if ((HOMICIDE_THEMES as readonly string[]).includes(theme)) return 'homicide';
   if (theme === 'missing-person') return 'abduction';
   return createRng(`${runSeed}:form`).roll(ABDUCTION_ONE_IN) === 1 ? 'abduction' : 'whodunit';
 }
@@ -373,6 +387,18 @@ export function formFor(theme: string, runSeed: string): CaseForm {
 export const VICTIM_KINDS = ['person', 'pet'] as const;
 export const VictimKindSchema = z.enum(VICTIM_KINDS);
 export type VictimKind = z.infer<typeof VictimKindSchema>;
+
+/** How a homicide stands: the victim was hurt and lives (`attempt`), or was killed (`death`). */
+export const HOMICIDE_FATES = ['attempt', 'death'] as const;
+export const HomicideFateSchema = z.enum(HOMICIDE_FATES);
+export type HomicideFate = z.infer<typeof HomicideFateSchema>;
+
+/** The facts only a homicide has; the narrator never sees them before the verdict. */
+export const HomicideSchema = z.object({
+  victim: z.object({ name: NarrativeTextSchema }),
+  fate: HomicideFateSchema,
+});
+export type Homicide = z.infer<typeof HomicideSchema>;
 
 /** The facts only an abduction has; the narrator never sees them. */
 export const AbductionSchema = z.object({
@@ -398,6 +424,8 @@ export const TruthSchema = z.object({
   timeline: z.array(TimelineEntrySchema).min(1),
   /** Present exactly when the case's form is `abduction`. */
   abduction: AbductionSchema.optional(),
+  /** Present exactly when the case's form is `homicide`. */
+  homicide: HomicideSchema.optional(),
 });
 export type Truth = z.infer<typeof TruthSchema>;
 
@@ -616,11 +644,26 @@ export const DetectiveCaseSchema = z
         message: 'Only an abduction has a conclusion about where the victim is.',
       });
     }
-    if (formOf(detectiveCase) === 'whodunit' && hasAbduction) {
+    if (formOf(detectiveCase) !== 'abduction' && hasAbduction) {
       context.addIssue({
         code: 'custom',
         path: ['truth', 'abduction'],
         message: 'Only an abduction has a victim, whereabouts and deadline.',
+      });
+    }
+    const hasHomicide = detectiveCase.truth.homicide !== undefined;
+    if (formOf(detectiveCase) === 'homicide' && !hasHomicide) {
+      context.addIssue({
+        code: 'custom',
+        path: ['truth', 'homicide'],
+        message: 'A homicide needs its victim and what became of them.',
+      });
+    }
+    if (formOf(detectiveCase) !== 'homicide' && hasHomicide) {
+      context.addIssue({
+        code: 'custom',
+        path: ['truth', 'homicide'],
+        message: 'Only a homicide has a victim who was hurt or killed.',
       });
     }
   });
