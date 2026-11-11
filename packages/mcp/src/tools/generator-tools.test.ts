@@ -267,9 +267,10 @@ describe('generator_brief', () => {
     expect(DETECTIVE_SCENARIO.themes).toContain(brief.body.theme);
   });
 
-  it('tells the form the engine chose for the theme: a disappearance is an abduction, any other crime a whodunit', async () => {
+  it('tells the form the engine chose for the theme: a disappearance is an abduction, an attempt on someone a homicide, any other crime a whodunit', async () => {
     const forms: [string, string][] = [
       ['missing-person', 'abduction'],
+      ['attempted-murder', 'homicide'],
       ['forgery', 'whodunit'],
       ['curious-theft', 'whodunit'],
     ];
@@ -948,6 +949,7 @@ describe('scenario_submit', () => {
     const cases: [string, Record<string, unknown>][] = [
       ['missing-person', readCase('goose-of-elmwick.en.json')],
       ['curious-theft', abduction],
+      ['attempted-murder', readCase('goose-of-elmwick.en.json')],
     ];
     for (const [theme, value] of cases) {
       const { fs, call } = await start(pendingRun({ theme }));
