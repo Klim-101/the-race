@@ -12,7 +12,8 @@ Live task status is on the [project board](https://github.com/users/Klim-101/pro
 | Phase 1 — Engine core           | done        | 35 / 35   |
 | Phase 2 — First playable run    | in progress | 9 / 11    |
 | Phase 3 — News and mirror world | done        | 21 / 21   |
-| Phase 4 — Roguelike loop        | in progress | 115 / 127 |
+| Phase 4 — Roguelike loop        | in progress | 130 / 131 |
+| Phase 4a — New kinds of case    | planned     | 0 / 10    |
 | Phase 5 — New archetypes        | in progress | 1 / 6     |
 | Phase 6 — Public release        | planned     | 0 / 6     |
 
