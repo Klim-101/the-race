@@ -194,6 +194,8 @@ export type RefusalCode =
   | 'unknown-suspect'
   | 'place-needed'
   | 'place-unwanted'
+  | 'means-needed'
+  | 'means-unwanted'
   | 'no-witness'
   | 'suspect-elsewhere'
   | 'clue-not-found'

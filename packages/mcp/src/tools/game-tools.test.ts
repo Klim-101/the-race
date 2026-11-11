@@ -416,6 +416,56 @@ describe('the summary of a turn', () => {
   });
 });
 
+describe('accuse: the means of a homicide', () => {
+  async function homicideRun() {
+    const base = sampleCase();
+    const means = base.deductions.find(({ id }) => id !== base.solution.motiveDeductionId);
+    const homicide = DetectiveCaseSchema.parse({
+      ...base,
+      form: 'homicide',
+      truth: { ...base.truth, homicide: { victim: { name: 'Pieter Vane' }, fate: 'attempt' } },
+      solution: { ...base.solution, meansDeductionId: means?.id },
+    });
+    const context = gameContext();
+    await prepareHero(context);
+    await installCase(context, homicide);
+    return { context, culpritId: base.truth.culpritId };
+  }
+
+  it('asks for the means, takes the word "null" a host may send, and tells the victim once it is over', async () => {
+    const { context, culpritId } = await homicideRun();
+    const fields = { turn: 0, culpritId, motiveInsightId: 'null', evidenceClueIds: [] };
+
+    expect(errorCode(await call(accuse, fields, context))).toBe('means-needed');
+    const verdict = await call(accuse, { ...fields, meansInsightId: 'null' }, context);
+
+    expect(verdict.isError).toBe(false);
+    expect(verdict.body.outcome).toMatchObject({
+      kind: 'accuse',
+      verdict: 'unproven',
+      meansRight: false,
+      truth: { homicide: { victim: { name: 'Pieter Vane' }, fate: 'attempt' } },
+    });
+  });
+
+  it('is refused for a case that asks for no means when one is named', async () => {
+    const context = await activeRun();
+    const result = await call(
+      accuse,
+      {
+        turn: 0,
+        culpritId: 'curator',
+        motiveInsightId: 'null',
+        evidenceClueIds: [],
+        meansInsightId: 'some-insight',
+      },
+      context,
+    );
+
+    expect(errorCode(result)).toBe('means-unwanted');
+  });
+});
+
 describe('act: stay-up', () => {
   it('takes no time, shows in run_view while the hero is up, and is refused a second time', async () => {
     const context = await activeRun();

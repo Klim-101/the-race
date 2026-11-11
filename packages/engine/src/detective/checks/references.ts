@@ -227,6 +227,9 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
   if (solution.whereaboutsDeductionId !== undefined) {
     expect(deductionIds, 'deduction', solution.whereaboutsDeductionId, 'solution.whereaboutsDeductionId');
   }
+  if (solution.meansDeductionId !== undefined) {
+    expect(deductionIds, 'deduction', solution.meansDeductionId, 'solution.meansDeductionId');
+  }
   solution.evidenceChains.forEach((chain, chainIndex) => {
     chain.forEach((id, clueIndex) => {
       expect(clueIds, 'clue', id, `solution.evidenceChains[${String(chainIndex)}][${String(clueIndex)}]`);

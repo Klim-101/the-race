@@ -439,6 +439,11 @@ export const SolutionSchema = z.object({
    * that the cases of before it keep their seal and are judged as they were.
    */
   whereaboutsDeductionId: EntityIdSchema.optional(),
+  /**
+   * Only for a homicide: the conclusion of what it was done with, which the hero draws as they draw the motive and names in
+   * the accusation. Optional, so that the cases of before it keep their seal and are judged as they were.
+   */
+  meansDeductionId: EntityIdSchema.optional(),
 });
 export type Solution = z.infer<typeof SolutionSchema>;
 
@@ -652,6 +657,13 @@ export const DetectiveCaseSchema = z
       });
     }
     const hasHomicide = detectiveCase.truth.homicide !== undefined;
+    if (formOf(detectiveCase) !== 'homicide' && detectiveCase.solution.meansDeductionId !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['solution', 'meansDeductionId'],
+        message: 'Only a homicide has a conclusion about what it was done with.',
+      });
+    }
     if (formOf(detectiveCase) === 'homicide' && !hasHomicide) {
       context.addIssue({
         code: 'custom',
