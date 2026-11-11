@@ -16,6 +16,7 @@ import { checkRunLength } from './checks/run-length.js';
 import { checkLinkable } from './checks/links.js';
 import { checkReactions } from './checks/reactions.js';
 import { checkObservations } from './checks/observations.js';
+import { checkTraces } from './checks/traces.js';
 import { checkPublicPlaces } from './checks/public-places.js';
 import { checkWitnesses } from './checks/witnesses.js';
 import { checkMapShape } from './checks/map-shape.js';
@@ -112,6 +113,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...checkWitnesses(detectiveCase),
     ...(rules.publicLife ? checkPublicPlaces(detectiveCase) : []),
     ...(rules.observations && content ? checkObservations(detectiveCase) : []),
+    ...checkTraces(detectiveCase, context.locale, content, rules.traces),
     ...(rules.linkable ? checkLinkable(detectiveCase) : []),
     ...checkClearing(detectiveCase, obtainable, rules.clearing),
     ...checkReactions(detectiveCase, context.traits, content),

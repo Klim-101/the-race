@@ -91,6 +91,10 @@ export const ISSUE_ORDER = [
   'message-names-trait',
   'weekday-named',
   'clue-draws-conclusion',
+  'empty-part-without-trace',
+  'trace-draws-conclusion',
+  'trace-names-someone',
+  'trace-violence',
 ] as const;
 
 export type CaseIssueCode = (typeof ISSUE_ORDER)[number];

@@ -35249,7 +35249,11 @@ var ISSUE_ORDER = [
   "message-names-culprit",
   "message-names-trait",
   "weekday-named",
-  "clue-draws-conclusion"
+  "clue-draws-conclusion",
+  "empty-part-without-trace",
+  "trace-draws-conclusion",
+  "trace-names-someone",
+  "trace-violence"
 ];
 
 // packages/engine/src/detective/obtainability.ts
@@ -35470,6 +35474,7 @@ var LEGACY_RULES = Object.freeze({
   claims: false,
   publicLife: false,
   observations: false,
+  traces: false,
   minRandomEvents: 0,
   map: null,
   days: null
@@ -35483,6 +35488,7 @@ var GENERATED_RULES = Object.freeze({
   claims: true,
   publicLife: true,
   observations: true,
+  traces: true,
   minRandomEvents: MIN_RANDOM_EVENTS,
   map: Object.freeze({ ...GENERATED_MAP }),
   days: Object.freeze({ ...GENERATED_DAYS })
@@ -39955,6 +39961,162 @@ function checkObservations(detectiveCase) {
   });
 }
 
+// packages/engine/src/text/violence.ts
+var STEMS = {
+  en: [
+    "kill",
+    "murder",
+    "slain",
+    "slay",
+    "corpse",
+    "bloodshed",
+    "blood",
+    "gunshot",
+    "gunfire",
+    "shooting",
+    "wound",
+    "assault",
+    "massacre",
+    "hostage",
+    "strangl",
+    "suicid",
+    "bomb",
+    "explosion"
+  ],
+  ru: [
+    "\u0443\u0431\u0438\u0439",
+    "\u0443\u0431\u0438\u043B",
+    "\u0443\u0431\u0438\u0442",
+    "\u0443\u0431\u0438\u0432",
+    "\u0443\u0431\u044C\u044E",
+    "\u0441\u043C\u0435\u0440\u0442",
+    "\u043C\u0435\u0440\u0442\u0432",
+    "\u043C\u0451\u0440\u0442\u0432",
+    "\u0443\u043C\u0435\u0440",
+    "\u043F\u043E\u0433\u0438\u0431",
+    "\u043A\u0440\u043E\u0432\u0430\u0432",
+    "\u043A\u0440\u043E\u0432\u043E\u0442\u0435\u0447",
+    "\u043A\u0440\u043E\u0432\u044C",
+    "\u043A\u0440\u043E\u0432\u0438",
+    "\u0437\u0430\u0440\u0435\u0437\u0430\u043D",
+    "\u0437\u0430\u0441\u0442\u0440\u0435\u043B",
+    "\u0440\u0430\u0441\u0441\u0442\u0440\u0435\u043B",
+    "\u0440\u0430\u043D\u0435\u043D",
+    "\u0440\u0430\u043D\u0438\u043B",
+    "\u043D\u0430\u043F\u0430\u0434\u0435\u043D",
+    "\u0438\u0437\u0431\u0438\u0442",
+    "\u0437\u0430\u043B\u043E\u0436\u043D\u0438\u043A",
+    "\u0441\u0430\u043C\u043E\u0443\u0431\u0438\u0439",
+    "\u0432\u0437\u0440\u044B\u0432"
+  ]
+};
+var WHOLE_WORDS = {
+  en: [
+    "dead",
+    "death",
+    "deaths",
+    "die",
+    "dies",
+    "died",
+    "dying",
+    "shot",
+    "shoot",
+    "gun",
+    "guns",
+    "shotgun",
+    "stab",
+    "stabs",
+    "stabbed",
+    "stabbing"
+  ],
+  ru: ["\u0442\u0440\u0443\u043F", "\u0442\u0440\u0443\u043F\u0430", "\u0442\u0440\u0443\u043F\u0443", "\u0442\u0440\u0443\u043F\u043E\u043C", "\u0442\u0440\u0443\u043F\u044B", "\u0442\u0440\u0443\u043F\u043E\u0432"]
+};
+function escape2(word) {
+  return word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function findViolence(text, locale) {
+  const stems = STEMS[locale].map(escape2).join("|");
+  const whole5 = WHOLE_WORDS[locale].map(escape2).join("|");
+  const pattern = `(?<![\\p{L}])(?:${stems})[\\p{L}]*|(?<![\\p{L}])(?:${whole5})(?![\\p{L}])`;
+  return new RegExp(pattern, "iu").exec(text)?.[0];
+}
+
+// packages/engine/src/detective/checks/traces.ts
+function tracesOf(detectiveCase) {
+  return detectiveCase.locations.flatMap((location, index) => [
+    ...location.litter === void 0 ? [] : [
+      {
+        path: `locations[${String(index)}].litter`,
+        text: location.litter,
+        what: `The litter of "${location.id}"`
+      }
+    ],
+    ...(location.parts ?? []).flatMap(
+      (part, partIndex) => part.trace === void 0 ? [] : [
+        {
+          path: `locations[${String(index)}].parts[${String(partIndex)}].trace`,
+          text: part.trace,
+          what: `The trace of "${part.id}"`
+        }
+      ]
+    )
+  ]);
+}
+function namesOfPeople(detectiveCase) {
+  const full = [
+    ...detectiveCase.suspects.map(({ name }) => name),
+    ...(detectiveCase.witnesses ?? []).map(({ name }) => name)
+  ];
+  return [
+    ...new Set(full.flatMap((name) => [name, ...name.split(/\s+/).filter((word) => word.length >= 3)]))
+  ];
+}
+function checkTraces(detectiveCase, locale, content, required2) {
+  const issues = [];
+  if (required2) {
+    detectiveCase.locations.forEach((location, index) => {
+      (location.parts ?? []).forEach((part, partIndex) => {
+        if (part.holds === null && part.trace === void 0) {
+          issues.push({
+            code: "empty-part-without-trace",
+            path: `locations[${String(index)}].parts[${String(partIndex)}]`,
+            message: `Part "${part.id}" holds nothing, so give it a "trace": a small true thing a search of it shows, which proves nothing.`
+          });
+        }
+      });
+    });
+  }
+  if (!content) return issues;
+  const people = namesOfPeople(detectiveCase);
+  for (const { path, text, what } of tracesOf(detectiveCase)) {
+    const marker = conclusionMarkerIn(text, locale);
+    if (marker !== void 0) {
+      issues.push({
+        code: "trace-draws-conclusion",
+        path,
+        message: `${what} says what it means ("${marker}"): describe only what is seen, and let the hero conclude.`
+      });
+    }
+    const person = findRealName(text, people);
+    if (person !== void 0) {
+      issues.push({
+        code: "trace-names-someone",
+        path,
+        message: `${what} names "${person}": a trace points at no one, so leave the person out.`
+      });
+    }
+    const violence = findViolence(text, locale);
+    if (violence !== void 0) {
+      issues.push({
+        code: "trace-violence",
+        path,
+        message: `${what} never hurts anyone; rewrite it without "${violence}".`
+      });
+    }
+  }
+  return issues;
+}
+
 // packages/engine/src/detective/checks/public-places.ts
 function checkPublicPlaces(detectiveCase) {
   const witnessed = new Set((detectiveCase.witnesses ?? []).map(({ locationId }) => locationId));
@@ -40212,86 +40374,6 @@ function checkParts(detectiveCase, obtainable, requireParts) {
     }
   });
   return issues;
-}
-
-// packages/engine/src/text/violence.ts
-var STEMS = {
-  en: [
-    "kill",
-    "murder",
-    "slain",
-    "slay",
-    "corpse",
-    "bloodshed",
-    "blood",
-    "gunshot",
-    "gunfire",
-    "shooting",
-    "wound",
-    "assault",
-    "massacre",
-    "hostage",
-    "strangl",
-    "suicid",
-    "bomb",
-    "explosion"
-  ],
-  ru: [
-    "\u0443\u0431\u0438\u0439",
-    "\u0443\u0431\u0438\u043B",
-    "\u0443\u0431\u0438\u0442",
-    "\u0443\u0431\u0438\u0432",
-    "\u0443\u0431\u044C\u044E",
-    "\u0441\u043C\u0435\u0440\u0442",
-    "\u043C\u0435\u0440\u0442\u0432",
-    "\u043C\u0451\u0440\u0442\u0432",
-    "\u0443\u043C\u0435\u0440",
-    "\u043F\u043E\u0433\u0438\u0431",
-    "\u043A\u0440\u043E\u0432\u0430\u0432",
-    "\u043A\u0440\u043E\u0432\u043E\u0442\u0435\u0447",
-    "\u043A\u0440\u043E\u0432\u044C",
-    "\u043A\u0440\u043E\u0432\u0438",
-    "\u0437\u0430\u0440\u0435\u0437\u0430\u043D",
-    "\u0437\u0430\u0441\u0442\u0440\u0435\u043B",
-    "\u0440\u0430\u0441\u0441\u0442\u0440\u0435\u043B",
-    "\u0440\u0430\u043D\u0435\u043D",
-    "\u0440\u0430\u043D\u0438\u043B",
-    "\u043D\u0430\u043F\u0430\u0434\u0435\u043D",
-    "\u0438\u0437\u0431\u0438\u0442",
-    "\u0437\u0430\u043B\u043E\u0436\u043D\u0438\u043A",
-    "\u0441\u0430\u043C\u043E\u0443\u0431\u0438\u0439",
-    "\u0432\u0437\u0440\u044B\u0432"
-  ]
-};
-var WHOLE_WORDS = {
-  en: [
-    "dead",
-    "death",
-    "deaths",
-    "die",
-    "dies",
-    "died",
-    "dying",
-    "shot",
-    "shoot",
-    "gun",
-    "guns",
-    "shotgun",
-    "stab",
-    "stabs",
-    "stabbed",
-    "stabbing"
-  ],
-  ru: ["\u0442\u0440\u0443\u043F", "\u0442\u0440\u0443\u043F\u0430", "\u0442\u0440\u0443\u043F\u0443", "\u0442\u0440\u0443\u043F\u043E\u043C", "\u0442\u0440\u0443\u043F\u044B", "\u0442\u0440\u0443\u043F\u043E\u0432"]
-};
-function escape2(word) {
-  return word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-function findViolence(text, locale) {
-  const stems = STEMS[locale].map(escape2).join("|");
-  const whole5 = WHOLE_WORDS[locale].map(escape2).join("|");
-  const pattern = `(?<![\\p{L}])(?:${stems})[\\p{L}]*|(?<![\\p{L}])(?:${whole5})(?![\\p{L}])`;
-  return new RegExp(pattern, "iu").exec(text)?.[0];
 }
 
 // packages/engine/src/detective/checks/random-events.ts
@@ -40948,6 +41030,7 @@ function validateCase(input2, context2) {
     ...checkWitnesses(detectiveCase),
     ...rules.publicLife ? checkPublicPlaces(detectiveCase) : [],
     ...rules.observations && content ? checkObservations(detectiveCase) : [],
+    ...checkTraces(detectiveCase, context2.locale, content, rules.traces),
     ...rules.linkable ? checkLinkable(detectiveCase) : [],
     ...checkClearing(detectiveCase, obtainable, rules.clearing),
     ...checkReactions(detectiveCase, context2.traits, content),

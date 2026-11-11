@@ -87,6 +87,10 @@ const PRIORITY_BEFORE: Record<CaseIssueCode, number> = {
   'message-names-trait': 28.7,
   'weekday-named': 28.8,
   'clue-draws-conclusion': 29,
+  'empty-part-without-trace': 29.1,
+  'trace-draws-conclusion': 29.2,
+  'trace-names-someone': 29.3,
+  'trace-violence': 29.4,
 };
 
 const issue = (code: CaseIssueCode, path = 'p'): CaseIssue => ({ code, path, message: 'm' });
