@@ -51,6 +51,7 @@ function viewOf(overrides: Partial<View> = {}): View {
           name: 'Market',
           visited: true,
           blocked: null,
+          hours: null,
           lead: null,
           exposure: 'outdoor',
           building: null,
@@ -60,6 +61,7 @@ function viewOf(overrides: Partial<View> = {}): View {
           name: 'Stall',
           visited: true,
           blocked: null,
+          hours: null,
           lead: null,
           exposure: 'outdoor',
           building: null,
@@ -69,6 +71,7 @@ function viewOf(overrides: Partial<View> = {}): View {
           name: 'Cellar',
           visited: false,
           blocked: 'locked',
+          hours: null,
           lead: null,
           exposure: 'outdoor',
           building: null,
@@ -78,6 +81,7 @@ function viewOf(overrides: Partial<View> = {}): View {
           name: 'Chapel',
           visited: false,
           blocked: 'closed',
+          hours: null,
           lead: null,
           exposure: 'outdoor',
           building: null,
@@ -275,6 +279,7 @@ describe('the page', () => {
               name: evil,
               visited: true,
               blocked: null,
+              hours: null,
               lead: null,
               exposure: 'outdoor',
               building: null,
@@ -589,6 +594,7 @@ describe('the chronicle tab', () => {
                 name: 'Market',
                 visited: true,
                 blocked: null,
+                hours: null,
                 lead: null,
                 exposure: 'outdoor',
                 building: null,
@@ -598,6 +604,7 @@ describe('the chronicle tab', () => {
                 name: 'Lane',
                 visited: false,
                 blocked: null,
+                hours: null,
                 lead: null,
                 exposure: 'outdoor',
                 building: null,
@@ -607,6 +614,7 @@ describe('the chronicle tab', () => {
                 name: 'Cellar',
                 visited: false,
                 blocked: 'locked',
+                hours: null,
                 lead: null,
                 exposure: 'outdoor',
                 building: null,
@@ -616,6 +624,7 @@ describe('the chronicle tab', () => {
                 name: 'Chapel',
                 visited: false,
                 blocked: 'closed',
+                hours: null,
                 lead: null,
                 exposure: 'outdoor',
                 building: null,
@@ -685,6 +694,7 @@ describe('the chronicle tab', () => {
                 name: 'Market',
                 visited: true,
                 blocked: null,
+                hours: null,
                 lead: null,
                 exposure: 'outdoor',
                 building: null,
@@ -1217,5 +1227,45 @@ describe('the leads on the chronicle tab', () => {
 
   it('says so when there are none', () => {
     expect(tab(renderEvidenceBoard(viewOf({ leads: [] })), 'chronicle')).toContain('No leads yet.');
+  });
+});
+
+describe('the chronicle and a place that is shut at this hour', () => {
+  it('lists it among what is still open, with the hours it opens in', () => {
+    const view = {
+      ...viewOf(),
+      map: {
+        current: 'market',
+        places: [
+          {
+            id: 'market',
+            name: 'Market',
+            visited: true,
+            blocked: null,
+            hours: null,
+            lead: null,
+            exposure: 'outdoor',
+            building: null,
+          },
+          {
+            id: 'bar',
+            name: 'Night Bar',
+            visited: false,
+            blocked: 'closed-hours',
+            hours: { fromMinute: 22 * 60, untilMinute: 2 * 60 },
+            lead: null,
+            exposure: 'outdoor',
+            building: null,
+          },
+        ],
+        links: [{ from: 'market', to: 'bar' }],
+      },
+    } as unknown as DetectiveRunView;
+
+    const chronicle =
+      /<section class="tab" id="chronicle">([\s\S]*?)<\/section>/.exec(renderEvidenceBoard(view))?.[1] ?? '';
+
+    expect(chronicle).toContain('Shut at this hour, only from 22:00 to 02:00: Night Bar');
+    expect(chronicle).not.toContain('Not yet visited: Night Bar');
   });
 });

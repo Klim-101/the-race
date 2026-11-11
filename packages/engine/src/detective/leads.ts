@@ -31,6 +31,11 @@ export function inWindow(window: LeadWindow, minute: number): boolean {
     : minute >= window.fromMinute || minute < window.untilMinute;
 }
 
+/** Whether a place can be entered at this minute of the day; a place with no hours is open at every one. */
+export function isOpenAtMinute(location: Pick<Location, 'hours'>, minute: number): boolean {
+  return location.hours === undefined || inWindow(location.hours, minute);
+}
+
 /** Whether the hour of the day lets the hero follow the lead; a lead with no window can be followed at any hour. */
 export function isLeadOpen(run: DetectiveRunState, leadId: string): boolean {
   const window = run.case.leads?.find(({ id }) => id === leadId)?.window;

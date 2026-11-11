@@ -36,7 +36,7 @@ import {
   type Revealed,
 } from './trait-reveal.js';
 import { locationScene } from './trait-scenes.js';
-import { isLeadEarned, isLeadOpen, isPlaceKnown } from './leads.js';
+import { isLeadEarned, isLeadOpen, isOpenAtMinute, isPlaceKnown } from './leads.js';
 import { risks, unlawfulRisk, type Risk } from './risk.js';
 import { DETECTIVE_NERVES } from './archetype.js';
 import {
@@ -176,6 +176,7 @@ export type RefusalCode =
   | 'not-adjacent'
   | 'locked'
   | 'location-closed'
+  | 'closed-hours'
   | 'unknown-suspect'
   | 'place-needed'
   | 'place-unwanted'
@@ -702,6 +703,10 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
     return refuse('location-closed', `"${locationId}" has been closed.`);
   }
   const destination = locationById(detectiveCase, locationId);
+  // A place with hours is shut outside them, whether or not the hero has been in it before.
+  if (!isOpenAtMinute(destination, run.clock.minute)) {
+    return refuse('closed-hours', `"${locationId}" is shut at this hour: it is open at another time of day.`);
+  }
   const { access } = destination;
   // A place the hero has been in is open to them for good.
   const visited = run.visitedLocationIds.includes(locationId);

@@ -8,7 +8,9 @@ export type HudPlace = {
   id: string;
   name: string;
   visited: boolean;
-  blocked: 'locked' | 'closed' | null;
+  blocked: 'locked' | 'closed' | 'closed-hours' | null;
+  /** The hours the place is open in, as the sign on its door; none for a place open at every hour. */
+  hours: { fromMinute: number; untilMinute: number } | null;
   /** The reason of the lead that named the place, until the hero has been there. */
   lead: string | null;
   /** Inside a building or out of doors, and for a room the building it belongs to. */

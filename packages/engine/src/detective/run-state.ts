@@ -64,7 +64,7 @@ import { VENUE_RULESET_VERSION, sitsLeft } from './venue.js';
 import { offeredHere } from './stock.js';
 import { TraitSceneSchema, drawTraitScenes } from './trait-scenes.js';
 import { MAX_LUCK_TOKENS, MAX_TOOL_SLOTS, START_TOOL_SLOTS } from '../progress.js';
-import { isLeadEarned, isLeadOpen, isPlaceKnown, leadsEarnedBy } from './leads.js';
+import { isLeadEarned, isLeadOpen, isOpenAtMinute, isPlaceKnown, leadsEarnedBy } from './leads.js';
 import { SUSPECT_MOODS, isClosed, moodOf, moodWord } from './suspect-mood.js';
 import { SEARCH_BY_PART_RULESET_VERSION, partsOfPlace } from './search-parts.js';
 import {
@@ -923,7 +923,9 @@ export interface DetectiveRunView {
       readonly name: string;
       readonly visited: boolean;
       /** Why the way is shut right now, if it is: a door that wants a clue first, or a place an event closed. */
-      readonly blocked: 'locked' | 'closed' | null;
+      readonly blocked: Blocked;
+      /** The hours the place is open in, as the sign on its door, or `null` for a place open at every hour. */
+      readonly hours: Hours | null;
       /** Why the hero knows of the place, when a lead named it and the hero has not been there yet. */
       readonly lead: string | null;
     }[];
@@ -956,7 +958,9 @@ export interface DetectiveRunView {
       readonly name: string;
       readonly visited: boolean;
       /** Why the way in is shut right now, as for an exit. */
-      readonly blocked: 'locked' | 'closed' | null;
+      readonly blocked: Blocked;
+      /** The hours the place is open in, as for an exit. */
+      readonly hours: Hours | null;
       /** The reason of the lead that named the place, in one line, as for an exit. */
       readonly lead: string | null;
       /** Whether the place is inside a building or out of doors: a street, a square or a yard. */
@@ -1122,16 +1126,30 @@ function signalViewOf(run: DetectiveRunState): DetectiveRunView['signal'] {
     : { id: signal.id, voice: signal.voice, gift: signal.gift, cost: signal.cost };
 }
 
-/** Mirrors the refusals of a move, so the narrator never offers a way the engine will turn back. */
-function blockedWay(
-  run: DetectiveRunState,
-  id: string,
-  access: Location['access'],
-  visited: boolean,
-): 'locked' | 'closed' | null {
-  if (isLocationClosed(run, id)) return 'closed';
+/**
+ * Why the way into a place is shut right now, if it is, mirroring the refusals of a move so the narrator never offers a
+ * way the engine will turn back: a door that wants a clue first, a place an event closed, or a place shut at this hour.
+ */
+export type Blocked = 'locked' | 'closed' | 'closed-hours' | null;
+
+/** The hours of a day, as minutes of the day; the window may wrap midnight. */
+export interface Hours {
+  readonly fromMinute: number;
+  readonly untilMinute: number;
+}
+
+function blockedWay(run: DetectiveRunState, location: Location, visited: boolean): Blocked {
+  if (isLocationClosed(run, location.id)) return 'closed';
+  if (!isOpenAtMinute(location, run.clock.minute)) return 'closed-hours';
+  const { access } = location;
   return !visited && access.kind === 'clue' && !run.foundClueIds.includes(access.clueId) ? 'locked' : null;
 }
+
+/** The hours a place with hours is open in, as the sign on its door; `null` for a place open at every hour. */
+const hoursOf = (location: Location): Hours | null =>
+  location.hours === undefined
+    ? null
+    : { fromMinute: location.hours.fromMinute, untilMinute: location.hours.untilMinute };
 
 /** The known map: visited places and their neighbours, with the ways between them. See `DetectiveRunView.map`. */
 /** Why the hero knows of a place a lead named, until the hero has been there. */
@@ -1255,13 +1273,14 @@ function viewMap(run: DetectiveRunState): DetectiveRunView['map'] {
     shown.map(({ id }) => id),
   );
   const places = shown.map((location) => {
-    const { id, name, access } = location;
+    const { id, name } = location;
     const visited = run.visitedLocationIds.includes(id);
     return {
       id,
       name,
       visited,
-      blocked: blockedWay(run, id, access, visited),
+      blocked: blockedWay(run, location, visited),
+      hours: hoursOf(location),
       lead: leadMarker(run, location),
       exposure: location.exposure,
       building: buildingOf.get(id) ?? null,
@@ -1288,9 +1307,16 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     const next = requireLocation(detectiveCase, id);
     if (!isPlaceKnown(run, next)) return [];
     const visited = run.visitedLocationIds.includes(id);
-    const { name, access } = next;
+    const { name } = next;
     return [
-      { id, name, visited, blocked: blockedWay(run, id, access, visited), lead: leadMarker(run, next) },
+      {
+        id,
+        name,
+        visited,
+        blocked: blockedWay(run, next, visited),
+        hours: hoursOf(next),
+        lead: leadMarker(run, next),
+      },
     ];
   });
   const pool = detectiveCase.randomEvents ?? [];

@@ -307,8 +307,15 @@ describe('viewRun', () => {
       insights: [],
     });
     expect(view.location.exits).toEqual([
-      { id: 'cheese-stall', name: 'Cheese stall', visited: false, blocked: null, lead: null },
-      { id: 'storage-cellar', name: 'Storage cellar', visited: false, blocked: 'locked', lead: null },
+      { id: 'cheese-stall', name: 'Cheese stall', visited: false, blocked: null, hours: null, lead: null },
+      {
+        id: 'storage-cellar',
+        name: 'Storage cellar',
+        visited: false,
+        blocked: 'locked',
+        hours: null,
+        lead: null,
+      },
     ]);
     expect(view.suspects.map(({ id }) => id)).toEqual(['baker', 'rival', 'mayor']);
     expect(view.suspects.find(({ id }) => id === 'baker')?.place?.id).toBe('cheese-stall');
@@ -343,6 +350,7 @@ describe('viewRun', () => {
       name: 'Market square',
       visited: true,
       blocked: null,
+      hours: null,
       lead: null,
     });
   });

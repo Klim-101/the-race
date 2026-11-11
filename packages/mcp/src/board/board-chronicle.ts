@@ -115,6 +115,11 @@ function openQuestions(view: DetectiveRunView, text: TabText['chronicle']): stri
     ...places.filter(({ blocked }) => blocked === null).map(atPlace(text.unvisited)),
     ...places.filter(({ blocked }) => blocked === 'locked').map(atPlace(text.locked)),
     ...places.filter(({ blocked }) => blocked === 'closed').map(atPlace(text.closed)),
+    ...places.flatMap((place) =>
+      place.blocked === 'closed-hours' && place.hours !== null
+        ? [atPlace(`${text.closedHours}, ${windowText(place.hours, text)}`)(place)]
+        : [],
+    ),
     ...view.suspects
       .filter(({ statements }) => statements.length === 0)
       .map((suspect) =>

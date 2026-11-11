@@ -15,7 +15,17 @@ const place = (
   exposure: 'indoor' | 'outdoor',
   building: string | null,
   extra: Record<string, unknown> = {},
-) => ({ id, name: `Room ${id}`, visited: true, blocked: null, lead: null, exposure, building, ...extra });
+) => ({
+  id,
+  name: `Room ${id}`,
+  visited: true,
+  blocked: null,
+  hours: null,
+  lead: null,
+  exposure,
+  building,
+  ...extra,
+});
 
 const gear = (id: string, removes: string[], state = 'owned') => ({
   id,

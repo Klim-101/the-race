@@ -30,13 +30,17 @@ export function localeOf(data: Record<string, unknown>): 'ru' | 'en' | undefined
 
 function placeOf(value: unknown): HudPlace | undefined {
   if (!isRecord(value)) return undefined;
-  const { id, name, visited, blocked, lead, exposure, building } = value;
+  const { id, name, visited, blocked, hours, lead, exposure, building } = value;
   if (typeof id !== 'string' || typeof name !== 'string' || typeof visited !== 'boolean') return undefined;
   return {
     id,
     name,
     visited,
-    blocked: blocked === 'locked' || blocked === 'closed' ? blocked : null,
+    blocked: blocked === 'locked' || blocked === 'closed' || blocked === 'closed-hours' ? blocked : null,
+    hours:
+      isRecord(hours) && typeof hours['fromMinute'] === 'number' && typeof hours['untilMinute'] === 'number'
+        ? { fromMinute: hours['fromMinute'], untilMinute: hours['untilMinute'] }
+        : null,
     lead: typeof lead === 'string' ? lead : null,
     exposure: exposure === 'indoor' ? 'indoor' : 'outdoor',
     building: typeof building === 'string' ? building : null,
@@ -141,6 +145,7 @@ export const LABELS = {
     unvisited: 'не посещено',
     locked: 'заперто',
     closed: 'закрыто',
+    'closed-hours': 'закрыто в этот час',
     none: 'Забег ещё не начался.',
     open: 'Открыто окно the RACE.',
   },
@@ -158,6 +163,7 @@ export const LABELS = {
     unvisited: 'not visited',
     locked: 'locked',
     closed: 'closed',
+    'closed-hours': 'shut at this hour',
     none: 'No run yet.',
     open: 'The RACE pane opened.',
   },
