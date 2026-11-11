@@ -1032,7 +1032,13 @@ export interface DetectiveRunView {
     }[];
   }[];
   /** The people here whom the hero can ask what they saw: those of the place who are there at this hour. */
-  readonly witnesses: readonly { readonly id: string; readonly name: string; readonly persona: string }[];
+  readonly witnesses: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly persona: string;
+    /** The person the attempt was made on, who lives and can be asked, within what they could have seen. */
+    readonly victim: boolean;
+  }[];
   /** What witnesses have told the hero, in the order it was told: who was seen at which place, and when in the day. */
   readonly sightings: readonly {
     readonly witnessId: string;
@@ -1411,7 +1417,12 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     map: viewMap(run),
     placeParts: viewPlaceParts(run),
     leads: viewLeads(run),
-    witnesses: witnessesHere(run).map(({ id, name, persona }) => ({ id, name, persona })),
+    witnesses: witnessesHere(run).map(({ id, name, persona, victim }) => ({
+      id,
+      name,
+      persona,
+      victim: victim === true,
+    })),
     sightings: run.sightings.map(({ witnessId, suspectId, minuteOfDay, day }) => {
       const witness = requireWitness(detectiveCase, witnessId);
       return {

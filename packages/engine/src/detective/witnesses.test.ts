@@ -113,6 +113,7 @@ describe('asking a witness what they saw', () => {
         id: 'vendor',
         name: 'Pip the vendor',
         persona: 'A fruit seller who sees everything and says half of it.',
+        victim: false,
       },
     ]);
 

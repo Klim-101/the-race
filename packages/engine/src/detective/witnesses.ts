@@ -41,7 +41,7 @@ export function witnessesHere(run: DetectiveRunState): Witness[] {
 /**
  * What a witness saw, by a deterministic rule: the people of the sealed timeline at the witness's place in the
  * witness's hours, and nothing else. Only suspects are named, and no action or purpose is ever given: a passer-by
- * sees who walked by, not why.
+ * sees who walked by, not why. The victim of an attempt did not see who did it: the culprit is never among what they saw.
  */
 export function sightingsOf(
   detectiveCase: DetectiveCase,
@@ -54,6 +54,7 @@ export function sightingsOf(
       ({ actorId, locationId, atMinute }) =>
         locationId === witness.locationId &&
         suspectIds.has(actorId) &&
+        (witness.victim !== true || actorId !== detectiveCase.truth.culpritId) &&
         (aboutSuspectId === undefined || actorId === aboutSuspectId) &&
         inWindow(witness.hours, atMinute % MINUTES_IN_DAY),
     )
