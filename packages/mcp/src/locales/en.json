@@ -255,6 +255,7 @@
         "search": "Searched the place: found {n}",
         "rest": "Rested for the night",
         "stayUp": "Decided to stay up through the night",
+        "trace": "Noticed: {text}",
         "found": "Found and took: {name}",
         "bought": "Bought: {name}",
         "gotSomething": "something to go on",

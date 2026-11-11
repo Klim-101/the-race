@@ -105,6 +105,75 @@ describe('viewTurns', () => {
     expect(viewTurns(resolution.run, log)).toMatchObject([{ kind: 'sit', restored: 1 }]);
   });
 
+  it('carries the small thing a look or a search showed, and nothing for a turn that showed none', () => {
+    const raw = buildCheeseCase();
+    raw.locations.push({
+      id: 'side-alley',
+      name: 'Side alley',
+      description: 'A narrow alley that leads nowhere in particular.',
+      connections: ['market-square'],
+      access: { kind: 'open' },
+      litter: 'A cigarette end and a bus ticket lie by the wall.',
+    });
+    const start = startRun(DetectiveCaseSchema.parse(raw), 'litter');
+    let run = {
+      ...start,
+      locationId: 'side-alley',
+      visitedLocationIds: [...start.visitedLocationIds, 'side-alley'],
+    };
+    let log: RunLog = [];
+    for (const intent of [{ kind: 'look' }, { kind: 'look' }, { kind: 'search' }] as Intent[]) {
+      const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
+      if (!resolution.ok) throw new Error(`Refused: ${resolution.refusal.code}`);
+      log = recordResolution(log, run, intent, resolution);
+      run = resolution.run;
+    }
+
+    const turns = viewTurns(run, log);
+
+    // Newest first: the search and the second look showed nothing more, only the first look showed the litter.
+    expect(turns[0]).toEqual({
+      turn: 3,
+      day: 1,
+      minute: expect.any(Number) as unknown,
+      kind: 'search',
+      found: 0,
+    });
+    expect(turns[1]).not.toHaveProperty('trace');
+    expect(turns[2]).toMatchObject({
+      kind: 'look',
+      found: 0,
+      trace: 'A cigarette end and a bus ticket lie by the wall.',
+    });
+  });
+
+  it('carries the litter that a first search showed, as it does for a look', () => {
+    const raw = buildCheeseCase();
+    raw.locations.push({
+      id: 'side-alley',
+      name: 'Side alley',
+      description: 'A narrow alley that leads nowhere in particular.',
+      connections: ['market-square'],
+      access: { kind: 'open' },
+      litter: 'A bus ticket lies by the wall.',
+    });
+    const start = startRun(DetectiveCaseSchema.parse(raw), 'litter-search');
+    const run = {
+      ...start,
+      locationId: 'side-alley',
+      visitedLocationIds: [...start.visitedLocationIds, 'side-alley'],
+    };
+    const resolution = resolveIntent(run, { kind: 'search' }, restoreRng(run.rngState));
+    if (!resolution.ok) throw new Error('Refused.');
+    const log = recordResolution([], run, { kind: 'search' }, resolution);
+
+    expect(viewTurns(resolution.run, log)[0]).toMatchObject({
+      kind: 'search',
+      found: 0,
+      trace: 'A bus ticket lies by the wall.',
+    });
+  });
+
   it('says what asking the locals and studying a clue came to', () => {
     const start = startRun(cheeseCase(), 'rumour');
     let run = findClue(start, 'cellar-key');

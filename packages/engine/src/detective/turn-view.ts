@@ -47,9 +47,9 @@ export interface ClosedFile {
 }
 
 export type TurnDetail =
-  | { readonly kind: 'look'; readonly found: number }
+  | { readonly kind: 'look'; readonly found: number; readonly trace?: string }
   | { readonly kind: 'move'; readonly to: string; readonly entered: boolean }
-  | { readonly kind: 'search'; readonly found: number }
+  | { readonly kind: 'search'; readonly found: number; readonly trace?: string }
   | { readonly kind: 'rest' }
   | { readonly kind: 'stay-up' }
   | { readonly kind: 'sit'; readonly restored: number }
@@ -95,11 +95,19 @@ function detailOf(run: DetectiveRunState, entry: LogEntry): TurnDetail {
   const placeName = (id: string): string => run.case.locations.find((place) => place.id === id)?.name ?? id;
   switch (outcome.kind) {
     case 'look':
-      return { kind: 'look', found: outcome.foundClueIds.length };
+      return {
+        kind: 'look',
+        found: outcome.foundClueIds.length,
+        ...(outcome.trace === undefined ? {} : { trace: outcome.trace }),
+      };
     case 'move':
       return { kind: 'move', to: placeName(outcome.to), entered: outcome.entered };
     case 'search':
-      return { kind: 'search', found: outcome.foundClueIds.length };
+      return {
+        kind: 'search',
+        found: outcome.foundClueIds.length,
+        ...(outcome.trace === undefined ? {} : { trace: outcome.trace }),
+      };
     case 'rest':
       return { kind: 'rest' };
     case 'stay-up':

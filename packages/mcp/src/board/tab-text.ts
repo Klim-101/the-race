@@ -281,6 +281,8 @@ export interface TabText {
       readonly search: string;
       readonly rest: string;
       readonly stayUp: string;
+      /** The small thing a look or a search showed, after the line of the turn: the thing is `{text}`. */
+      readonly trace: string;
       readonly sit: string;
       readonly ask: string;
       readonly study: string;

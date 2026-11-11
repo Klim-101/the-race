@@ -1270,3 +1270,36 @@ describe('the chronicle and a place that is shut at this hour', () => {
     expect(chronicle).not.toContain('Not yet visited: Night Bar');
   });
 });
+
+describe('a small thing a look or a search showed, in the chronicle', () => {
+  const FLYER = 'A torn flyer, creased small, <b>lies</b> under the bench.';
+  const shown: TurnView[] = [
+    { turn: 2, day: 1, minute: 505, kind: 'search', found: 0, trace: FLYER },
+    { turn: 1, day: 1, minute: 500, kind: 'look', found: 0 },
+  ];
+
+  it('has one line for it, after the line of its turn, escaped', () => {
+    const chronicle = tab(renderEvidenceBoard(viewOf(), shown), 'chronicle');
+
+    expect(chronicle).toContain(
+      'Searched the place: found 0 · Noticed: A torn flyer, creased small, &lt;b&gt;lies&lt;/b&gt; under the bench.',
+    );
+    expect(chronicle).not.toContain('<b>lies</b>');
+    expect(chronicle.match(/Noticed:/g)).toHaveLength(1);
+  });
+
+  it('is not a clue: it is on no list of clues, in the matching table or among the cards', () => {
+    const page = renderEvidenceBoard(viewOf(), shown);
+
+    for (const id of ['board', 'suspects', 'clues', 'insights', 'map', 'hero']) {
+      expect(tab(page, id)).not.toContain('torn flyer');
+    }
+  });
+
+  it('is told in the language of the run, and a turn without it has no line', () => {
+    const ru = tab(renderEvidenceBoard(viewOf({ locale: 'ru' }), shown), 'chronicle');
+
+    expect(ru).toContain('Заметили: A torn flyer');
+    expect(tab(renderEvidenceBoard(viewOf(), shown.slice(1)), 'chronicle')).not.toContain('Noticed:');
+  });
+});

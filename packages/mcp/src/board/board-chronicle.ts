@@ -47,6 +47,11 @@ export function deadlineLine(view: DetectiveRunView, text: TabText): string {
   return `<p>${escapeHtml(t.deadline)}: <strong>${escapeHtml(`${t.day} ${String(deadline.day)}, ${clock(deadline.minute)}`)}</strong> (${escapeHtml(left)})</p>`;
 }
 
+/** A look or a search with the small thing it showed, which proves nothing and is no clue: one line, the thing after the turn. */
+function withTrace(line: string, trace: string | undefined, label: string): string {
+  return trace === undefined ? line : `${line} · ${label.replace('{text}', trace)}`;
+}
+
 /** One turn in the player's own terms, from the words of the language. The text of a conclusion is the player's own. */
 export function turnText(turn: TurnView, text: TabText): string {
   const t = text.chronicle.turn;
@@ -54,11 +59,11 @@ export function turnText(turn: TurnView, text: TabText): string {
     Object.entries(values).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, value), line);
   switch (turn.kind) {
     case 'look':
-      return fill(t.look, { n: String(turn.found) });
+      return withTrace(fill(t.look, { n: String(turn.found) }), turn.trace, t.trace);
     case 'move':
       return fill(turn.entered ? t.move : t.moveFailed, { name: turn.to });
     case 'search':
-      return fill(t.search, { n: String(turn.found) });
+      return withTrace(fill(t.search, { n: String(turn.found) }), turn.trace, t.trace);
     case 'rest':
       return t.rest;
     case 'stay-up':
