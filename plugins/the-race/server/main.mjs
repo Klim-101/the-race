@@ -36924,7 +36924,9 @@ var DetectiveRunStateSchema = external_exports.object({
    * The day whose night the hero has chosen to stay up through, until the dawn or until they turn in; `null` when they sleep
    * at the end of the day as ever. While it is set the clock may run on past midnight and the hours there are played.
    */
-  awakeNight: external_exports.int().min(1).nullable().default(null)
+  awakeNight: external_exports.int().min(1).nullable().default(null),
+  /** The traces already shown, each by the part or the place it came from, so that none is told twice (see `traces.ts`). */
+  tracesSeen: external_exports.array(external_exports.string()).default([])
 }).superRefine((run, context2) => {
   if (!isCaseSealIntact(run)) {
     context2.addIssue({
@@ -37079,7 +37081,8 @@ function createDetectiveRun(input2) {
     traitScenes: drawTraitScenes(input2.case, input2.traits, input2.seed),
     inspiration: input2.inspiration ?? null,
     remembers: input2.remembers ?? null,
-    awakeNight: null
+    awakeNight: null,
+    tracesSeen: []
   });
 }
 function assertActive(run) {
@@ -38316,6 +38319,13 @@ function resolveUse(run, intent, rng) {
   };
 }
 
+// packages/engine/src/detective/traces.ts
+var traceKey = (kind, id) => `${kind}:${id}`;
+function showTrace(run, key, text) {
+  if (text === void 0 || run.tracesSeen.includes(key)) return { run, trace: void 0 };
+  return { run: { ...run, tracesSeen: [...run.tracesSeen, key] }, trace: text };
+}
+
 // packages/engine/src/detective/risk.ts
 var RISK_RULESET_VERSION = 16;
 var DISCRETION = "social";
@@ -38733,22 +38743,34 @@ function resolveLookAtParts(run, rng, parts) {
     shown2.map(({ id }) => id)
   );
   const next = found.reduce((state, clue) => findClue(state, clue.id), noticed);
-  const settled = settle2(next, rng, PART_LOOK_MINUTES, []);
+  const litter = litterOf(next, found.length);
+  const settled = settle2(litter.run, rng, PART_LOOK_MINUTES, []);
   const outcome = {
     kind: "look",
     foundClueIds: found.map(({ id }) => id),
     minutes: PART_LOOK_MINUTES,
-    noticedPartIds: shown2.map(({ id }) => id)
+    noticedPartIds: shown2.map(({ id }) => id),
+    ...litter.trace === void 0 ? {} : { trace: litter.trace }
   };
   return { ok: true, run: settled.run, outcome, details: [], revealed: lockOutReveals(run, run.locationId) };
+}
+function litterOf(run, foundCount) {
+  if (foundCount > 0) return { run, trace: void 0 };
+  return showTrace(run, traceKey("place", run.locationId), locationById(run.case, run.locationId).litter);
 }
 function resolveLook(run, rng) {
   const parts = partsOfPlace(run, run.locationId);
   if (parts.length > 0) return resolveLookAtParts(run, rng, parts);
   const found = hiddenClues(run, run.locationId).filter((clue) => clue.discovery === null);
   const next = found.reduce((state, clue) => findClue(state, clue.id), run);
-  const settled = settle2(next, rng, LOOK_MINUTES, []);
-  const outcome = { kind: "look", foundClueIds: found.map(({ id }) => id), minutes: LOOK_MINUTES };
+  const litter = litterOf(next, found.length);
+  const settled = settle2(litter.run, rng, LOOK_MINUTES, []);
+  const outcome = {
+    kind: "look",
+    foundClueIds: found.map(({ id }) => id),
+    minutes: LOOK_MINUTES,
+    ...litter.trace === void 0 ? {} : { trace: litter.trace }
+  };
   return { ok: true, run: settled.run, outcome, details: [], revealed: lockOutReveals(run, run.locationId) };
 }
 function resolveSearchPart(run, rng, location, parts, partId, toolId) {
@@ -38855,11 +38877,13 @@ function searchPartForClue(run, rng, location, part, carried) {
   const withFind = found === void 0 ? marked : findClue(marked, found.id);
   const searched = wasted ? marked : recordPartSearch(withFind, part.id, location.id, found === void 0 ? [] : [found.id]);
   const blundered = results.some((result) => result.critical === "failure");
-  const withClues = wasted && !blundered ? strainByAction(searched) : searched;
+  const strained = wasted && !blundered ? strainByAction(searched) : searched;
+  const shownTrace = part.holds === null ? showTrace(strained, traceKey("part", part.id), part.trace) : void 0;
+  const withClues = shownTrace?.run ?? strained;
   const detained = risk?.detentionMinutes ?? 0;
   const minutes2 = PART_SEARCH_MINUTES + (wasted ? FAILED_SEARCH_MINUTES : 0) + detained;
   const settled = settle2(withClues, rng, minutes2, results);
-  const frayed = withClues.condition.nerves < searched.condition.nerves;
+  const frayed = strained.condition.nerves < searched.condition.nerves;
   const consequences = uniqueConsequences([
     ...wasted ? ["time-lost"] : [],
     ...frayed ? ["nerves-lost"] : [],
@@ -38876,7 +38900,8 @@ function searchPartForClue(run, rng, location, part, carried) {
       consequences,
       partId: part.id,
       ...tool === void 0 ? {} : { tool },
-      ...detained === 0 ? {} : { detainedMinutes: detained }
+      ...detained === 0 ? {} : { detainedMinutes: detained },
+      ...shownTrace?.trace === void 0 ? {} : { trace: shownTrace.trace }
     },
     details,
     felt: distinctFelt([...felt, ...settled.felt]),
@@ -38922,10 +38947,12 @@ function resolveSearch(run, rng, partId, toolId) {
   const searched = found.reduce((state, clue) => findClue(state, clue.id), markSearched(run, location.id));
   const wasted = found.length === 0 && hidden.length > 0;
   const blundered = results.some((result) => result.critical === "failure");
-  const withClues = wasted && !blundered ? strainByAction(searched) : searched;
+  const strained = wasted && !blundered ? strainByAction(searched) : searched;
+  const litter = litterOf(strained, found.length);
+  const withClues = litter.run;
   const minutes2 = SEARCH_MINUTES + (wasted ? FAILED_SEARCH_MINUTES : 0);
   const settled = settle2(withClues, rng, minutes2, results);
-  const frayed = withClues.condition.nerves < searched.condition.nerves;
+  const frayed = strained.condition.nerves < searched.condition.nerves;
   const consequences = [
     ...wasted ? ["time-lost"] : [],
     ...frayed ? ["nerves-lost"] : [],
@@ -38934,7 +38961,13 @@ function resolveSearch(run, rng, partId, toolId) {
   return {
     ok: true,
     run: settled.run,
-    outcome: { kind: "search", foundClueIds: found.map(({ id }) => id), minutes: minutes2, consequences },
+    outcome: {
+      kind: "search",
+      foundClueIds: found.map(({ id }) => id),
+      minutes: minutes2,
+      consequences,
+      ...litter.trace === void 0 ? {} : { trace: litter.trace }
+    },
     details,
     felt: distinctFelt([...felt, ...settled.felt]),
     revealed
@@ -41136,6 +41169,7 @@ var OutcomeSchema = external_exports.union([
     foundClueIds: idList,
     minutes,
     noticedPartIds: idList.optional(),
+    trace: external_exports.string().min(1).optional(),
     ...fatigue
   }),
   external_exports.object({
@@ -41159,6 +41193,7 @@ var OutcomeSchema = external_exports.union([
       wear: external_exports.enum(["spent", "broken"]).nullable()
     }).optional(),
     detainedMinutes: external_exports.int().min(1).optional(),
+    trace: external_exports.string().min(1).optional(),
     ...fatigue
   }),
   external_exports.object({ kind: external_exports.literal("rest") }),

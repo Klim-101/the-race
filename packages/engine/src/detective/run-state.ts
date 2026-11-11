@@ -286,6 +286,8 @@ export const DetectiveRunStateSchema = z
      * at the end of the day as ever. While it is set the clock may run on past midnight and the hours there are played.
      */
     awakeNight: z.int().min(1).nullable().default(null),
+    /** The traces already shown, each by the part or the place it came from, so that none is told twice (see `traces.ts`). */
+    tracesSeen: z.array(z.string()).default([]),
   })
   .superRefine((run, context) => {
     if (!isCaseSealIntact(run)) {
@@ -469,6 +471,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     inspiration: input.inspiration ?? null,
     remembers: input.remembers ?? null,
     awakeNight: null,
+    tracesSeen: [],
   });
 }
 
