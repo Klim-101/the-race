@@ -221,8 +221,11 @@ export const LocationSchema = z.object({
 });
 export type Location = z.infer<typeof LocationSchema>;
 
-/** How a message of an abduction reaches the hero: a note left in a place, a call, a text. */
-export const MESSAGE_CHANNELS = ['note', 'call', 'text'] as const;
+/**
+ * How a message that comes by itself reaches the hero: for an abduction a note left in a place, a call or a text; for a
+ * homicide a `report`, the word of a doctor or an expert, which is read at the hero's next turn however late.
+ */
+export const MESSAGE_CHANNELS = ['note', 'call', 'text', 'report'] as const;
 export const MessageChannelSchema = z.enum(MESSAGE_CHANNELS);
 export type MessageChannel = z.infer<typeof MessageChannelSchema>;
 
@@ -230,7 +233,7 @@ export type MessageChannel = z.infer<typeof MessageChannelSchema>;
  * Set on a clue that comes by itself at a time (see `messages.ts`), and lies in no part. `arrivesAtMinute` counts as
  * `deadlineMinute` does, from midnight of day 1 of the run, so a message can come on a later day: it is no minute of
  * the day. A note lies at the clue's `locationId` and is read when the hero is there; a call must be taken within an
- * hour of its time, or it is missed; a text is read at the hero's next turn, however late.
+ * hour of its time, or it is missed; a text or a report is read at the hero's next turn, however late.
  */
 export const ClueMessageSchema = z.object({
   channel: MessageChannelSchema,
@@ -615,12 +618,19 @@ export const DetectiveCaseSchema = z
   })
   .superRefine((detectiveCase, context) => {
     detectiveCase.clues.forEach((clue, index) => {
-      if (clue.message !== undefined && formOf(detectiveCase) !== 'abduction') {
-        context.addIssue({
-          code: 'custom',
-          path: ['clues', index, 'message'],
-          message: 'Only an abduction has messages that come by themselves.',
-        });
+      if (clue.message === undefined) return;
+      const form = formOf(detectiveCase);
+      // An abduction has notes, calls and texts; a homicide has reports; no other case has a message at all.
+      const message =
+        form === 'abduction' && clue.message.channel === 'report'
+          ? 'An abduction has no reports: a note, a call or a text.'
+          : form === 'homicide' && clue.message.channel !== 'report'
+            ? 'A homicide has no notes, calls or texts: a report.'
+            : form === 'whodunit'
+              ? 'Only an abduction or a homicide has messages that come by themselves.'
+              : undefined;
+      if (message !== undefined) {
+        context.addIssue({ code: 'custom', path: ['clues', index, 'message'], message });
       }
     });
     detectiveCase.locations.forEach((location, index) => {

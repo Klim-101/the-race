@@ -34860,7 +34860,7 @@ var LocationSchema = external_exports.object({
   /** What the place keeps for the hero. Optional, so that the cases of before it keep their seal. */
   stock: external_exports.array(StockEntrySchema).optional()
 });
-var MESSAGE_CHANNELS = ["note", "call", "text"];
+var MESSAGE_CHANNELS = ["note", "call", "text", "report"];
 var MessageChannelSchema = external_exports.enum(MESSAGE_CHANNELS);
 var ClueMessageSchema = external_exports.object({
   channel: MessageChannelSchema,
@@ -35129,12 +35129,11 @@ var DetectiveCaseSchema = external_exports.object({
   witnesses: external_exports.array(WitnessSchema).optional()
 }).superRefine((detectiveCase, context2) => {
   detectiveCase.clues.forEach((clue, index) => {
-    if (clue.message !== void 0 && formOf(detectiveCase) !== "abduction") {
-      context2.addIssue({
-        code: "custom",
-        path: ["clues", index, "message"],
-        message: "Only an abduction has messages that come by themselves."
-      });
+    if (clue.message === void 0) return;
+    const form = formOf(detectiveCase);
+    const message = form === "abduction" && clue.message.channel === "report" ? "An abduction has no reports: a note, a call or a text." : form === "homicide" && clue.message.channel !== "report" ? "A homicide has no notes, calls or texts: a report." : form === "whodunit" ? "Only an abduction or a homicide has messages that come by themselves." : void 0;
+    if (message !== void 0) {
+      context2.addIssue({ code: "custom", path: ["clues", index, "message"], message });
     }
   });
   detectiveCase.locations.forEach((location, index) => {
@@ -38443,6 +38442,7 @@ function reaches(run, clue, message) {
     case "call":
       return late2 <= CALL_WINDOW_MINUTES;
     case "text":
+    case "report":
       return true;
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
     default:
