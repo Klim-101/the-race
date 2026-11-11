@@ -61,6 +61,26 @@ function freshLines(view: DetectiveRunView, fresh: Fresh, text: TabText): string
   ];
 }
 
+/** How far into the night a hero who stays up is, in words: before midnight, past it, deep in it, and near the dawn. */
+function awakeBand(minutesPastMidnight: number): 'evening' | 'past-midnight' | 'deep' | 'dawn' {
+  return minutesPastMidnight === 0
+    ? 'evening'
+    : minutesPastMidnight < 180
+      ? 'past-midnight'
+      : minutesPastMidnight < 360
+        ? 'deep'
+        : 'dawn';
+}
+
+/** The line about a hero who has chosen not to sleep tonight, how long they have been up in words and never in numbers. */
+function awakeLine(view: DetectiveRunView, text: TabText): string {
+  const { awake } = view;
+  if (awake === null) return '';
+  const e = escapeHtml;
+  return `
+<p class="meta awake">${e(text.header.awake)}: ${e(text.header.awakeBands[awakeBand(awake.minutesPastMidnight)])}</p>`;
+}
+
 /**
  * The line about the past hero the run remembers, from the public record alone: who they were and how it ended, with the
  * country and the case's theme when the record has them. It is flavour and says nothing of this case.
@@ -94,7 +114,7 @@ export function renderHeader(view: DetectiveRunView, board: BoardText, text: Tab
   return `<header class="head">
 <h1>${e(view.title)}</h1>
 <p class="meta">${e(words.turn.replace('{n}', String(view.turn)))} · ${e(day)} · ${e(board.status[view.status])} · ${e(board.detective)}: ${e(view.hero.name)}</p>
-<p class="meta">${e(words.timeLeft)}: <strong>${e(duration(view.chronicle.activeMinutesLeft, text.chronicle))}</strong> · ${e(words.condition)}: ${e(conditionWords(view, text).join(', '))}</p>${deadlineLine(view, text).replace('<p>', '<p class="meta deadline">')}${rememberedLine(view, text)}${
+<p class="meta">${e(words.timeLeft)}: <strong>${e(duration(view.chronicle.activeMinutesLeft, text.chronicle))}</strong> · ${e(words.condition)}: ${e(conditionWords(view, text).join(', '))}</p>${deadlineLine(view, text).replace('<p>', '<p class="meta deadline">')}${awakeLine(view, text)}${rememberedLine(view, text)}${
     lines.length === 0
       ? ''
       : `\n<div class="fresh"><span class="tag">${e(text.fresh.title)}</span><ul>${lines.map((line) => `<li>${e(line)}</li>`).join('')}</ul></div>`

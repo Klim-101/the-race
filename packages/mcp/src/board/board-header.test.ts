@@ -60,6 +60,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
     setting: null,
     inspiration: null,
     remembers: null,
+    awake: null,
     news: [],
     location: { id: 'market', name: 'Market', description: '', exits: [] },
     map: {
@@ -375,5 +376,27 @@ describe('the hero the run remembers, in the header', () => {
     expect(line).toContain('&lt;b&gt;Bo&lt;/b&gt;');
     expect(line).not.toContain('<b>');
     expect(renderEvidenceBoard(viewOf({ remembers: null }))).not.toContain('class="meta remembered"');
+  });
+});
+
+describe('a hero who has chosen to stay up, in the header', () => {
+  const awakeLine = (minutesPastMidnight: number | null, locale: 'en' | 'ru' = 'en'): string => {
+    const awake = minutesPastMidnight === null ? null : { minutesPastMidnight };
+    return /<p class="meta awake">.*?<\/p>/.exec(renderEvidenceBoard(viewOf({ awake, locale })))?.[0] ?? '';
+  };
+
+  it('says how far into the night the hero is in words, and never a number', () => {
+    expect(awakeLine(0)).toContain('Staying up: a night without sleep ahead');
+    expect(awakeLine(60)).toContain('past midnight');
+    expect(awakeLine(179)).toContain('past midnight');
+    expect(awakeLine(180)).toContain('deep in the night');
+    expect(awakeLine(360)).toContain('waiting for the dawn');
+    expect(awakeLine(400)).not.toMatch(/\d/);
+  });
+
+  it('is told in the language of the run, and is absent for a hero who sleeps at the end of the day', () => {
+    expect(awakeLine(200, 'ru')).toContain('Не спит: глубокая ночь');
+    expect(awakeLine(null)).toBe('');
+    expect(renderEvidenceBoard(viewOf({ awake: null }))).not.toContain('class="meta awake"');
   });
 });

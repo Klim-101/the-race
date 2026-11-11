@@ -53373,6 +53373,13 @@ var en_default3 = {
       timeLeft: "Working time left",
       condition: "Condition",
       remembered: "Remembered",
+      awake: "Staying up",
+      awakeBands: {
+        evening: "a night without sleep ahead",
+        "past-midnight": "past midnight",
+        deep: "deep in the night",
+        dawn: "waiting for the dawn"
+      },
       reputationBands: {
         good: "good name",
         middling: "name in doubt",
@@ -54135,6 +54142,13 @@ var ru_default2 = {
       timeLeft: "\u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0440\u0430\u0431\u043E\u0447\u0435\u0433\u043E \u0432\u0440\u0435\u043C\u0435\u043D\u0438",
       condition: "\u0421\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u0435",
       remembered: "\u041F\u043E\u043C\u043D\u044F\u0442",
+      awake: "\u041D\u0435 \u0441\u043F\u0438\u0442",
+      awakeBands: {
+        evening: "\u0432\u043F\u0435\u0440\u0435\u0434\u0438 \u043D\u043E\u0447\u044C \u0431\u0435\u0437 \u0441\u043D\u0430",
+        "past-midnight": "\u0437\u0430 \u043F\u043E\u043B\u043D\u043E\u0447\u044C",
+        deep: "\u0433\u043B\u0443\u0431\u043E\u043A\u0430\u044F \u043D\u043E\u0447\u044C",
+        dawn: "\u0436\u0434\u0451\u0442 \u0440\u0430\u0441\u0441\u0432\u0435\u0442\u0430"
+      },
       reputationBands: {
         good: "\u0434\u043E\u0431\u0440\u043E\u0435 \u0438\u043C\u044F",
         middling: "\u0438\u043C\u044F \u043F\u043E\u0434 \u0441\u043E\u043C\u043D\u0435\u043D\u0438\u0435\u043C",
@@ -55361,6 +55375,16 @@ function freshLines(view, fresh, text) {
     )
   ];
 }
+function awakeBand(minutesPastMidnight) {
+  return minutesPastMidnight === 0 ? "evening" : minutesPastMidnight < 180 ? "past-midnight" : minutesPastMidnight < 360 ? "deep" : "dawn";
+}
+function awakeLine(view, text) {
+  const { awake } = view;
+  if (awake === null) return "";
+  const e = escapeHtml;
+  return `
+<p class="meta awake">${e(text.header.awake)}: ${e(text.header.awakeBands[awakeBand(awake.minutesPastMidnight)])}</p>`;
+}
 function rememberedLine(view, text) {
   const { remembers } = view;
   if (remembers === null) return "";
@@ -55382,7 +55406,7 @@ function renderHeader(view, board, text, fresh) {
   return `<header class="head">
 <h1>${e(view.title)}</h1>
 <p class="meta">${e(words.turn.replace("{n}", String(view.turn)))} \xB7 ${e(day)} \xB7 ${e(board.status[view.status])} \xB7 ${e(board.detective)}: ${e(view.hero.name)}</p>
-<p class="meta">${e(words.timeLeft)}: <strong>${e(duration3(view.chronicle.activeMinutesLeft, text.chronicle))}</strong> \xB7 ${e(words.condition)}: ${e(conditionWords(view, text).join(", "))}</p>${deadlineLine(view, text).replace("<p>", '<p class="meta deadline">')}${rememberedLine(view, text)}${lines.length === 0 ? "" : `
+<p class="meta">${e(words.timeLeft)}: <strong>${e(duration3(view.chronicle.activeMinutesLeft, text.chronicle))}</strong> \xB7 ${e(words.condition)}: ${e(conditionWords(view, text).join(", "))}</p>${deadlineLine(view, text).replace("<p>", '<p class="meta deadline">')}${awakeLine(view, text)}${rememberedLine(view, text)}${lines.length === 0 ? "" : `
 <div class="fresh"><span class="tag">${e(text.fresh.title)}</span><ul>${lines.map((line) => `<li>${e(line)}</li>`).join("")}</ul></div>`}
 </header>`;
 }
