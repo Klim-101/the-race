@@ -41724,11 +41724,19 @@ function detailOf(run, entry) {
   const placeName = (id) => run.case.locations.find((place) => place.id === id)?.name ?? id;
   switch (outcome.kind) {
     case "look":
-      return { kind: "look", found: outcome.foundClueIds.length };
+      return {
+        kind: "look",
+        found: outcome.foundClueIds.length,
+        ...outcome.trace === void 0 ? {} : { trace: outcome.trace }
+      };
     case "move":
       return { kind: "move", to: placeName(outcome.to), entered: outcome.entered };
     case "search":
-      return { kind: "search", found: outcome.foundClueIds.length };
+      return {
+        kind: "search",
+        found: outcome.foundClueIds.length,
+        ...outcome.trace === void 0 ? {} : { trace: outcome.trace }
+      };
     case "rest":
       return { kind: "rest" };
     case "stay-up":
@@ -53628,6 +53636,7 @@ var en_default3 = {
         search: "Searched the place: found {n}",
         rest: "Rested for the night",
         stayUp: "Decided to stay up through the night",
+        trace: "Noticed: {text}",
         found: "Found and took: {name}",
         bought: "Bought: {name}",
         gotSomething: "something to go on",
@@ -54397,6 +54406,7 @@ var ru_default2 = {
         search: "\u041E\u0431\u044B\u0441\u043A\u0430\u043B\u0438 \u043C\u0435\u0441\u0442\u043E: \u043D\u0430\u0439\u0434\u0435\u043D\u043E {n}",
         rest: "\u0417\u0430\u0441\u043D\u0443\u043B\u0438 \u0434\u043E \u0443\u0442\u0440\u0430",
         stayUp: "\u0420\u0435\u0448\u0438\u043B\u0438 \u043D\u0435 \u0441\u043F\u0430\u0442\u044C \u0432\u0441\u044E \u043D\u043E\u0447\u044C",
+        trace: "\u0417\u0430\u043C\u0435\u0442\u0438\u043B\u0438: {text}",
         found: "\u041D\u0430\u0448\u0451\u043B \u0438 \u0432\u0437\u044F\u043B: {name}",
         bought: "\u041A\u0443\u043F\u0438\u043B: {name}",
         gotSomething: "\u0435\u0441\u0442\u044C \u0437\u0430 \u0447\u0442\u043E \u0437\u0430\u0446\u0435\u043F\u0438\u0442\u044C\u0441\u044F",
@@ -54936,16 +54946,19 @@ function deadlineLine(view, text) {
   const left = t.deadlineIn.replace("{time}", duration3(minutesToDeadline2, t));
   return `<p>${escapeHtml(t.deadline)}: <strong>${escapeHtml(`${t.day} ${String(deadline.day)}, ${clock(deadline.minute)}`)}</strong> (${escapeHtml(left)})</p>`;
 }
+function withTrace(line, trace, label) {
+  return trace === void 0 ? line : `${line} \xB7 ${label.replace("{text}", trace)}`;
+}
 function turnText(turn, text) {
   const t = text.chronicle.turn;
   const fill2 = (line, values) => Object.entries(values).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, value), line);
   switch (turn.kind) {
     case "look":
-      return fill2(t.look, { n: String(turn.found) });
+      return withTrace(fill2(t.look, { n: String(turn.found) }), turn.trace, t.trace);
     case "move":
       return fill2(turn.entered ? t.move : t.moveFailed, { name: turn.to });
     case "search":
-      return fill2(t.search, { n: String(turn.found) });
+      return withTrace(fill2(t.search, { n: String(turn.found) }), turn.trace, t.trace);
     case "rest":
       return t.rest;
     case "stay-up":
