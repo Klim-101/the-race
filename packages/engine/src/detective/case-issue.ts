@@ -73,6 +73,7 @@ export const ISSUE_ORDER = [
   'event-cuts-solution',
   'random-event-out-of-range',
   'random-event-cuts-solution',
+  'event-opens-nothing',
   'random-event-violence',
   'too-few-random-events',
   'random-events-miss-a-day',

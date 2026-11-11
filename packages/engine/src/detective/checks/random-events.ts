@@ -100,11 +100,25 @@ export function checkRandomEvents(
     };
     let isResolved = true;
     if (
-      (effect.kind === 'location-closes' || effect.kind === 'suspect-moves') &&
+      (effect.kind === 'location-closes' ||
+        effect.kind === 'place-opens' ||
+        effect.kind === 'suspect-moves') &&
       !locationIds.has(effect.locationId)
     ) {
       unknown('location', effect.locationId, 'locationId');
       isResolved = false;
+    }
+    // An event that opens a place with no hours has nothing to open.
+    if (
+      effect.kind === 'place-opens' &&
+      locationIds.has(effect.locationId) &&
+      detectiveCase.locations.find(({ id }) => id === effect.locationId)?.hours === undefined
+    ) {
+      issues.push({
+        code: 'event-opens-nothing',
+        path: `${path}.effect.locationId`,
+        message: `The place "${effect.locationId}" has no opening hours, so there is nothing for this event to open.`,
+      });
     }
     if (effect.kind === 'suspect-moves' && !suspectIds.has(effect.suspectId)) {
       unknown('suspect', effect.suspectId, 'suspectId');

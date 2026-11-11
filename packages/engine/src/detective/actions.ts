@@ -37,7 +37,7 @@ import {
   type Revealed,
 } from './trait-reveal.js';
 import { locationScene } from './trait-scenes.js';
-import { isLeadEarned, isLeadOpen, isOpenAtMinute, isPlaceKnown } from './leads.js';
+import { isLeadEarned, isLeadOpen, isPlaceKnown } from './leads.js';
 import { risks, unlawfulRisk, type Risk } from './risk.js';
 import { DETECTIVE_NERVES } from './archetype.js';
 import {
@@ -66,7 +66,13 @@ import { chooseTool, partsOfPlace } from './search-parts.js';
 import { GearIdSchema, worn, type GearId } from './gear.js';
 import { buildNeighbors } from './obtainability.js';
 import { deliverMessages, type ArrivedMessage } from './messages.js';
-import { closedSourcesOf, drawDayEvents, drawOwedDayEvent, isLocationClosed } from './random-events.js';
+import {
+  closedSourcesOf,
+  drawDayEvents,
+  drawOwedDayEvent,
+  isLocationClosed,
+  isOpenNow,
+} from './random-events.js';
 import {
   changeReputation,
   endTurn,
@@ -712,7 +718,7 @@ function resolveMove(run: DetectiveRunState, rng: Rng, locationId: string): Reso
   }
   const destination = locationById(detectiveCase, locationId);
   // A place with hours is shut outside them, whether or not the hero has been in it before.
-  if (!isOpenAtMinute(destination, run.clock.minute)) {
+  if (!isOpenNow(run, destination)) {
     return refuse('closed-hours', `"${locationId}" is shut at this hour: it is open at another time of day.`);
   }
   const { access } = destination;

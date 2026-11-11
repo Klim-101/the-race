@@ -281,3 +281,47 @@ describe('the simple check for violence', () => {
     expect(findViolence(text, locale)).toBeUndefined();
   });
 });
+
+describe('an event that opens a place', () => {
+  const opens = (locationId: string) => ({
+    id: 'door-left-open',
+    description: 'A door of the town is found ajar in the night.',
+    weight: 2,
+    effect: { kind: 'place-opens', locationId },
+    duration: { kind: 'until-day', day: 3 },
+  });
+  const hoursOf = (raw: RawCase, id: string, hours: { fromMinute: number; untilMinute: number }): RawCase => {
+    const place = raw.locations.find((location) => location.id === id);
+    if (place === undefined) throw new Error(`No place ${id}.`);
+    Object.assign(place, { hours });
+    return raw;
+  };
+
+  it('is told when the place has no hours, since there is nothing to open', () => {
+    const issues = issuesOf(withPool([opens('side-alley')]));
+
+    expect(issues.filter(({ code }) => code === 'event-opens-nothing')).toEqual([
+      expect.objectContaining({ path: 'randomEvents[0].effect.locationId' }),
+    ]);
+  });
+
+  it('is accepted for a place that has hours, and is not a reason to cut the solution', () => {
+    const raw = hoursOf(withPool([opens('side-alley')]), 'side-alley', {
+      fromMinute: 22 * 60,
+      untilMinute: 120,
+    });
+
+    const codes = issuesOf(raw).map(({ code }) => code);
+
+    expect(codes).not.toContain('event-opens-nothing');
+    expect(codes).not.toContain('random-event-cuts-solution');
+    expect(codes).not.toContain('unknown-reference');
+  });
+
+  it('names a place that is not in the case as an unknown reference, and no more than that', () => {
+    const codes = codesOf(withPool([opens('nowhere')]));
+
+    expect(codes).toContain('unknown-reference');
+    expect(codes).not.toContain('event-opens-nothing');
+  });
+});

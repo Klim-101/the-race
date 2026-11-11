@@ -453,6 +453,8 @@ export function promisedEventsOf(days: number): number {
  * day, and it can never touch the truth, the solution or the content of a clue, nor hurt anyone.
  * - `flavor`: only news;
  * - `location-closes`: the place cannot be entered while the event lasts;
+ * - `place-opens`: the place is open at every hour while the event lasts, whatever its opening hours say: the guard left
+ *   a door, a light is on. It only lifts the gate, never shows a clue, and the place must be one that has hours;
  * - `suspect-moves`: the suspect can be found at another place while the event lasts;
  * - `source-closes`: a source of information is shut to the hero while the event lasts;
  * - `time-lost`: the hero loses minutes of the day;
@@ -462,6 +464,7 @@ export function promisedEventsOf(days: number): number {
 export const RandomEventEffectSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('flavor') }),
   z.object({ kind: z.literal('location-closes'), locationId: EntityIdSchema }),
+  z.object({ kind: z.literal('place-opens'), locationId: EntityIdSchema }),
   z.object({ kind: z.literal('suspect-moves'), suspectId: EntityIdSchema, locationId: EntityIdSchema }),
   z.object({ kind: z.literal('source-closes'), source: InformationSourceSchema }),
   z.object({ kind: z.literal('time-lost'), minutes: z.int().min(15).max(MAX_RANDOM_EVENT_MINUTES) }),
@@ -484,7 +487,10 @@ export type RandomEventDuration = z.infer<typeof RandomEventDurationSchema>;
 /** Whether an effect changes the world for a while, rather than happening once. */
 export function isLastingEffect(effect: RandomEventEffect): boolean {
   return (
-    effect.kind === 'location-closes' || effect.kind === 'suspect-moves' || effect.kind === 'source-closes'
+    effect.kind === 'location-closes' ||
+    effect.kind === 'place-opens' ||
+    effect.kind === 'suspect-moves' ||
+    effect.kind === 'source-closes'
   );
 }
 

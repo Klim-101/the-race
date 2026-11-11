@@ -4,11 +4,13 @@
 import { assertNever } from '../assert-never.js';
 import type { Rng } from '../dice.js';
 import { MINUTES_PER_DAY, type RunClock } from '../run.js';
+import { isOpenAtMinute } from './leads.js';
 import { closedSources } from './obtainability.js';
 import {
   EVERY_DAY_EVENT_MAX_DAYS,
   isLastingEffect,
   promisedEventsOf,
+  type Location,
   type RandomEvent,
   type RandomEventEffect,
   type Suspect,
@@ -54,9 +56,9 @@ export const DEADLINE_HARM_WEIGHT_GROWTH = 0.5;
 /** An event weighs this many times more when a trait of the hero is one it names. */
 export const TRAIT_WEIGHT_FACTOR = 2;
 
-/** An effect is harmful unless it is only news. */
+/** An effect is harmful unless it is only news, or a help: a door left open takes nothing from the hero. */
 export function isHarmfulEffect(effect: RandomEventEffect): boolean {
-  return effect.kind !== 'flavor';
+  return effect.kind !== 'flavor' && effect.kind !== 'place-opens';
 }
 
 function poolOf(run: DetectiveRunState): readonly RandomEvent[] {
@@ -83,6 +85,18 @@ export function isLocationClosed(run: DetectiveRunState, locationId: string): bo
     run.closedLocationIds.includes(locationId) ||
     activeEffects(run).some((effect) => effect.kind === 'location-closes' && effect.locationId === locationId)
   );
+}
+
+/** Whether a random event that still holds has left the place open at every hour. */
+export function isOpenedByEvent(run: DetectiveRunState, locationId: string): boolean {
+  return activeEffects(run).some(
+    (effect) => effect.kind === 'place-opens' && effect.locationId === locationId,
+  );
+}
+
+/** Whether the place can be entered at this hour: by its own hours, or because an event left it open. */
+export function isOpenNow(run: DetectiveRunState, location: Location): boolean {
+  return isOpenAtMinute(location, run.clock.minute) || isOpenedByEvent(run, location.id);
 }
 
 /** Information sources shut to the hero: by their traits, and by random events that still hold. */
@@ -177,6 +191,7 @@ function applyEffect(run: DetectiveRunState, effect: RandomEventEffect): Detecti
   switch (effect.kind) {
     case 'flavor':
     case 'location-closes':
+    case 'place-opens':
     case 'suspect-moves':
     case 'source-closes':
       return run;
