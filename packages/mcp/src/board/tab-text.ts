@@ -49,6 +49,9 @@ export interface TabText {
     readonly condition: string;
     /** The label of the line about the past hero the run remembers. */
     readonly remembered: string;
+    /** The line about a hero who has chosen not to sleep tonight: the label, and how far into the night they are, in words. */
+    readonly awake: string;
+    readonly awakeBands: Record<'evening' | 'past-midnight' | 'deep' | 'dawn', string>;
     readonly reputationBands: Record<'good' | 'middling' | 'poor', string>;
     readonly nervesBands: Record<'steady' | 'strained' | 'frayed', string>;
     readonly sleepBands: Record<'rested' | 'tired' | 'exhausted', string>;

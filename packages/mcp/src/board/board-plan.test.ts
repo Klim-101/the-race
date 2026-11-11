@@ -62,6 +62,7 @@ const VIEW = {
   setting: null,
   inspiration: null,
   remembers: null,
+  awake: null,
   news: [],
   location: { id: 'hall', name: 'Room hall', description: '', exits: [] },
   map: {
