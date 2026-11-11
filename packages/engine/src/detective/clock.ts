@@ -69,8 +69,9 @@ export function settleClock(run: DetectiveRunState, previousDay: number): Detect
   // The active hours end at midnight, where the clock itself turns the day. The night (`passNight`) has
   // normally set the morning already, a late one after an incident; a clock still inside the night is
   // brought to 08:00, whatever part of the night the action ran into.
+  // A hero staying up through the night is in it on purpose: their clock runs on, and the dawn settles it.
   const rested =
-    run.clock.day > previousDay && run.clock.minute < DAY_START_MINUTE
+    run.awakeNight === null && run.clock.day > previousDay && run.clock.minute < DAY_START_MINUTE
       ? { ...run, clock: { day: run.clock.day, minute: DAY_START_MINUTE } }
       : run;
   const passed = daysPassed(run.case, previousDay, rested.clock.day);

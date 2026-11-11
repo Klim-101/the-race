@@ -115,6 +115,7 @@ export function applyFatigue(
   if (
     outcome.kind === 'accuse' ||
     outcome.kind === 'rest' ||
+    outcome.kind === 'stay-up' ||
     outcome.kind === 'sit' ||
     outcome.kind === 'use' ||
     outcome.kind === 'take'

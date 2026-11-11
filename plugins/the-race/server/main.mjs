@@ -34460,6 +34460,14 @@ var winsOf = (records) => records.filter(({ won }) => won).length;
 var NERVES_MINUTES_PER_POINT = 240;
 var LATE_FROM_MINUTE = 22 * 60;
 var SLEEP_DEBT_MINUTES_PER_POINT = 60;
+var AWAKE_MINUTES_PER_DEBT = 120;
+var NIGHT_END_MINUTE = 8 * 60;
+function awakeDebtBetween(night, fromMinute, toMinute) {
+  const spent = (moment) => Math.floor(
+    Math.min(NIGHT_END_MINUTE, Math.max(0, moment - night * MINUTES_PER_DAY)) / AWAKE_MINUTES_PER_DEBT
+  );
+  return spent(toMinute) - spent(fromMinute);
+}
 var ACTION_STRAIN_RULESET_VERSION = 9;
 var ACTION_STRAIN_CAP_PER_DAY = 3;
 var CONDITION_IDS = [
@@ -36870,7 +36878,12 @@ var DetectiveRunStateSchema = external_exports.object({
   /** The pattern of news the case grew from, when it grew from one. Old saves have none. */
   inspiration: InspirationSchema.nullable().default(null),
   /** The past hero the run remembers: flavour only, never part of the case. Old saves have none. */
-  remembers: RememberedHeroSchema.nullable().default(null)
+  remembers: RememberedHeroSchema.nullable().default(null),
+  /**
+   * The day whose night the hero has chosen to stay up through, until the dawn or until they turn in; `null` when they sleep
+   * at the end of the day as ever. While it is set the clock may run on past midnight and the hours there are played.
+   */
+  awakeNight: external_exports.int().min(1).nullable().default(null)
 }).superRefine((run, context2) => {
   if (!isCaseSealIntact(run)) {
     context2.addIssue({
@@ -37024,7 +37037,8 @@ function createDetectiveRun(input2) {
     takenStockIds: [],
     traitScenes: drawTraitScenes(input2.case, input2.traits, input2.seed),
     inspiration: input2.inspiration ?? null,
-    remembers: input2.remembers ?? null
+    remembers: input2.remembers ?? null,
+    awakeNight: null
   });
 }
 function assertActive(run) {
@@ -37190,7 +37204,10 @@ function addInsight(run, deductionId) {
 function spendTime(run, minutes2) {
   assertActive(run);
   const clock2 = advanceClock(run.clock, minutes2);
-  const passed = { ...run, clock: clock2, condition: passTime(run.condition, run.clock, minutes2) };
+  const timed = passTime(run.condition, run.clock, minutes2);
+  const awake = run.awakeNight === null ? 0 : awakeDebtBetween(run.awakeNight, absoluteMinute(run.clock), absoluteMinute(run.clock) + minutes2);
+  const condition = awake === 0 ? timed : { ...timed, sleepDebt: Math.min(DETECTIVE_SLEEP_DEBT.max, timed.sleepDebt + awake) };
+  const passed = { ...run, clock: clock2, condition };
   return landPending(passed, false);
 }
 function landPending(run, night) {
@@ -37280,7 +37297,7 @@ function viewChronicle(run) {
       ({ eventId, day }) => pool.filter(({ id }) => id === eventId).map(({ description }) => ({ day, text: description }))
     )
   ].sort((a, b) => a.day - b.day);
-  const activeMinutesLeft = MINUTES_PER_DAY - run.clock.minute + Math.max(0, days - run.clock.day) * (MINUTES_PER_DAY - DAY_START_MINUTE);
+  const activeMinutesLeft = MINUTES_PER_DAY - Math.max(run.clock.minute, DAY_START_MINUTE) + Math.max(0, days - run.clock.day) * (MINUTES_PER_DAY - DAY_START_MINUTE);
   return { activeMinutesLeft, minutesToDeadline: minutesToDeadline(run), deadline: deadlineAt(run), events };
 }
 function signalViewOf(run) {
@@ -37463,6 +37480,7 @@ function viewRun(run) {
     setting: run.setting && { name: run.setting.name[run.locale], climate: run.setting.climate },
     inspiration: run.inspiration,
     remembers: run.remembers,
+    awake: run.awakeNight === null ? null : { minutesPastMidnight: Math.max(0, absoluteMinute(run.clock) - run.awakeNight * MINUTES_PER_DAY) },
     location: {
       id: location.id,
       name: location.name,
@@ -37599,7 +37617,7 @@ function resolveReread(run, intent, rng) {
 }
 function applyFatigue(before, resolution, rng) {
   const { outcome } = resolution;
-  if (outcome.kind === "accuse" || outcome.kind === "rest" || outcome.kind === "sit" || outcome.kind === "use" || outcome.kind === "take") {
+  if (outcome.kind === "accuse" || outcome.kind === "rest" || outcome.kind === "stay-up" || outcome.kind === "sit" || outcome.kind === "use" || outcome.kind === "take") {
     return resolution;
   }
   let { run } = resolution;
@@ -37664,7 +37682,7 @@ function daysPassed(detectiveCase, fromDay, toDay) {
 }
 function settleClock(run, previousDay) {
   if (run.status !== "active") return run;
-  const rested = run.clock.day > previousDay && run.clock.minute < DAY_START_MINUTE ? { ...run, clock: { day: run.clock.day, minute: DAY_START_MINUTE } } : run;
+  const rested = run.awakeNight === null && run.clock.day > previousDay && run.clock.minute < DAY_START_MINUTE ? { ...run, clock: { day: run.clock.day, minute: DAY_START_MINUTE } } : run;
   const passed = daysPassed(run.case, previousDay, rested.clock.day);
   const closed = passed.closedLocationIds.reduce(closeLocation, rested);
   const reason = passed.endReason ?? // An abduction's deadline: the victim was not found before it.
@@ -37726,7 +37744,7 @@ function settleSignalAtNight(run, rng) {
 }
 
 // packages/engine/src/detective/night.ts
-var NIGHT_CAUSES = ["active-hours", "rest", "collapse"];
+var NIGHT_CAUSES = ["active-hours", "rest", "collapse", "late-rest", "sleepless"];
 var NightCauseSchema = external_exports.enum(NIGHT_CAUSES);
 var NIGHT_NERVES_FIRST = 4;
 var NIGHT_NERVES_LESS_PER_DAY = 1;
@@ -37785,7 +37803,7 @@ function incidentOf(rng) {
   return { kind: "gear", condition: "ill-equipped" };
 }
 function passNight(run, rng, cause, day) {
-  const whole5 = cause !== "collapse";
+  const whole5 = cause === "active-hours" || cause === "rest";
   const location = run.case.locations.find(({ id }) => id === run.locationId);
   const lodging = location?.lodging ?? DEFAULT_LODGING;
   const healed = sleptOff(run.condition);
@@ -37797,7 +37815,7 @@ function passNight(run, rng, cause, day) {
   const nervesRestored = nerves - run.condition.nerves;
   const sleepDebt = whole5 ? applyMeterRate(DETECTIVE_SLEEP_DEBT, healed.sleepDebt, "drain", "night") : healed.sleepDebt;
   let condition = { ...healed, nerves, sleepDebt };
-  const incident = rng.roll(100) <= INCIDENT_CHANCE[lodging] ? incidentOf(rng) : null;
+  const incident = cause !== "sleepless" && rng.roll(100) <= INCIDENT_CHANCE[lodging] ? incidentOf(rng) : null;
   let minute = DAY_START_MINUTE;
   if (incident !== null) {
     switch (incident.kind) {
@@ -37813,7 +37831,8 @@ function passNight(run, rng, cause, day) {
         break;
     }
   }
-  const slept = { ...run, condition, clock: { day: day + 1, minute } };
+  const clock2 = cause === "sleepless" ? { day: run.clock.day, minute: Math.max(run.clock.minute, minute) } : { day: day + 1, minute };
+  const slept = { ...run, condition, clock: clock2, awakeNight: null };
   const drawn = drawEvents(landPending(slept, true), rng);
   const { run: settled, events: signalEvents } = settleSignalAtNight(drawn.run, rng);
   return {
@@ -38576,6 +38595,11 @@ var IntentSchema = external_exports.discriminatedUnion("kind", [
   /** Stop for the day and sleep where the hero stands: the night passes at once. */
   external_exports.object({ kind: external_exports.literal("rest") }),
   /**
+   * Choose not to sleep tonight: the hours after midnight are played, at the price of sleep debt, until the dawn or until the
+   * hero turns in. It takes no time.
+   */
+  external_exports.object({ kind: external_exports.literal("stay-up") }),
+  /**
    * Ask the locals for a rumour: a contacts roll, with the piece of the kit named by `toolId` (cash) to help it. With
    * `witnessId` (from the ruleset of witnesses on) it is a question to one witness of the place about what they saw,
    * and `aboutSuspectId` narrows it to one suspect.
@@ -38980,14 +39004,33 @@ function sleepIfDue(resolution, day, rng) {
   const { run } = resolution;
   if (run.status !== "active") return resolution;
   if (run.reputation === 0 || endReasonOfMeters(meterReadings(run)) !== null) return resolution;
-  let cause = null;
-  if (resolution.outcome.kind === "rest") cause = "rest";
-  else if (run.clock.day > day) cause = "active-hours";
-  else if (isCollapse(run)) cause = "collapse";
-  if (cause === null) return resolution;
-  const owed = cause === "active-hours" ? run : drawOwedDayEvent(run, rng).run;
-  const night = passNight(owed, rng, cause, day);
-  return { ...resolution, run: night.run, night: night.report };
+  const night = nightDue(resolution, day);
+  if (night === null) return resolution;
+  const owed = night.cause === "active-hours" || night.cause === "sleepless" ? run : drawOwedDayEvent(run, rng).run;
+  const passed = passNight(owed, rng, night.cause, night.day);
+  return { ...resolution, run: passed.run, night: passed.report };
+}
+function nightDue(resolution, day) {
+  const { run, outcome } = resolution;
+  const staying = run.awakeNight;
+  const inNight = staying !== null && run.clock.day === staying + 1 && run.clock.minute < DAY_START_MINUTE;
+  const nightOf = staying !== null && inNight ? staying : day;
+  if (outcome.kind === "rest") return { cause: inNight ? "late-rest" : "rest", day: nightOf };
+  if (staying === null && run.clock.day > day) return { cause: "active-hours", day };
+  if (staying !== null) {
+    const dawn = run.clock.day > staying + 1 || run.clock.day === staying + 1 && run.clock.minute >= DAY_START_MINUTE;
+    if (dawn) return { cause: "sleepless", day: staying };
+  }
+  return isCollapse(run) ? { cause: "collapse", day: nightOf } : null;
+}
+function resolveStayUp(run, rng) {
+  if (run.awakeNight !== null) return refuse3("already-awake", "The hero is already staying up tonight.");
+  return {
+    ok: true,
+    run: endTurn({ ...run, awakeNight: run.clock.day }, rng),
+    outcome: { kind: "stay-up" },
+    details: []
+  };
 }
 function resolveRest(run, rng) {
   return { ok: true, run: endTurn(run, rng), outcome: { kind: "rest" }, details: [] };
@@ -39120,6 +39163,8 @@ function dispatchIntent(run, input2, rng) {
       return resolveMove(run, rng, intent.locationId);
     case "rest":
       return resolveRest(run, rng);
+    case "stay-up":
+      return resolveStayUp(run, rng);
     case "sit":
       return resolveSit(run, rng);
     case "ask":
@@ -40929,6 +40974,7 @@ var OutcomeSchema = external_exports.union([
     ...fatigue
   }),
   external_exports.object({ kind: external_exports.literal("rest") }),
+  external_exports.object({ kind: external_exports.literal("stay-up") }),
   external_exports.object({
     kind: external_exports.literal("ask"),
     minutes,
@@ -41377,10 +41423,11 @@ var KIND_OF = {
   use: "use",
   take: "take",
   rest: "rest",
+  "stay-up": "stay-up",
   accuse: "accuse"
 };
 function minutesOf(outcome, startMinute) {
-  return outcome.kind === "rest" ? MINUTES_PER_DAY - startMinute : outcome.kind === "accuse" ? 0 : outcome.minutes;
+  return outcome.kind === "rest" ? MINUTES_PER_DAY - startMinute : outcome.kind === "accuse" || outcome.kind === "stay-up" ? 0 : outcome.minutes;
 }
 function touchedOf(outcome, placeId) {
   switch (outcome.kind) {
@@ -41404,6 +41451,7 @@ function touchedOf(outcome, placeId) {
     case "use":
     case "take":
     case "rest":
+    case "stay-up":
     case "accuse":
       return { ...NOTHING, placeId };
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
@@ -41460,6 +41508,8 @@ function detailOf(run, entry) {
       return { kind: "search", found: outcome.foundClueIds.length };
     case "rest":
       return { kind: "rest" };
+    case "stay-up":
+      return { kind: "stay-up" };
     case "sit":
       return { kind: "sit", restored: outcome.nervesRestored };
     case "ask":
@@ -52979,6 +53029,7 @@ var STRIP_SYMBOLS = {
   use: "+",
   take: "\u25A3",
   rest: "\u263E",
+  "stay-up": "\u263C",
   accuse: "!"
 };
 var x = (minute) => LEFT + minute / MINUTES * SPAN;
@@ -53346,6 +53397,7 @@ var en_default3 = {
         moveFailed: "Tried to get into {name} and could not",
         search: "Searched the place: found {n}",
         rest: "Rested for the night",
+        stayUp: "Decided to stay up through the night",
         found: "Found and took: {name}",
         bought: "Bought: {name}",
         gotSomething: "something to go on",
@@ -53624,6 +53676,7 @@ var en_default3 = {
         use: "use something",
         take: "pick something up",
         rest: "rest",
+        "stay-up": "stay up",
         accuse: "accusation"
       }
     },
@@ -54106,6 +54159,7 @@ var ru_default2 = {
         moveFailed: "\u041F\u044B\u0442\u0430\u043B\u0438\u0441\u044C \u043F\u043E\u043F\u0430\u0441\u0442\u044C \u0432 {name}, \u043D\u043E \u043D\u0435 \u0432\u044B\u0448\u043B\u043E",
         search: "\u041E\u0431\u044B\u0441\u043A\u0430\u043B\u0438 \u043C\u0435\u0441\u0442\u043E: \u043D\u0430\u0439\u0434\u0435\u043D\u043E {n}",
         rest: "\u0417\u0430\u0441\u043D\u0443\u043B\u0438 \u0434\u043E \u0443\u0442\u0440\u0430",
+        stayUp: "\u0420\u0435\u0448\u0438\u043B\u0438 \u043D\u0435 \u0441\u043F\u0430\u0442\u044C \u0432\u0441\u044E \u043D\u043E\u0447\u044C",
         found: "\u041D\u0430\u0448\u0451\u043B \u0438 \u0432\u0437\u044F\u043B: {name}",
         bought: "\u041A\u0443\u043F\u0438\u043B: {name}",
         gotSomething: "\u0435\u0441\u0442\u044C \u0437\u0430 \u0447\u0442\u043E \u0437\u0430\u0446\u0435\u043F\u0438\u0442\u044C\u0441\u044F",
@@ -54384,6 +54438,7 @@ var ru_default2 = {
         use: "\u043F\u0440\u0438\u043C\u0435\u043D\u0435\u043D\u0438\u0435",
         take: "\u0432\u0437\u044F\u0442\u044C \u0438\u043B\u0438 \u043A\u0443\u043F\u0438\u0442\u044C",
         rest: "\u043E\u0442\u0434\u044B\u0445",
+        "stay-up": "\u043D\u0435 \u0441\u043F\u0430\u0442\u044C",
         accuse: "\u043E\u0431\u0432\u0438\u043D\u0435\u043D\u0438\u0435"
       }
     },
@@ -54656,6 +54711,8 @@ function turnText(turn, text) {
       return fill2(t.search, { n: String(turn.found) });
     case "rest":
       return t.rest;
+    case "stay-up":
+      return t.stayUp;
     case "sit":
       return fill2(t.sit, { n: String(turn.restored) });
     case "ask":
@@ -56856,6 +56913,7 @@ var ActIntentSchema = external_exports.discriminatedUnion("kind", [
     luck: LuckSchema2
   }),
   external_exports.object({ kind: external_exports.literal("rest") }),
+  external_exports.object({ kind: external_exports.literal("stay-up") }),
   external_exports.object({ kind: external_exports.literal("sit") }),
   external_exports.object({
     kind: external_exports.literal("ask"),
@@ -56876,7 +56934,7 @@ var ActIntentSchema = external_exports.discriminatedUnion("kind", [
 ]);
 var act = defineTool({
   name: "act",
-  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it; or, with `witnessId` of a person run_view lists under `witnesses`, ask that person what they saw, and with `aboutSuspectId` only about that one suspect), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit), take (`stockId` of something run_view lists under `location.offers`: a tool for the suitcase, with `dropId` of a tool of the suitcase to put down when it is full, or a supply for the pockets) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn. The clues and conclusions the turn gave are in `clues` and `insights` with their texts, so a turn needs no run_view to be told. With `luck: true` on move, search, ask or study the hero spends a luck token (`luckTokens.left` in run_view) if the first die of a check fails: the check is rolled again and the second die stands, and the token is spent only then (`luckSpent` in the result); with none left the call is refused with "no-luck". Offer it only when the player asks to push their luck. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
+  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night, or turn in early after hours awake), stay-up (choose not to sleep tonight: it takes no time, and the hours after midnight are then played, each two of them costing a point of sleep debt, until the dawn or until the hero rests; the places open only at night open to a hero who is up; it is offered in the evening, and refused with "already-awake" if the hero is already doing it), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it; or, with `witnessId` of a person run_view lists under `witnesses`, ask that person what they saw, and with `aboutSuspectId` only about that one suspect), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit), take (`stockId` of something run_view lists under `location.offers`: a tool for the suitcase, with `dropId` of a tool of the suitcase to put down when it is full, or a supply for the pockets) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn. The clues and conclusions the turn gave are in `clues` and `insights` with their texts, so a turn needs no run_view to be told. With `luck: true` on move, search, ask or study the hero spends a luck token (`luckTokens.left` in run_view) if the first die of a check fails: the check is rolled again and the second die stands, and the token is spent only then (`luckSpent` in the result); with none left the call is refused with "no-luck". Offer it only when the player asks to push their luck. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
   inputSchema: external_exports.object({ turn: TurnSchema, intent: ActIntentSchema }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, intent }, context2) => playIntent(context2, turn, intent)

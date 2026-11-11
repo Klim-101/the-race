@@ -61,6 +61,8 @@ export function turnText(turn: TurnView, text: TabText): string {
       return fill(t.search, { n: String(turn.found) });
     case 'rest':
       return t.rest;
+    case 'stay-up':
+      return t.stayUp;
     case 'sit':
       return fill(t.sit, { n: String(turn.restored) });
     case 'ask':

@@ -247,6 +247,7 @@
         "moveFailed": "Tried to get into {name} and could not",
         "search": "Searched the place: found {n}",
         "rest": "Rested for the night",
+        "stayUp": "Decided to stay up through the night",
         "found": "Found and took: {name}",
         "bought": "Bought: {name}",
         "gotSomething": "something to go on",
@@ -525,6 +526,7 @@
         "use": "use something",
         "take": "pick something up",
         "rest": "rest",
+        "stay-up": "stay up",
         "accuse": "accusation"
       }
     },

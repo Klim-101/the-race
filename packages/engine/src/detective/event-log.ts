@@ -101,6 +101,7 @@ const OutcomeSchema = z.union([
     ...fatigue,
   }),
   z.object({ kind: z.literal('rest') }),
+  z.object({ kind: z.literal('stay-up') }),
   z.object({
     kind: z.literal('ask'),
     minutes,
