@@ -73,6 +73,7 @@ const OutcomeSchema = z.union([
     foundClueIds: idList,
     minutes,
     noticedPartIds: idList.optional(),
+    trace: z.string().min(1).optional(),
     ...fatigue,
   }),
   z.object({
@@ -98,6 +99,7 @@ const OutcomeSchema = z.union([
       })
       .optional(),
     detainedMinutes: z.int().min(1).optional(),
+    trace: z.string().min(1).optional(),
     ...fatigue,
   }),
   z.object({ kind: z.literal('rest') }),

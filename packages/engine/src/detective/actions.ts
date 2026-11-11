@@ -37,6 +37,7 @@ import {
   type Revealed,
 } from './trait-reveal.js';
 import { locationScene } from './trait-scenes.js';
+import { showTrace, traceKey } from './traces.js';
 import { isLeadEarned, isLeadOpen, isPlaceKnown } from './leads.js';
 import { risks, unlawfulRisk, type Risk } from './risk.js';
 import { DETECTIVE_NERVES } from './archetype.js';
@@ -250,6 +251,8 @@ export type Outcome = (
       readonly minutes: number;
       /** In a place made of parts: every part a glance round the room shows, found or not. */
       readonly noticedPartIds?: readonly string[];
+      /** The litter of the place, a small true thing that proves nothing, shown once when the look found no clue. */
+      readonly trace?: string;
     }
   | {
       readonly kind: 'move';
@@ -280,6 +283,8 @@ export type Outcome = (
       };
       /** The minutes of a detention, already in `minutes`; only when the police held the hero. */
       readonly detainedMinutes?: number;
+      /** The trace of an empty part, or the litter of a place, shown once when the search found no clue. */
+      readonly trace?: string;
     }
   | { readonly kind: 'rest' }
   | { readonly kind: 'stay-up' }
@@ -426,14 +431,25 @@ function resolveLookAtParts(run: DetectiveRunState, rng: Rng, parts: readonly Pl
     shown.map(({ id }) => id),
   );
   const next = found.reduce((state, clue) => findClue(state, clue.id), noticed);
-  const settled = settle(next, rng, PART_LOOK_MINUTES, []);
+  const litter = litterOf(next, found.length);
+  const settled = settle(litter.run, rng, PART_LOOK_MINUTES, []);
   const outcome: Outcome = {
     kind: 'look',
     foundClueIds: found.map(({ id }) => id),
     minutes: PART_LOOK_MINUTES,
     noticedPartIds: shown.map(({ id }) => id),
+    ...(litter.trace === undefined ? {} : { trace: litter.trace }),
   };
   return { ok: true, run: settled.run, outcome, details: [], revealed: lockOutReveals(run, run.locationId) };
+}
+
+/** The litter of the place the hero stands in, shown once when a look or a search found no clue. */
+function litterOf(
+  run: DetectiveRunState,
+  foundCount: number,
+): { readonly run: DetectiveRunState; readonly trace: string | undefined } {
+  if (foundCount > 0) return { run, trace: undefined };
+  return showTrace(run, traceKey('place', run.locationId), locationById(run.case, run.locationId).litter);
 }
 
 function resolveLook(run: DetectiveRunState, rng: Rng): Resolution {
@@ -441,8 +457,14 @@ function resolveLook(run: DetectiveRunState, rng: Rng): Resolution {
   if (parts.length > 0) return resolveLookAtParts(run, rng, parts);
   const found = hiddenClues(run, run.locationId).filter((clue) => clue.discovery === null);
   const next = found.reduce((state, clue) => findClue(state, clue.id), run);
-  const settled = settle(next, rng, LOOK_MINUTES, []);
-  const outcome: Outcome = { kind: 'look', foundClueIds: found.map(({ id }) => id), minutes: LOOK_MINUTES };
+  const litter = litterOf(next, found.length);
+  const settled = settle(litter.run, rng, LOOK_MINUTES, []);
+  const outcome: Outcome = {
+    kind: 'look',
+    foundClueIds: found.map(({ id }) => id),
+    minutes: LOOK_MINUTES,
+    ...(litter.trace === undefined ? {} : { trace: litter.trace }),
+  };
   return { ok: true, run: settled.run, outcome, details: [], revealed: lockOutReveals(run, run.locationId) };
 }
 
@@ -599,11 +621,15 @@ function searchPartForClue(
     ? marked
     : recordPartSearch(withFind, part.id, location.id, found === undefined ? [] : [found.id]);
   const blundered = results.some((result) => result.critical === 'failure');
-  const withClues = wasted && !blundered ? strainByAction(searched) : searched;
+  const strained = wasted && !blundered ? strainByAction(searched) : searched;
+  // A part with nothing in it shows its trace, once: a search that finds something small is not a search that finds the thing.
+  const shownTrace =
+    part.holds === null ? showTrace(strained, traceKey('part', part.id), part.trace) : undefined;
+  const withClues = shownTrace?.run ?? strained;
   const detained = risk?.detentionMinutes ?? 0;
   const minutes = PART_SEARCH_MINUTES + (wasted ? FAILED_SEARCH_MINUTES : 0) + detained;
   const settled = settle(withClues, rng, minutes, results);
-  const frayed = withClues.condition.nerves < searched.condition.nerves;
+  const frayed = strained.condition.nerves < searched.condition.nerves;
   const consequences = uniqueConsequences([
     ...(wasted ? (['time-lost'] as const) : []),
     ...(frayed ? (['nerves-lost'] as const) : []),
@@ -621,6 +647,7 @@ function searchPartForClue(
       partId: part.id,
       ...(tool === undefined ? {} : { tool }),
       ...(detained === 0 ? {} : { detainedMinutes: detained }),
+      ...(shownTrace?.trace === undefined ? {} : { trace: shownTrace.trace }),
     },
     details,
     felt: distinctFelt([...felt, ...settled.felt]),
@@ -680,10 +707,13 @@ function resolveSearch(
   const wasted = found.length === 0 && hidden.length > 0;
   // A blunder on the roll costs its own point (see `settle`) and is not counted twice.
   const blundered = results.some((result) => result.critical === 'failure');
-  const withClues = wasted && !blundered ? strainByAction(searched) : searched;
+  const strained = wasted && !blundered ? strainByAction(searched) : searched;
+  // A search that found no clue shows the litter of the place, whether or not a clue was there to be found: the two look alike.
+  const litter = litterOf(strained, found.length);
+  const withClues = litter.run;
   const minutes = SEARCH_MINUTES + (wasted ? FAILED_SEARCH_MINUTES : 0);
   const settled = settle(withClues, rng, minutes, results);
-  const frayed = withClues.condition.nerves < searched.condition.nerves;
+  const frayed = strained.condition.nerves < searched.condition.nerves;
   const consequences: Consequence[] = [
     ...(wasted ? (['time-lost'] as const) : []),
     ...(frayed ? (['nerves-lost'] as const) : []),
@@ -692,7 +722,13 @@ function resolveSearch(
   return {
     ok: true,
     run: settled.run,
-    outcome: { kind: 'search', foundClueIds: found.map(({ id }) => id), minutes, consequences },
+    outcome: {
+      kind: 'search',
+      foundClueIds: found.map(({ id }) => id),
+      minutes,
+      consequences,
+      ...(litter.trace === undefined ? {} : { trace: litter.trace }),
+    },
     details,
     felt: distinctFelt([...felt, ...settled.felt]),
     revealed,
