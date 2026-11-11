@@ -136,6 +136,15 @@ function unshown(view: DetectiveRunView, suspect: Suspect, text: TabText): strin
 }
 
 /** The suspects: a card for each, with a portrait, the place, the mood, what they said and what they were shown. */
+/** The person a homicide was done to, as a card above the suspects: not one of them, and never the answer. Nothing for any other form. */
+export function renderVictim(view: DetectiveRunView, text: TabText): string {
+  const { victim } = view;
+  if (victim === null) return '';
+  const e = escapeHtml;
+  const t = text.victimCard;
+  return `<div class="card victim"><span class="tag">${e(t.title)}</span> <strong>${e(victim.name)}</strong> · ${e(victim.alive ? t.alive : t.killed)}</div>\n`;
+}
+
 export function renderSuspects(
   view: DetectiveRunView,
   board: BoardText,

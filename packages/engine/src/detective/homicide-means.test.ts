@@ -8,7 +8,7 @@ import { resolveIntent, type Resolved } from './actions.js';
 import { DetectiveCaseSchema } from './case-schema.js';
 import { validateCase } from './case-validator.js';
 import { EMPTY_RUN_LOG, RunLogSchema, recordResolution, replay } from './event-log.js';
-import { createDetectiveRun, type DetectiveRunState } from './run-state.js';
+import { createDetectiveRun, viewRun, type DetectiveRunState } from './run-state.js';
 import { viewTurns } from './turn-view.js';
 
 type Raw = ReturnType<typeof buildCheeseCase>;
@@ -209,6 +209,35 @@ describe('the means in the log and the closed file', () => {
     expect(viewTurns(resolution.run, log)[0]).toMatchObject({
       shortfall: { means: { held: false, offered: false, drawn: true } },
       file: { meansRight: false },
+    });
+  });
+});
+
+describe('the victim, in the view and the closed file', () => {
+  it('is public: the name and whether they live, and nothing for a case of another form', () => {
+    expect(viewRun(runWith(homicideRaw(), [])).victim).toEqual({ name: HOMICIDE.victim.name, alive: true });
+    const killed = homicideRaw();
+    Object.assign(killed.truth, { homicide: { ...HOMICIDE, fate: 'death' } });
+    expect(viewRun(runWith(killed, [])).victim?.alive).toBe(false);
+    expect(viewRun(runWith(buildCheeseCase(), [])).victim).toBeNull();
+  });
+
+  it('is told in the closed file once the run is over, with the log that keeps it', () => {
+    const run = runWith(homicideRaw(), ['motive-debt', 'means-rolled']);
+    const intent = {
+      kind: 'accuse',
+      culpritId: 'baker',
+      motiveInsightId: 'motive-debt',
+      meansInsightId: 'means-rolled',
+      evidenceClueIds: CHAIN,
+    };
+    const resolution = resolveIntent(run, intent, restoreRng(run.rngState));
+    if (!resolution.ok) throw new Error('Refused.');
+    const log = recordResolution(EMPTY_RUN_LOG, run, intent, resolution);
+
+    expect(RunLogSchema.parse(log)).toEqual(log);
+    expect(viewTurns(resolution.run, log)[0]).toMatchObject({
+      file: { victim: { name: HOMICIDE.victim.name, alive: true } },
     });
   });
 });

@@ -37595,6 +37595,7 @@ function viewRun(run) {
     setting: run.setting && { name: run.setting.name[run.locale], climate: run.setting.climate },
     inspiration: run.inspiration,
     remembers: run.remembers,
+    victim: run.case.truth.homicide === void 0 ? null : { name: run.case.truth.homicide.victim.name, alive: run.case.truth.homicide.fate === "attempt" },
     awake: run.awakeNight === null ? null : { minutesPastMidnight: Math.max(0, absoluteMinute(run.clock) - run.awakeNight * MINUTES_PER_DAY) },
     location: {
       id: location.id,
@@ -41514,7 +41515,9 @@ var OutcomeSchema = external_exports.union([
       method: external_exports.string(),
       crimeLocationId: EntityIdSchema,
       /** Only an abduction: where the victim was kept. */
-      whereaboutsId: EntityIdSchema.optional()
+      whereaboutsId: EntityIdSchema.optional(),
+      /** Only a homicide: the victim, and whether they lived; optional, so that a log from before it still reads. */
+      homicide: external_exports.object({ victim: external_exports.object({ name: external_exports.string() }), fate: external_exports.enum(["attempt", "death"]) }).optional()
     })
   })
 ]);
@@ -41968,6 +41971,12 @@ function detailOf(run, entry) {
           culpritRight: outcome.culpritRight,
           ...outcome.placeRight === void 0 ? {} : { placeRight: outcome.placeRight },
           ...outcome.meansRight === void 0 ? {} : { meansRight: outcome.meansRight },
+          ...outcome.truth.homicide === void 0 ? {} : {
+            victim: {
+              name: outcome.truth.homicide.victim.name,
+              alive: outcome.truth.homicide.fate === "attempt"
+            }
+          },
           culprit: nameOf(run, outcome.truth.culpritId),
           motive: outcome.truth.motive,
           method: outcome.truth.method,
@@ -53652,6 +53661,7 @@ var en_default3 = {
       story: "Story"
     },
     nav: "Sections of the board",
+    victimCard: { title: "The victim", alive: "hurt, and lives", killed: "killed" },
     closedFile: {
       title: "The closed file",
       verdicts: {
@@ -53663,6 +53673,11 @@ var en_default3 = {
       culprit: "Who did it",
       motive: "Why",
       method: "How",
+      means: "What it was done with",
+      meansMissed: "not the means the hero named",
+      victim: "The victim",
+      victimAlive: "hurt, and lives",
+      victimKilled: "killed",
       place: "Where",
       placeKept: "Where it was kept",
       course: "How it really went",
@@ -54424,6 +54439,7 @@ var ru_default2 = {
       story: "\u0420\u0430\u0441\u0441\u043A\u0430\u0437"
     },
     nav: "\u0420\u0430\u0437\u0434\u0435\u043B\u044B \u0434\u043E\u0441\u043A\u0438",
+    victimCard: { title: "\u041F\u043E\u0441\u0442\u0440\u0430\u0434\u0430\u0432\u0448\u0438\u0439", alive: "\u0440\u0430\u043D\u0435\u043D, \u0436\u0438\u0432", killed: "\u0443\u0431\u0438\u0442" },
     closedFile: {
       title: "\u0417\u0430\u043A\u0440\u044B\u0442\u043E\u0435 \u0434\u0435\u043B\u043E",
       verdicts: {
@@ -54435,6 +54451,11 @@ var ru_default2 = {
       culprit: "\u041A\u0442\u043E \u044D\u0442\u043E \u0441\u0434\u0435\u043B\u0430\u043B",
       motive: "\u041F\u043E\u0447\u0435\u043C\u0443",
       method: "\u041A\u0430\u043A",
+      means: "\u0427\u0435\u043C \u044D\u0442\u043E \u0441\u0434\u0435\u043B\u0430\u043D\u043E",
+      meansMissed: "\u043D\u0435 \u0442\u043E \u0441\u0440\u0435\u0434\u0441\u0442\u0432\u043E, \u0447\u0442\u043E \u043D\u0430\u0437\u0432\u0430\u043B \u0433\u0435\u0440\u043E\u0439",
+      victim: "\u041F\u043E\u0441\u0442\u0440\u0430\u0434\u0430\u0432\u0448\u0438\u0439",
+      victimAlive: "\u0440\u0430\u043D\u0435\u043D, \u0436\u0438\u0432",
+      victimKilled: "\u0443\u0431\u0438\u0442",
       place: "\u0413\u0434\u0435",
       placeKept: "\u0413\u0434\u0435 \u0434\u0435\u0440\u0436\u0430\u043B\u0438",
       course: "\u041A\u0430\u043A \u0432\u0441\u0451 \u0431\u044B\u043B\u043E \u043D\u0430 \u0441\u0430\u043C\u043E\u043C \u0434\u0435\u043B\u0435",
@@ -55283,7 +55304,8 @@ function renderClosedFile(view, file2, text) {
 <h3>${e(named(t.verdicts, heading))}</h3>
 <p><span class="tag">${e(t.culprit)}</span> ${e(file2.culprit)}</p>
 <p><span class="tag">${e(t.motive)}</span> ${e(file2.motive)}</p>
-<p><span class="tag">${e(t.method)}</span> ${e(file2.method)}</p>
+<p><span class="tag">${e(file2.victim === void 0 ? t.method : t.means)}</span> ${e(file2.method)}${file2.meansRight === false ? `<br><span class="tag">${e(t.meansMissed)}</span>` : ""}</p>${file2.victim === void 0 ? "" : `
+<p><span class="tag">${e(t.victim)}</span> ${e(file2.victim.name)} \xB7 ${e(file2.victim.alive ? t.victimAlive : t.victimKilled)}</p>`}
 <p><span class="tag">${e(file2.placeRight === void 0 ? t.place : t.placeKept)}</span> ${e(file2.place)}</p>
 </div>${file2.course.length === 0 ? "" : `
 <h3>${e(t.course)}</h3>
@@ -56282,6 +56304,14 @@ function unshown(view, suspect, text) {
   return numbers.length === 0 ? "" : `
 <p class="todo-line">${escapeHtml(text.statements.notShownYet.replace("{numbers}", numbers.join(", ")))}</p>`;
 }
+function renderVictim(view, text) {
+  const { victim } = view;
+  if (victim === null) return "";
+  const e = escapeHtml;
+  const t = text.victimCard;
+  return `<div class="card victim"><span class="tag">${e(t.title)}</span> <strong>${e(victim.name)}</strong> \xB7 ${e(victim.alive ? t.alive : t.killed)}</div>
+`;
+}
 function renderSuspects(view, board, text, fresh) {
   const e = escapeHtml;
   return view.suspects.map((suspect) => {
@@ -56709,7 +56739,7 @@ ${renderCork(view, board, text)}
 </section>
 <section class="tab notebook" id="suspects">
 <h2>${e(board.suspects)}</h2>
-${renderSuspects(view, board, text, fresh)}
+${renderVictim(view, text)}${renderSuspects(view, board, text, fresh)}
 </section>
 <section class="tab" id="clues">
 ${renderClues(view, board, text, fresh)}

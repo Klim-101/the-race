@@ -42,6 +42,7 @@ function viewOf(overrides: Partial<View> = {}): View {
     inspiration: null,
     remembers: null,
     awake: null,
+    victim: null,
     news: [],
     location: { id: 'market', name: 'Market', description: '', exits: [] },
     map: {
@@ -1301,5 +1302,26 @@ describe('a small thing a look or a search showed, in the chronicle', () => {
 
     expect(ru).toContain('Заметили: A torn flyer');
     expect(tab(renderEvidenceBoard(viewOf(), shown.slice(1)), 'chronicle')).not.toContain('Noticed:');
+  });
+});
+
+describe('the victim of a homicide, on the board', () => {
+  const victimCard = (victim: { name: string; alive: boolean } | null, locale: 'en' | 'ru' = 'en'): string =>
+    /<div class="card victim">.*?<\/div>/.exec(
+      tab(renderEvidenceBoard(viewOf({ victim, locale })), 'suspects'),
+    )?.[0] ?? '';
+
+  it('is a card above the suspects, with how they stand, and is no suspect', () => {
+    const card = victimCard({ name: 'Pieter Vane', alive: true });
+
+    expect(card).toContain('The victim');
+    expect(card).toContain('<strong>Pieter Vane</strong> · hurt, and lives');
+    expect(victimCard({ name: 'Pieter Vane', alive: false })).toContain('killed');
+  });
+
+  it('is told in the language of the run, escaped, and is not there for another form', () => {
+    expect(victimCard({ name: 'Пётр', alive: true }, 'ru')).toContain('Пострадавший');
+    expect(victimCard({ name: '<b>Vane</b>', alive: true })).toContain('&lt;b&gt;Vane&lt;/b&gt;');
+    expect(victimCard(null)).toBe('');
   });
 });

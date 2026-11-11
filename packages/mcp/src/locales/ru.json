@@ -84,6 +84,7 @@
       "story": "Рассказ"
     },
     "nav": "Разделы доски",
+    "victimCard": { "title": "Пострадавший", "alive": "ранен, жив", "killed": "убит" },
     "closedFile": {
       "title": "Закрытое дело",
       "verdicts": {
@@ -95,6 +96,11 @@
       "culprit": "Кто это сделал",
       "motive": "Почему",
       "method": "Как",
+      "means": "Чем это сделано",
+      "meansMissed": "не то средство, что назвал герой",
+      "victim": "Пострадавший",
+      "victimAlive": "ранен, жив",
+      "victimKilled": "убит",
       "place": "Где",
       "placeKept": "Где держали",
       "course": "Как всё было на самом деле",
