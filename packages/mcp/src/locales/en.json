@@ -84,6 +84,7 @@
       "story": "Story"
     },
     "nav": "Sections of the board",
+    "victimCard": { "title": "The victim", "alive": "hurt, and lives", "killed": "killed" },
     "closedFile": {
       "title": "The closed file",
       "verdicts": {
@@ -95,6 +96,11 @@
       "culprit": "Who did it",
       "motive": "Why",
       "method": "How",
+      "means": "What it was done with",
+      "meansMissed": "not the means the hero named",
+      "victim": "The victim",
+      "victimAlive": "hurt, and lives",
+      "victimKilled": "killed",
       "place": "Where",
       "placeKept": "Where it was kept",
       "course": "How it really went",

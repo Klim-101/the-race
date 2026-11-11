@@ -25,7 +25,12 @@ export function renderClosedFile(view: DetectiveRunView, file: ClosedFile, text:
 <h3>${e(named(t.verdicts, heading))}</h3>
 <p><span class="tag">${e(t.culprit)}</span> ${e(file.culprit)}</p>
 <p><span class="tag">${e(t.motive)}</span> ${e(file.motive)}</p>
-<p><span class="tag">${e(t.method)}</span> ${e(file.method)}</p>
+<p><span class="tag">${e(file.victim === undefined ? t.method : t.means)}</span> ${e(file.method)}${file.meansRight === false ? `<br><span class="tag">${e(t.meansMissed)}</span>` : ''}</p>${
+    file.victim === undefined
+      ? ''
+      : `
+<p><span class="tag">${e(t.victim)}</span> ${e(file.victim.name)} · ${e(file.victim.alive ? t.victimAlive : t.victimKilled)}</p>`
+  }
 <p><span class="tag">${e(file.placeRight === undefined ? t.place : t.placeKept)}</span> ${e(file.place)}</p>
 </div>${
     file.course.length === 0

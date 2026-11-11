@@ -33,6 +33,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
     inspiration: null,
     remembers: null,
     awake: null,
+    victim: null,
     news: [],
     location: { id: 'market', name: 'Market', description: '', exits: [] },
     map: { current: 'market', places: [], links: [] },
@@ -203,5 +204,46 @@ describe('the closed file, on the board of a finished run', () => {
     expect(tab).toContain('не найдена · Storage cellar · в темноте');
     expect(tab).not.toContain('<script>alert(1)</script>');
     expect(tab).toContain('&lt;script&gt;');
+  });
+});
+
+describe('the closed file of a homicide', () => {
+  const HOMICIDE: ClosedFile = {
+    ...FILE,
+    meansRight: false,
+    victim: { name: 'Pieter Vane', alive: true },
+  };
+
+  it('says what it was done with in place of the how, the victim and how they stand, and that the means was missed', () => {
+    const tab = fileTab(pageOf(accused(HOMICIDE)));
+
+    expect(tab).toContain('What it was done with');
+    expect(tab).not.toContain('<span class="tag">How</span>');
+    expect(tab).toContain('The victim');
+    expect(tab).toContain('Pieter Vane · hurt, and lives');
+    expect(tab).toContain('not the means the hero named');
+  });
+
+  it('says nothing of the means that was missed when it was the right one, and is told in the language of the run', () => {
+    const right = fileTab(pageOf(accused({ ...HOMICIDE, meansRight: true })));
+    const ru = fileTab(pageOf(accused(HOMICIDE), viewOf({ locale: 'ru' })));
+
+    expect(right).not.toContain('not the means the hero named');
+    expect(ru).toContain('Чем это сделано');
+    expect(ru).toContain('ранен, жив');
+    expect(ru).toContain('не то средство, что назвал герой');
+  });
+
+  it('tells a victim who did not live as killed', () => {
+    const tab = fileTab(pageOf(accused({ ...HOMICIDE, victim: { name: 'Pieter Vane', alive: false } })));
+
+    expect(tab).toContain('Pieter Vane · killed');
+  });
+
+  it('has none of it for a case of another form, which keeps the how', () => {
+    const tab = fileTab(pageOf(accused(FILE)));
+
+    expect(tab).toContain('<span class="tag">How</span>');
+    expect(tab).not.toContain('The victim');
   });
 });

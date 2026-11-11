@@ -910,6 +910,8 @@ export interface DetectiveRunView {
   readonly inspiration: Inspiration | null;
   /** A past hero the world remembers in this run: the public record of that run, or none. Never a clue. */
   readonly remembers: RememberedHero | null;
+  /** For a homicide, the person it was done to and whether they live: the premise says both, so it is public. `null` for any other form. */
+  readonly victim: { readonly name: string; readonly alive: boolean } | null;
   /**
    * Set while the hero stays up through a night rather than sleep: how far into the night they are (0 before midnight),
    * so the narrator can tell how long they have been up. `null` for a hero who sleeps at the end of the day.
@@ -1390,6 +1392,10 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     setting: run.setting && { name: run.setting.name[run.locale], climate: run.setting.climate },
     inspiration: run.inspiration,
     remembers: run.remembers,
+    victim:
+      run.case.truth.homicide === undefined
+        ? null
+        : { name: run.case.truth.homicide.victim.name, alive: run.case.truth.homicide.fate === 'attempt' },
     awake:
       run.awakeNight === null
         ? null

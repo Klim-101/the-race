@@ -246,6 +246,10 @@ const OutcomeSchema = z.union([
       crimeLocationId: EntityIdSchema,
       /** Only an abduction: where the victim was kept. */
       whereaboutsId: EntityIdSchema.optional(),
+      /** Only a homicide: the victim, and whether they lived; optional, so that a log from before it still reads. */
+      homicide: z
+        .object({ victim: z.object({ name: z.string() }), fate: z.enum(['attempt', 'death']) })
+        .optional(),
     }),
   }),
 ]);

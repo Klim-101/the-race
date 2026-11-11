@@ -12,7 +12,7 @@ import { freshSince } from './board-new.js';
 import { openedRules } from './board-opened.js';
 import { renderHero } from './board-hero.js';
 import { renderMap } from './board-map.js';
-import { renderSuspects } from './board-suspects.js';
+import { renderSuspects, renderVictim } from './board-suspects.js';
 import { renderTree } from './board-tree.js';
 import { planRules } from './board-plan.js';
 import { turnRules } from './board-strip.js';
@@ -395,7 +395,7 @@ ${renderCork(view, board, text)}
 </section>
 <section class="tab notebook" id="suspects">
 <h2>${e(board.suspects)}</h2>
-${renderSuspects(view, board, text, fresh)}
+${renderVictim(view, text)}${renderSuspects(view, board, text, fresh)}
 </section>
 <section class="tab" id="clues">
 ${renderClues(view, board, text, fresh)}

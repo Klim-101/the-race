@@ -20,6 +20,8 @@ export interface TabText {
     readonly story: string;
   };
   readonly nav: string;
+  /** The person a homicide was done to, among the people of the case: the heading and how they stand. */
+  readonly victimCard: { readonly title: string; readonly alive: string; readonly killed: string };
   /** The closed file of a finished run: the truth, the course of the crime, the pinned clues and the empty cards. */
   readonly closedFile: {
     readonly title: string;
@@ -27,6 +29,14 @@ export interface TabText {
     readonly culprit: string;
     readonly motive: string;
     readonly method: string;
+    /** The same line for a homicide, where the how is what it was done with. */
+    readonly means: string;
+    /** A homicide whose means the hero did not name rightly: the line that says so. */
+    readonly meansMissed: string;
+    /** The victim of a homicide, and how they stand. */
+    readonly victim: string;
+    readonly victimAlive: string;
+    readonly victimKilled: string;
     readonly place: string;
     /** The same line for an abduction, where it is the place the victim was kept. */
     readonly placeKept: string;

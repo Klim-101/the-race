@@ -85,6 +85,7 @@ function viewOf(map: Map, extra: Record<string, unknown> = {}): View {
     inspiration: null,
     remembers: null,
     awake: null,
+    victim: null,
     news: [],
     location: { id: map.current, name: 'Here', description: '', exits: [] },
     map,

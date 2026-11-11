@@ -57,6 +57,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
     inspiration: null,
     remembers: null,
     awake: null,
+    victim: null,
     news: [],
     location: { id: 'market', name: 'Market', description: '', exits: [] },
     map: {

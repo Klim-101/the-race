@@ -27,6 +27,8 @@ export interface ClosedFile {
   readonly placeRight?: boolean;
   /** Only for a homicide: whether the hero named the means of the case. */
   readonly meansRight?: boolean;
+  /** Only for a homicide: the victim, and whether they live. */
+  readonly victim?: { readonly name: string; readonly alive: boolean };
   readonly culprit: string;
   readonly motive: string;
   readonly method: string;
@@ -161,6 +163,14 @@ function detailOf(run: DetectiveRunState, entry: LogEntry): TurnDetail {
           culpritRight: outcome.culpritRight,
           ...(outcome.placeRight === undefined ? {} : { placeRight: outcome.placeRight }),
           ...(outcome.meansRight === undefined ? {} : { meansRight: outcome.meansRight }),
+          ...(outcome.truth.homicide === undefined
+            ? {}
+            : {
+                victim: {
+                  name: outcome.truth.homicide.victim.name,
+                  alive: outcome.truth.homicide.fate === 'attempt',
+                },
+              }),
           culprit: nameOf(run, outcome.truth.culpritId),
           motive: outcome.truth.motive,
           method: outcome.truth.method,
