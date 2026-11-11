@@ -96,6 +96,19 @@ const RULES: Record<CaseIssueCode, Taught> = {
       'the prompt gives the days of an event (`fromDay`, `untilDay`) and the least day of a lasting one, but never says that an event must fall inside the days of the case',
   },
   'random-event-cuts-solution': /A random event may never close a place or source the solution needs/,
+  'empty-part-without-trace': {
+    learned:
+      'the prompt does not teach traces yet (P4-127, #517): no case has one until it does, and the rejection says the rule',
+  },
+  'trace-draws-conclusion': {
+    learned: 'the prompt does not teach traces yet (P4-127, #517): the rejection says the rule',
+  },
+  'trace-names-someone': {
+    learned: 'the prompt does not teach traces yet (P4-127, #517): the rejection says the rule',
+  },
+  'trace-violence': {
+    learned: 'the prompt does not teach traces yet (P4-127, #517): the rejection says the rule',
+  },
   'event-opens-nothing':
     /it names a place that has `hours`, or the engine rejects it as an event that opens nothing/,
   'random-event-violence': /No violence or death in the plot or in any event/,
@@ -148,6 +161,14 @@ describe("the rules of a case in the generator's prompt", () => {
   });
 
   it('leave only a few codes to the rejection, and the list is the one reported with the change that made it', () => {
-    expect(learned.map(([code]) => code)).toEqual(['part-never-shown', 'random-event-out-of-range']);
+    // The traces are here until the prompt teaches them (P4-127, #517), which will take them out.
+    expect(learned.map(([code]) => code)).toEqual([
+      'part-never-shown',
+      'random-event-out-of-range',
+      'empty-part-without-trace',
+      'trace-draws-conclusion',
+      'trace-names-someone',
+      'trace-violence',
+    ]);
   });
 });

@@ -23,6 +23,7 @@ const CODE_OF: Record<keyof CaseRules, CaseIssueCode> = {
   claims: 'suspect-without-true-claim',
   publicLife: 'empty-public-place',
   observations: 'clue-draws-conclusion',
+  traces: 'empty-part-without-trace',
   minRandomEvents: 'too-few-random-events',
   map: 'map-too-small',
   days: 'run-length-out-of-range',
@@ -48,6 +49,25 @@ function breakingEveryRule() {
   if (clue !== undefined) clue.description = 'Clearly the lock was forced.';
   const lie = detectiveCase.suspects[1]?.lies[0];
   if (lie !== undefined) lie.brokenBy = ['cellar-key'];
+  // A part that holds nothing and has no trace.
+  detectiveCase.locations.push({
+    id: 'bare-room',
+    name: 'A bare room',
+    description: 'A room with a shelf and nothing on it.',
+    connections: ['market-square'],
+    access: { kind: 'open' },
+    parts: [
+      {
+        id: 'bare-shelf',
+        name: 'A bare shelf',
+        obstacle: null,
+        holds: null,
+        inQuickLook: true,
+        requiresLead: null,
+        fallback: null,
+      },
+    ],
+  });
   return detectiveCase;
 }
 
@@ -73,6 +93,7 @@ describe('the rules of the cases from before the generator', () => {
       claims: false,
       publicLife: false,
       observations: false,
+      traces: false,
       minRandomEvents: 0,
       map: null,
       days: null,
@@ -106,6 +127,7 @@ describe('the rules of a generated case', () => {
       claims: true,
       publicLife: true,
       observations: true,
+      traces: true,
       minRandomEvents: MIN_RANDOM_EVENTS,
       map: GENERATED_MAP,
       days: GENERATED_DAYS,

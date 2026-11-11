@@ -27,6 +27,8 @@ export interface CaseRules {
   readonly publicLife: boolean;
   /** A clue describes what is seen, never what it means. */
   readonly observations: boolean;
+  /** Every part that holds nothing has a trace, a small true thing its search shows. */
+  readonly traces: boolean;
   /** The fewest random events the pool must hold; 0 asks for none. */
   readonly minRandomEvents: number;
   /** The shape the map must have (enough places, streets between the buildings); `null` accepts any map. */
@@ -49,6 +51,7 @@ export const LEGACY_RULES: CaseRules = Object.freeze({
   claims: false,
   publicLife: false,
   observations: false,
+  traces: false,
   minRandomEvents: 0,
   map: null,
   days: null,
@@ -64,6 +67,7 @@ export const GENERATED_RULES: CaseRules = Object.freeze({
   claims: true,
   publicLife: true,
   observations: true,
+  traces: true,
   minRandomEvents: MIN_RANDOM_EVENTS,
   map: Object.freeze({ ...GENERATED_MAP }),
   days: Object.freeze({ ...GENERATED_DAYS }),
