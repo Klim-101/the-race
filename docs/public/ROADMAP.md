@@ -67,6 +67,13 @@ One hero, one life, a world that remembers.
 - Run reports, a status line, small per-turn token cost
 - Russian and English, with room for more languages
 
+## Phase 4a — New kinds of case
+
+Not only a theft or a fraud.
+
+- Murder and attempted murder as forms of the detective's case, after the disappearance: a victim, a means and a scene
+- A verdict that checks the culprit and the means, and cases built the same way as the rest
+
 ## Phase 5 — New archetypes
 
 More than detective work.
