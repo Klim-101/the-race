@@ -27,10 +27,11 @@ import { SeedKindSchema } from '../news/seed.js';
 import { RememberedHeroSchema, type RememberedHero } from '../remembered.js';
 import { SettingSchema, type Setting } from '../world/setting.js';
 import { companionName } from './tavern.js';
-import { DETECTIVE, DetectiveHeroSchema, type DetectiveHero } from './archetype.js';
+import { DETECTIVE, DETECTIVE_SLEEP_DEBT, DetectiveHeroSchema, type DetectiveHero } from './archetype.js';
 import {
   HeroConditionSchema,
   absoluteMinute,
+  awakeDebtBetween,
   ACTION_STRAIN_CAP_PER_DAY,
   ACTION_STRAIN_RULESET_VERSION,
   initialCondition,
@@ -280,6 +281,11 @@ export const DetectiveRunStateSchema = z
     inspiration: InspirationSchema.nullable().default(null),
     /** The past hero the run remembers: flavour only, never part of the case. Old saves have none. */
     remembers: RememberedHeroSchema.nullable().default(null),
+    /**
+     * The day whose night the hero has chosen to stay up through, until the dawn or until they turn in; `null` when they sleep
+     * at the end of the day as ever. While it is set the clock may run on past midnight and the hours there are played.
+     */
+    awakeNight: z.int().min(1).nullable().default(null),
   })
   .superRefine((run, context) => {
     if (!isCaseSealIntact(run)) {
@@ -462,6 +468,7 @@ export function createDetectiveRun(input: NewDetectiveRun): DetectiveRunState {
     traitScenes: drawTraitScenes(input.case, input.traits, input.seed),
     inspiration: input.inspiration ?? null,
     remembers: input.remembers ?? null,
+    awakeNight: null,
   });
 }
 
@@ -704,7 +711,17 @@ export function revealTrait(run: DetectiveRunState, traitId: string): DetectiveR
 export function spendTime(run: DetectiveRunState, minutes: number): DetectiveRunState {
   assertActive(run);
   const clock = advanceClock(run.clock, minutes);
-  const passed = { ...run, clock, condition: passTime(run.condition, run.clock, minutes) };
+  const timed = passTime(run.condition, run.clock, minutes);
+  // A hero who stays up through the night pays for the hours after midnight as they pass.
+  const awake =
+    run.awakeNight === null
+      ? 0
+      : awakeDebtBetween(run.awakeNight, absoluteMinute(run.clock), absoluteMinute(run.clock) + minutes);
+  const condition =
+    awake === 0
+      ? timed
+      : { ...timed, sleepDebt: Math.min(DETECTIVE_SLEEP_DEBT.max, timed.sleepDebt + awake) };
+  const passed = { ...run, clock, condition };
   return landPending(passed, false);
 }
 
@@ -890,6 +907,11 @@ export interface DetectiveRunView {
   readonly inspiration: Inspiration | null;
   /** A past hero the world remembers in this run: the public record of that run, or none. Never a clue. */
   readonly remembers: RememberedHero | null;
+  /**
+   * Set while the hero stays up through a night rather than sleep: how far into the night they are (0 before midnight),
+   * so the narrator can tell how long they have been up. `null` for a hero who sleeps at the end of the day.
+   */
+  readonly awake: { readonly minutesPastMidnight: number } | null;
   readonly location: {
     readonly id: string;
     readonly name: string;
@@ -1112,9 +1134,10 @@ function viewChronicle(run: DetectiveRunState): DetectiveRunView['chronicle'] {
       pool.filter(({ id }) => id === eventId).map(({ description }) => ({ day, text: description })),
     ),
   ].sort((a, b) => a.day - b.day);
+  // A hero still up in the night has the whole of the coming day's hours ahead of them, not the night's.
   const activeMinutesLeft =
     MINUTES_PER_DAY -
-    run.clock.minute +
+    Math.max(run.clock.minute, DAY_START_MINUTE) +
     Math.max(0, days - run.clock.day) * (MINUTES_PER_DAY - DAY_START_MINUTE);
   return { activeMinutesLeft, minutesToDeadline: minutesToDeadline(run), deadline: deadlineAt(run), events };
 }
@@ -1358,6 +1381,10 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
     setting: run.setting && { name: run.setting.name[run.locale], climate: run.setting.climate },
     inspiration: run.inspiration,
     remembers: run.remembers,
+    awake:
+      run.awakeNight === null
+        ? null
+        : { minutesPastMidnight: Math.max(0, absoluteMinute(run.clock) - run.awakeNight * MINUTES_PER_DAY) },
     location: {
       id: location.id,
       name: location.name,

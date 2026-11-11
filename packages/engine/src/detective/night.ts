@@ -26,7 +26,7 @@ import { landPending, type DetectiveRunState } from './run-state.js';
 // access to clues, insights or the case, and `passNight` returns only the fields it changed.
 
 /** What starts a night. */
-export const NIGHT_CAUSES = ['active-hours', 'rest', 'collapse'] as const;
+export const NIGHT_CAUSES = ['active-hours', 'rest', 'collapse', 'late-rest', 'sleepless'] as const;
 export const NightCauseSchema = z.enum(NIGHT_CAUSES);
 export type NightCause = z.infer<typeof NightCauseSchema>;
 
@@ -112,7 +112,8 @@ function incidentOf(rng: Rng): Incident {
 }
 
 /**
- * The night after `day`, slept where the hero stands. The clock goes to the morning of the next day; the
+ * The night after `day`, slept where the hero stands (or, for `sleepless`, stayed up through). The clock goes to the
+ * morning of the next day, or stays where it is for a hero who never lay down; the
  * run's other facts (clues, insights, the case, reputation) are not touched. Two dice are taken at most:
  * one for whether an incident happens and one for which, and then the draw of the next day's random events,
  * which takes none when the case has no pool.
@@ -123,7 +124,9 @@ export function passNight(
   cause: NightCause,
   day: number,
 ): { readonly run: DetectiveRunState; readonly report: NightReport } {
-  const whole = cause !== 'collapse';
+  // A night is whole when the hero turns in at the end of the day. One cut short (a collapse, a rest after hours awake) and one
+  // not slept at all (the dawn of a hero who stayed up) pay no sleep debt and give back the least of the nerves.
+  const whole = cause === 'active-hours' || cause === 'rest';
   const location = run.case.locations.find(({ id }) => id === run.locationId);
   const lodging = location?.lodging ?? DEFAULT_LODGING;
 
@@ -139,7 +142,9 @@ export function passNight(
     : healed.sleepDebt;
   let condition: HeroCondition = { ...healed, nerves, sleepDebt };
 
-  const incident = rng.roll(100) <= INCIDENT_CHANCE[lodging] ? incidentOf(rng) : null;
+  // A hero who is awake all night is not exposed to what happens to one who sleeps.
+  const incident =
+    cause !== 'sleepless' && rng.roll(100) <= INCIDENT_CHANCE[lodging] ? incidentOf(rng) : null;
   let minute = DAY_START_MINUTE;
   if (incident !== null) {
     switch (incident.kind) {
@@ -157,7 +162,12 @@ export function passNight(
     }
   }
 
-  const slept: DetectiveRunState = { ...run, condition, clock: { day: day + 1, minute } };
+  // The dawn of a night stayed up through finds the clock where it is, never put back to the morning.
+  const clock =
+    cause === 'sleepless'
+      ? { day: run.clock.day, minute: Math.max(run.clock.minute, minute) }
+      : { day: day + 1, minute };
+  const slept: DetectiveRunState = { ...run, condition, clock, awakeNight: null };
   // The random events come first and the signal after them: both are drawn on the same dice, and their
   // effects (an hour lost, a scare, a message) land on the new morning.
   const drawn = drawEvents(landPending(slept, true), rng);

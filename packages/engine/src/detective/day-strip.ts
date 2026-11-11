@@ -22,6 +22,7 @@ export const STRIP_KINDS = [
   'use',
   'take',
   'rest',
+  'stay-up',
   'accuse',
 ] as const;
 export type StripKind = (typeof STRIP_KINDS)[number];
@@ -66,6 +67,7 @@ const KIND_OF: Record<LogEntry['outcome']['kind'], StripKind> = {
   use: 'use',
   take: 'take',
   rest: 'rest',
+  'stay-up': 'stay-up',
   accuse: 'accuse',
 };
 
@@ -73,7 +75,7 @@ const KIND_OF: Record<LogEntry['outcome']['kind'], StripKind> = {
 function minutesOf(outcome: LogEntry['outcome'], startMinute: number): number {
   return outcome.kind === 'rest'
     ? MINUTES_PER_DAY - startMinute
-    : outcome.kind === 'accuse'
+    : outcome.kind === 'accuse' || outcome.kind === 'stay-up'
       ? 0
       : outcome.minutes;
 }
@@ -100,6 +102,7 @@ function touchedOf(outcome: LogEntry['outcome'], placeId: string): StripTouched 
     case 'use':
     case 'take':
     case 'rest':
+    case 'stay-up':
     case 'accuse':
       return { ...NOTHING, placeId };
     /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */

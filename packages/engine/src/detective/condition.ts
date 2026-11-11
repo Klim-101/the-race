@@ -22,6 +22,25 @@ export const LATE_FROM_MINUTE = 22 * 60;
 /** One point of sleep debt for every full stretch of this many minutes worked late. */
 export const SLEEP_DEBT_MINUTES_PER_POINT = 60;
 
+/** The hours after midnight a hero stays up cost one point of sleep debt for every full stretch of this many minutes. */
+export const AWAKE_MINUTES_PER_DEBT = 120;
+/** The night ends, awake or asleep, at the start of the day. */
+const NIGHT_END_MINUTE = 8 * 60;
+
+/**
+ * The sleep debt that the minutes between two moments of the run (counted from midnight of day 1) cost a hero who is
+ * staying up through the night of `night`, the night after that day. Only the hours of that night count, from midnight
+ * to the start of the day, and the points follow whole stretches of the clock, so the result does not depend on how the
+ * minutes were split into turns.
+ */
+export function awakeDebtBetween(night: number, fromMinute: number, toMinute: number): number {
+  const spent = (moment: number): number =>
+    Math.floor(
+      Math.min(NIGHT_END_MINUTE, Math.max(0, moment - night * MINUTES_PER_DAY)) / AWAKE_MINUTES_PER_DEBT,
+    );
+  return spent(toMinute) - spent(fromMinute);
+}
+
 /** From this ruleset on, failures of the work itself fray the nerves, not only the clock and a blunder. */
 export const ACTION_STRAIN_RULESET_VERSION = 9;
 /** The most points of nerves that failed talks, links and searches take in one day. */

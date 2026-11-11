@@ -416,6 +416,21 @@ describe('the summary of a turn', () => {
   });
 });
 
+describe('act: stay-up', () => {
+  it('takes no time, shows in run_view while the hero is up, and is refused a second time', async () => {
+    const context = await activeRun();
+
+    const first = await call(act, { turn: 0, intent: { kind: 'stay-up' } }, context);
+
+    expect(first.isError).toBe(false);
+    expect(first.body.outcome).toMatchObject({ kind: 'stay-up' });
+    const view = (await call(runView, {}, context)).body as { awake: unknown; clock: { minute: number } };
+    expect(view.awake).toEqual({ minutesPastMidnight: 0 });
+    const again = await call(act, { turn: 1, intent: { kind: 'stay-up' } }, context);
+    expect(errorCode(again)).toBe('already-awake');
+  });
+});
+
 describe('evidence_board', () => {
   it('writes a page of the public view and returns where it is', async () => {
     const context = await activeRun();

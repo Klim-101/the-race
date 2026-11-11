@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import { assertNever } from '../assert-never.js';
 import { endReasonOfMeters } from '../meters.js';
+import { DAY_START_MINUTE } from '../run.js';
 import { isLucky, rollCheck, withLuck, type Rng, type SkillCheckResult } from '../dice.js';
 import type { Hazard, Weather } from '../world/climate.js';
 import { collectModifier } from '../modifiers.js';
@@ -124,6 +125,11 @@ export const IntentSchema = z.discriminatedUnion('kind', [
   /** Stop for the day and sleep where the hero stands: the night passes at once. */
   z.object({ kind: z.literal('rest') }),
   /**
+   * Choose not to sleep tonight: the hours after midnight are played, at the price of sleep debt, until the dawn or until the
+   * hero turns in. It takes no time.
+   */
+  z.object({ kind: z.literal('stay-up') }),
+  /**
    * Ask the locals for a rumour: a contacts roll, with the piece of the kit named by `toolId` (cash) to help it. With
    * `witnessId` (from the ruleset of witnesses on) it is a question to one witness of the place about what they saw,
    * and `aboutSuspectId` narrows it to one suspect.
@@ -177,6 +183,7 @@ export type RefusalCode =
   | 'locked'
   | 'location-closed'
   | 'closed-hours'
+  | 'already-awake'
   | 'unknown-suspect'
   | 'place-needed'
   | 'place-unwanted'
@@ -269,6 +276,7 @@ export type Outcome = (
       readonly detainedMinutes?: number;
     }
   | { readonly kind: 'rest' }
+  | { readonly kind: 'stay-up' }
   | {
       readonly kind: 'ask';
       readonly minutes: number;
@@ -838,15 +846,47 @@ function sleepIfDue(resolution: Carried, day: number, rng: Rng): Carried {
   const { run } = resolution;
   if (run.status !== 'active') return resolution;
   if (run.reputation === 0 || endReasonOfMeters(meterReadings(run)) !== null) return resolution;
-  let cause: NightCause | null = null;
-  if (resolution.outcome.kind === 'rest') cause = 'rest';
-  else if (run.clock.day > day) cause = 'active-hours';
-  else if (isCollapse(run)) cause = 'collapse';
-  if (cause === null) return resolution;
+  const night = nightDue(resolution, day);
+  if (night === null) return resolution;
   // A day cut short by the hero's own choice or by a collapse is owed its event before the night begins.
-  const owed = cause === 'active-hours' ? run : drawOwedDayEvent(run, rng).run;
-  const night = passNight(owed, rng, cause, day);
-  return { ...resolution, run: night.run, night: night.report };
+  const owed =
+    night.cause === 'active-hours' || night.cause === 'sleepless' ? run : drawOwedDayEvent(run, rng).run;
+  const passed = passNight(owed, rng, night.cause, night.day);
+  return { ...resolution, run: passed.run, night: passed.report };
+}
+
+/**
+ * Which night the turn brings, if any, and the day whose night it is. A hero who sleeps at the end of the day has the night
+ * when the active hours run out, when they rest or when they collapse. A hero staying up has none until the dawn, or until
+ * they rest or collapse: a rest or a collapse in the night hours is the night of the day before, cut short.
+ */
+function nightDue(resolution: Carried, day: number): { cause: NightCause; day: number } | null {
+  const { run, outcome } = resolution;
+  const staying = run.awakeNight;
+  const inNight = staying !== null && run.clock.day === staying + 1 && run.clock.minute < DAY_START_MINUTE;
+  const nightOf = staying !== null && inNight ? staying : day;
+  if (outcome.kind === 'rest') return { cause: inNight ? 'late-rest' : 'rest', day: nightOf };
+  if (staying === null && run.clock.day > day) return { cause: 'active-hours', day };
+  if (staying !== null) {
+    const dawn =
+      run.clock.day > staying + 1 || (run.clock.day === staying + 1 && run.clock.minute >= DAY_START_MINUTE);
+    if (dawn) return { cause: 'sleepless', day: staying };
+  }
+  return isCollapse(run) ? { cause: 'collapse', day: nightOf } : null;
+}
+
+/**
+ * Deciding to stay up through the coming night. It takes no time and is refused when the hero is already doing it, which is
+ * also what being awake in the night hours means.
+ */
+function resolveStayUp(run: DetectiveRunState, rng: Rng): Resolution {
+  if (run.awakeNight !== null) return refuse('already-awake', 'The hero is already staying up tonight.');
+  return {
+    ok: true,
+    run: endTurn({ ...run, awakeNight: run.clock.day }, rng),
+    outcome: { kind: 'stay-up' },
+    details: [],
+  };
 }
 
 function resolveRest(run: DetectiveRunState, rng: Rng): Resolution {
@@ -1018,6 +1058,8 @@ function dispatchIntent(run: DetectiveRunState, input: unknown, rng: Rng): Resol
       return resolveMove(run, rng, intent.locationId);
     case 'rest':
       return resolveRest(run, rng);
+    case 'stay-up':
+      return resolveStayUp(run, rng);
     case 'sit':
       return resolveSit(run, rng);
     case 'ask':
