@@ -222,3 +222,75 @@ describe('tracing a message', () => {
     expect(blurred.ok && studied(blurred.run, 20).ok).toBe(true);
   });
 });
+
+describe('a report of a homicide', () => {
+  const report: ClueMessage = { channel: 'report', arrivesAtMinute: ARRIVES };
+
+  function homicideCase(message: unknown, form = 'homicide') {
+    const raw = buildCheeseCase();
+    return {
+      ...raw,
+      form,
+      clues: raw.clues.map((clue, index) => (index === 0 ? { ...clue, message } : clue)),
+      truth: {
+        ...raw.truth,
+        ...(form === 'homicide' ? { homicide: { victim: { name: 'Pieter Vane' }, fate: 'attempt' } } : {}),
+        ...(form === 'abduction'
+          ? {
+              abduction: { victim: { kind: 'pet', name: 'Gouda' }, whereabouts: PLACE, deadlineMinute: 9999 },
+            }
+          : {}),
+      },
+    };
+  }
+
+  function homicideRun(clock = { day: 1, minute: ARRIVES }): DetectiveRunState {
+    const run = createDetectiveRun({
+      hero: buildHero(),
+      traits: [],
+      case: DetectiveCaseSchema.parse(homicideCase(report)),
+      seed: 'reports',
+      rngState: 1,
+      locale: 'en',
+    });
+    return { ...run, clock, locationId: ELSEWHERE };
+  }
+
+  it('is a message of a homicide and of no other form, which have notes, calls and texts', () => {
+    expect(DetectiveCaseSchema.safeParse(homicideCase(report)).success).toBe(true);
+    expect(DetectiveCaseSchema.safeParse(homicideCase(report, 'abduction')).success).toBe(false);
+    expect(DetectiveCaseSchema.safeParse(homicideCase(report, 'whodunit')).success).toBe(false);
+    for (const message of [text, call, note]) {
+      expect(DetectiveCaseSchema.safeParse(homicideCase(message)).success).toBe(false);
+    }
+    expect(DetectiveCaseSchema.safeParse(abductionCase(text)).success).toBe(true);
+  });
+
+  it('does not come before its time, and comes wherever the hero is, however late', () => {
+    expect(deliverMessages(at(homicideRun(), ARRIVES - 1)).arrived).toEqual([]);
+    for (const minute of [ARRIVES, ARRIVES + CALL_WINDOW_MINUTES + 1, ARRIVES + 600]) {
+      const delivered = deliverMessages(at(homicideRun(), minute));
+
+      expect(delivered.arrived).toEqual([{ clueId: CLUE, channel: 'report' }]);
+      expect(delivered.run.foundClueIds).toContain(CLUE);
+    }
+  });
+
+  it('comes once, in the turn after its time, and is told with that turn', () => {
+    const run = homicideRun({ day: 1, minute: ARRIVES - 30 });
+
+    const before = resolveIntent(run, { kind: 'look' }, restoreRng(run.rngState));
+    const after = resolveIntent(
+      { ...run, clock: { day: 1, minute: ARRIVES + 20 } },
+      { kind: 'look' },
+      restoreRng(run.rngState),
+    );
+    if (!before.ok || !after.ok) throw new Error('Refused.');
+    const again = resolveIntent(after.run, { kind: 'look' }, restoreRng(after.run.rngState));
+
+    expect(before.newMessages).toEqual([]);
+    expect(after.newMessages).toEqual([{ clueId: CLUE, channel: 'report' }]);
+    expect(after.run.foundClueIds).toContain(CLUE);
+    expect(again.ok && again.newMessages).toEqual([]);
+  });
+});
