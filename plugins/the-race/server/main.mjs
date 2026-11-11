@@ -34768,6 +34768,13 @@ var PlacePartSchema = external_exports.object({
   obstacle: ObstacleKindSchema.nullable(),
   /** The clue (or the red herring) the part holds; `null` for a part with nothing in it. */
   holds: EntityIdSchema.nullable(),
+  /**
+   * What a search of a part that holds nothing shows instead of nothing: a small true thing that proves nothing (a cigarette
+   * end, a torn flyer, a receipt), so that finding something no longer means finding the thing. Only a part with nothing in
+   * it has one. It is a narrative text and never a clue: it has no id, is not on the board's clues and is never shown to a
+   * suspect. Optional, so that the cases of before it keep their seal.
+   */
+  trace: NarrativeTextSchema.optional(),
   /** Whether a glance round the room shows it. */
   inQuickLook: external_exports.boolean(),
   /** The lead that must be earned before the part is shown, if any. */
@@ -34840,6 +34847,11 @@ var LocationSchema = external_exports.object({
    * keep their seal; a place without parts is searched as a whole, as it always was.
    */
   parts: external_exports.array(PlacePartSchema).optional(),
+  /**
+   * The same small true thing for a glance round the place or a search of the whole place that finds no clue, which is all a
+   * place without parts has to show. Optional for the same reason.
+   */
+  litter: NarrativeTextSchema.optional(),
   /** What the place keeps for the hero. Optional, so that the cases of before it keep their seal. */
   stock: external_exports.array(StockEntrySchema).optional()
 });
@@ -35105,6 +35117,17 @@ var DetectiveCaseSchema = external_exports.object({
         message: "Only an abduction has messages that come by themselves."
       });
     }
+  });
+  detectiveCase.locations.forEach((location, index) => {
+    (location.parts ?? []).forEach((part, partIndex) => {
+      if (part.trace !== void 0 && part.holds !== null) {
+        context2.addIssue({
+          code: "custom",
+          path: ["locations", index, "parts", partIndex, "trace"],
+          message: "A part that holds a clue has no trace: the clue is what a search of it shows."
+        });
+      }
+    });
   });
   const hasAbduction = detectiveCase.truth.abduction !== void 0;
   if (formOf(detectiveCase) === "abduction" && !hasAbduction) {
@@ -39469,9 +39492,11 @@ function collectNarrativeTexts(detectiveCase) {
     ...detectiveCase.locations.flatMap((location, index) => [
       at3(`locations[${String(index)}].name`, location.name),
       at3(`locations[${String(index)}].description`, location.description),
-      ...(location.parts ?? []).map(
-        (part, partIndex) => at3(`locations[${String(index)}].parts[${String(partIndex)}].name`, part.name)
-      )
+      ...location.litter === void 0 ? [] : [at3(`locations[${String(index)}].litter`, location.litter)],
+      ...(location.parts ?? []).flatMap((part, partIndex) => [
+        at3(`locations[${String(index)}].parts[${String(partIndex)}].name`, part.name),
+        ...part.trace === void 0 ? [] : [at3(`locations[${String(index)}].parts[${String(partIndex)}].trace`, part.trace)]
+      ])
     ]),
     ...(detectiveCase.leads ?? []).map((lead, index) => at3(`leads[${String(index)}].reason`, lead.reason)),
     ...(detectiveCase.witnesses ?? []).flatMap((witness, index) => [
