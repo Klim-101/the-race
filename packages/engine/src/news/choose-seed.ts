@@ -9,19 +9,18 @@ import type { NewsSeed, SeedKind } from './seed.js';
 /** The crimes a kind of tension can grow into. Every crime type is reachable from some kind. */
 export const SEED_CRIMES: Readonly<Record<SeedKind, readonly CrimeType[]>> = {
   shortage: ['curious-theft', 'financial', 'corporate-espionage'],
-  scandal: ['political-leak', 'financial', 'forgery'],
+  scandal: ['political-leak', 'financial', 'forgery', 'attempted-murder'],
   outage: ['cyber', 'corporate-espionage'],
   leak: ['political-leak', 'cyber', 'corporate-espionage'],
   'market-shock': ['financial', 'forgery', 'cyber'],
-  dispute: ['corporate-espionage', 'forgery', 'missing-person'],
+  dispute: ['corporate-espionage', 'forgery', 'missing-person', 'attempted-murder'],
   reform: ['political-leak', 'financial', 'forgery'],
   curiosity: ['curious-theft', 'missing-person', 'forgery'],
 };
 
 /**
  * The kinds of seed a violent case (a homicide) may grow from: a dispute or a scandal, and never a disaster or a recent
- * tragedy. `SEED_CRIMES` does not list the homicide themes until the generator is taught the form; then they are added to
- * exactly these kinds.
+ * tragedy. `SEED_CRIMES` lists `attempted-murder` under exactly these kinds, and `murder` under none until it is written.
  */
 export const HOMICIDE_SEEDS: readonly SeedKind[] = ['dispute', 'scandal'];
 
