@@ -35313,6 +35313,11 @@ var ISSUE_ORDER = [
   "place-conclusion-missing",
   "place-without-decoy",
   "message-names-culprit",
+  "homicide-death-not-ready",
+  "homicide-without-means",
+  "attempt-without-victim-witness",
+  "victim-place-without-hours",
+  "homicide-opportunity-single",
   "message-names-trait",
   "weekday-named",
   "clue-draws-conclusion",
@@ -39929,6 +39934,76 @@ function checkAbduction(detectiveCase, hero, traits, obtainable, content) {
   return issues;
 }
 
+// packages/engine/src/detective/checks/homicide.ts
+function checkHomicide(detectiveCase, content) {
+  const { homicide, culpritId, crimeLocationId, timeline } = detectiveCase.truth;
+  if (homicide === void 0) return [];
+  const issues = [];
+  if (homicide.fate !== "attempt") {
+    issues.push({
+      code: "homicide-death-not-ready",
+      path: "truth.homicide.fate",
+      message: 'Only an attempt is written for now: the victim was hurt and lives. Set "fate" to "attempt".'
+    });
+  }
+  if (detectiveCase.solution.meansDeductionId === void 0) {
+    issues.push({
+      code: "homicide-without-means",
+      path: "solution.meansDeductionId",
+      message: 'A homicide needs a conclusion about what it was done with: set "solution.meansDeductionId" to a deduction that links clues about the means.'
+    });
+  }
+  if (homicide.fate === "attempt") {
+    const witnesses = detectiveCase.witnesses ?? [];
+    const witness = witnesses.find(({ victim }) => victim === true);
+    if (witness === void 0) {
+      issues.push({
+        code: "attempt-without-victim-witness",
+        path: "witnesses",
+        message: `The victim of an attempt lives and can be asked: add a witness named "${homicide.victim.name}" with "victim": true, at the place where they lie.`
+      });
+    } else if (!detectiveCase.locations.some(({ id, hours }) => id === witness.locationId && hours !== void 0)) {
+      issues.push({
+        code: "victim-place-without-hours",
+        path: `witnesses[${String(witnesses.indexOf(witness))}].locationId`,
+        message: `"${witness.locationId}", where the victim lies, keeps no hours: give it "hours" (the hours of visiting), so the hero has to come at the right time.`
+      });
+    }
+  }
+  const atTheScene = new Set(
+    timeline.filter(({ locationId }) => locationId === crimeLocationId).map(({ actorId }) => actorId)
+  );
+  const suspectsAtTheScene = detectiveCase.suspects.filter(({ id }) => atTheScene.has(id));
+  if (suspectsAtTheScene.length < 2) {
+    issues.push({
+      code: "homicide-opportunity-single",
+      path: "truth.timeline",
+      message: `Only ${String(suspectsAtTheScene.length)} suspect is at the scene ("${crimeLocationId}") in the timeline: put at least two there, the culprit and another, so that the hero has to tell them apart by evidence.`
+    });
+  }
+  const endOfCase = detectiveCase.clock.days * MINUTES_PER_DAY;
+  const culpritNames = detectiveCase.suspects.filter(({ id }) => id === culpritId).flatMap(({ name, id }) => namesOf(name, id));
+  detectiveCase.clues.forEach((clue, index) => {
+    if (clue.message === void 0) return;
+    const path = `clues[${String(index)}]`;
+    if (clue.message.arrivesAtMinute >= endOfCase) {
+      issues.push({
+        code: "message-after-deadline",
+        path: `${path}.message.arrivesAtMinute`,
+        message: `Report "${clue.id}" arrives at ${String(clue.message.arrivesAtMinute)}, not before the case ends (${String(endOfCase)}).`
+      });
+    }
+    if (content && culpritNames.some((name) => clue.description.toLowerCase().includes(name))) {
+      issues.push({
+        code: "message-names-culprit",
+        path: `${path}.description`,
+        message: `Report "${clue.id}" names the culprit; a report narrows the time of the event and leaves the culprit to be found.`
+      });
+    }
+  });
+  return issues;
+}
+
 // packages/engine/src/detective/checks/clearing.ts
 function checkClearing(detectiveCase, obtainable, required2) {
   const { culpritId } = detectiveCase.truth;
@@ -40612,11 +40687,11 @@ function checkRandomEvents(detectiveCase, hero, traits, locale, minEvents, conte
 
 // packages/engine/src/detective/checks/reachability.ts
 function requiredClueIds(detectiveCase) {
-  const { evidenceChains, motiveDeductionId } = detectiveCase.solution;
+  const { evidenceChains, motiveDeductionId, meansDeductionId } = detectiveCase.solution;
   return /* @__PURE__ */ new Set([
     ...evidenceChains.flat(),
     ...detectiveCase.suspects.flatMap(({ lies }) => lies.flatMap(({ brokenBy }) => brokenBy)),
-    ...detectiveCase.deductions.filter(({ id }) => id === motiveDeductionId).flatMap(({ clueIds }) => clueIds)
+    ...detectiveCase.deductions.filter(({ id }) => id === motiveDeductionId || id === meansDeductionId).flatMap(({ clueIds }) => clueIds)
   ]);
 }
 function checkReachability(detectiveCase, obtainable) {
@@ -41187,6 +41262,7 @@ function validateCase(input2, context2) {
     ...rules.days === null ? [] : checkRunLength(detectiveCase, rules.days),
     ...checkFleeDeadline(detectiveCase, context2.hero, context2.traits),
     ...checkAbduction(detectiveCase, context2.hero, context2.traits, obtainable, content),
+    ...checkHomicide(detectiveCase, content),
     ...checkRedHerrings(detectiveCase),
     ...checkTexts(detectiveCase, context2.locale, context2.realNames, content)
   ];
