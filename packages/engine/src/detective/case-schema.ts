@@ -172,6 +172,12 @@ export const LocationSchema = z.object({
   exposure: ExposureSchema.default('outdoor'),
   /** What the scene is like (a cramped cellar, a crowd); the hero's traits react to it. */
   situations: z.array(TraitTriggerSchema).default([]),
+  /**
+   * The hours of the day the place can be entered in, minutes of the day, which may wrap midnight ("from ten at night to
+   * five"). Optional, so that the cases of before it keep their seal; a place without it is open at every hour. It gates
+   * the way in and nothing else: a hero already inside stays, and a place open at the right hour is entered as ever.
+   */
+  hours: LeadWindowSchema.optional(),
   /** How safe the hero's night is if they sleep here; optional, and a place without it is an ordinary one. */
   lodging: LodgingSafetySchema.optional(),
   /** Set for a place where the hero can sit down and win back a little of their nerves. */

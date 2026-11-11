@@ -182,6 +182,8 @@ export interface TabText {
     /** A place the hero knows of from a lead and has not seen yet. */
     readonly lead: string;
     readonly closed: string;
+    /** A place that is shut at this hour and open at another. */
+    readonly closedHours: string;
     readonly cluesHere: string;
     /** The letter at the north of the compass, the rooms of a building ({n}) and the caption of places with no street. */
     readonly north: string;
@@ -247,6 +249,7 @@ export interface TabText {
     readonly unvisited: string;
     readonly locked: string;
     readonly closed: string;
+    readonly closedHours: string;
     readonly unquestioned: string;
     readonly reread: string;
     readonly noTurns: string;

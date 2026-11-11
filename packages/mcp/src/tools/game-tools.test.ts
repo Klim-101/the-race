@@ -1027,6 +1027,7 @@ describe('the leads of a turn', () => {
       name: 'Gala courtyard',
       visited: false,
       blocked: null,
+      hours: null,
       exposure: expect.any(String) as unknown,
       building: null,
     });

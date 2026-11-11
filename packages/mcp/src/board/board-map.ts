@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { DetectiveRunView } from '@the-race/engine';
+import { windowText } from './board-chronicle.js';
 import { wrap } from './board-cork.js';
 import { planId, planKey, renderPlan } from './board-plan.js';
 import { isSafeId, placeTokens, rel, token } from './board-relations.js';
@@ -248,17 +249,23 @@ const whole = (value: number): string => String(Math.round(value));
 
 /** The state of a place in words, for its tooltip: where the hero is, a shut way, a lead, or not yet seen. */
 function stateOf(place: Place, current: boolean, text: TabText): string {
-  return current
+  const state = current
     ? text.map.you
     : place.blocked === 'locked'
       ? text.map.locked
       : place.blocked === 'closed'
         ? text.map.closed
-        : place.visited
-          ? ''
-          : place.lead === null
-            ? text.map.unvisited
-            : text.map.lead;
+        : place.blocked === 'closed-hours'
+          ? text.map.closedHours
+          : place.visited
+            ? ''
+            : place.lead === null
+              ? text.map.unvisited
+              : text.map.lead;
+  // A place with hours says them, open or shut: they are the sign on its door.
+  return place.hours === null
+    ? state
+    : [state, windowText(place.hours, text.chronicle)].filter((part) => part !== '').join(', ');
 }
 
 function sign(blocked: Place['blocked'], x: number, y: number, label: string): string {

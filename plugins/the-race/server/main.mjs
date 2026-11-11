@@ -34812,6 +34812,12 @@ var LocationSchema = external_exports.object({
   exposure: ExposureSchema.default("outdoor"),
   /** What the scene is like (a cramped cellar, a crowd); the hero's traits react to it. */
   situations: external_exports.array(TraitTriggerSchema).default([]),
+  /**
+   * The hours of the day the place can be entered in, minutes of the day, which may wrap midnight ("from ten at night to
+   * five"). Optional, so that the cases of before it keep their seal; a place without it is open at every hour. It gates
+   * the way in and nothing else: a hero already inside stays, and a place open at the right hour is entered as ever.
+   */
+  hours: LeadWindowSchema.optional(),
   /** How safe the hero's night is if they sleep here; optional, and a place without it is an ordinary one. */
   lodging: LodgingSafetySchema.optional(),
   /** Set for a place where the hero can sit down and win back a little of their nerves. */
@@ -36494,6 +36500,9 @@ function isPlaceKnown(run, location) {
 function inWindow(window, minute) {
   return window.fromMinute < window.untilMinute ? minute >= window.fromMinute && minute < window.untilMinute : minute >= window.fromMinute || minute < window.untilMinute;
 }
+function isOpenAtMinute(location, minute) {
+  return location.hours === void 0 || inWindow(location.hours, minute);
+}
 function isLeadOpen(run, leadId) {
   const window = run.case.leads?.find(({ id }) => id === leadId)?.window;
   return window === void 0 || inWindow(window, run.clock.minute);
@@ -37278,10 +37287,13 @@ function signalViewOf(run) {
   const signal = signalOfRun(run);
   return signal === void 0 ? null : { id: signal.id, voice: signal.voice, gift: signal.gift, cost: signal.cost };
 }
-function blockedWay(run, id, access, visited) {
-  if (isLocationClosed(run, id)) return "closed";
+function blockedWay(run, location, visited) {
+  if (isLocationClosed(run, location.id)) return "closed";
+  if (!isOpenAtMinute(location, run.clock.minute)) return "closed-hours";
+  const { access } = location;
   return !visited && access.kind === "clue" && !run.foundClueIds.includes(access.clueId) ? "locked" : null;
 }
+var hoursOf = (location) => location.hours === void 0 ? null : { fromMinute: location.hours.fromMinute, untilMinute: location.hours.untilMinute };
 function leadMarker(run, location) {
   if (location.requiresLead === void 0 || run.visitedLocationIds.includes(location.id)) return null;
   const lead = run.case.leads?.find(({ id }) => id === location.requiresLead);
@@ -37377,13 +37389,14 @@ function viewMap(run) {
     shown2.map(({ id }) => id)
   );
   const places = shown2.map((location) => {
-    const { id, name, access } = location;
+    const { id, name } = location;
     const visited = run.visitedLocationIds.includes(id);
     return {
       id,
       name,
       visited,
-      blocked: blockedWay(run, id, access, visited),
+      blocked: blockedWay(run, location, visited),
+      hours: hoursOf(location),
       lead: leadMarker(run, location),
       exposure: location.exposure,
       building: buildingOf.get(id) ?? null
@@ -37404,9 +37417,16 @@ function viewRun(run) {
     const next = requireLocation(detectiveCase, id);
     if (!isPlaceKnown(run, next)) return [];
     const visited = run.visitedLocationIds.includes(id);
-    const { name, access } = next;
+    const { name } = next;
     return [
-      { id, name, visited, blocked: blockedWay(run, id, access, visited), lead: leadMarker(run, next) }
+      {
+        id,
+        name,
+        visited,
+        blocked: blockedWay(run, next, visited),
+        hours: hoursOf(next),
+        lead: leadMarker(run, next)
+      }
     ];
   });
   const pool = detectiveCase.randomEvents ?? [];
@@ -38871,6 +38891,9 @@ function resolveMove(run, rng, locationId) {
     return refuse3("location-closed", `"${locationId}" has been closed.`);
   }
   const destination = locationById(detectiveCase, locationId);
+  if (!isOpenAtMinute(destination, run.clock.minute)) {
+    return refuse3("closed-hours", `"${locationId}" is shut at this hour: it is open at another time of day.`);
+  }
   const { access } = destination;
   const visited = run.visitedLocationIds.includes(locationId);
   if (!visited && destination.requiresLead !== void 0 && isLeadEarned(run, destination.requiresLead) && !isLeadOpen(run, destination.requiresLead)) {
@@ -53227,6 +53250,7 @@ var en_default3 = {
       locked: "locked",
       lead: "on a lead",
       closed: "closed",
+      closedHours: "shut at this hour",
       cluesHere: "clues found here",
       north: "N",
       rooms: "{n} rooms",
@@ -53295,6 +53319,7 @@ var en_default3 = {
       unvisited: "Not yet visited",
       locked: "Locked",
       closed: "Closed for now",
+      closedHours: "Shut at this hour",
       unquestioned: "Not yet questioned",
       reread: "To be read again",
       noTurns: "No turns yet.",
@@ -53985,6 +54010,7 @@ var ru_default2 = {
       locked: "\u0437\u0430\u043F\u0435\u0440\u0442\u043E",
       lead: "\u043F\u043E \u0437\u0430\u0446\u0435\u043F\u043A\u0435",
       closed: "\u0437\u0430\u043A\u0440\u044B\u0442\u043E",
+      closedHours: "\u0437\u0430\u043A\u0440\u044B\u0442\u043E \u0432 \u044D\u0442\u043E\u0442 \u0447\u0430\u0441",
       cluesHere: "\u043D\u0430\u0439\u0434\u0435\u043D\u043E \u0443\u043B\u0438\u043A",
       north: "\u0421",
       rooms: "\u043A\u043E\u043C\u043D\u0430\u0442: {n}",
@@ -54053,6 +54079,7 @@ var ru_default2 = {
       unvisited: "\u0415\u0449\u0451 \u043D\u0435 \u0437\u0430\u0445\u043E\u0434\u0438\u043B\u0438",
       locked: "\u0417\u0430\u043F\u0435\u0440\u0442\u043E",
       closed: "\u041F\u043E\u043A\u0430 \u0437\u0430\u043A\u0440\u044B\u0442\u043E",
+      closedHours: "\u0417\u0430\u043A\u0440\u044B\u0442\u043E \u0432 \u044D\u0442\u043E\u0442 \u0447\u0430\u0441",
       unquestioned: "\u0415\u0449\u0451 \u043D\u0435 \u043E\u043F\u0440\u043E\u0448\u0435\u043D\u044B",
       reread: "\u041F\u0435\u0440\u0435\u0447\u0438\u0442\u0430\u0442\u044C",
       noTurns: "\u0425\u043E\u0434\u043E\u0432 \u043F\u043E\u043A\u0430 \u043D\u0435 \u0431\u044B\u043B\u043E.",
@@ -54669,6 +54696,9 @@ function openQuestions(view, text) {
     ...places.filter(({ blocked }) => blocked === null).map(atPlace(text.unvisited)),
     ...places.filter(({ blocked }) => blocked === "locked").map(atPlace(text.locked)),
     ...places.filter(({ blocked }) => blocked === "closed").map(atPlace(text.closed)),
+    ...places.flatMap(
+      (place) => place.blocked === "closed-hours" && place.hours !== null ? [atPlace(`${text.closedHours}, ${windowText(place.hours, text)}`)(place)] : []
+    ),
     ...view.suspects.filter(({ statements }) => statements.length === 0).map(
       (suspect) => pickable(
         "suspect",
@@ -55595,7 +55625,8 @@ function layoutTown(map2) {
 }
 var whole4 = (value) => String(Math.round(value));
 function stateOf(place, current, text) {
-  return current ? text.map.you : place.blocked === "locked" ? text.map.locked : place.blocked === "closed" ? text.map.closed : place.visited ? "" : place.lead === null ? text.map.unvisited : text.map.lead;
+  const state = current ? text.map.you : place.blocked === "locked" ? text.map.locked : place.blocked === "closed" ? text.map.closed : place.blocked === "closed-hours" ? text.map.closedHours : place.visited ? "" : place.lead === null ? text.map.unvisited : text.map.lead;
+  return place.hours === null ? state : [state, windowText(place.hours, text.chronicle)].filter((part) => part !== "").join(", ");
 }
 function sign(blocked, x2, y, label) {
   if (blocked === null) return "";
@@ -56615,7 +56646,9 @@ var RunSummarySchema = external_exports.object({
         id: external_exports.string(),
         name: external_exports.string(),
         visited: external_exports.boolean(),
-        blocked: external_exports.enum(["locked", "closed"]).nullable(),
+        blocked: external_exports.enum(["locked", "closed", "closed-hours"]).nullable(),
+        /** The hours the place is open in, as the sign on its door; `null` for a place open at every hour. */
+        hours: external_exports.object({ fromMinute: external_exports.int(), untilMinute: external_exports.int() }).nullable(),
         /** The reason of the lead that named the place, until the hero has been there. */
         lead: external_exports.string().nullable(),
         /** Inside a building or out of doors, and for a room the building it belongs to. */

@@ -15,7 +15,17 @@ const place = (
   exposure: 'indoor' | 'outdoor',
   building: string | null = null,
   extra: Record<string, unknown> = {},
-) => ({ id, name: `Place ${id}`, visited: true, blocked: null, lead: null, exposure, building, ...extra });
+) => ({
+  id,
+  name: `Place ${id}`,
+  visited: true,
+  blocked: null,
+  hours: null,
+  lead: null,
+  exposure,
+  building,
+  ...extra,
+});
 
 /** The town of the larkspur case: a harbour street with a teahouse, a press room and a hall, a plaza, an alley. */
 const TOWN: Map = {
@@ -362,5 +372,49 @@ describe('the paper map', () => {
 
   it('matches its snapshot', () => {
     expect(html).toMatchSnapshot();
+  });
+});
+
+describe('a place with hours, on the map', () => {
+  const NIGHT = { fromMinute: 22 * 60, untilMinute: 2 * 60 };
+  const EVENING = { fromMinute: 18 * 60, untilMinute: 23 * 60 };
+  const HOURS: Map = {
+    current: 'street',
+    places: [
+      place('street', 'outdoor'),
+      place('bar', 'outdoor', null, {
+        name: 'The Night Bar',
+        visited: false,
+        blocked: 'closed-hours',
+        hours: NIGHT,
+      }),
+      place('market', 'outdoor', null, { name: 'Evening Market', hours: EVENING }),
+    ],
+    links: [
+      { from: 'street', to: 'bar' },
+      { from: 'street', to: 'market' },
+    ],
+  };
+
+  it('marks a place that is shut at this hour with a sign, and says the hours in words', () => {
+    const html = renderMap(viewOf(HOURS), TAB_TEXT.en);
+
+    expect(html).toContain('class="street unvisited closed-hours"');
+    expect(html).toContain('class="sign closed"');
+    expect(html).toContain('The Night Bar (shut at this hour, only from 22:00 to 02:00)');
+  });
+
+  it('says the hours of a place that is open now, and draws no sign for it', () => {
+    const html = renderMap(viewOf(HOURS), TAB_TEXT.en);
+
+    expect(html).toContain('Evening Market (only from 18:00 to 23:00)');
+    expect(html.match(/class="sign /g)).toHaveLength(1);
+  });
+
+  it('is told in the language of the run', () => {
+    const html = renderMap(viewOf(HOURS), TAB_TEXT.ru);
+
+    expect(html).toContain('закрыто в этот час');
+    expect(html).toContain('только с 22:00 до 02:00');
   });
 });

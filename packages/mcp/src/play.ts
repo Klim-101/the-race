@@ -65,7 +65,9 @@ export const RunSummarySchema = z.object({
         id: z.string(),
         name: z.string(),
         visited: z.boolean(),
-        blocked: z.enum(['locked', 'closed']).nullable(),
+        blocked: z.enum(['locked', 'closed', 'closed-hours']).nullable(),
+        /** The hours the place is open in, as the sign on its door; `null` for a place open at every hour. */
+        hours: z.object({ fromMinute: z.int(), untilMinute: z.int() }).nullable(),
         /** The reason of the lead that named the place, until the hero has been there. */
         lead: z.string().nullable(),
         /** Inside a building or out of doors, and for a room the building it belongs to. */
