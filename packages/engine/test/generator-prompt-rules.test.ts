@@ -116,26 +116,11 @@ const RULES: Record<CaseIssueCode, Taught> = {
   'place-conclusion-missing': /`solution.whereaboutsDeductionId` names a deduction/,
   'place-without-decoy': /another place or two are shown by a lead of the same kind/,
   'message-names-culprit': /a message never names the culprit/,
-  'homicide-death-not-ready': {
-    learned:
-      'the prompt does not teach the form homicide yet (P4a-06, #530): no case is of it until it does, and the rejection says the rule',
-  },
-  'homicide-without-means': {
-    learned:
-      'the prompt does not teach the form homicide yet (P4a-06, #530): no case is of it until it does, and the rejection says the rule',
-  },
-  'attempt-without-victim-witness': {
-    learned:
-      'the prompt does not teach the form homicide yet (P4a-06, #530): no case is of it until it does, and the rejection says the rule',
-  },
-  'victim-place-without-hours': {
-    learned:
-      'the prompt does not teach the form homicide yet (P4a-06, #530): no case is of it until it does, and the rejection says the rule',
-  },
-  'homicide-opportunity-single': {
-    learned:
-      'the prompt does not teach the form homicide yet (P4a-06, #530): no case is of it until it does, and the rejection says the rule',
-  },
+  'homicide-death-not-ready': /Only an attempt is written for now/,
+  'homicide-without-means': /or the engine rejects the case as one without a means/,
+  'attempt-without-victim-witness': /one witness who is the victim/,
+  'victim-place-without-hours': /The place where the victim lies keeps `hours`/,
+  'homicide-opportunity-single': /At least two suspects are at the scene/,
   'message-names-trait': /never names a trait of the hero, nor does it/,
   'weekday-named': /No text of the case names a weekday/,
   'solution-after-culprit-flees': /a `culprit-flees` must come after the solution is reachable/,
@@ -172,15 +157,6 @@ describe("the rules of a case in the generator's prompt", () => {
   });
 
   it('leave only a few codes to the rejection, and the list is the one reported with the change that made it', () => {
-    // The codes of the homicide are here until the prompt teaches the form (P4a-06, #530), which will take them out.
-    expect(learned.map(([code]) => code)).toEqual([
-      'part-never-shown',
-      'random-event-out-of-range',
-      'homicide-death-not-ready',
-      'homicide-without-means',
-      'attempt-without-victim-witness',
-      'victim-place-without-hours',
-      'homicide-opportunity-single',
-    ]);
+    expect(learned.map(([code]) => code)).toEqual(['part-never-shown', 'random-event-out-of-range']);
   });
 });

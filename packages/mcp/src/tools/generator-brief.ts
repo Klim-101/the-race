@@ -130,7 +130,7 @@ export const generatorBrief = defineTool({
   name: 'generator_brief',
   description:
     'For the case generator only. Returns what the engine lets the generator know before writing a case: the ' +
-    "player's language, the theme, the form of the case (`whodunit` or `abduction`, which the engine chose), the tone, the hero's public data (name, skills, background, character " +
+    "player's language, the theme, the form of the case (`whodunit`, `abduction` or `homicide`, which the engine chose), the tone, the hero's public data (name, skills, background, character " +
     'signal), how many submissions are left for the frame and for the texts, the one seed of the day that the ' +
     'engine chose for this hero (none when the news could not be read), whose crime type is `theme` and whose ' +
     'tone is `tone`, and the mirror world as it stands, with the country the case is set in and its climate ' +
