@@ -1,0 +1,780 @@
+{
+  "schemaVersion": 1,
+  "locale": "ru",
+  "form": "homicide",
+  "crimeType": "attempted-murder",
+  "tone": "serious",
+  "title": "Весовщица из Бриндла",
+  "premise": "В ночь после хлебного суда в Бриндле, торговом городке Черновика, весовщицу Орсолью Пайк находят в весовой избитой и без чувств: на рассвете её обнаруживает уборщица. Орсолья жива, но не помнит ничего после собрания и лежит в лазарете, куда посетителей пускают только днём. Большие весы висят легко, в городе полно людей, которым выгоднее, чтобы гири не трогали, а совет хочет получить ответ до следующего суда.",
+  "leads": [
+    {
+      "id": "office-ledger",
+      "reason": "Зелёная правка называет приходную книгу, которую держат в конторе мельника: кто-то там знает про гири.",
+      "earnedBy": {
+        "kind": "clue",
+        "clueId": "green-ink"
+      },
+      "isFalse": false
+    },
+    {
+      "id": "hatch-glance",
+      "reason": "Мельник то и дело косится на основание больших весов.",
+      "earnedBy": {
+        "kind": "talk",
+        "suspectId": "miller"
+      },
+      "isFalse": false
+    },
+    {
+      "id": "office-gossip",
+      "reason": "Официантка клянётся, что мельник прячет вещи в скамье у себя в конторе.",
+      "earnedBy": {
+        "kind": "locals",
+        "locationId": "tea-shop"
+      },
+      "isFalse": true
+    },
+    {
+      "id": "book-wear",
+      "reason": "Бирка на ключе стёрта с одной стороны: кто-то часто открывает книгу счётной.",
+      "earnedBy": {
+        "kind": "study",
+        "clueId": "ledger-key"
+      },
+      "isFalse": false
+    }
+  ],
+  "startLocationId": "weighing-house",
+  "locations": [
+    {
+      "id": "weighing-house",
+      "name": "Весовая",
+      "description": "Длинный зал с медными весами, мешками зерна и счётными досками. Большие весы в конце зала висят перекошенными, а меловая черта на полу показывает, где лежала женщина, пока её не нашла уборщица.",
+      "connections": ["market-yard", "counting-room", "mill-office"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "scale-floor",
+          "name": "Пол под большими весами",
+          "obstacle": null,
+          "holds": "empty-pan",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "scale-base",
+          "name": "Основание больших весов",
+          "obstacle": "sealed",
+          "holds": "scale-hatch",
+          "inQuickLook": false,
+          "requiresLead": "hatch-glance",
+          "fallback": {
+            "kind": "ask",
+            "suspectId": "miller"
+          }
+        },
+        {
+          "id": "tally-door-lock",
+          "name": "Замок счётной двери",
+          "obstacle": "digital",
+          "holds": "tally-lock",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": {
+            "kind": "ask",
+            "suspectId": "miller"
+          }
+        },
+        {
+          "id": "door-front",
+          "name": "Лицевая сторона двери",
+          "obstacle": null,
+          "holds": "threat-note",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
+    },
+    {
+      "id": "market-yard",
+      "name": "Рыночный двор",
+      "description": "Козлы, телеги и толпа, пришедшая послушать, что случилось, и имеющая собственное мнение. Все сходятся на том, что это был кто-то другой.",
+      "connections": ["weighing-house", "scale-cellar", "mill-road"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "outdoor",
+      "situations": ["crowd", "high-society"],
+      "parts": [
+        {
+          "id": "sack-trestle",
+          "name": "Козлы для мешков",
+          "obstacle": null,
+          "holds": "ledger-key",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "yard-steps",
+          "name": "Ступени двора",
+          "obstacle": null,
+          "holds": "dust-boots",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "trestle-stack",
+          "name": "Штабель козел",
+          "obstacle": null,
+          "holds": null,
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null,
+          "trace": "В грязь втоптана порванная листовка хлебного банка."
+        }
+      ]
+    },
+    {
+      "id": "tea-shop",
+      "venue": "teahouse",
+      "name": "Чайная «Кривая ложка»",
+      "description": "Чайная на углу дороги, где официантки всё замечают и ничего не прощают. Пирог превосходный.",
+      "connections": ["mill-road"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "serving-counter",
+          "name": "Стойка",
+          "obstacle": null,
+          "holds": "nightwatch-witness",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
+    },
+    {
+      "id": "corn-store",
+      "name": "Зерновой склад Харла",
+      "description": "Прохладный склад с мешками до потолка, медным звонком на прилавке и старым кладовщиком, который десять лет как на покое и всё равно приходит каждый день.",
+      "connections": ["chapel-square"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "ledger-desk",
+          "name": "Конторка кладовщика",
+          "obstacle": null,
+          "holds": "debt-rumour",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
+    },
+    {
+      "id": "counting-room",
+      "name": "Счётная",
+      "description": "Полки дневных книг в холщовых переплётах со штампом «Проверено, верно». На двери крепкий замок, а ключ, разумеется, пропал.",
+      "connections": ["weighing-house"],
+      "access": {
+        "kind": "clue",
+        "clueId": "ledger-key"
+      },
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "day-book",
+          "name": "Дневная книга весов",
+          "obstacle": "dark",
+          "holds": "green-ink",
+          "inQuickLook": false,
+          "requiresLead": "book-wear",
+          "fallback": {
+            "kind": "ask",
+            "suspectId": "miller"
+          }
+        }
+      ]
+    },
+    {
+      "id": "mill-office",
+      "requiresLead": "office-ledger",
+      "name": "Контора мельника",
+      "description": "Тесная контора со скамьёй, чайником и дверью, которую стережёт приказчик мельника, воспринимающий каждого посетителя как личное оскорбление муке.",
+      "connections": ["weighing-house"],
+      "access": {
+        "kind": "skill",
+        "check": {
+          "skill": "social",
+          "difficulty": 11
+        }
+      },
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "office-bench",
+          "name": "Скамья",
+          "obstacle": "soft",
+          "holds": "flour-glove",
+          "inQuickLook": false,
+          "requiresLead": "office-gossip",
+          "fallback": {
+            "kind": "ask",
+            "suspectId": "carter"
+          }
+        }
+      ]
+    },
+    {
+      "id": "scale-cellar",
+      "name": "Подвал весов",
+      "description": "Низкий тёплый подвал под двором, полный блоков, скрипящих, как нетерпеливые гости. Стоять можно, а повернуться почти негде.",
+      "connections": ["market-yard"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "indoor",
+      "situations": ["confined-space"],
+      "parts": [
+        {
+          "id": "pulley-wall",
+          "name": "Скрипучие блоки",
+          "obstacle": null,
+          "holds": "clerk-confession",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
+    },
+    {
+      "id": "mill-road",
+      "name": "Мельничная дорога",
+      "description": "Единственная приличная дорога Бриндла: липы, журчащий жёлоб и отличный вид на чужие дела.",
+      "connections": ["market-yard", "tea-shop", "chapel-square"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "outdoor",
+      "litter": "В жёлобе лежат обрывки мешковины, согнутый гвоздь и талон на проезд телеги."
+    },
+    {
+      "id": "chapel-square",
+      "name": "Часовенная площадь",
+      "description": "Небольшая мощёная площадь с пересохшей поилкой и часами на часовне, которые с прошлой весны спешат на четыре минуты.",
+      "connections": ["mill-road", "corn-store"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "outdoor"
+    },
+    {
+      "id": "ward",
+      "name": "Палата лазарета",
+      "description": "Тихая палата на шесть коек, медсестра за столом и табличка: посетителей пускают днём и ни в какой другой час.",
+      "connections": ["chapel-square"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "indoor",
+      "hours": {
+        "fromMinute": 840,
+        "untilMinute": 1080
+      }
+    }
+  ],
+  "witnesses": [
+    {
+      "id": "road-sweeper",
+      "locationId": "mill-road",
+      "name": "Дора Финч",
+      "persona": "Дорожная уборщица, работающая с полуночи до полудня и имеющая мнение о мусоре каждого.",
+      "hours": {
+        "fromMinute": 0,
+        "untilMinute": 720
+      }
+    },
+    {
+      "id": "bellringer",
+      "locationId": "chapel-square",
+      "name": "Нед Корри",
+      "persona": "Человек, заводящий часы на часовне, которые спешат на четыре минуты, и непременно скажет вам об этом.",
+      "hours": {
+        "fromMinute": 0,
+        "untilMinute": 720
+      }
+    },
+    {
+      "id": "weigh-master",
+      "locationId": "ward",
+      "name": "Орсолья Пайк",
+      "persona": "Весовщица Бриндла, подпёртая тремя подушками: она помнит собрание, дорогу к весовой, а дальше ничего.",
+      "hours": {
+        "fromMinute": 0,
+        "untilMinute": 1439
+      },
+      "victim": true
+    }
+  ],
+  "clues": [
+    {
+      "id": "ledger-key",
+      "locationId": "market-yard",
+      "description": "Под козлами для мешков лежит тяжёлый медный ключ с биркой «Счётная», написанной аккуратным почерком весовщицы.",
+      "discovery": null,
+      "pointsTo": [],
+      "isRedHerring": false
+    },
+    {
+      "id": "empty-pan",
+      "locationId": "weighing-house",
+      "description": "Медная чаша больших весов висит легко: пятикилограммовой гири-противовеса нет, а в пыли на полке остался чистый круг от неё.",
+      "discovery": {
+        "skill": "perception",
+        "difficulty": 9
+      },
+      "pointsTo": ["factor"],
+      "isRedHerring": false
+    },
+    {
+      "id": "scale-hatch",
+      "locationId": "weighing-house",
+      "description": "В основании больших весов скрыт люк. Внутри лежит второй набор гирь весовщицы, и каждая из них отлита легче городского эталона.",
+      "discovery": {
+        "skill": "perception",
+        "difficulty": 12
+      },
+      "pointsTo": ["factor"],
+      "isRedHerring": false
+    },
+    {
+      "id": "tally-lock",
+      "locationId": "weighing-house",
+      "description": "Замок счётной двери ведёт крошечный журнал. В десять минут третьего он записывает запасной ключ, выданный много лет назад зерновому складу и так и не возвращённый.",
+      "discovery": {
+        "skill": "tech",
+        "difficulty": 10
+      },
+      "situations": ["digital-evidence"],
+      "pointsTo": ["factor"],
+      "about": ["clerk"],
+      "isRedHerring": false
+    },
+    {
+      "id": "threat-note",
+      "locationId": "weighing-house",
+      "description": "К двери приколота записка из вырезанных газетных букв: «Больше не обманывай». Она пахнет колёсной мазью.",
+      "discovery": null,
+      "pointsTo": ["carter"],
+      "isRedHerring": true
+    },
+    {
+      "id": "dust-boots",
+      "locationId": "market-yard",
+      "description": "Следы сапог из зерновой пыли и колёсной мази пересекают двор и обрываются у ступеней весовой.",
+      "discovery": {
+        "skill": "perception",
+        "difficulty": 8
+      },
+      "pointsTo": ["carter"],
+      "isRedHerring": true
+    },
+    {
+      "id": "nightwatch-witness",
+      "locationId": "tea-shop",
+      "description": "После необременительной беседы официантка признаётся, что глубоко за полночь видела, как через двор шёл мужчина в длинном пальто и нёс что-то тяжёлое, завёрнутое в мешковину.",
+      "discovery": {
+        "skill": "social",
+        "difficulty": 10
+      },
+      "pointsTo": ["factor"],
+      "isRedHerring": false
+    },
+    {
+      "id": "debt-rumour",
+      "locationId": "corn-store",
+      "description": "Отставной кладовщик вспоминает, что фактор три урожая должен хлебному банку и что неделю назад весовщица сказала ему, что зачитает гири вслух на суде. «После этого он плохо спал».",
+      "discovery": {
+        "skill": "contacts",
+        "difficulty": 11
+      },
+      "pointsTo": ["factor"],
+      "isRedHerring": false
+    },
+    {
+      "id": "green-ink",
+      "locationId": "counting-room",
+      "description": "В дневной книге весов страница с цифрами исправлена зелёными чернилами поверх чёрных весовщицы. Во всём Бриндле зелёным пишет только одно перо.",
+      "discovery": {
+        "skill": "perception",
+        "difficulty": 11
+      },
+      "pointsTo": ["factor"],
+      "isRedHerring": false
+    },
+    {
+      "id": "clerk-confession",
+      "locationId": "scale-cellar",
+      "description": "Зажатая между двух скрипучих блоков, приказчица легко теряется. Нажмёшь покрепче, и она признаётся, что фактор попросил у неё запасной ключ от счётной, чтобы проверить гирю, и заплатил недельное жалованье вперёд.",
+      "discovery": {
+        "skill": "pressure",
+        "difficulty": 11
+      },
+      "pointsTo": ["factor"],
+      "about": ["clerk"],
+      "isRedHerring": false
+    },
+    {
+      "id": "flour-glove",
+      "locationId": "mill-office",
+      "description": "За скамьёй лежит кожаная перчатка, белая от муки, а рядом одеяло и подушка, пахнущие долгой ночью.",
+      "discovery": null,
+      "pointsTo": ["miller"],
+      "isRedHerring": true
+    },
+    {
+      "id": "surgeon-report",
+      "locationId": "chapel-square",
+      "description": "Записка хирурга, разосланная совету и переданная герою: удар пришёлся сзади и сверху, нанесён чем-то тяжёлым с круглым краем, между двумя и тремя часами ночи.",
+      "discovery": null,
+      "pointsTo": [],
+      "isRedHerring": false,
+      "message": {
+        "channel": "report",
+        "arrivesAtMinute": 1700
+      }
+    },
+    {
+      "id": "seen-road-sweeper-factor",
+      "locationId": "mill-road",
+      "description": "Свидетель Дора Финч: Эдмунд Харл — Мельничная дорога, около 02:30.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["factor"],
+      "sightingOf": {
+        "witnessId": "road-sweeper",
+        "suspectId": "factor"
+      },
+      "isRedHerring": false
+    },
+    {
+      "id": "seen-bellringer-factor",
+      "locationId": "chapel-square",
+      "description": "Свидетель Нед Корри: Эдмунд Харл — Часовенная площадь, около 02:40.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["factor"],
+      "sightingOf": {
+        "witnessId": "bellringer",
+        "suspectId": "factor"
+      },
+      "isRedHerring": false
+    }
+  ],
+  "suspects": [
+    {
+      "id": "factor",
+      "locationId": "corn-store",
+      "name": "Эдмунд Харл",
+      "persona": "Хлебный фактор Бриндла, грузный мягкоголосый мужчина пятидесяти лет, который похлопывает по плечу того, кому лжёт.",
+      "secret": "Три урожая он торговал недовесом на ложных гирях, а весовщица нашла их и собиралась объявить об этом на суде.",
+      "alibi": "Говорит, что до полуночи сидел на складе, а потом лёг спать, как каждую ночь.",
+      "claims": ["Я тридцать лет торгую зерном в Бриндле.", "Я не пропустил ни одного суда."],
+      "lies": [
+        {
+          "id": "factor-night",
+          "statement": "Я был на складе до полуночи, а потом в постели, и мой приказчик вам это подтвердит.",
+          "admission": "Хорошо, я вставал после часа. Человек может пройтись после дурной ночи, и это всё, что было.",
+          "brokenBy": ["tally-lock", "nightwatch-witness", "seen-road-sweeper-factor"]
+        }
+      ],
+      "reactions": [
+        {
+          "clueId": "empty-pan",
+          "text": "Гирька? Гири пропадают из весовой каждую зиму, дружище."
+        },
+        {
+          "clueId": "scale-hatch",
+          "text": "Я никогда не заглядывал внутрь тех весов и в моём возрасте не начну."
+        }
+      ]
+    },
+    {
+      "id": "miller",
+      "locationId": "weighing-house",
+      "name": "Тобиас Рен",
+      "persona": "Мельник Бриндла, нервный человек, припорошённый мукой до бровей, который извиняется перед мешками, когда задевает их.",
+      "secret": "В канун суда он ночует в своей конторе, потому что боится проспать, и тихо рад, что про гири заговорили: он давно подозревает фактора.",
+      "alibi": "Говорит, что запер мельницу в десять и сразу пошёл спать домой.",
+      "claims": [
+        "Я отвечаю за каждый мешок, что уходит с моей мельницы.",
+        "Я не люблю толпу, а суд — это толпа."
+      ],
+      "lies": [
+        {
+          "id": "miller-home",
+          "statement": "Я запер мельницу в десять и спал дома, как всегда.",
+          "admission": "Я остался на мельнице, в конторе. Я всегда так делаю в канун суда, потому что боюсь проспать.",
+          "brokenBy": ["flour-glove"]
+        }
+      ]
+    },
+    {
+      "id": "carter",
+      "locationId": "tea-shop",
+      "name": "Брам Холлис",
+      "persona": "Крупный возчик с колёсной мазью в бороде, давно и горько ссорящийся с городскими гирями, которые, по его словам, годами его обсчитывали.",
+      "secret": "Из злости он приколол записку к двери весовой и с тех пор по ночам крадётся по двору, надеясь снять её незаметно.",
+      "alibi": "Говорит, что сидел в чайной до закрытия и пил чай.",
+      "claims": ["Я вожу зерно для половины ферм Бриндла.", "Я не люблю недовес."],
+      "lies": [
+        {
+          "id": "carter-boots",
+          "statement": "Мои сапоги ни разу не касались ступеней весовой.",
+          "admission": "Ладно, я дошёл до ступеней, но внутрь не заходил. Я хотел снять свою записку, пока её никто не увидел.",
+          "brokenBy": ["dust-boots"]
+        }
+      ]
+    },
+    {
+      "id": "clerk",
+      "locationId": "scale-cellar",
+      "name": "Инес Марш",
+      "persona": "Конторщица весовой, девятнадцати лет, девушка, которая соглашается с тем, кто говорил последним, и потеет особенно интересным образом.",
+      "secret": "Ей заплатили недельное жалованье вперёд за запасной ключ от счётной, и она слишком напугана, чтобы признаться.",
+      "alibi": "Говорит, что в девять легла спать и спала как убитая.",
+      "claims": ["Я работаю в весовой с весны.", "Я делаю то, что скажет весовщица."],
+      "lies": [
+        {
+          "id": "clerk-bed",
+          "statement": "Я легла в девять и больше не вставала.",
+          "admission": "Я не спала. Кто-то попросил одолжить ключ на время и заплатил за это вперёд. Я не спросила, зачем.",
+          "brokenBy": ["clerk-confession", "tally-lock"],
+          "brokenByInsights": ["night-visit"]
+        }
+      ]
+    }
+  ],
+  "deductions": [
+    {
+      "id": "motive-false-weights",
+      "clueIds": ["scale-hatch", "debt-rumour"],
+      "insight": "Весовщица хранила доказательства лёгких гирь в люке своих весов, а фактор три урожая был должен банку. Она собиралась зачитать гири вслух на суде, а правда ему была не по карману."
+    },
+    {
+      "id": "night-visit",
+      "clueIds": ["tally-lock", "empty-pan"],
+      "insight": "Счётную дверь открыли в десять минут третьего старым запасным ключом, а гири-противовеса больших весов не оказалось: кто бы ни пришёл, пришёл с ключом и ушёл с гирей."
+    },
+    {
+      "id": "green-correction",
+      "clueIds": ["green-ink", "scale-hatch"],
+      "insight": "Кто-то, пишущий зелёным, исправил цифры весовщицы, а в люке и правда лежали верные гири: тот, кто правил книгу, точно знал, что она покажет."
+    },
+    {
+      "id": "sacking-weight",
+      "clueIds": ["nightwatch-witness", "debt-rumour"],
+      "insight": "Мужчина в длинном пальто нёс через двор что-то тяжёлое в мешковине после полуночи, а больше всех от гирь терял фактор: тяжёлой вещью была та, что он унёс с весов."
+    },
+    {
+      "id": "key-wages",
+      "clueIds": ["tally-lock", "clerk-confession"],
+      "insight": "Запасной ключ открыл счётную дверь в десять минут третьего, а недельное жалованье купило его у конторщицы: тот, кто пришёл, имел и ключ, и деньги, чтобы его достать."
+    },
+    {
+      "id": "means-counterweight",
+      "clueIds": ["empty-pan", "surgeon-report"],
+      "insight": "Хирург говорит, что удар нанесён чем-то тяжёлым с круглым краем, а в ту ночь большие весы лишились медной гири-противовеса: ударили гирей-противовесом с весов."
+    },
+    {
+      "id": "cleared-carter",
+      "clueIds": ["threat-note", "dust-boots", "tally-lock"],
+      "insight": "Следы сапог возчика из зерновой пыли обрываются у ступеней, а его записка требует лишь честных гирь; счётную дверь открыли ключом, которого у него не было. Он пришёл снять свою записку, а не бить.",
+      "clears": "carter"
+    },
+    {
+      "id": "cleared-miller",
+      "clueIds": ["flour-glove", "tally-lock"],
+      "insight": "Мельник той ночью спал в своей конторе, поэтому и солгал, что ушёл домой; но человеку, который спит рядом с весовой и держит собственный ключ, старый запасной не нужен.",
+      "clears": "miller"
+    },
+    {
+      "id": "cleared-clerk",
+      "clueIds": ["clerk-confession", "nightwatch-witness"],
+      "insight": "Конторщица лишь одолжила ключ за деньги; тяжёлое через двор нёс мужчина в длинном пальто. Её использовали, и никого она не била.",
+      "clears": "clerk"
+    }
+  ],
+  "truth": {
+    "culpritId": "factor",
+    "motive": "Три урожая он торговал недовесом на ложных гирях, а весовщица нашла их и собиралась зачитать на суде. Правда была ему не по карману, а слышать её вслух он не мог.",
+    "method": "Он купил у конторщицы запасной ключ от счётной за недельное жалованье, вошёл в десять минут третьего и обрушил медную гирю-противовес больших весов на Орсолью Пайк сзади. Потом он отмыл гирю в поилке на Часовенной площади и спрятал на своём складе под мешками.",
+    "crimeLocationId": "weighing-house",
+    "crimeAtMinute": 130,
+    "timeline": [
+      {
+        "atMinute": 60,
+        "actorId": "carter",
+        "locationId": "tea-shop",
+        "action": "Пьёт чай до закрытия чайной и ворчит про недовес."
+      },
+      {
+        "atMinute": 100,
+        "actorId": "factor",
+        "locationId": "market-yard",
+        "action": "Ждёт во дворе, пока весовщица уйдёт с собрания, и покупает у конторщицы запасной ключ от счётной."
+      },
+      {
+        "atMinute": 120,
+        "actorId": "clerk",
+        "locationId": "weighing-house",
+        "action": "Забирает из весовой свою шаль и торопливо уходит, не глядя на весы."
+      },
+      {
+        "atMinute": 130,
+        "actorId": "factor",
+        "locationId": "weighing-house",
+        "action": "Входит запасным ключом и обрушивает медную гирю-противовес на Орсолью Пайк сзади."
+      },
+      {
+        "atMinute": 130,
+        "actorId": "clerk",
+        "locationId": "scale-cellar",
+        "action": "Ждёт среди скрипучих блоков, накрывшись шалью, и дрожит."
+      },
+      {
+        "atMinute": 130,
+        "actorId": "miller",
+        "locationId": "mill-office",
+        "action": "Храпит на скамье в конторе и видит во сне муку."
+      },
+      {
+        "atMinute": 150,
+        "actorId": "factor",
+        "locationId": "mill-road",
+        "action": "Спешит по Мельничной дороге с чем-то тяжёлым в мешковине."
+      },
+      {
+        "atMinute": 160,
+        "actorId": "factor",
+        "locationId": "chapel-square",
+        "action": "Отмывает гирю-противовес в пересохшей поилке на Часовенной площади из принесённого ведра."
+      },
+      {
+        "atMinute": 170,
+        "actorId": "factor",
+        "locationId": "corn-store",
+        "action": "Прячет гирю-противовес под мешками на своём складе."
+      }
+    ],
+    "homicide": {
+      "victim": {
+        "name": "Орсолья Пайк"
+      },
+      "fate": "attempt"
+    }
+  },
+  "solution": {
+    "motiveDeductionId": "motive-false-weights",
+    "meansDeductionId": "means-counterweight",
+    "evidenceChains": [
+      ["empty-pan", "green-ink", "scale-hatch"],
+      ["nightwatch-witness", "debt-rumour"],
+      ["tally-lock", "clerk-confession"]
+    ]
+  },
+  "clock": {
+    "days": 3,
+    "worldEvents": [
+      {
+        "day": 2,
+        "description": "Совет откладывает хлебный суд, а хлебный банк присылает очень вежливого служащего поинтересоваться гирями."
+      },
+      {
+        "day": 3,
+        "description": "Городской глашатай теряет голос в знак протеста против слухов, а голуби на часовне устраивают необычайно шумное собрание."
+      }
+    ]
+  },
+  "randomEvents": [
+    {
+      "id": "market-bell",
+      "description": "Рыночный колокол бьёт не тот час, и половина Бриндла останавливается поспорить о времени.",
+      "weight": 3,
+      "fromDay": 1,
+      "effect": {
+        "kind": "flavor"
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    },
+    {
+      "id": "cart-jam",
+      "description": "Затор из телег на перекрёстке съедает час утра.",
+      "weight": 3,
+      "fromDay": 1,
+      "effect": {
+        "kind": "time-lost",
+        "minutes": 60
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    },
+    {
+      "id": "brass-band",
+      "description": "Духовой оркестр репетирует под окном всю ночь, и никто не высыпается.",
+      "weight": 2,
+      "fromDay": 2,
+      "effect": {
+        "kind": "nerves-cost",
+        "points": 1
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    },
+    {
+      "id": "gutter-flood",
+      "description": "Жёлоба переполняются в внезапный ливень, и весь Бриндл сходится на том, что виноват мельник.",
+      "weight": 2,
+      "fromDay": 1,
+      "effect": {
+        "kind": "flavor"
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    }
+  ]
+}
