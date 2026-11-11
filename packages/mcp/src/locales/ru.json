@@ -689,7 +689,9 @@
       "missing-person": "пропавший человек",
       "forgery": "подделка",
       "corporate-espionage": "корпоративный шпионаж",
-      "curious-theft": "странная кража"
+      "curious-theft": "странная кража",
+      "attempted-murder": "покушение",
+      "murder": "убийство"
     },
     "duration": "{h} ч {m} мин",
     "minutesOnly": "{m} мин",

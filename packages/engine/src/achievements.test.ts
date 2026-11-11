@@ -11,7 +11,7 @@ import {
   type AchievementRule,
 } from './achievements.js';
 import { createRng } from './dice.js';
-import { CRIME_TYPES } from './detective/case-schema.js';
+import { CRIME_TYPES, GENERAL_CRIME_TYPES } from './detective/case-schema.js';
 import { END_REASONS } from './run.js';
 import type { ProfileRecord } from './profile.js';
 
@@ -50,10 +50,14 @@ describe('the catalogue', () => {
     }
   });
 
-  it('asks for every crime theme in the full house', () => {
+  it('asks for every ordinary crime theme in the full house; the violent ones are beyond it', () => {
     const fullHouse = ACHIEVEMENTS.find(({ id }) => id === 'full-house');
 
-    expect(fullHouse?.rule).toEqual({ type: 'distinct', field: 'theme', atLeast: CRIME_TYPES.length });
+    expect(fullHouse?.rule).toEqual({
+      type: 'distinct',
+      field: 'theme',
+      atLeast: GENERAL_CRIME_TYPES.length,
+    });
   });
 });
 

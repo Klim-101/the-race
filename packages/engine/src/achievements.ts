@@ -44,7 +44,7 @@ export interface AchievementDefinition {
 
 /**
  * The catalogue. A secret one is told by its name and its words only once it is earned. The number for every crime
- * theme in `full-house` is the count of `CRIME_TYPES`, which a test keeps in step.
+ * theme in `full-house` is the count of `GENERAL_CRIME_TYPES`, the violent themes being beyond it; a test keeps it in step.
  */
 export const ACHIEVEMENTS = [
   { id: 'first-case', kind: 'mastery', rule: { type: 'wins', atLeast: 1 } },

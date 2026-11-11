@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  CaseFormSchema,
   MESSAGE_CHANNELS,
   newlyEarned,
   type Locale,
@@ -46,7 +47,7 @@ export const RunSummarySchema = z.object({
   locale: z.enum(['ru', 'en']),
   turn: z.int().min(0),
   /** `abduction` for a case with a deadline and a place to name, else `whodunit`. */
-  form: z.enum(['whodunit', 'abduction']),
+  form: CaseFormSchema,
   /** The minutes left before the deadline of an abduction, `null` for a case that has none. */
   minutesToDeadline: z.int().nullable(),
   /** When that deadline falls: the day and the minute of the day, `null` for a case that has none. */

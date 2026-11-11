@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { CRIME_TYPES } from '../detective/case-schema.js';
+import { CRIME_TYPES, GENERAL_CRIME_TYPES, HOMICIDE_THEMES } from '../detective/case-schema.js';
 import { BACKGROUNDS } from '../detective/gear.js';
-import { BACKGROUND_CRIMES, SEED_CRIMES, chooseSeed } from './choose-seed.js';
+import { BACKGROUND_CRIMES, HOMICIDE_SEEDS, SEED_CRIMES, chooseSeed } from './choose-seed.js';
 import { SEED_KINDS, type NewsSeed } from './seed.js';
 
 const seedOf = (kind: NewsSeed['kind'], id = `${kind}-seed`): NewsSeed => ({
@@ -21,7 +21,17 @@ describe('the tables', () => {
   it('give every kind at least one crime, and every crime type is reachable', () => {
     for (const kind of SEED_KINDS) expect(SEED_CRIMES[kind].length).toBeGreaterThan(0);
     const reachable = new Set(Object.values(SEED_CRIMES).flat());
-    for (const crime of CRIME_TYPES) expect(reachable.has(crime)).toBe(true);
+    // The violent themes are not offered by any seed until the generator is taught the form; the rest all are.
+    for (const crime of GENERAL_CRIME_TYPES) expect(reachable.has(crime)).toBe(true);
+    for (const crime of HOMICIDE_THEMES) expect(reachable.has(crime)).toBe(false);
+  });
+
+  it('keep a violent case to a dispute or a scandal, and never a disaster or a recent tragedy', () => {
+    expect([...HOMICIDE_SEEDS].sort()).toEqual(['dispute', 'scandal']);
+    for (const kind of SEED_KINDS.filter((seedKind) => !HOMICIDE_SEEDS.includes(seedKind))) {
+      expect(SEED_CRIMES[kind]).not.toContain('murder');
+      expect(SEED_CRIMES[kind]).not.toContain('attempted-murder');
+    }
   });
 
   it('lean every background towards crimes that exist', () => {

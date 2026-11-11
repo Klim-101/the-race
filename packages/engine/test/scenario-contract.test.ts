@@ -6,7 +6,11 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { ARCHETYPES, type Hero } from '../src/hero.js';
 import { ISSUE_ORDER, type CaseIssueCode } from '../src/detective/case-issue.js';
-import { CRIME_TYPES, DetectiveCaseSchema, type DetectiveCase } from '../src/detective/case-schema.js';
+import {
+  DetectiveCaseSchema,
+  GENERAL_CRIME_TYPES,
+  type DetectiveCase,
+} from '../src/detective/case-schema.js';
 import { collectNarrativeTexts } from '../src/detective/checks/texts.js';
 import { DETECTIVE_SCENARIO } from '../src/detective/scenario.js';
 import { createDetectiveRun } from '../src/detective/run-state.js';
@@ -87,7 +91,8 @@ describe('the registry of scenarios', () => {
 
 describe('the detective scenario', () => {
   it('has the themes of a detective case, which are its crime types', () => {
-    expect(DETECTIVE_SCENARIO.themes).toEqual(CRIME_TYPES);
+    // A run with no seed falls back on the ordinary crimes; the violent ones come only from a seed that suits them.
+    expect(DETECTIVE_SCENARIO.themes).toEqual(GENERAL_CRIME_TYPES);
   });
 
   it('shows its issues in the order of its own list, which holds every code that all archetypes share', () => {
