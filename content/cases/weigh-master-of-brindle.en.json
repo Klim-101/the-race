@@ -1,0 +1,786 @@
+{
+  "schemaVersion": 1,
+  "locale": "en",
+  "form": "homicide",
+  "crimeType": "attempted-murder",
+  "tone": "serious",
+  "title": "The Weigh-Master of Brindle",
+  "premise": "The night after the grain assize in Brindle, a market town of The Draft, Orsolya Pike, the town's weigh-master, is struck down in the weighing house and found at dawn by the cleaner. She lives, but remembers nothing past the meeting, and lies in the infirmary ward, where visitors are let in only in the afternoon. The big scale hangs light, the town is full of people who would rather the weights were left alone, and the council wants an answer before the next assize.",
+  "leads": [
+    {
+      "id": "office-ledger",
+      "reason": "The green correction names a delivery book kept at the mill office: somebody there knows the weights.",
+      "earnedBy": {
+        "kind": "clue",
+        "clueId": "green-ink"
+      },
+      "isFalse": false
+    },
+    {
+      "id": "hatch-glance",
+      "reason": "The miller keeps glancing at the foot of the big scale.",
+      "earnedBy": {
+        "kind": "talk",
+        "suspectId": "miller"
+      },
+      "isFalse": false
+    },
+    {
+      "id": "office-gossip",
+      "reason": "The waitress swears the miller hides things in the bench of his office.",
+      "earnedBy": {
+        "kind": "locals",
+        "locationId": "tea-shop"
+      },
+      "isFalse": true
+    },
+    {
+      "id": "book-wear",
+      "reason": "The tag of the key is worn on one side: somebody keeps opening the book of the counting room.",
+      "earnedBy": {
+        "kind": "study",
+        "clueId": "ledger-key"
+      },
+      "isFalse": false
+    }
+  ],
+  "startLocationId": "weighing-house",
+  "locations": [
+    {
+      "id": "weighing-house",
+      "name": "Weighing house",
+      "description": "A long hall of brass scales, grain sacks and tally boards. The big scale at the far end hangs lopsided, and a chalk line on the floor marks where somebody lay until the cleaner found her.",
+      "connections": ["market-yard", "counting-room", "mill-office"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "scale-floor",
+          "name": "The floor under the big scale",
+          "obstacle": null,
+          "holds": "empty-pan",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "scale-base",
+          "name": "The base of the big scale",
+          "obstacle": "sealed",
+          "holds": "scale-hatch",
+          "inQuickLook": false,
+          "requiresLead": "hatch-glance",
+          "fallback": {
+            "kind": "ask",
+            "suspectId": "miller"
+          }
+        },
+        {
+          "id": "tally-door-lock",
+          "name": "The lock of the tally door",
+          "obstacle": "digital",
+          "holds": "tally-lock",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": {
+            "kind": "ask",
+            "suspectId": "miller"
+          }
+        },
+        {
+          "id": "door-front",
+          "name": "The front of the door",
+          "obstacle": null,
+          "holds": "threat-note",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
+    },
+    {
+      "id": "market-yard",
+      "name": "Market yard",
+      "description": "Trestles, carts and a crowd that has come to hear what happened and has an opinion about it. Everybody agrees it was somebody else.",
+      "connections": ["weighing-house", "scale-cellar", "mill-road"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "outdoor",
+      "situations": ["crowd", "high-society"],
+      "parts": [
+        {
+          "id": "sack-trestle",
+          "name": "The sack trestle",
+          "obstacle": null,
+          "holds": "ledger-key",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "yard-steps",
+          "name": "The steps of the yard",
+          "obstacle": null,
+          "holds": "dust-boots",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        },
+        {
+          "id": "trestle-stack",
+          "name": "The stack of trestles",
+          "obstacle": null,
+          "holds": null,
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null,
+          "trace": "A torn flyer of the grain bank is trodden into the mud."
+        }
+      ]
+    },
+    {
+      "id": "tea-shop",
+      "venue": "teahouse",
+      "name": "The Bent Spoon tea shop",
+      "description": "A tea shop at the corner of the road where the waitresses see everything and forgive nothing. The cake is excellent.",
+      "connections": ["mill-road"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "serving-counter",
+          "name": "The serving counter",
+          "obstacle": null,
+          "holds": "nightwatch-witness",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
+    },
+    {
+      "id": "corn-store",
+      "name": "Harl's corn store",
+      "description": "A cool store of sacks stacked to the roof, a brass bell on the counter and an old storekeeper who has been retired for ten years and still comes in daily.",
+      "connections": ["chapel-square"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "ledger-desk",
+          "name": "The desk of the storekeeper",
+          "obstacle": null,
+          "holds": "debt-rumour",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
+    },
+    {
+      "id": "counting-room",
+      "name": "Counting room",
+      "description": "Shelves of day-books bound in canvas and stamped 'Checked and true'. The door has a stout lock and the key is, naturally, missing.",
+      "connections": ["weighing-house"],
+      "access": {
+        "kind": "clue",
+        "clueId": "ledger-key"
+      },
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "day-book",
+          "name": "The day-book of weights",
+          "obstacle": "dark",
+          "holds": "green-ink",
+          "inQuickLook": false,
+          "requiresLead": "book-wear",
+          "fallback": {
+            "kind": "ask",
+            "suspectId": "miller"
+          }
+        }
+      ]
+    },
+    {
+      "id": "mill-office",
+      "requiresLead": "office-ledger",
+      "name": "Miller's office",
+      "description": "A cramped office with a bench, a kettle and a door guarded by the miller's clerk, who treats every visitor as a personal insult to the flour.",
+      "connections": ["weighing-house"],
+      "access": {
+        "kind": "skill",
+        "check": {
+          "skill": "social",
+          "difficulty": 11
+        }
+      },
+      "exposure": "indoor",
+      "parts": [
+        {
+          "id": "office-bench",
+          "name": "The bench",
+          "obstacle": "soft",
+          "holds": "flour-glove",
+          "inQuickLook": false,
+          "requiresLead": "office-gossip",
+          "fallback": {
+            "kind": "ask",
+            "suspectId": "carter"
+          }
+        }
+      ]
+    },
+    {
+      "id": "scale-cellar",
+      "name": "Scale cellar",
+      "description": "A low, warm cellar under the yard, full of pulleys that creak like impatient visitors. There is room to stand and not much to turn round.",
+      "connections": ["market-yard"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "indoor",
+      "situations": ["confined-space"],
+      "parts": [
+        {
+          "id": "pulley-wall",
+          "name": "The creaking pulleys",
+          "obstacle": null,
+          "holds": "clerk-confession",
+          "inQuickLook": true,
+          "requiresLead": null,
+          "fallback": null
+        }
+      ]
+    },
+    {
+      "id": "mill-road",
+      "name": "Mill Road",
+      "description": "The one proper road of Brindle: lime trees, a gutter that gurgles and a clear view of everyone’s business.",
+      "connections": ["market-yard", "tea-shop", "chapel-square"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "outdoor",
+      "litter": "Scraps of sacking, a bent nail and a cart ticket line the gutter."
+    },
+    {
+      "id": "chapel-square",
+      "name": "Chapel Square",
+      "description": "A small cobbled square with a dry trough and a chapel clock that has run four minutes fast since last spring.",
+      "connections": ["mill-road", "corn-store"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "outdoor"
+    },
+    {
+      "id": "ward",
+      "name": "The infirmary ward",
+      "description": "A quiet ward with six beds, a nurse at the desk and a sign that says visitors are welcome in the afternoon and in no other hour.",
+      "connections": ["chapel-square"],
+      "access": {
+        "kind": "open"
+      },
+      "exposure": "indoor",
+      "hours": {
+        "fromMinute": 840,
+        "untilMinute": 1080
+      }
+    }
+  ],
+  "witnesses": [
+    {
+      "id": "road-sweeper",
+      "locationId": "mill-road",
+      "name": "Dora Finch",
+      "persona": "A road sweeper who works from midnight to noon and has opinions about everyone's litter.",
+      "hours": {
+        "fromMinute": 0,
+        "untilMinute": 720
+      }
+    },
+    {
+      "id": "bellringer",
+      "locationId": "chapel-square",
+      "name": "Ned Corrie",
+      "persona": "The man who winds the chapel clock, which runs four minutes fast, and will tell you so.",
+      "hours": {
+        "fromMinute": 0,
+        "untilMinute": 720
+      }
+    },
+    {
+      "id": "weigh-master",
+      "locationId": "ward",
+      "name": "Orsolya Pike",
+      "persona": "The weigh-master of Brindle, propped on three pillows, who remembers the meeting, the walk to the weighing house and then nothing at all.",
+      "hours": {
+        "fromMinute": 0,
+        "untilMinute": 1439
+      },
+      "victim": true
+    }
+  ],
+  "clues": [
+    {
+      "id": "ledger-key",
+      "locationId": "market-yard",
+      "description": "A heavy brass key lies under a sack trestle, tagged 'Counting room' in the weigh-master's tidy hand.",
+      "discovery": null,
+      "pointsTo": [],
+      "isRedHerring": false
+    },
+    {
+      "id": "empty-pan",
+      "locationId": "weighing-house",
+      "description": "The brass pan of the big scale hangs light: its five-kilo counterweight is gone, and the dust of the shelf shows a clean ring where it stood.",
+      "discovery": {
+        "skill": "perception",
+        "difficulty": 9
+      },
+      "pointsTo": ["factor"],
+      "isRedHerring": false
+    },
+    {
+      "id": "scale-hatch",
+      "locationId": "weighing-house",
+      "description": "The base of the big scale has a hidden hatch. Inside lies the weigh-master's second set of weights, each stamped lighter than the town's standard.",
+      "discovery": {
+        "skill": "perception",
+        "difficulty": 12
+      },
+      "pointsTo": ["factor"],
+      "isRedHerring": false
+    },
+    {
+      "id": "tally-lock",
+      "locationId": "weighing-house",
+      "description": "The lock of the tally door keeps a tiny log. At ten past two it records a spare key, issued years ago to the grain store and never handed back.",
+      "discovery": {
+        "skill": "tech",
+        "difficulty": 10
+      },
+      "situations": ["digital-evidence"],
+      "pointsTo": ["factor"],
+      "about": ["clerk"],
+      "isRedHerring": false
+    },
+    {
+      "id": "threat-note",
+      "locationId": "weighing-house",
+      "description": "A note in cut-out newspaper letters is pinned to the door: 'Cheat no more.' It smells of axle grease.",
+      "discovery": null,
+      "pointsTo": ["carter"],
+      "isRedHerring": true
+    },
+    {
+      "id": "dust-boots",
+      "locationId": "market-yard",
+      "description": "Boot prints of grain dust and axle grease cross the yard and stop at the steps of the weighing house.",
+      "discovery": {
+        "skill": "perception",
+        "difficulty": 8
+      },
+      "pointsTo": ["carter"],
+      "isRedHerring": true
+    },
+    {
+      "id": "nightwatch-witness",
+      "locationId": "tea-shop",
+      "description": "A waitress, after a little friendly conversation, admits she saw a man in a long coat carrying something heavy wrapped in sacking across the yard long after midnight.",
+      "discovery": {
+        "skill": "social",
+        "difficulty": 10
+      },
+      "pointsTo": ["factor"],
+      "isRedHerring": false
+    },
+    {
+      "id": "debt-rumour",
+      "locationId": "corn-store",
+      "description": "The retired storekeeper remembers that the factor has owed the grain bank for three harvests, and that the weigh-master told him a week ago she would read the weights aloud at the assize. 'He did not sleep well after that.'",
+      "discovery": {
+        "skill": "contacts",
+        "difficulty": 11
+      },
+      "pointsTo": ["factor"],
+      "isRedHerring": false
+    },
+    {
+      "id": "green-ink",
+      "locationId": "counting-room",
+      "description": "In the day-book of weights a page of figures has been corrected in green ink over the weigh-master's black. Only one pen in Brindle writes in green.",
+      "discovery": {
+        "skill": "perception",
+        "difficulty": 11
+      },
+      "pointsTo": ["factor"],
+      "isRedHerring": false
+    },
+    {
+      "id": "clerk-confession",
+      "locationId": "scale-cellar",
+      "description": "Wedged between two creaking pulleys, the clerk is easy to rattle. Pressed hard enough, she admits that the factor asked her for the spare tally key to check a weight, and paid her a week of wages in advance.",
+      "discovery": {
+        "skill": "pressure",
+        "difficulty": 11
+      },
+      "pointsTo": ["factor"],
+      "about": ["clerk"],
+      "isRedHerring": false
+    },
+    {
+      "id": "flour-glove",
+      "locationId": "mill-office",
+      "description": "A leather glove, white with flour, lies behind the bench next to a blanket and a pillow that smell of a long night.",
+      "discovery": null,
+      "pointsTo": ["miller"],
+      "isRedHerring": true
+    },
+    {
+      "id": "surgeon-report",
+      "locationId": "chapel-square",
+      "description": "The surgeon's note, sent round to the council and passed to the hero: the blow came from behind and above, struck with something heavy and round-edged, between two and three in the morning.",
+      "discovery": null,
+      "pointsTo": [],
+      "isRedHerring": false,
+      "message": {
+        "channel": "report",
+        "arrivesAtMinute": 1700
+      }
+    },
+    {
+      "id": "seen-road-sweeper-factor",
+      "locationId": "mill-road",
+      "description": "Dora Finch saw Edmund Harl at Mill Road around 02:30.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["factor"],
+      "sightingOf": {
+        "witnessId": "road-sweeper",
+        "suspectId": "factor"
+      },
+      "isRedHerring": false
+    },
+    {
+      "id": "seen-bellringer-factor",
+      "locationId": "chapel-square",
+      "description": "Ned Corrie saw Edmund Harl at Chapel Square around 02:40.",
+      "discovery": null,
+      "situations": [],
+      "source": null,
+      "pointsTo": [],
+      "about": ["factor"],
+      "sightingOf": {
+        "witnessId": "bellringer",
+        "suspectId": "factor"
+      },
+      "isRedHerring": false
+    }
+  ],
+  "suspects": [
+    {
+      "id": "factor",
+      "locationId": "corn-store",
+      "name": "Edmund Harl",
+      "persona": "The grain factor of Brindle, a broad, soft-spoken man of fifty who pats the shoulder of whoever he is lying to.",
+      "secret": "He has sold light measure for three harvests on false weights, and the weigh-master had found them and meant to say so at the assize.",
+      "alibi": "Says he was in his warehouse until midnight and then in bed, as every night.",
+      "claims": [
+        "I have bought and sold grain in Brindle for thirty years.",
+        "I have never missed an assize."
+      ],
+      "lies": [
+        {
+          "id": "factor-night",
+          "statement": "I was at my warehouse till midnight and in my bed after, and my clerk will tell you so.",
+          "admission": "Very well, I left my bed after one. A man may walk off a bad night, and that is all it was.",
+          "brokenBy": ["tally-lock", "nightwatch-witness", "seen-road-sweeper-factor"]
+        }
+      ],
+      "reactions": [
+        {
+          "clueId": "empty-pan",
+          "text": "A counterweight? Weights go missing from a weighing house every winter, my friend."
+        },
+        {
+          "clueId": "scale-hatch",
+          "text": "I have never looked inside that scale, and I will not start at my age."
+        }
+      ]
+    },
+    {
+      "id": "miller",
+      "locationId": "weighing-house",
+      "name": "Tobias Wren",
+      "persona": "The miller of Brindle, a nervous man dusted white to the eyebrows who apologises to sacks when he bumps into them.",
+      "secret": "He sleeps in his office on assize eves because he is afraid of oversleeping, and he is quietly glad the weights are in question, for he has long suspected the factor.",
+      "alibi": "Says he locked the mill at ten and went straight home to bed.",
+      "claims": [
+        "I am answerable for every sack that leaves my mill.",
+        "I do not like crowds, and an assize is a crowd."
+      ],
+      "lies": [
+        {
+          "id": "miller-home",
+          "statement": "I locked up at ten and slept at home, as I always do.",
+          "admission": "I stayed at the mill, in my office. I always do on the eve of an assize, because I am afraid of oversleeping.",
+          "brokenBy": ["flour-glove"]
+        }
+      ]
+    },
+    {
+      "id": "carter",
+      "locationId": "tea-shop",
+      "name": "Bram Hollis",
+      "persona": "A large carter with axle grease in his beard and a bitter quarrel with the town's weights, which he says have cheated him for years.",
+      "secret": "He pinned a note to the weighing house door out of spite and has been creeping about the yard at night ever since, hoping to take it down unseen.",
+      "alibi": "Says he was in the tea shop until it shut, drinking tea.",
+      "claims": ["I carry grain for half the farms of Brindle.", "I have no love for short weight."],
+      "lies": [
+        {
+          "id": "carter-boots",
+          "statement": "My boots have never touched the steps of the weighing house.",
+          "admission": "All right, I came as far as the steps, but I never went in. I only wanted to take my note down before anybody saw it.",
+          "brokenBy": ["dust-boots"]
+        }
+      ]
+    },
+    {
+      "id": "clerk",
+      "locationId": "scale-cellar",
+      "name": "Ines Marsh",
+      "persona": "The weighing house clerk, nineteen, a girl who agrees with whoever spoke last and sweats in an unusually interesting way.",
+      "secret": "She was paid a week of wages in advance to lend the spare tally key and has been too frightened to say so.",
+      "alibi": "Says she was tucked up in bed by nine and slept like a log.",
+      "claims": [
+        "I have worked at the weighing house since the spring.",
+        "I do what the weigh-master tells me."
+      ],
+      "lies": [
+        {
+          "id": "clerk-bed",
+          "statement": "I was in bed by nine and never left it.",
+          "admission": "I was not asleep. Somebody asked me to lend a key for a while and paid me in advance for it. I did not ask what for.",
+          "brokenBy": ["clerk-confession", "tally-lock"],
+          "brokenByInsights": ["night-visit"]
+        }
+      ]
+    }
+  ],
+  "deductions": [
+    {
+      "id": "motive-false-weights",
+      "clueIds": ["scale-hatch", "debt-rumour"],
+      "insight": "The weigh-master kept proof of light weights in a hatch in her scale, and the factor owed the bank for three harvests. She was going to read the weights aloud at the assize, and he could not afford the truth."
+    },
+    {
+      "id": "night-visit",
+      "clueIds": ["tally-lock", "empty-pan"],
+      "insight": "The tally door was opened at ten past two with an old spare key, and the counterweight of the big scale was gone: whoever came, came with a key and left with the weight."
+    },
+    {
+      "id": "green-correction",
+      "clueIds": ["green-ink", "scale-hatch"],
+      "insight": "Someone who writes in green corrected the weigh-master's figures, and the hatch did hold the true weights: the one who changed the book knew exactly what it would show."
+    },
+    {
+      "id": "sacking-weight",
+      "clueIds": ["nightwatch-witness", "debt-rumour"],
+      "insight": "A man in a long coat carried something heavy in sacking across the yard after midnight, and the factor had the most to lose from the weights: the heavy thing was the one he took from the scale."
+    },
+    {
+      "id": "key-wages",
+      "clueIds": ["tally-lock", "clerk-confession"],
+      "insight": "A spare key opened the tally door at ten past two, and a week of wages bought it from the clerk: the one who came had the key and the money to get it."
+    },
+    {
+      "id": "means-counterweight",
+      "clueIds": ["empty-pan", "surgeon-report"],
+      "insight": "The surgeon says the blow came from something heavy with a round edge, and the big scale lost its brass counterweight that night: what it was done with was the counterweight of the scale."
+    },
+    {
+      "id": "cleared-carter",
+      "clueIds": ["threat-note", "dust-boots", "tally-lock"],
+      "insight": "The carter's grain-dust boot prints stop at the steps, and his note asks only for honest weights; the tally door was opened with a key he never had. He came to take his note down, not to strike anyone.",
+      "clears": "carter"
+    },
+    {
+      "id": "cleared-miller",
+      "clueIds": ["flour-glove", "tally-lock"],
+      "insight": "The miller slept in his office that night, which is why he lied about going home; but a man who sleeps beside the weighing house and holds a key of his own has no need of an old spare one.",
+      "clears": "miller"
+    },
+    {
+      "id": "cleared-clerk",
+      "clueIds": ["clerk-confession", "nightwatch-witness"],
+      "insight": "The clerk only lent a key for wages; the one who carried the heavy thing across the yard was a man in a long coat. She was used, and she struck no one.",
+      "clears": "clerk"
+    }
+  ],
+  "truth": {
+    "culpritId": "factor",
+    "motive": "He had sold light measure for three harvests on false weights, and the weigh-master had found them and meant to read them out at the assize. He could not afford the truth and could not bear to hear it said.",
+    "method": "He bought the spare tally key from the clerk for a week of wages, let himself in at ten past two, and brought the brass counterweight of the big scale down on Orsolya Pike from behind. He rinsed the counterweight in the trough of the chapel square and hid it in his corn store under the sacks.",
+    "crimeLocationId": "weighing-house",
+    "crimeAtMinute": 130,
+    "timeline": [
+      {
+        "atMinute": 60,
+        "actorId": "carter",
+        "locationId": "tea-shop",
+        "action": "Drinks tea until the shop shuts and grumbles about short weight."
+      },
+      {
+        "atMinute": 100,
+        "actorId": "factor",
+        "locationId": "market-yard",
+        "action": "Waits in the yard until the weigh-master leaves the meeting, then buys the spare tally key from the clerk."
+      },
+      {
+        "atMinute": 120,
+        "actorId": "clerk",
+        "locationId": "weighing-house",
+        "action": "Fetches her shawl from the weighing house and leaves in a hurry, without looking at the scale."
+      },
+      {
+        "atMinute": 130,
+        "actorId": "factor",
+        "locationId": "weighing-house",
+        "action": "Lets himself in with the spare key and brings the brass counterweight down on Orsolya Pike from behind."
+      },
+      {
+        "atMinute": 130,
+        "actorId": "clerk",
+        "locationId": "scale-cellar",
+        "action": "Waits among the creaking pulleys with her shawl over her head, trembling."
+      },
+      {
+        "atMinute": 130,
+        "actorId": "miller",
+        "locationId": "mill-office",
+        "action": "Snores on the office bench, dreaming of flour."
+      },
+      {
+        "atMinute": 150,
+        "actorId": "factor",
+        "locationId": "mill-road",
+        "action": "Hurries up Mill Road with something heavy in sacking."
+      },
+      {
+        "atMinute": 160,
+        "actorId": "factor",
+        "locationId": "chapel-square",
+        "action": "Rinses the counterweight in the dry trough of the chapel square with a bucket he brought."
+      },
+      {
+        "atMinute": 170,
+        "actorId": "factor",
+        "locationId": "corn-store",
+        "action": "Hides the counterweight under the sacks of his store."
+      }
+    ],
+    "homicide": {
+      "victim": {
+        "name": "Orsolya Pike"
+      },
+      "fate": "attempt"
+    }
+  },
+  "solution": {
+    "motiveDeductionId": "motive-false-weights",
+    "meansDeductionId": "means-counterweight",
+    "evidenceChains": [
+      ["empty-pan", "green-ink", "scale-hatch"],
+      ["nightwatch-witness", "debt-rumour"],
+      ["tally-lock", "clerk-confession"]
+    ]
+  },
+  "clock": {
+    "days": 3,
+    "worldEvents": [
+      {
+        "day": 2,
+        "description": "The council puts off the grain assize, and the grain bank sends a very polite clerk to ask after the weights."
+      },
+      {
+        "day": 3,
+        "description": "The town crier loses his voice in protest at the rumours, and the pigeons of the chapel hold an unusually loud meeting."
+      }
+    ]
+  },
+  "randomEvents": [
+    {
+      "id": "market-bell",
+      "description": "The market bell rings the wrong hour, and half of Brindle stops to argue about the time.",
+      "weight": 3,
+      "fromDay": 1,
+      "effect": {
+        "kind": "flavor"
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    },
+    {
+      "id": "cart-jam",
+      "description": "A jam of carts at the crossroads swallows an hour of the morning.",
+      "weight": 3,
+      "fromDay": 1,
+      "effect": {
+        "kind": "time-lost",
+        "minutes": 60
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    },
+    {
+      "id": "brass-band",
+      "description": "A brass band rehearses under the window all night, and nobody sleeps well.",
+      "weight": 2,
+      "fromDay": 2,
+      "effect": {
+        "kind": "nerves-cost",
+        "points": 1
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    },
+    {
+      "id": "gutter-flood",
+      "description": "The gutters overflow in a sudden shower, and the whole of Brindle agrees it was the miller’s fault.",
+      "weight": 2,
+      "fromDay": 1,
+      "effect": {
+        "kind": "flavor"
+      },
+      "tones": [],
+      "untilDay": null,
+      "traitTriggers": [],
+      "duration": {
+        "kind": "instant"
+      }
+    }
+  ]
+}

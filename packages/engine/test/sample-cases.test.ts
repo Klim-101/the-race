@@ -104,12 +104,14 @@ function collectIds(json: Record<string, unknown>): string[] {
 }
 
 describe('sample cases', () => {
-  it('ships two cases, each in Russian and in English', () => {
+  it('ships three cases, each in Russian and in English', () => {
     expect(files.map((file) => file.name)).toEqual([
       'goose-of-elmwick.en.json',
       'goose-of-elmwick.ru.json',
       'leaked-memo-of-larkspur.en.json',
       'leaked-memo-of-larkspur.ru.json',
+      'weigh-master-of-brindle.en.json',
+      'weigh-master-of-brindle.ru.json',
     ]);
   });
 
