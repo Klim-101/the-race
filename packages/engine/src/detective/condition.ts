@@ -9,6 +9,7 @@ import { findSignal } from '../signals.js';
 import type { Trait } from '../traits.js';
 import { gearModifiers, type KitItem } from './gear.js';
 import { DETECTIVE, DETECTIVE_NERVES, DETECTIVE_REPUTATION, DETECTIVE_SLEEP_DEBT } from './archetype.js';
+import { LIFE_STATE_SHIFTS, type LifeState } from './life-state.js';
 
 // The hero's condition is everything about them that wears off or wears out: nerves, sleep debt and timed
 // conditions. It is a function of the clock and of what happened, never of the case, and it never touches
@@ -87,8 +88,14 @@ export const HeroConditionSchema = z
   });
 export type HeroCondition = z.infer<typeof HeroConditionSchema>;
 
-export function initialCondition(): HeroCondition {
-  return { nerves: DETECTIVE_NERVES.start, sleepDebt: DETECTIVE_SLEEP_DEBT.start, active: [] };
+/** The condition a hero starts with: rested, unless the state they are going through says they are not. */
+export function initialCondition(lifeState?: LifeState): HeroCondition {
+  const debt = lifeState === undefined ? 0 : (LIFE_STATE_SHIFTS[lifeState].sleepDebt ?? 0);
+  return {
+    nerves: DETECTIVE_NERVES.start,
+    sleepDebt: Math.min(DETECTIVE_SLEEP_DEBT.max, DETECTIVE_SLEEP_DEBT.start + debt),
+    active: [],
+  };
 }
 
 /** Minutes from the start of the run to the clock. */

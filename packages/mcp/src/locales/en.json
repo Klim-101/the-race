@@ -446,7 +446,9 @@
         "on-leave": "on leave",
         "in-debt": "in debt",
         "newly-arrived": "newly arrived in town",
-        "on-probation": "on probation"
+        "on-probation": "on probation",
+        "night-shift": "worked nights",
+        "sleepless": "sleepless"
       }
     },
     "corkboard": {
