@@ -5,14 +5,14 @@ import type { CaseIssue } from '../case-issue.js';
 import type { DetectiveCase } from '../case-schema.js';
 import type { Obtainable } from '../obtainability.js';
 
-/** The clues the case leans on: those of every evidence chain, of a lie's refutation and of the motive. */
+/** The clues the case leans on: those of every evidence chain, of a lie's refutation, of the motive and, in a homicide, of the means. */
 function requiredClueIds(detectiveCase: DetectiveCase): ReadonlySet<string> {
-  const { evidenceChains, motiveDeductionId } = detectiveCase.solution;
+  const { evidenceChains, motiveDeductionId, meansDeductionId } = detectiveCase.solution;
   return new Set([
     ...evidenceChains.flat(),
     ...detectiveCase.suspects.flatMap(({ lies }) => lies.flatMap(({ brokenBy }) => brokenBy)),
     ...detectiveCase.deductions
-      .filter(({ id }) => id === motiveDeductionId)
+      .filter(({ id }) => id === motiveDeductionId || id === meansDeductionId)
       .flatMap(({ clueIds }) => clueIds),
   ]);
 }

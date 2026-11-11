@@ -49,7 +49,7 @@ function stepsBetween(
 }
 
 /** The pieces of a name that a message would give away the person by: the whole name and its longer words. */
-function namesOf(name: string, id: string): string[] {
+export function namesOf(name: string, id: string): string[] {
   return [id, name, ...name.split(/[\s,.]+/).filter((piece) => piece.length >= MIN_NAME_PIECE)].map((piece) =>
     piece.toLowerCase(),
   );

@@ -11,6 +11,7 @@ import { DetectiveCaseSchema, formOf, type CaseForm, type DetectiveCase } from '
 import { checkFleeDeadline } from './checks/flee-deadline.js';
 import { checkLies } from './checks/lies.js';
 import { checkAbduction } from './checks/abduction.js';
+import { checkHomicide } from './checks/homicide.js';
 import { checkClearing } from './checks/clearing.js';
 import { checkRunLength } from './checks/run-length.js';
 import { checkLinkable } from './checks/links.js';
@@ -132,6 +133,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...(rules.days === null ? [] : checkRunLength(detectiveCase, rules.days)),
     ...checkFleeDeadline(detectiveCase, context.hero, context.traits),
     ...checkAbduction(detectiveCase, context.hero, context.traits, obtainable, content),
+    ...checkHomicide(detectiveCase, content),
     ...checkRedHerrings(detectiveCase),
     ...checkTexts(detectiveCase, context.locale, context.realNames, content),
   ];
