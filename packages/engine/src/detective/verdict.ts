@@ -38,6 +38,11 @@ export const AccuseIntentSchema = z.object({
   whereaboutsId: EntityIdSchema.optional(),
   /** The insight the hero offers as the motive, or `null` for an accusation without one. */
   motiveInsightId: EntityIdSchema.nullable(),
+  /**
+   * For a homicide, the insight the hero offers as what it was done with, or `null` for none; for no other form, left out
+   * (or `null`, as a host may send it).
+   */
+  meansInsightId: EntityIdSchema.nullable().optional(),
   /** The clues the hero lays out as proof. */
   evidenceClueIds: z.array(EntityIdSchema),
 });
@@ -62,6 +67,8 @@ export type VerdictRefusalCode =
   | 'unknown-location'
   | 'place-needed'
   | 'place-unwanted'
+  | 'means-needed'
+  | 'means-unwanted'
   | 'not-found'
   | 'no-insight'
   | 'garbled-clue'
@@ -108,6 +115,8 @@ export type ShortfallClueState = (typeof SHORTFALL_CLUE_STATES)[number];
  */
 export interface Shortfall {
   readonly motive: { readonly held: boolean; readonly offered: boolean; readonly drawn: boolean };
+  /** Only for a homicide whose case asks for a conclusion about the means: as the motive, whether it was offered and drawn. */
+  readonly means?: { readonly held: boolean; readonly offered: boolean; readonly drawn: boolean } | undefined;
   /**
    * Only for an abduction whose case has a conclusion about where the victim is: whether the hero had drawn it. A place
    * named without it is a place guessed, and the accusation falls short of proof however right the place was.
@@ -133,6 +142,8 @@ export interface AccusationOutcome {
   /** Only for an abduction: whether the victim is where the hero said. */
   readonly placeRight?: boolean;
   readonly motiveRight: boolean;
+  /** Only for a homicide whose case asks for it: whether the means the hero named is the one of the case. */
+  readonly meansRight?: boolean;
   readonly evidenceComplete: boolean;
   /** Only for `unproven`: what the proof lacked. */
   readonly shortfall?: Shortfall;
@@ -141,6 +152,8 @@ export interface AccusationOutcome {
   readonly truth: Pick<Truth, 'culpritId' | 'motive' | 'method' | 'crimeLocationId'> & {
     /** Only for an abduction: where the victim was kept. */
     readonly whereaboutsId?: string;
+    /** Only for a homicide: the victim, and whether they lived. */
+    readonly homicide?: Truth['homicide'];
   };
 }
 
@@ -240,6 +253,8 @@ function shortfallOf(
   proof: {
     readonly motiveRight: boolean;
     readonly motiveInsightId: string | null;
+    readonly meansRight: boolean | undefined;
+    readonly meansInsightId: string | null | undefined;
     readonly evidenceComplete: boolean;
     readonly laidOut: ReadonlySet<string>;
   },
@@ -254,6 +269,15 @@ function shortfallOf(
       offered: proof.motiveInsightId !== null,
       drawn: run.insightIds.includes(solution.motiveDeductionId),
     },
+    ...(solution.meansDeductionId === undefined || proof.meansRight === undefined
+      ? {}
+      : {
+          means: {
+            held: proof.meansRight,
+            offered: proof.meansInsightId !== null && proof.meansInsightId !== undefined,
+            drawn: run.insightIds.includes(solution.meansDeductionId),
+          },
+        }),
     ...(solution.whereaboutsDeductionId === undefined
       ? {}
       : { place: { drawn: run.insightIds.includes(solution.whereaboutsDeductionId) } }),
@@ -286,7 +310,8 @@ function shortfallOf(
  * - `wrong`: someone else did it.
  * In an abduction the hero names the place where the victim is kept
  * as well, and the culprit and the place must both be right to prove or to fall short of proof: one of them wrong is
- * a `wrong` verdict. The verdict ends the run (`won` only for a proven case) and only then does the outcome show the truth.
+ * a `wrong` verdict. In a homicide the hero names what it was done with as well, as a conclusion like the motive: a right
+ * culprit with the wrong means, or none, falls short of proof. The verdict ends the run (`won` only for a proven case) and only then does the outcome show the truth.
  * A case that no longer matches its seal is not judged at all.
  */
 export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): AccuseResolution {
@@ -298,7 +323,7 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
   if (run.status !== 'active') {
     return refuse('run-over', `The run is already over (${run.status}).`);
   }
-  const { culpritId, whereaboutsId, motiveInsightId, evidenceClueIds } = parsed.data;
+  const { culpritId, whereaboutsId, motiveInsightId, meansInsightId, evidenceClueIds } = parsed.data;
   if (!run.case.suspects.some(({ id }) => id === culpritId)) {
     return refuse('unknown-suspect', `"${culpritId}" is not a suspect.`);
   }
@@ -314,6 +339,14 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
       return refuse('unknown-location', `"${whereaboutsId}" is not a place of this case.`);
     }
   }
+  // A homicide names what it was done with, or says it has none to name; no other form asks (a null a host sends is nothing).
+  const homicide = run.case.truth.homicide;
+  if (homicide === undefined && meansInsightId !== undefined && meansInsightId !== null) {
+    return refuse('means-unwanted', 'Only a homicide asks what it was done with.');
+  }
+  if (homicide !== undefined && meansInsightId === undefined) {
+    return refuse('means-needed', 'A homicide needs the insight of what it was done with, or null for none.');
+  }
   if (evidenceClueIds.some((id) => !run.foundClueIds.includes(id))) {
     return refuse('not-found', 'Only clues the hero has found can be laid out as evidence.');
   }
@@ -321,11 +354,19 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
   if (motiveInsightId !== null && !run.insightIds.includes(motiveInsightId)) {
     return refuse('no-insight', 'The hero has made no such deduction.');
   }
+  if (meansInsightId !== undefined && meansInsightId !== null && !run.insightIds.includes(meansInsightId)) {
+    return refuse('no-insight', 'The hero has made no such deduction.');
+  }
 
   const { truth, solution } = run.case;
   const placeRight = abduction === undefined ? undefined : whereaboutsId === abduction.whereabouts;
   const culpritRight = culpritId === truth.culpritId;
   const motiveRight = motiveInsightId === solution.motiveDeductionId;
+  // The means is a conclusion as the motive is: a homicide whose case asks for none is judged without it, as before it existed.
+  const meansRight =
+    homicide === undefined || solution.meansDeductionId === undefined
+      ? undefined
+      : meansInsightId === solution.meansDeductionId;
   const laidOut = new Set(evidenceClueIds);
   const evidenceComplete = solution.evidenceChains.some((chain) => chain.every((id) => laidOut.has(id)));
   // The place has to be reasoned to, as the motive is: a right place that was only picked proves nothing. A case that
@@ -335,12 +376,19 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
   const verdict: Verdict =
     !culpritRight || placeRight === false
       ? 'wrong'
-      : motiveRight && evidenceComplete && placeConcluded
+      : motiveRight && meansRight !== false && evidenceComplete && placeConcluded
         ? 'proven'
         : 'unproven';
   const shortfall =
     verdict === 'unproven'
-      ? shortfallOf(run, { motiveRight, motiveInsightId, evidenceComplete, laidOut })
+      ? shortfallOf(run, {
+          motiveRight,
+          motiveInsightId,
+          meansRight,
+          meansInsightId,
+          evidenceComplete,
+          laidOut,
+        })
       : undefined;
 
   return {
@@ -352,6 +400,7 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
       culpritRight,
       ...(placeRight === undefined ? {} : { placeRight }),
       motiveRight,
+      ...(meansRight === undefined ? {} : { meansRight }),
       evidenceComplete,
       ...(shortfall === undefined ? {} : { shortfall }),
       epilogue: epilogueOf(run, culpritId, shortfall),
@@ -361,6 +410,7 @@ export function accuse(run: DetectiveRunState, input: unknown, rng: Rng): Accuse
         method: truth.method,
         crimeLocationId: truth.crimeLocationId,
         ...(abduction === undefined ? {} : { whereaboutsId: abduction.whereabouts }),
+        ...(homicide === undefined ? {} : { homicide }),
       },
     },
   };

@@ -194,10 +194,13 @@ const OutcomeSchema = z.union([
     // Only an abduction asks for a place; optional, so that a log from before it still reads.
     placeRight: z.boolean().optional(),
     motiveRight: z.boolean(),
+    // Only a homicide asks for the means; optional, so that a log from before it still reads.
+    meansRight: z.boolean().optional(),
     evidenceComplete: z.boolean(),
     shortfall: z
       .object({
         motive: z.object({ held: z.boolean(), offered: z.boolean(), drawn: z.boolean() }),
+        means: z.object({ held: z.boolean(), offered: z.boolean(), drawn: z.boolean() }).optional(),
         // Only an abduction asks for a conclusion about the place; an entry from before it has none.
         place: z.object({ drawn: z.boolean() }).optional(),
         evidence: z.object({

@@ -35011,7 +35011,12 @@ var SolutionSchema = external_exports.object({
    * detail of the place, linked. An accusation that names the place without having drawn it is not proven. Optional, so
    * that the cases of before it keep their seal and are judged as they were.
    */
-  whereaboutsDeductionId: EntityIdSchema.optional()
+  whereaboutsDeductionId: EntityIdSchema.optional(),
+  /**
+   * Only for a homicide: the conclusion of what it was done with, which the hero draws as they draw the motive and names in
+   * the accusation. Optional, so that the cases of before it keep their seal and are judged as they were.
+   */
+  meansDeductionId: EntityIdSchema.optional()
 });
 var WorldEventEffectSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("culprit-flees") }),
@@ -35166,6 +35171,13 @@ var DetectiveCaseSchema = external_exports.object({
     });
   }
   const hasHomicide = detectiveCase.truth.homicide !== void 0;
+  if (formOf(detectiveCase) !== "homicide" && detectiveCase.solution.meansDeductionId !== void 0) {
+    context2.addIssue({
+      code: "custom",
+      path: ["solution", "meansDeductionId"],
+      message: "Only a homicide has a conclusion about what it was done with."
+    });
+  }
   if (formOf(detectiveCase) === "homicide" && !hasHomicide) {
     context2.addIssue({
       code: "custom",
@@ -38491,6 +38503,11 @@ var AccuseIntentSchema = external_exports.object({
   whereaboutsId: EntityIdSchema.optional(),
   /** The insight the hero offers as the motive, or `null` for an accusation without one. */
   motiveInsightId: EntityIdSchema.nullable(),
+  /**
+   * For a homicide, the insight the hero offers as what it was done with, or `null` for none; for no other form, left out
+   * (or `null`, as a host may send it).
+   */
+  meansInsightId: EntityIdSchema.nullable().optional(),
   /** The clues the hero lays out as proof. */
   evidenceClueIds: external_exports.array(EntityIdSchema)
 });
@@ -38571,6 +38588,13 @@ function shortfallOf(run, proof) {
       offered: proof.motiveInsightId !== null,
       drawn: run.insightIds.includes(solution.motiveDeductionId)
     },
+    ...solution.meansDeductionId === void 0 || proof.meansRight === void 0 ? {} : {
+      means: {
+        held: proof.meansRight,
+        offered: proof.meansInsightId !== null && proof.meansInsightId !== void 0,
+        drawn: run.insightIds.includes(solution.meansDeductionId)
+      }
+    },
     ...solution.whereaboutsDeductionId === void 0 ? {} : { place: { drawn: run.insightIds.includes(solution.whereaboutsDeductionId) } },
     evidence: {
       held: proof.evidenceComplete,
@@ -38595,7 +38619,7 @@ function accuse(run, input2, rng) {
   if (run.status !== "active") {
     return refuse2("run-over", `The run is already over (${run.status}).`);
   }
-  const { culpritId, whereaboutsId, motiveInsightId, evidenceClueIds } = parsed.data;
+  const { culpritId, whereaboutsId, motiveInsightId, meansInsightId, evidenceClueIds } = parsed.data;
   if (!run.case.suspects.some(({ id }) => id === culpritId)) {
     return refuse2("unknown-suspect", `"${culpritId}" is not a suspect.`);
   }
@@ -38611,6 +38635,13 @@ function accuse(run, input2, rng) {
       return refuse2("unknown-location", `"${whereaboutsId}" is not a place of this case.`);
     }
   }
+  const homicide = run.case.truth.homicide;
+  if (homicide === void 0 && meansInsightId !== void 0 && meansInsightId !== null) {
+    return refuse2("means-unwanted", "Only a homicide asks what it was done with.");
+  }
+  if (homicide !== void 0 && meansInsightId === void 0) {
+    return refuse2("means-needed", "A homicide needs the insight of what it was done with, or null for none.");
+  }
   if (evidenceClueIds.some((id) => !run.foundClueIds.includes(id))) {
     return refuse2("not-found", "Only clues the hero has found can be laid out as evidence.");
   }
@@ -38618,15 +38649,26 @@ function accuse(run, input2, rng) {
   if (motiveInsightId !== null && !run.insightIds.includes(motiveInsightId)) {
     return refuse2("no-insight", "The hero has made no such deduction.");
   }
+  if (meansInsightId !== void 0 && meansInsightId !== null && !run.insightIds.includes(meansInsightId)) {
+    return refuse2("no-insight", "The hero has made no such deduction.");
+  }
   const { truth, solution } = run.case;
   const placeRight = abduction === void 0 ? void 0 : whereaboutsId === abduction.whereabouts;
   const culpritRight = culpritId === truth.culpritId;
   const motiveRight = motiveInsightId === solution.motiveDeductionId;
+  const meansRight = homicide === void 0 || solution.meansDeductionId === void 0 ? void 0 : meansInsightId === solution.meansDeductionId;
   const laidOut = new Set(evidenceClueIds);
   const evidenceComplete = solution.evidenceChains.some((chain) => chain.every((id) => laidOut.has(id)));
   const placeConcluded = solution.whereaboutsDeductionId === void 0 || run.insightIds.includes(solution.whereaboutsDeductionId);
-  const verdict = !culpritRight || placeRight === false ? "wrong" : motiveRight && evidenceComplete && placeConcluded ? "proven" : "unproven";
-  const shortfall = verdict === "unproven" ? shortfallOf(run, { motiveRight, motiveInsightId, evidenceComplete, laidOut }) : void 0;
+  const verdict = !culpritRight || placeRight === false ? "wrong" : motiveRight && meansRight !== false && evidenceComplete && placeConcluded ? "proven" : "unproven";
+  const shortfall = verdict === "unproven" ? shortfallOf(run, {
+    motiveRight,
+    motiveInsightId,
+    meansRight,
+    meansInsightId,
+    evidenceComplete,
+    laidOut
+  }) : void 0;
   return {
     ok: true,
     run: endRun(endTurn(run, rng), statusOfEndReason(verdict), verdict),
@@ -38636,6 +38678,7 @@ function accuse(run, input2, rng) {
       culpritRight,
       ...placeRight === void 0 ? {} : { placeRight },
       motiveRight,
+      ...meansRight === void 0 ? {} : { meansRight },
       evidenceComplete,
       ...shortfall === void 0 ? {} : { shortfall },
       epilogue: epilogueOf(run, culpritId, shortfall),
@@ -38644,7 +38687,8 @@ function accuse(run, input2, rng) {
         motive: truth.motive,
         method: truth.method,
         crimeLocationId: truth.crimeLocationId,
-        ...abduction === void 0 ? {} : { whereaboutsId: abduction.whereabouts }
+        ...abduction === void 0 ? {} : { whereaboutsId: abduction.whereabouts },
+        ...homicide === void 0 ? {} : { homicide }
       }
     }
   };
@@ -40789,6 +40833,9 @@ function checkReferencesResolve(detectiveCase) {
   if (solution.whereaboutsDeductionId !== void 0) {
     expect(deductionIds, "deduction", solution.whereaboutsDeductionId, "solution.whereaboutsDeductionId");
   }
+  if (solution.meansDeductionId !== void 0) {
+    expect(deductionIds, "deduction", solution.meansDeductionId, "solution.meansDeductionId");
+  }
   solution.evidenceChains.forEach((chain, chainIndex) => {
     chain.forEach((id, clueIndex) => {
       expect(clueIds, "clue", id, `solution.evidenceChains[${String(chainIndex)}][${String(clueIndex)}]`);
@@ -41313,9 +41360,12 @@ var OutcomeSchema = external_exports.union([
     // Only an abduction asks for a place; optional, so that a log from before it still reads.
     placeRight: external_exports.boolean().optional(),
     motiveRight: external_exports.boolean(),
+    // Only a homicide asks for the means; optional, so that a log from before it still reads.
+    meansRight: external_exports.boolean().optional(),
     evidenceComplete: external_exports.boolean(),
     shortfall: external_exports.object({
       motive: external_exports.object({ held: external_exports.boolean(), offered: external_exports.boolean(), drawn: external_exports.boolean() }),
+      means: external_exports.object({ held: external_exports.boolean(), offered: external_exports.boolean(), drawn: external_exports.boolean() }).optional(),
       // Only an abduction asks for a conclusion about the place; an entry from before it has none.
       place: external_exports.object({ drawn: external_exports.boolean() }).optional(),
       evidence: external_exports.object({
@@ -41810,6 +41860,7 @@ function detailOf(run, entry) {
           verdict: outcome.verdict,
           culpritRight: outcome.culpritRight,
           ...outcome.placeRight === void 0 ? {} : { placeRight: outcome.placeRight },
+          ...outcome.meansRight === void 0 ? {} : { meansRight: outcome.meansRight },
           culprit: nameOf(run, outcome.truth.culpritId),
           motive: outcome.truth.motive,
           method: outcome.truth.method,
@@ -57174,7 +57225,7 @@ async function playIntent(context2, turn, intent) {
 // packages/mcp/src/tools/accuse.ts
 var accuse2 = defineTool({
   name: "accuse",
-  description: 'The final accusation, and it ends the run for good: it cannot be undone. `culpritId` is a suspect from run_view, `motiveInsightId` the id of an insight the hero has made as the motive (or null for none) and `evidenceClueIds` the found clues laid out as proof. In an abduction (`form` of the view) it also takes `whereaboutsId`, the id of the place on the map where the hero says the victim is kept, which an abduction needs and no other case accepts. Call it only after the player has confirmed these choices; never to test a theory. The fields are exactly `turn`, `culpritId`, `motiveInsightId`, `evidenceClueIds` and, in an abduction, `whereaboutsId`, and they are easy to confuse with the neighbouring tools: `culpritId` is not `suspectId`, `motiveInsightId` is not `insightId`, `evidenceClueIds` is not `clueIds`; `turn` is a number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with "stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, place): the run is over, so this is the only place the truth is ever shown. For "unproven" it also has a `shortfall`: what the motive and the evidence lacked, clue by clue, and in an abduction whether the conclusion about the place had been drawn (`place.drawn`). Every verdict also has an `epilogue`: the true `course` of the crime in order, the clues `missed` (never found, with their place, part and obstacle) and the false clues that `misled` the hero. Tell it as the closing story, in the form endings.md gives for the verdict, and add nothing the outcome does not contain.',
+  description: 'The final accusation, and it ends the run for good: it cannot be undone. `culpritId` is a suspect from run_view, `motiveInsightId` the id of an insight the hero has made as the motive (or null for none) and `evidenceClueIds` the found clues laid out as proof. In an abduction (`form` of the view) it also takes `whereaboutsId`, the id of the place on the map where the hero says the victim is kept, which an abduction needs and no other case accepts. Call it only after the player has confirmed these choices; never to test a theory. The fields are exactly `turn`, `culpritId`, `motiveInsightId`, `evidenceClueIds` and, in an abduction, `whereaboutsId`, and they are easy to confuse with the neighbouring tools: `culpritId` is not `suspectId`, `motiveInsightId` is not `insightId`, `evidenceClueIds` is not `clueIds`; `turn` is a number and `evidenceClueIds` an array of clue ids (never a string), empty if none. Pass `turn` from run_view: a stale one is refused with "stale-turn", so a retried call can never accuse twice. The result `outcome` has the verdict ("proven", "unproven" or "wrong"), what was right, and the truth of the case (culprit, motive, method, place): the run is over, so this is the only place the truth is ever shown. For "unproven" it also has a `shortfall`: what the motive and the evidence lacked, clue by clue, in an abduction whether the conclusion about the place had been drawn (`place.drawn`) and in a homicide whether the means had been offered and drawn (`means`). In a homicide the accusation also names what it was done with (`meansInsightId`, an insight the hero has drawn, or null for none), and the outcome says whether it was right (`meansRight`). Every verdict also has an `epilogue`: the true `course` of the crime in order, the clues `missed` (never found, with their place, part and obstacle) and the false clues that `misled` the hero. Tell it as the closing story, in the form endings.md gives for the verdict, and add nothing the outcome does not contain.',
   inputSchema: external_exports.object({
     turn: TurnSchema,
     culpritId: EntityIdSchema,
@@ -57183,14 +57234,17 @@ var accuse2 = defineTool({
     // An abduction names the place where the victim is kept; any other case leaves it out (or null, as a host may send).
     whereaboutsId: external_exports.union([EntityIdSchema, external_exports.null().transform(() => void 0)]).optional(),
     motiveInsightId: external_exports.union([external_exports.null(), external_exports.literal("null").transform(() => null), EntityIdSchema]),
+    // A homicide names what it was done with, as an insight the hero has drawn, or null for none; any other case leaves it out.
+    meansInsightId: external_exports.union([external_exports.null(), external_exports.literal("null").transform(() => null), EntityIdSchema]).optional(),
     evidenceClueIds: external_exports.array(EntityIdSchema)
   }),
   outputSchema: TurnResultSchema,
   // A place left out is left out of the intent altogether: the log keeps the intent as it was sent.
-  handler: ({ turn, whereaboutsId, ...rest }, context2) => playIntent(context2, turn, {
+  handler: ({ turn, whereaboutsId, meansInsightId, ...rest }, context2) => playIntent(context2, turn, {
     kind: "accuse",
     ...rest,
-    ...whereaboutsId === void 0 ? {} : { whereaboutsId }
+    ...whereaboutsId === void 0 ? {} : { whereaboutsId },
+    ...meansInsightId === void 0 ? {} : { meansInsightId }
   })
 });
 
