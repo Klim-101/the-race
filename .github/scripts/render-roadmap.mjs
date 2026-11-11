@@ -6,7 +6,8 @@ import prettier from 'prettier';
 
 const START_MARKER = '<!-- roadmap:progress:start -->';
 const END_MARKER = '<!-- roadmap:progress:end -->';
-const PHASE_TITLE_PATTERN = /^Phase (\d+) — /;
+// A phase may carry a letter ("Phase 4a — ..."): a part split off a phase, listed right after it.
+const PHASE_TITLE_PATTERN = /^Phase (\d+)([a-z]?) — /;
 
 /**
  * Rewrites the generated progress table in the roadmap from repository milestones.
@@ -23,7 +24,10 @@ export async function renderRoadmap({ github, owner, repo, roadmapPath, today })
   const phases = milestones
     .map((milestone) => ({ milestone, match: PHASE_TITLE_PATTERN.exec(milestone.title) }))
     .filter(({ match }) => match !== null)
-    .sort((left, right) => Number(left.match[1]) - Number(right.match[1]))
+    .sort(
+      (left, right) =>
+        Number(left.match[1]) - Number(right.match[1]) || left.match[2].localeCompare(right.match[2]),
+    )
     .map(({ milestone }) => milestone);
 
   const rows = phases.map((milestone) => {

@@ -71,6 +71,29 @@ describe('renderRoadmap', () => {
     expect(lines).toContain('_Last synchronized: 2026-10-30._');
   });
 
+  it('lists a lettered phase right after the phase it was split from, before the next number', async () => {
+    const github = fakeGithub([
+      milestone('Phase 5 — New archetypes', 5, 1),
+      milestone('Phase 4a — New kinds of case', 1, 0),
+      milestone('Phase 4 — Roguelike loop', 0, 3),
+      milestone('Phase 4b — Another part', 2, 0),
+    ]);
+
+    await renderRoadmap({ github, owner: 'o', repo: 'r', roadmapPath, today: '2026-10-30' });
+
+    const rows = readFileSync(roadmapPath, 'utf8')
+      .split('\n')
+      .filter((line) => line.startsWith('| Phase '))
+      .map((row) => row.split('|')[1]?.trim());
+    expect(rows).toEqual([
+      'Phase',
+      'Phase 4 — Roguelike loop',
+      'Phase 4a — New kinds of case',
+      'Phase 4b — Another part',
+      'Phase 5 — New archetypes',
+    ]);
+  });
+
   it('reports no change when only the date would differ', async () => {
     const github = fakeGithub([milestone('Phase 0 — Foundation', 1, 1)]);
     await renderRoadmap({ github, owner: 'o', repo: 'r', roadmapPath, today: '2026-10-30' });
