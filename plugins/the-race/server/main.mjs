@@ -34944,7 +34944,13 @@ var WitnessSchema = external_exports.object({
   locationId: EntityIdSchema,
   name: NarrativeTextSchema,
   persona: NarrativeTextSchema,
-  hours: LeadWindowSchema
+  hours: LeadWindowSchema,
+  /**
+   * Set for the victim of an attempt, who lives and can be asked: the witness is the victim, with their name. What they
+   * saw is cut by the engine: they did not see who did it, so the culprit is never among what they tell. Only the victim of
+   * an attempt is one, and a case has at most one.
+   */
+  victim: external_exports.literal(true).optional()
 });
 var DeductionSchema = external_exports.object({
   id: EntityIdSchema,
@@ -35146,6 +35152,26 @@ var DetectiveCaseSchema = external_exports.object({
         });
       }
     });
+  });
+  const { homicide } = detectiveCase.truth;
+  (detectiveCase.witnesses ?? []).flatMap((witness, index) => witness.victim === true ? [{ witness, index }] : []).forEach(({ witness, index }, order) => {
+    const path = ["witnesses", index];
+    if (homicide?.fate !== "attempt") {
+      context2.addIssue({
+        code: "custom",
+        path: [...path, "victim"],
+        message: "Only the victim of an attempt, who lives, is a witness."
+      });
+    } else if (witness.name !== homicide.victim.name) {
+      context2.addIssue({
+        code: "custom",
+        path: [...path, "name"],
+        message: "The witness who is the victim has the name of the victim of the case."
+      });
+    }
+    if (order > 0) {
+      context2.addIssue({ code: "custom", path: [...path, "victim"], message: "A case has one victim." });
+    }
   });
   const hasAbduction = detectiveCase.truth.abduction !== void 0;
   if (formOf(detectiveCase) === "abduction" && !hasAbduction) {
@@ -36756,7 +36782,7 @@ function witnessesHere(run) {
 function sightingsOf(detectiveCase, witness, aboutSuspectId) {
   const suspectIds = new Set(detectiveCase.suspects.map(({ id }) => id));
   return detectiveCase.truth.timeline.filter(
-    ({ actorId, locationId, atMinute }) => locationId === witness.locationId && suspectIds.has(actorId) && (aboutSuspectId === void 0 || actorId === aboutSuspectId) && inWindow(witness.hours, atMinute % MINUTES_IN_DAY)
+    ({ actorId, locationId, atMinute }) => locationId === witness.locationId && suspectIds.has(actorId) && (witness.victim !== true || actorId !== detectiveCase.truth.culpritId) && (aboutSuspectId === void 0 || actorId === aboutSuspectId) && inWindow(witness.hours, atMinute % MINUTES_IN_DAY)
   ).map(({ actorId, atMinute }) => ({ suspectId: actorId, minuteOfDay: atMinute % MINUTES_IN_DAY }));
 }
 function holdsClueAbout(run, suspectId) {
@@ -37583,7 +37609,12 @@ function viewRun(run) {
     map: viewMap(run),
     placeParts: viewPlaceParts(run),
     leads: viewLeads(run),
-    witnesses: witnessesHere(run).map(({ id, name, persona }) => ({ id, name, persona })),
+    witnesses: witnessesHere(run).map(({ id, name, persona, victim }) => ({
+      id,
+      name,
+      persona,
+      victim: victim === true
+    })),
     sightings: run.sightings.map(({ witnessId, suspectId, minuteOfDay, day }) => {
       const witness = requireWitness(detectiveCase, witnessId);
       return {

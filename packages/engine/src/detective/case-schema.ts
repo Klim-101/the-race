@@ -339,6 +339,12 @@ export const WitnessSchema = z.object({
   name: NarrativeTextSchema,
   persona: NarrativeTextSchema,
   hours: LeadWindowSchema,
+  /**
+   * Set for the victim of an attempt, who lives and can be asked: the witness is the victim, with their name. What they
+   * saw is cut by the engine: they did not see who did it, so the culprit is never among what they tell. Only the victim of
+   * an attempt is one, and a case has at most one.
+   */
+  victim: z.literal(true).optional(),
 });
 export type Witness = z.infer<typeof WitnessSchema>;
 
@@ -644,6 +650,28 @@ export const DetectiveCaseSchema = z
         }
       });
     });
+    const { homicide } = detectiveCase.truth;
+    (detectiveCase.witnesses ?? [])
+      .flatMap((witness, index) => (witness.victim === true ? [{ witness, index }] : []))
+      .forEach(({ witness, index }, order) => {
+        const path = ['witnesses', index];
+        if (homicide?.fate !== 'attempt') {
+          context.addIssue({
+            code: 'custom',
+            path: [...path, 'victim'],
+            message: 'Only the victim of an attempt, who lives, is a witness.',
+          });
+        } else if (witness.name !== homicide.victim.name) {
+          context.addIssue({
+            code: 'custom',
+            path: [...path, 'name'],
+            message: 'The witness who is the victim has the name of the victim of the case.',
+          });
+        }
+        if (order > 0) {
+          context.addIssue({ code: 'custom', path: [...path, 'victim'], message: 'A case has one victim.' });
+        }
+      });
     const hasAbduction = detectiveCase.truth.abduction !== undefined;
     if (formOf(detectiveCase) === 'abduction' && !hasAbduction) {
       context.addIssue({
