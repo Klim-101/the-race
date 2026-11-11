@@ -35,6 +35,7 @@ const PRIORITY_BEFORE: Record<CaseIssueCode, number> = {
   'unreachable-location': 7,
   'unobtainable-clue': 8,
   'unreachable-suspect': 9,
+  'solution-needs-night': 9.02,
   'clue-not-tied': 9.05,
   'lie-without-admission': 9.06,
   'lie-chain-broken': 9.07,
