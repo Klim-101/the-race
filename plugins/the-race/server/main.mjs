@@ -35017,6 +35017,7 @@ function promisedEventsOf(days) {
 var RandomEventEffectSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("flavor") }),
   external_exports.object({ kind: external_exports.literal("location-closes"), locationId: EntityIdSchema }),
+  external_exports.object({ kind: external_exports.literal("place-opens"), locationId: EntityIdSchema }),
   external_exports.object({ kind: external_exports.literal("suspect-moves"), suspectId: EntityIdSchema, locationId: EntityIdSchema }),
   external_exports.object({ kind: external_exports.literal("source-closes"), source: InformationSourceSchema }),
   external_exports.object({ kind: external_exports.literal("time-lost"), minutes: external_exports.int().min(15).max(MAX_RANDOM_EVENT_MINUTES) }),
@@ -35029,7 +35030,7 @@ var RandomEventDurationSchema = external_exports.discriminatedUnion("kind", [
   external_exports.object({ kind: external_exports.literal("permanent") })
 ]);
 function isLastingEffect(effect) {
-  return effect.kind === "location-closes" || effect.kind === "suspect-moves" || effect.kind === "source-closes";
+  return effect.kind === "location-closes" || effect.kind === "place-opens" || effect.kind === "suspect-moves" || effect.kind === "source-closes";
 }
 var RandomEventSchema = external_exports.object({
   id: EntityIdSchema,
@@ -35208,6 +35209,7 @@ var ISSUE_ORDER = [
   "event-cuts-solution",
   "random-event-out-of-range",
   "random-event-cuts-solution",
+  "event-opens-nothing",
   "random-event-violence",
   "too-few-random-events",
   "random-events-miss-a-day",
@@ -36132,6 +36134,55 @@ function takeTool(run, toolId, dropId) {
   return { ok: true, run: { ...run, kit: [...kept, taken] } };
 }
 
+// packages/engine/src/detective/leads.ts
+var LEADS_RULESET_VERSION = 13;
+var leadsApply = (run) => run.rulesetVersion >= LEADS_RULESET_VERSION;
+function isLeadEarned(run, leadId) {
+  return run.earnedLeads.some((earned) => earned.leadId === leadId);
+}
+function isPlaceKnown(run, location) {
+  if (!leadsApply(run) || location.requiresLead === void 0) return true;
+  return run.visitedLocationIds.includes(location.id) || isLeadEarned(run, location.requiresLead);
+}
+function inWindow(window, minute) {
+  return window.fromMinute < window.untilMinute ? minute >= window.fromMinute && minute < window.untilMinute : minute >= window.fromMinute || minute < window.untilMinute;
+}
+function isOpenAtMinute(location, minute) {
+  return location.hours === void 0 || inWindow(location.hours, minute);
+}
+function isLeadOpen(run, leadId) {
+  const window = run.case.leads?.find(({ id }) => id === leadId)?.window;
+  return window === void 0 || inWindow(window, run.clock.minute);
+}
+function leadsEarnedBy(run, deed) {
+  if (!leadsApply(run)) return [];
+  return (run.case.leads ?? []).filter(
+    (lead) => !isLeadEarned(run, lead.id) && deedKey(lead.earnedBy) === deedKey(deed) && toolFits(lead.earnedBy, deed)
+  );
+}
+function toolFits(trigger, deed) {
+  return trigger.kind !== "study" || deed.kind !== "study" || trigger.tool === void 0 || trigger.tool === deed.tool;
+}
+function deedKey(deed) {
+  switch (deed.kind) {
+    case "clue":
+      return `clue:${deed.clueId}`;
+    case "talk":
+      return `talk:${deed.suspectId}`;
+    case "lie":
+      return `lie:${deed.lieId}`;
+    case "deduction":
+      return `deduction:${deed.deductionId}`;
+    case "locals":
+      return `locals:${deed.locationId}`;
+    case "study":
+      return `study:${deed.clueId}`;
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever2(deed);
+  }
+}
+
 // packages/engine/src/detective/solvability.ts
 function withEffect(standing, effect) {
   switch (effect.kind) {
@@ -36187,7 +36238,7 @@ var DEADLINE_CHANCE_GROWTH_PERCENT = 15;
 var DEADLINE_HARM_WEIGHT_GROWTH = 0.5;
 var TRAIT_WEIGHT_FACTOR = 2;
 function isHarmfulEffect(effect) {
-  return effect.kind !== "flavor";
+  return effect.kind !== "flavor" && effect.kind !== "place-opens";
 }
 function poolOf(run) {
   return run.case.randomEvents ?? [];
@@ -36205,6 +36256,14 @@ function activeEffects(run) {
 }
 function isLocationClosed(run, locationId) {
   return run.closedLocationIds.includes(locationId) || activeEffects(run).some((effect) => effect.kind === "location-closes" && effect.locationId === locationId);
+}
+function isOpenedByEvent(run, locationId) {
+  return activeEffects(run).some(
+    (effect) => effect.kind === "place-opens" && effect.locationId === locationId
+  );
+}
+function isOpenNow(run, location) {
+  return isOpenAtMinute(location, run.clock.minute) || isOpenedByEvent(run, location.id);
 }
 function closedSourcesOf(run) {
   return /* @__PURE__ */ new Set([
@@ -36272,6 +36331,7 @@ function applyEffect(run, effect) {
   switch (effect.kind) {
     case "flavor":
     case "location-closes":
+    case "place-opens":
     case "suspect-moves":
     case "source-closes":
       return run;
@@ -36493,55 +36553,6 @@ function locationScene(run, location) {
   const added = scenesOf(run).filter(({ locationId }) => locationId === location.id);
   if (added.length === 0) return location.situations;
   return [.../* @__PURE__ */ new Set([...location.situations, ...added.map(({ trigger }) => trigger)])];
-}
-
-// packages/engine/src/detective/leads.ts
-var LEADS_RULESET_VERSION = 13;
-var leadsApply = (run) => run.rulesetVersion >= LEADS_RULESET_VERSION;
-function isLeadEarned(run, leadId) {
-  return run.earnedLeads.some((earned) => earned.leadId === leadId);
-}
-function isPlaceKnown(run, location) {
-  if (!leadsApply(run) || location.requiresLead === void 0) return true;
-  return run.visitedLocationIds.includes(location.id) || isLeadEarned(run, location.requiresLead);
-}
-function inWindow(window, minute) {
-  return window.fromMinute < window.untilMinute ? minute >= window.fromMinute && minute < window.untilMinute : minute >= window.fromMinute || minute < window.untilMinute;
-}
-function isOpenAtMinute(location, minute) {
-  return location.hours === void 0 || inWindow(location.hours, minute);
-}
-function isLeadOpen(run, leadId) {
-  const window = run.case.leads?.find(({ id }) => id === leadId)?.window;
-  return window === void 0 || inWindow(window, run.clock.minute);
-}
-function leadsEarnedBy(run, deed) {
-  if (!leadsApply(run)) return [];
-  return (run.case.leads ?? []).filter(
-    (lead) => !isLeadEarned(run, lead.id) && deedKey(lead.earnedBy) === deedKey(deed) && toolFits(lead.earnedBy, deed)
-  );
-}
-function toolFits(trigger, deed) {
-  return trigger.kind !== "study" || deed.kind !== "study" || trigger.tool === void 0 || trigger.tool === deed.tool;
-}
-function deedKey(deed) {
-  switch (deed.kind) {
-    case "clue":
-      return `clue:${deed.clueId}`;
-    case "talk":
-      return `talk:${deed.suspectId}`;
-    case "lie":
-      return `lie:${deed.lieId}`;
-    case "deduction":
-      return `deduction:${deed.deductionId}`;
-    case "locals":
-      return `locals:${deed.locationId}`;
-    case "study":
-      return `study:${deed.clueId}`;
-    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
-    default:
-      return assertNever2(deed);
-  }
 }
 
 // packages/engine/src/detective/suspect-mood.ts
@@ -37306,7 +37317,7 @@ function signalViewOf(run) {
 }
 function blockedWay(run, location, visited) {
   if (isLocationClosed(run, location.id)) return "closed";
-  if (!isOpenAtMinute(location, run.clock.minute)) return "closed-hours";
+  if (!isOpenNow(run, location)) return "closed-hours";
   const { access } = location;
   return !visited && access.kind === "clue" && !run.foundClueIds.includes(access.clueId) ? "locked" : null;
 }
@@ -38915,7 +38926,7 @@ function resolveMove(run, rng, locationId) {
     return refuse3("location-closed", `"${locationId}" has been closed.`);
   }
   const destination = locationById(detectiveCase, locationId);
-  if (!isOpenAtMinute(destination, run.clock.minute)) {
+  if (!isOpenNow(run, destination)) {
     return refuse3("closed-hours", `"${locationId}" is shut at this hour: it is open at another time of day.`);
   }
   const { access } = destination;
@@ -40268,9 +40279,16 @@ function checkRandomEvents(detectiveCase, hero, traits, locale, minEvents, conte
       });
     };
     let isResolved = true;
-    if ((effect.kind === "location-closes" || effect.kind === "suspect-moves") && !locationIds.has(effect.locationId)) {
+    if ((effect.kind === "location-closes" || effect.kind === "place-opens" || effect.kind === "suspect-moves") && !locationIds.has(effect.locationId)) {
       unknown2("location", effect.locationId, "locationId");
       isResolved = false;
+    }
+    if (effect.kind === "place-opens" && locationIds.has(effect.locationId) && detectiveCase.locations.find(({ id }) => id === effect.locationId)?.hours === void 0) {
+      issues.push({
+        code: "event-opens-nothing",
+        path: `${path}.effect.locationId`,
+        message: `The place "${effect.locationId}" has no opening hours, so there is nothing for this event to open.`
+      });
     }
     if (effect.kind === "suspect-moves" && !suspectIds.has(effect.suspectId)) {
       unknown2("suspect", effect.suspectId, "suspectId");

@@ -65,7 +65,7 @@ import { VENUE_RULESET_VERSION, sitsLeft } from './venue.js';
 import { offeredHere } from './stock.js';
 import { TraitSceneSchema, drawTraitScenes } from './trait-scenes.js';
 import { MAX_LUCK_TOKENS, MAX_TOOL_SLOTS, START_TOOL_SLOTS } from '../progress.js';
-import { isLeadEarned, isLeadOpen, isOpenAtMinute, isPlaceKnown, leadsEarnedBy } from './leads.js';
+import { isLeadEarned, isLeadOpen, isPlaceKnown, leadsEarnedBy } from './leads.js';
 import { SUSPECT_MOODS, isClosed, moodOf, moodWord } from './suspect-mood.js';
 import { SEARCH_BY_PART_RULESET_VERSION, partsOfPlace } from './search-parts.js';
 import {
@@ -92,7 +92,7 @@ import {
 import { deadlineAt, minutesToDeadline } from './abduction.js';
 import { clueNumber } from './clue-number.js';
 import { buildNeighbors } from './obtainability.js';
-import { isLocationClosed, suspectPlace } from './random-events.js';
+import { isLocationClosed, isOpenNow, suspectPlace } from './random-events.js';
 import { CASE_SEAL_PATTERN, isCaseSealIntact, sealCase } from './seal.js';
 import { viewClaims } from './claims.js';
 import { requireWitness, witnessesHere } from './witnesses.js';
@@ -1163,7 +1163,7 @@ export interface Hours {
 
 function blockedWay(run: DetectiveRunState, location: Location, visited: boolean): Blocked {
   if (isLocationClosed(run, location.id)) return 'closed';
-  if (!isOpenAtMinute(location, run.clock.minute)) return 'closed-hours';
+  if (!isOpenNow(run, location)) return 'closed-hours';
   const { access } = location;
   return !visited && access.kind === 'clue' && !run.foundClueIds.includes(access.clueId) ? 'locked' : null;
 }

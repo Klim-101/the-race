@@ -69,6 +69,7 @@ const PRIORITY_BEFORE: Record<CaseIssueCode, number> = {
   'event-cuts-solution': 23,
   'random-event-out-of-range': 24,
   'random-event-cuts-solution': 25,
+  'event-opens-nothing': 25.5,
   'random-event-violence': 26,
   'too-few-random-events': 27,
   'random-events-miss-a-day': 27.5,
