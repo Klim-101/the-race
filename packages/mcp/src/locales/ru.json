@@ -118,6 +118,13 @@
       "timeLeft": "Осталось рабочего времени",
       "condition": "Состояние",
       "remembered": "Помнят",
+      "awake": "Не спит",
+      "awakeBands": {
+        "evening": "впереди ночь без сна",
+        "past-midnight": "за полночь",
+        "deep": "глубокая ночь",
+        "dawn": "ждёт рассвета"
+      },
       "reputationBands": {
         "good": "доброе имя",
         "middling": "имя под сомнением",

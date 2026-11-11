@@ -118,6 +118,13 @@
       "timeLeft": "Working time left",
       "condition": "Condition",
       "remembered": "Remembered",
+      "awake": "Staying up",
+      "awakeBands": {
+        "evening": "a night without sleep ahead",
+        "past-midnight": "past midnight",
+        "deep": "deep in the night",
+        "dawn": "waiting for the dawn"
+      },
       "reputationBands": {
         "good": "good name",
         "middling": "name in doubt",
