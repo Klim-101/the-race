@@ -117,6 +117,7 @@
       "day": "День {day} из {total}, {time}",
       "timeLeft": "Осталось рабочего времени",
       "condition": "Состояние",
+      "remembered": "Помнят",
       "reputationBands": {
         "good": "доброе имя",
         "middling": "имя под сомнением",
