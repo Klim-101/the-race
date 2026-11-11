@@ -51,6 +51,7 @@ const RULES: Record<CaseIssueCode, Taught> = {
   'unreachable-location': /Every location can be reached from the start/,
   'unobtainable-clue': /Every clue is obtainable/,
   'unreachable-suspect': /every suspect can be found/,
+  'solution-needs-night': /or the engine rejects the case as one that needs the night/,
   // Lies, claims and reactions.
   'clue-not-tied': /must be about the one who told it/,
   'lie-without-admission': /`admission`\*\* \(required/,
@@ -95,10 +96,8 @@ const RULES: Record<CaseIssueCode, Taught> = {
       'the prompt gives the days of an event (`fromDay`, `untilDay`) and the least day of a lasting one, but never says that an event must fall inside the days of the case',
   },
   'random-event-cuts-solution': /A random event may never close a place or source the solution needs/,
-  'event-opens-nothing': {
-    learned:
-      'the prompt does not teach opening hours or the event that opens a place yet (P4-122, #505): no case uses them until it does, and the rejection says the rule',
-  },
+  'event-opens-nothing':
+    /it names a place that has `hours`, or the engine rejects it as an event that opens nothing/,
   'random-event-violence': /No violence or death in the plot or in any event/,
   'too-few-random-events': /randomEvents\*\* \(\*\*required\*\*: at least four/,
   'random-events-miss-a-day': /every day of the case must be covered by some event's/,
@@ -149,11 +148,6 @@ describe("the rules of a case in the generator's prompt", () => {
   });
 
   it('leave only a few codes to the rejection, and the list is the one reported with the change that made it', () => {
-    // 'event-opens-nothing' is here until the prompt teaches opening hours (P4-122, #505), which will take it out.
-    expect(learned.map(([code]) => code)).toEqual([
-      'part-never-shown',
-      'random-event-out-of-range',
-      'event-opens-nothing',
-    ]);
+    expect(learned.map(([code]) => code)).toEqual(['part-never-shown', 'random-event-out-of-range']);
   });
 });

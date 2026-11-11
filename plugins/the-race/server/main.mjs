@@ -35175,6 +35175,7 @@ var ISSUE_ORDER = [
   "unreachable-location",
   "unobtainable-clue",
   "unreachable-suspect",
+  "solution-needs-night",
   "clue-not-tied",
   "lie-without-admission",
   "lie-chain-broken",
@@ -40041,6 +40042,66 @@ function checkLeads(detectiveCase, obtainable) {
   return issues;
 }
 
+// packages/engine/src/detective/checks/night.ts
+function opensInTheDay(hours) {
+  for (let minute = DAY_START_MINUTE; minute < MINUTES_PER_DAY; minute += 1) {
+    if (inWindow(hours, minute)) return true;
+  }
+  return false;
+}
+function checkNight(detectiveCase, hero, traits) {
+  const nightOnly = new Set(
+    detectiveCase.locations.flatMap(
+      ({ id, hours }) => hours !== void 0 && !opensInTheDay(hours) ? [id] : []
+    )
+  );
+  if (nightOnly.size === 0) return [];
+  const issues = [];
+  const needs = (path, what) => {
+    issues.push({
+      code: "solution-needs-night",
+      path,
+      message: `${what} needs a place that is open only at night (${[...nightOnly].join(", ")}). The night may hold extras, never the only way to what the solution needs.`
+    });
+  };
+  if (nightOnly.has(detectiveCase.startLocationId)) {
+    needs("startLocationId", "The place the hero starts in");
+    return issues;
+  }
+  const day = {
+    ...detectiveCase,
+    locations: detectiveCase.locations.filter(({ id }) => !nightOnly.has(id))
+  };
+  const shut = closedSources(traits);
+  const trained = canPassWithTrainedSkill(hero, traits);
+  const ever = canEverPass(hero, traits);
+  const trainedAll = computeObtainable(detectiveCase, trained, shut);
+  const trainedDay = computeObtainable(day, trained, shut);
+  const everAll = computeObtainable(detectiveCase, ever, shut);
+  const everDay = computeObtainable(day, ever, shut);
+  const { evidenceChains, motiveDeductionId } = detectiveCase.solution;
+  evidenceChains.forEach((chain, index) => {
+    if (chain.every((id) => trainedAll.clueIds.has(id)) && !chain.every((id) => trainedDay.clueIds.has(id))) {
+      needs(`solution.evidenceChains[${String(index)}]`, `Evidence chain ${String(index + 1)}`);
+    }
+  });
+  const motiveClueIds = detectiveCase.deductions.filter(({ id }) => id === motiveDeductionId).flatMap(({ clueIds }) => clueIds);
+  if (motiveClueIds.every((id) => everAll.clueIds.has(id)) && !motiveClueIds.every((id) => everDay.clueIds.has(id))) {
+    needs("solution.motiveDeductionId", "The motive");
+  }
+  detectiveCase.suspects.forEach((suspect, index) => {
+    if (suspect.locationId !== void 0 && nightOnly.has(suspect.locationId)) {
+      needs(`suspects[${String(index)}].locationId`, `Suspect "${suspect.id}"`);
+    }
+    suspect.lies.forEach((lie, lieIndex) => {
+      if (canBreakLie(detectiveCase, lie, everAll.clueIds) && !canBreakLie(detectiveCase, lie, everDay.clueIds)) {
+        needs(`suspects[${String(index)}].lies[${String(lieIndex)}]`, `Breaking the lie "${lie.id}"`);
+      }
+    });
+  });
+  return issues;
+}
+
 // packages/engine/src/detective/checks/parts.ts
 function checkParts(detectiveCase, obtainable, requireParts) {
   const issues = [];
@@ -40852,6 +40913,7 @@ function validateCase(input2, context2) {
   const issues = [
     ...checkReachability(detectiveCase, obtainable),
     ...checkSuspectReachability(detectiveCase, obtainable),
+    ...checkNight(detectiveCase, context2.hero, context2.traits),
     ...checkLeads(detectiveCase, obtainable),
     ...checkParts(detectiveCase, obtainable, rules.parts),
     ...checkSolution(detectiveCase, context2.hero, context2.traits, obtainable),

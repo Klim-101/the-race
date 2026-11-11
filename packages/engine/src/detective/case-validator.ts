@@ -20,6 +20,7 @@ import { checkPublicPlaces } from './checks/public-places.js';
 import { checkWitnesses } from './checks/witnesses.js';
 import { checkMapShape } from './checks/map-shape.js';
 import { checkLeads } from './checks/leads.js';
+import { checkNight } from './checks/night.js';
 import { checkParts } from './checks/parts.js';
 import { checkRandomEvents } from './checks/random-events.js';
 import { checkReachability } from './checks/reachability.js';
@@ -101,6 +102,7 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
   const issues = [
     ...checkReachability(detectiveCase, obtainable),
     ...checkSuspectReachability(detectiveCase, obtainable),
+    ...checkNight(detectiveCase, context.hero, context.traits),
     ...checkLeads(detectiveCase, obtainable),
     ...checkParts(detectiveCase, obtainable, rules.parts),
     ...checkSolution(detectiveCase, context.hero, context.traits, obtainable),

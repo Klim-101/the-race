@@ -39,6 +39,7 @@ export const ISSUE_ORDER = [
   'unreachable-location',
   'unobtainable-clue',
   'unreachable-suspect',
+  'solution-needs-night',
   'clue-not-tied',
   'lie-without-admission',
   'lie-chain-broken',
