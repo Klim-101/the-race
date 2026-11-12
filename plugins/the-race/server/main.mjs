@@ -57283,7 +57283,11 @@ var RunSummarySchema = external_exports.object({
   reputation: external_exports.int(),
   warnings: external_exports.array(external_exports.string()),
   location: external_exports.object({ id: external_exports.string(), name: external_exports.string() }),
-  /** The places the hero knows, as in `run_view`, so a HUD never has to rebuild the map from the exits. */
+  /**
+   * The places the hero knows, as in `run_view`, so a HUD never has to rebuild the map from the exits. Left out of the
+   * summary of a turn that changed none of it (a place that appeared or was visited, a block that lifted or fell, a
+   * link): the narrator then takes the map from `run_view`, and the place the hero is in is `location`.
+   */
   map: external_exports.object({
     current: external_exports.string(),
     places: external_exports.array(
@@ -57302,14 +57306,16 @@ var RunSummarySchema = external_exports.object({
       })
     ),
     links: external_exports.array(external_exports.object({ from: external_exports.string(), to: external_exports.string() }))
-  }),
+  }).optional(),
   clueCount: external_exports.int(),
   insightCount: external_exports.int(),
   /** How many of the hero's traits are still hidden: a number and nothing about which. */
   hiddenTraitCount: external_exports.int()
 });
-function summarizeRun(run) {
+function summarizeRun(run, before) {
   const view = viewRun(run);
+  const known = before === void 0 ? void 0 : viewRun(before).map;
+  const mapChanged = known === void 0 || JSON.stringify([known.places, known.links]) !== JSON.stringify([view.map.places, view.map.links]);
   return {
     title: view.title,
     locale: view.locale,
@@ -57323,11 +57329,13 @@ function summarizeRun(run) {
     reputation: view.reputation,
     warnings: [...view.warnings],
     location: { id: view.location.id, name: view.location.name },
-    map: {
-      current: view.map.current,
-      places: view.map.places.map((place) => ({ ...place })),
-      links: view.map.links.map((link) => ({ ...link }))
-    },
+    ...mapChanged ? {
+      map: {
+        current: view.map.current,
+        places: view.map.places.map((place) => ({ ...place })),
+        links: view.map.links.map((link) => ({ ...link }))
+      }
+    } : {},
     clueCount: view.clues.length,
     insightCount: view.insights.length,
     hiddenTraitCount: view.hiddenTraitCount
@@ -57462,7 +57470,7 @@ async function playIntent(context2, turn, intent) {
     ),
     messages: resolution.newMessages.map(({ clueId, channel }) => ({ clueId, channel })),
     ...gainedInTurn(run, resolution.run),
-    view: summarizeRun(resolution.run)
+    view: summarizeRun(resolution.run, run)
   };
 }
 
@@ -57525,7 +57533,7 @@ var ActIntentSchema = external_exports.discriminatedUnion("kind", [
 ]);
 var act = defineTool({
   name: "act",
-  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night, or turn in early after hours awake), stay-up (choose not to sleep tonight: it takes no time, and the hours after midnight are then played, each two of them costing a point of sleep debt, until the dawn or until the hero rests; the places open only at night open to a hero who is up; it is offered in the evening, and refused with "already-awake" if the hero is already doing it), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it; or, with `witnessId` of a person run_view lists under `witnesses`, ask that person what they saw, and with `aboutSuspectId` only about that one suspect), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit), take (`stockId` of something run_view lists under `location.offers`: a tool for the suitcase, with `dropId` of a tool of the suitcase to put down when it is full, or a supply for the pockets) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn. The clues and conclusions the turn gave are in `clues` and `insights` with their texts, so a turn needs no run_view to be told. With `luck: true` on move, search, ask or study the hero spends a luck token (`luckTokens.left` in run_view) if the first die of a check fails: the check is rolled again and the second die stands, and the token is spent only then (`luckSpent` in the result); with none left the call is refused with "no-luck". Offer it only when the player asks to push their luck. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
+  description: 'Carries out one action of the hero in the world: look (a quick glance round the place: it shows its parts and what lies in plain sight), move (`locationId` of a neighbouring place from run_view exits), search (a thorough search: of the whole place, or, in a place whose `location.parts` run_view lists, of one part, with its `partId`, and against the obstacle of a part with a `toolId` from the kit, or the best fit when it is left out), rest (sleep through the night, or turn in early after hours awake), stay-up (choose not to sleep tonight: it takes no time, and the hours after midnight are then played, each two of them costing a point of sleep debt, until the dawn or until the hero rests; the places open only at night open to a hero who is up; it is offered in the evening, and refused with "already-awake" if the hero is already doing it), ask (ask the locals for a rumour about a place, a contacts roll, which cash from the kit eases; `toolId` names it; or, with `witnessId` of a person run_view lists under `witnesses`, ask that person what they saw, and with `aboutSuspectId` only about that one suspect), study (study a clue the hero holds, `clueId` as run_view gave it, with the best tool of the kit or the `toolId` named, for a lead), sit (sit down for a while at a venue, a teahouse or a cafe, to win back a point of nerves), use (`itemId` of a supply in the kit), take (`stockId` of something run_view lists under `location.offers`: a tool for the suitcase, with `dropId` of a tool of the suitcase to put down when it is full, or a supply for the pockets) or reread (`clueId` of a found clue that run_view marks garbled). Call it once per player action, only while the run is active, with ids exactly as run_view gave them. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes, so repeating a call that already worked is harmless. The result is `outcome` (what the engine decided: tell it faithfully, see the outcomes reference) and `view`, a short summary of the run after the turn (its `map` only when the turn changed a place, a way or a block; otherwise the map is the one run_view gave, and `location` says where the hero is). The clues and conclusions the turn gave are in `clues` and `insights` with their texts, so a turn needs no run_view to be told. With `luck: true` on move, search, ask or study the hero spends a luck token (`luckTokens.left` in run_view) if the first die of a check fails: the check is rolled again and the second die stands, and the token is spent only then (`luckSpent` in the result); with none left the call is refused with "no-luck". Offer it only when the player asks to push their luck. A refusal (a locked door, an unknown id) changes nothing and costs no time. Do not use it to talk to a suspect (question), link clues (deduce) or accuse (accuse).',
   inputSchema: external_exports.object({ turn: TurnSchema, intent: ActIntentSchema }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, intent }, context2) => playIntent(context2, turn, intent)

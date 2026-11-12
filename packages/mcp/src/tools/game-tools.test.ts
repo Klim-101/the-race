@@ -393,7 +393,7 @@ describe('the turn tools', () => {
 });
 
 describe('the summary of a turn', () => {
-  it('carries the known map, the title and the language, the same as run_view, after every kind of turn', async () => {
+  it('carries the title and the language after every kind of turn, and the map only when a turn changed it', async () => {
     const context = await activeRun();
     const first = (await call(runView, {}, context)).body as {
       title: string;
@@ -405,14 +405,15 @@ describe('the summary of a turn', () => {
     const looked = await call(act, { turn: 0, intent: { kind: 'look' } }, context);
     const moved = await call(act, { turn: 1, intent: { kind: 'move', locationId: exit } }, context);
     const after = (await call(runView, {}, context)).body as { map: unknown };
+    const lookedAgain = await call(act, { turn: 2, intent: { kind: 'look' } }, context);
 
-    for (const result of [looked, moved]) {
+    for (const result of [looked, moved, lookedAgain]) {
       expect(result.body).toMatchObject({ view: { title: first.title, locale: first.locale } });
     }
+    // A look at the start changes no place; the first visit to one does, and the map then is what run_view says.
+    expect(looked.body.view).not.toHaveProperty('map');
     expect((moved.body.view as { map: unknown }).map).toEqual(after.map);
-    expect((looked.body.view as { map: { current: string } }).map.current).not.toBe(
-      (moved.body.view as { map: { current: string } }).map.current,
-    );
+    expect(lookedAgain.body.view).toMatchObject({ location: { id: exit } });
   });
 });
 

@@ -58,34 +58,52 @@ export const RunSummarySchema = z.object({
   reputation: z.int(),
   warnings: z.array(z.string()),
   location: z.object({ id: z.string(), name: z.string() }),
-  /** The places the hero knows, as in `run_view`, so a HUD never has to rebuild the map from the exits. */
-  map: z.object({
-    current: z.string(),
-    places: z.array(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-        visited: z.boolean(),
-        blocked: z.enum(['locked', 'closed', 'closed-hours']).nullable(),
-        /** The hours the place is open in, as the sign on its door; `null` for a place open at every hour. */
-        hours: z.object({ fromMinute: z.int(), untilMinute: z.int() }).nullable(),
-        /** The reason of the lead that named the place, until the hero has been there. */
-        lead: z.string().nullable(),
-        /** Inside a building or out of doors, and for a room the building it belongs to. */
-        exposure: z.enum(['indoor', 'outdoor']),
-        building: z.string().nullable(),
-      }),
-    ),
-    links: z.array(z.object({ from: z.string(), to: z.string() })),
-  }),
+  /**
+   * The places the hero knows, as in `run_view`, so a HUD never has to rebuild the map from the exits. Left out of the
+   * summary of a turn that changed none of it (a place that appeared or was visited, a block that lifted or fell, a
+   * link): the narrator then takes the map from `run_view`, and the place the hero is in is `location`.
+   */
+  map: z
+    .object({
+      current: z.string(),
+      places: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          visited: z.boolean(),
+          blocked: z.enum(['locked', 'closed', 'closed-hours']).nullable(),
+          /** The hours the place is open in, as the sign on its door; `null` for a place open at every hour. */
+          hours: z.object({ fromMinute: z.int(), untilMinute: z.int() }).nullable(),
+          /** The reason of the lead that named the place, until the hero has been there. */
+          lead: z.string().nullable(),
+          /** Inside a building or out of doors, and for a room the building it belongs to. */
+          exposure: z.enum(['indoor', 'outdoor']),
+          building: z.string().nullable(),
+        }),
+      ),
+      links: z.array(z.object({ from: z.string(), to: z.string() })),
+    })
+    .optional(),
   clueCount: z.int(),
   insightCount: z.int(),
   /** How many of the hero's traits are still hidden: a number and nothing about which. */
   hiddenTraitCount: z.int(),
 });
 
-export function summarizeRun(run: DetectiveRunState): z.input<typeof RunSummarySchema> {
+/**
+ * The summary of a run. Given the state `before` the turn, it leaves the map out when the turn changed none of it, for
+ * the map is most of the summary and rarely moves; without it, the map is always there.
+ */
+export function summarizeRun(
+  run: DetectiveRunState,
+  before?: DetectiveRunState,
+): z.input<typeof RunSummarySchema> {
   const view = viewRun(run);
+  const known = before === undefined ? undefined : viewRun(before).map;
+  // The place the hero stands in is `location`, so only the places and the links decide whether the map changed.
+  const mapChanged =
+    known === undefined ||
+    JSON.stringify([known.places, known.links]) !== JSON.stringify([view.map.places, view.map.links]);
   return {
     title: view.title,
     locale: view.locale,
@@ -99,11 +117,15 @@ export function summarizeRun(run: DetectiveRunState): z.input<typeof RunSummaryS
     reputation: view.reputation,
     warnings: [...view.warnings],
     location: { id: view.location.id, name: view.location.name },
-    map: {
-      current: view.map.current,
-      places: view.map.places.map((place) => ({ ...place })),
-      links: view.map.links.map((link) => ({ ...link })),
-    },
+    ...(mapChanged
+      ? {
+          map: {
+            current: view.map.current,
+            places: view.map.places.map((place) => ({ ...place })),
+            links: view.map.links.map((link) => ({ ...link })),
+          },
+        }
+      : {}),
     clueCount: view.clues.length,
     insightCount: view.insights.length,
     hiddenTraitCount: view.hiddenTraitCount,
@@ -321,6 +343,6 @@ export async function playIntent(
     ),
     messages: resolution.newMessages.map(({ clueId, channel }) => ({ clueId, channel })),
     ...gainedInTurn(run, resolution.run),
-    view: summarizeRun(resolution.run),
+    view: summarizeRun(resolution.run, run),
   };
 }

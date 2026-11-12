@@ -149,6 +149,22 @@ describe('applyResult', () => {
     expect(moved?.places).toEqual(MAP.places);
   });
 
+  it('keeps the map it has when a turn left it out, and follows the place the hero is in', () => {
+    const NO_MAP = { view: { ...without(SHORT.view, 'map'), location: { id: 'archive', name: 'Archive' } } };
+    const moved = applyResult(applyResult(null, FULL), NO_MAP);
+
+    expect(moved?.locationId).toBe('archive');
+    expect(moved?.turn).toBe(4);
+    expect(moved?.places).toEqual(MAP.places);
+    expect(moved?.links).toEqual(MAP.links);
+  });
+
+  it('leaves a HUD that is not there alone when a turn brings no map', () => {
+    const NO_MAP = { view: { ...without(SHORT.view, 'map'), location: { id: 'archive', name: 'Archive' } } };
+
+    expect(applyResult(null, NO_MAP)).toBeNull();
+  });
+
   it('forgets nothing it was not told to forget: a map that shrinks is the map', () => {
     const smaller = { ...SHORT.view, map: { current: 'lobby', places: [MAP.places[0]], links: [] } };
 
