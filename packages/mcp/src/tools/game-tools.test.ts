@@ -1051,6 +1051,28 @@ describe('the search by part', () => {
   });
 });
 
+describe('the view of the moment', () => {
+  it('leaves out the history, the plan of the parts and the events of the chronicle, which `full` brings back', async () => {
+    const context = await activeRun();
+    await call(act, { turn: 0, intent: { kind: 'look' } }, context);
+
+    const slim = (await call(runView, {}, context)).body;
+    const full = (await call(runView, { full: true }, context)).body;
+
+    expect(slim).not.toHaveProperty('history');
+    expect(slim).not.toHaveProperty('placeParts');
+    expect(slim.chronicle).not.toHaveProperty('events');
+    expect(slim.chronicle).toHaveProperty('activeMinutesLeft');
+    expect(full).toHaveProperty('history');
+    expect(full).toHaveProperty('placeParts');
+    expect(full.chronicle).toHaveProperty('events');
+    // Everything else is the same in both: the state of the moment is not cut.
+    for (const key of ['clues', 'suspects', 'map', 'location', 'insights', 'kit', 'news']) {
+      expect(slim[key]).toEqual(full[key]);
+    }
+  });
+});
+
 describe('the plan of a building', () => {
   it('holds the noticed parts of the places visited and never a part not noticed or what one holds', async () => {
     const context = gameContext();
@@ -1058,7 +1080,7 @@ describe('the plan of a building', () => {
     await installCase(context, partedSampleCase());
     await call(act, { turn: 0, intent: { kind: 'look' } }, context);
 
-    const view = (await call(runView, {}, context)).body as {
+    const view = (await call(runView, { full: true }, context)).body as {
       placeParts: { placeId: string; parts: { id: string; searched: boolean; gave: string[] }[] }[];
     };
 
