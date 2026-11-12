@@ -58297,9 +58297,16 @@ function takeNotices(context2) {
 }
 
 // packages/mcp/src/tools/run-view.ts
-async function stateOf2(context2) {
+function forNarrator(view, full) {
+  if (full) return { ...view };
+  const left = /* @__PURE__ */ new Set(["history", "placeParts"]);
+  const state = Object.fromEntries(Object.entries(view).filter(([key]) => !left.has(key)));
+  const chronicle = Object.fromEntries(Object.entries(view.chronicle).filter(([key]) => key !== "events"));
+  return { ...state, status: view.status, chronicle };
+}
+async function stateOf2(context2, full) {
   const { run: loaded, damaged } = await loadCurrentRun(context2.saveDir, context2.saveFs);
-  if (loaded?.run.status === "active") return { ...viewRun(loaded.run), endReason: null };
+  if (loaded?.run.status === "active") return { ...forNarrator(viewRun(loaded.run), full), endReason: null };
   const pending = await loadPending(context2.saveDir, context2.saveFs);
   if (pending !== void 0) {
     if (pending.hero === null) return { status: "awaiting-hero", locale: pending.locale };
@@ -58309,18 +58316,19 @@ async function stateOf2(context2) {
       ...viewHero({ hero: pending.hero, traits: pending.traits })
     };
   }
-  if (loaded !== void 0) return { ...viewRun(loaded.run), endReason: loaded.run.endReason };
+  if (loaded !== void 0)
+    return { ...forNarrator(viewRun(loaded.run), full), endReason: loaded.run.endReason };
   const unseen = await takeUnseenDamaged(context2.saveDir, damaged, context2.saveFs);
   return unseen.length === 0 ? { status: "no-run" } : { status: "no-run", unreadableSaves: unseen.length };
 }
 var runView = defineTool({
   name: "run_view",
-  description: 'Shows where things stand, as far as the player may know. Changes nothing, so it is safe to call at any time: at the start of a session to resume, and whenever you need the state. With a run, the result is its public view: `status` (active, won, lost or gave-up), `endReason` once it is over, `turn` (the number the state-changing tools expect), the place, the clues and insights found, the suspects (name and persona only), the clock and the hero (`toolSlots.used` counts only the pieces of the kit with `suitcase: true`; the phone and what the trade of the hero gave take no slot). It never holds the truth, the culprit or an unrevealed trait. With no run, `status` is "awaiting-hero" (run_new was called: ask the player to make a hero), "awaiting-case" (the hero exists: run the case generator) or "no-run" (offer a new run; when it has `unreadableSaves`, an earlier save could not be read and was left alone: say so in one plain line, it blocks nothing; a save is reported once, not at every call). Do not call it again right after a tool whose result you have not yet narrated. Once, after the saves were moved into the game folder, the result also has `savesMoved` (`from`, `to`): tell the player in one plain line, out of the fiction, that their saves now live in `to`.',
-  inputSchema: external_exports.object({}),
+  description: 'Shows where things stand, as far as the player may know. Changes nothing, so it is safe to call at any time: at the start of a session to resume, and whenever you need the state. With a run, the result is its public view: `status` (active, won, lost or gave-up), `endReason` once it is over, `turn` (the number the state-changing tools expect), the place, the clues and insights found, the suspects (name and persona only), the clock and the hero (`toolSlots.used` counts only the pieces of the kit with `suitcase: true`; the phone and what the trade of the hero gave take no slot). It never holds the truth, the culprit or an unrevealed trait. With no run, `status` is "awaiting-hero" (run_new was called: ask the player to make a hero), "awaiting-case" (the hero exists: run the case generator) or "no-run" (offer a new run; when it has `unreadableSaves`, an earlier save could not be read and was left alone: say so in one plain line, it blocks nothing; a save is reported once, not at every call). Do not call it again right after a tool whose result you have not yet narrated. Once, after the saves were moved into the game folder, the result also has `savesMoved` (`from`, `to`): tell the player in one plain line, out of the fiction, that their saves now live in `to`. The view is the state of the moment: it leaves out the history (`history`: where each clue was found, to whom it was shown, the links tried), the plan of the parts of every place visited (`placeParts`) and `chronicle.events` (`news` says the same); the board draws them, and `full: true` returns them too, which the narrator needs rarely.',
+  inputSchema: external_exports.object({ full: external_exports.boolean().optional() }),
   outputSchema: external_exports.looseObject({ status: external_exports.string() }),
-  handler: async (_input, context2) => {
+  handler: async ({ full }, context2) => {
     const notices = takeNotices(context2);
-    return { ...await stateOf2(context2), ...notices };
+    return { ...await stateOf2(context2, full === true), ...notices };
   }
 });
 
