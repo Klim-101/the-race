@@ -47,6 +47,7 @@ export * from './detective/take.js';
 export * from './detective/run-state.js';
 export * from './detective/actions.js';
 export * from './detective/interrogation.js';
+export * from './detective/reaction-manner.js';
 export * from './detective/abduction.js';
 export * from './detective/messages.js';
 export * from './detective/verdict.js';

@@ -1,6 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { mannerOf } from './reaction-manner.js';
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { createRng, D20_SIDES, type Rng } from '../dice.js';
@@ -244,7 +245,9 @@ describe('a sighting in the hands of the hero', () => {
     );
     if (!resolution.ok || resolution.outcome.kind !== 'interrogate') throw new Error('Not a talk.');
 
-    expect(resolution.outcome.presented).toEqual([{ clueId: 'seen-vendor-rival', effect: 'breaks-lie' }]);
+    expect(resolution.outcome.presented).toEqual([
+      { clueId: 'seen-vendor-rival', effect: 'breaks-lie', manner: mannerOf('rival', 'seen-vendor-rival') },
+    ]);
     expect(resolution.outcome.conceded.map(({ lieId }) => lieId)).toEqual(['rival-away']);
   });
 

@@ -1,6 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { mannerOf } from './reaction-manner.js';
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { createRng, D20_SIDES, type Rng } from '../dice.js';
@@ -151,7 +152,9 @@ describe('a show that can change nothing', () => {
 describe('what a shown clue does', () => {
   it('breaks a lie the first time, and confirms it afterwards', () => {
     const first = interrogation(ask(atBaker(), 'baker', 'social', ['cart-tracks'], dice(20)));
-    expect(first.outcome.presented).toEqual([{ clueId: 'cart-tracks', effect: 'breaks-lie' }]);
+    expect(first.outcome.presented).toEqual([
+      { clueId: 'cart-tracks', effect: 'breaks-lie', manner: mannerOf('baker', 'cart-tracks') },
+    ]);
 
     // From the ruleset of stale shows the second show is refused (below); before it, it was made and confirmed.
     const second = interrogation(
@@ -176,8 +179,8 @@ describe('what a shown clue does', () => {
 
     // The flour points at the baker, the ledger is about her; the key is nothing to do with her.
     expect(talk.outcome.presented).toEqual([
-      { clueId: 'flour-crumbs', effect: 'implicates' },
-      { clueId: 'debt-ledger', effect: 'implicates' },
+      { clueId: 'flour-crumbs', effect: 'implicates', manner: mannerOf('baker', 'flour-crumbs') },
+      { clueId: 'debt-ledger', effect: 'implicates', manner: mannerOf('baker', 'debt-ledger') },
       { clueId: 'cellar-key', effect: 'no-effect' },
     ]);
   });
@@ -185,7 +188,9 @@ describe('what a shown clue does', () => {
   it('reads as a lie that fell, and not as an implication, when the clue is both', () => {
     const talk = interrogation(ask(atBaker(), 'baker', 'social', ['flour-crumbs'], dice(20)));
 
-    expect(talk.outcome.presented).toEqual([{ clueId: 'flour-crumbs', effect: 'breaks-lie' }]);
+    expect(talk.outcome.presented).toEqual([
+      { clueId: 'flour-crumbs', effect: 'breaks-lie', manner: mannerOf('baker', 'flour-crumbs') },
+    ]);
   });
 
   it('is about the one a clue is about, and nobody else', () => {
@@ -193,7 +198,9 @@ describe('what a shown clue does', () => {
 
     const talk = interrogation(ask(run, 'rival', 'social', ['blue-glove'], dice(1)));
 
-    expect(talk.outcome.presented).toEqual([{ clueId: 'blue-glove', effect: 'implicates' }]);
+    expect(talk.outcome.presented).toEqual([
+      { clueId: 'blue-glove', effect: 'implicates', manner: mannerOf('rival', 'blue-glove') },
+    ]);
   });
 
   it('is as before in a run from before the talks: nothing but a lie that fell counts', () => {
@@ -281,7 +288,9 @@ describe('putting a conclusion to a suspect', () => {
         ['motive-debt'],
       ),
     );
-    expect(implied.outcome.presentedInsights).toEqual([{ insightId: 'motive-debt', effect: 'implicates' }]);
+    expect(implied.outcome.presentedInsights).toEqual([
+      { insightId: 'motive-debt', effect: 'implicates', manner: mannerOf('baker', 'motive-debt') },
+    ]);
   });
 
   it('is put together with a clue that breaks another lie, each doing its own', () => {
@@ -289,8 +298,12 @@ describe('putting a conclusion to a suspect', () => {
       ask(concluded(), 'baker', 'social', ['cart-tracks'], dice(20), ['motive-debt']),
     );
 
-    expect(talk.outcome.presented).toEqual([{ clueId: 'cart-tracks', effect: 'breaks-lie' }]);
-    expect(talk.outcome.presentedInsights).toEqual([{ insightId: 'motive-debt', effect: 'breaks-lie' }]);
+    expect(talk.outcome.presented).toEqual([
+      { clueId: 'cart-tracks', effect: 'breaks-lie', manner: mannerOf('baker', 'cart-tracks') },
+    ]);
+    expect(talk.outcome.presentedInsights).toEqual([
+      { insightId: 'motive-debt', effect: 'breaks-lie', manner: mannerOf('baker', 'motive-debt') },
+    ]);
     expect(talk.outcome.conceded.map(({ lieId }) => lieId).sort()).toEqual(['baker-asleep', 'baker-solvent']);
   });
 

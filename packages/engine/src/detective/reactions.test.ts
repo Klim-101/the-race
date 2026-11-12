@@ -1,6 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { mannerOf } from './reaction-manner.js';
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { createRng, D20_SIDES, type Rng } from '../dice.js';
@@ -105,7 +106,9 @@ describe('what a suspect says about a clue shown to them', () => {
   it('is the generic answer when the case gives them no line for the clue', () => {
     const { outcome } = show(bakerRun(buildReactionCase()), ['flour-crumbs']);
 
-    expect(outcome.presented).toEqual([{ clueId: 'flour-crumbs', effect: 'implicates' }]);
+    expect(outcome.presented).toEqual([
+      { clueId: 'flour-crumbs', effect: 'implicates', manner: mannerOf('baker', 'flour-crumbs') },
+    ]);
   });
 
   it('is told for each clue shown at once, in the order shown', () => {

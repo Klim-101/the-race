@@ -1,6 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
+import { mannerOf } from './reaction-manner.js';
 import { describe, expect, it } from 'vitest';
 import { buildCheeseCase, buildHero } from '../../test/fixtures/cheese-case.js';
 import { createRng, D20_SIDES, type Rng } from '../dice.js';
@@ -108,8 +109,8 @@ describe('a lie that follows another', () => {
 
     expect(outcome.conceded.map(({ lieId }) => lieId)).toEqual(['baker-asleep']);
     expect(outcome.presented).toEqual([
-      { clueId: 'cart-tracks', effect: 'breaks-lie' },
-      { clueId: 'flour-crumbs', effect: 'implicates' },
+      { clueId: 'cart-tracks', effect: 'breaks-lie', manner: mannerOf('baker', 'cart-tracks') },
+      { clueId: 'flour-crumbs', effect: 'implicates', manner: mannerOf('baker', 'flour-crumbs') },
     ]);
     expect(run.concededLieIds).toEqual(['baker-asleep']);
   });
