@@ -50,6 +50,7 @@ import {
   formOf,
   type CaseForm,
   type CrimeType,
+  type Deduction,
   type DetectiveCase,
   type Exposure,
   type Lead,
@@ -1090,10 +1091,16 @@ export interface DetectiveRunView {
   }[];
   /**
    * How many clues each conclusion still to be made takes, smallest first: a number for each, so the player
-   * knows what size of link to try and how many are left. Never which clues, and never which conclusion is the
-   * motive; a conclusion that has been drawn drops out.
+   * knows what size of link to try and how many are left. Never which clues; a conclusion that has been drawn drops
+   * out.
    */
   readonly openLinks: readonly number[];
+  /**
+   * What each of `openLinks` is about, in the same order (`openLinkKinds[i]` is the kind of the conclusion of size
+   * `openLinks[i]`): the motive, the means, where the victim is, an alibi, or a trail. A subject and nothing more, never
+   * which clues, which suspect or what the answer is.
+   */
+  readonly openLinkKinds: readonly LinkKind[];
   /** Each conclusion with the clues it was drawn from, all of them found. */
   readonly insights: readonly {
     readonly id: string;
@@ -1109,12 +1116,54 @@ export function isCleared(run: DetectiveRunState, suspectId: string): boolean {
   return run.case.deductions.some(({ id, clears }) => clears === suspectId && run.insightIds.includes(id));
 }
 
-/** The clue count of each conclusion not yet made, smallest first. */
-export function openLinkSizes(run: DetectiveRunState): number[] {
+/**
+ * What a conclusion is about, as far as the hero may be told. The kind is read from how the case uses the
+ * conclusion, so no case has to say it and the cases of before it keep their seal. It names a subject and never a
+ * clue, a suspect or the answer: the number of `alibi` conclusions is the number of suspects the case clears, which the
+ * board already shows.
+ * - `motive`: why it was done (`solution.motiveDeductionId`);
+ * - `means`: what it was done with (a homicide's `solution.meansDeductionId`);
+ * - `whereabouts`: where the victim is kept (an abduction's `solution.whereaboutsDeductionId`);
+ * - `alibi`: a conclusion that clears a suspect;
+ * - `trail`: any other, a link of what happened and who was where.
+ */
+export const LINK_KINDS = ['motive', 'means', 'whereabouts', 'alibi', 'trail'] as const;
+export type LinkKind = (typeof LINK_KINDS)[number];
+
+/** The kind of a conclusion of the case, by the first of the uses above that fits it. */
+export function linkKindOf(detectiveCase: DetectiveCase, deduction: Deduction): LinkKind {
+  const { solution } = detectiveCase;
+  if (deduction.id === solution.motiveDeductionId) {
+    return 'motive';
+  }
+  if (deduction.id === solution.meansDeductionId) {
+    return 'means';
+  }
+  if (deduction.id === solution.whereaboutsDeductionId) {
+    return 'whereabouts';
+  }
+  return deduction.clears === undefined ? 'trail' : 'alibi';
+}
+
+/** The conclusions not yet made, smallest first and, among the same size, in the order of `LINK_KINDS`. */
+function openConclusions(run: DetectiveRunState): { size: number; kind: LinkKind }[] {
   return run.case.deductions
     .filter(({ id }) => !run.insightIds.includes(id))
-    .map(({ clueIds }) => new Set(clueIds).size)
-    .toSorted((a, b) => a - b);
+    .map((deduction) => ({
+      size: new Set(deduction.clueIds).size,
+      kind: linkKindOf(run.case, deduction),
+    }))
+    .toSorted((a, b) => a.size - b.size || LINK_KINDS.indexOf(a.kind) - LINK_KINDS.indexOf(b.kind));
+}
+
+/** The clue count of each conclusion not yet made, smallest first. */
+export function openLinkSizes(run: DetectiveRunState): number[] {
+  return openConclusions(run).map(({ size }) => size);
+}
+
+/** The kind of each conclusion not yet made, in the order of `openLinkSizes`: the same index is the same conclusion. */
+export function openLinkKinds(run: DetectiveRunState): LinkKind[] {
+  return openConclusions(run).map(({ kind }) => kind);
 }
 
 function requireLocation(detectiveCase: DetectiveCase, id: string): Location {
@@ -1484,6 +1533,7 @@ export function viewRun(run: DetectiveRunState): DetectiveRunView {
         number: clueNumber(run.hero.name, run.foundClueIds.indexOf(id)),
       })),
     openLinks: openLinkSizes(run),
+    openLinkKinds: openLinkKinds(run),
     insights: detectiveCase.deductions
       .filter(({ id }) => run.insightIds.includes(id))
       .map(({ id, insight, clueIds, clears }) => ({

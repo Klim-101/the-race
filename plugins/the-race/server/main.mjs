@@ -37389,8 +37389,31 @@ function recordDrawnEvent(run, eventId, phase) {
 function isCleared(run, suspectId) {
   return run.case.deductions.some(({ id, clears }) => clears === suspectId && run.insightIds.includes(id));
 }
+var LINK_KINDS = ["motive", "means", "whereabouts", "alibi", "trail"];
+function linkKindOf(detectiveCase, deduction) {
+  const { solution } = detectiveCase;
+  if (deduction.id === solution.motiveDeductionId) {
+    return "motive";
+  }
+  if (deduction.id === solution.meansDeductionId) {
+    return "means";
+  }
+  if (deduction.id === solution.whereaboutsDeductionId) {
+    return "whereabouts";
+  }
+  return deduction.clears === void 0 ? "trail" : "alibi";
+}
+function openConclusions(run) {
+  return run.case.deductions.filter(({ id }) => !run.insightIds.includes(id)).map((deduction) => ({
+    size: new Set(deduction.clueIds).size,
+    kind: linkKindOf(run.case, deduction)
+  })).toSorted((a, b) => a.size - b.size || LINK_KINDS.indexOf(a.kind) - LINK_KINDS.indexOf(b.kind));
+}
 function openLinkSizes(run) {
-  return run.case.deductions.filter(({ id }) => !run.insightIds.includes(id)).map(({ clueIds }) => new Set(clueIds).size).toSorted((a, b) => a - b);
+  return openConclusions(run).map(({ size }) => size);
+}
+function openLinkKinds(run) {
+  return openConclusions(run).map(({ kind }) => kind);
 }
 function requireLocation(detectiveCase, id) {
   const location = detectiveCase.locations.find((candidate2) => candidate2.id === id);
@@ -37670,6 +37693,7 @@ function viewRun(run) {
       number: clueNumber(run.hero.name, run.foundClueIds.indexOf(id))
     })),
     openLinks: openLinkSizes(run),
+    openLinkKinds: openLinkKinds(run),
     insights: detectiveCase.deductions.filter(({ id }) => run.insightIds.includes(id)).map(({ id, insight, clueIds, clears }) => ({
       id,
       insight,
@@ -53778,6 +53802,13 @@ var en_default3 = {
       open: "Links still to be made",
       size: "a link of {n}",
       group: "{count} \xD7 {size}",
+      kinds: {
+        motive: "about the motive",
+        means: "about the means",
+        whereabouts: "about where they are kept",
+        alibi: "about an alibi",
+        trail: "about the trail"
+      },
       allDrawn: "Every conclusion has been drawn."
     },
     chronicle: {
@@ -54556,6 +54587,13 @@ var ru_default2 = {
       open: "\u0421\u0432\u044F\u0437\u043E\u043A \u0435\u0449\u0451 \u043F\u0440\u0435\u0434\u0441\u0442\u043E\u0438\u0442",
       size: "\u0441\u0432\u044F\u0437\u043A\u0430 \u0438\u0437 {n}",
       group: "{count} \xD7 {size}",
+      kinds: {
+        motive: "\u043E \u043C\u043E\u0442\u0438\u0432\u0435",
+        means: "\u043E \u0442\u043E\u043C, \u0447\u0435\u043C \u044D\u0442\u043E \u0441\u0434\u0435\u043B\u0430\u043D\u043E",
+        whereabouts: "\u043E \u0442\u043E\u043C, \u0433\u0434\u0435 \u0438\u0445 \u0434\u0435\u0440\u0436\u0430\u0442",
+        alibi: "\u043E\u0431 \u0430\u043B\u0438\u0431\u0438",
+        trail: "\u043E \u0441\u043B\u0435\u0434\u0435"
+      },
       allDrawn: "\u0412\u0441\u0435 \u0432\u044B\u0432\u043E\u0434\u044B \u0441\u0434\u0435\u043B\u0430\u043D\u044B."
     },
     chronicle: {
@@ -56337,12 +56375,18 @@ ${shown(view, suspect, text)}${unshown(view, suspect, text)}
 
 // packages/mcp/src/board/board-links.ts
 function renderOpenSlots(view, text) {
-  const { open: open3, size, group, allDrawn } = text.links;
+  const { open: open3, size, group, kinds, allDrawn } = text.links;
   const counts = /* @__PURE__ */ new Map();
-  for (const n of view.openLinks) counts.set(n, (counts.get(n) ?? 0) + 1);
-  const slots = [...counts].map(
-    ([n, count]) => `<span class="open-slot">${"<i></i>".repeat(n)} ${escapeHtml(group.replace("{count}", String(count)).replace("{size}", size.replace("{n}", String(n))))}</span>`
-  );
+  view.openLinks.forEach((n, index) => {
+    const kind = view.openLinkKinds[index];
+    const key = `${String(n)}:${kind ?? ""}`;
+    const entry = counts.get(key) ?? { n, kind, count: 0 };
+    counts.set(key, { ...entry, count: entry.count + 1 });
+  });
+  const slots = [...counts.values()].map(({ n, kind, count }) => {
+    const label = group.replace("{count}", String(count)).replace("{size}", size.replace("{n}", String(n)));
+    return `<span class="open-slot">${"<i></i>".repeat(n)} ${escapeHtml(kind === void 0 ? label : `${label}, ${kinds[kind]}`)}</span>`;
+  });
   return `<h2>${escapeHtml(text.tree.open)}</h2>
 <div class="open-slots" aria-label="${escapeHtml(open3)}">${view.openLinks.length === 0 ? `<span class="empty">${escapeHtml(allDrawn)}</span>` : slots.join("")}</div>
 <p class="note">${escapeHtml(text.tree.note)}</p>`;
@@ -57427,7 +57471,7 @@ var act = defineTool({
 // packages/mcp/src/tools/deduce.ts
 var deduce2 = defineTool({
   name: "deduce",
-  description: 'Links two or more clues the hero has found into an insight. `clueIds` are ids of found clues from run_view (none may be garbled: reread them first). The size of a link is public: `openLinks` of run_view lists how many clues each conclusion still to be made takes, and a set of any other size is refused with "wrong-link-size" before any time is spent, so only try sizes it lists (a link may hold one clue more than its conclusion needs and still give it). Takes game time, more when the link leads nowhere. Call it when the player connects clues, while the run is active. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes. The `outcome.result` is "insight" (new: its text is in `insights` of the result), "already-known" or "nothing" (the link leads nowhere; say so without hinting how close it was). Do not use it to accuse and do not guess clue ids the player never found.',
+  description: 'Links two or more clues the hero has found into an insight. `clueIds` are ids of found clues from run_view (none may be garbled: reread them first). The size of a link is public: `openLinks` of run_view lists how many clues each conclusion still to be made takes, and `openLinkKinds` what each is about (the motive, the means, where the victim is, an alibi or a trail), and a set of any other size is refused with "wrong-link-size" before any time is spent, so only try sizes it lists (a link may hold one clue more than its conclusion needs and still give it). Takes game time, more when the link leads nowhere. Call it when the player connects clues, while the run is active. Pass `turn` from run_view: a stale one is refused with "stale-turn" and nothing changes. The `outcome.result` is "insight" (new: its text is in `insights` of the result), "already-known" or "nothing" (the link leads nowhere; say so without hinting how close it was). Do not use it to accuse and do not guess clue ids the player never found.',
   inputSchema: external_exports.object({ turn: TurnSchema, clueIds: external_exports.array(EntityIdSchema).min(2) }),
   outputSchema: TurnResultSchema,
   handler: ({ turn, clueIds }, context2) => playIntent(context2, turn, { kind: "deduce", clueIds })

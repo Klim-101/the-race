@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { DetectiveRunView, TurnView } from '@the-race/engine';
+import { LINK_KINDS, type DetectiveRunView, type TurnView } from '@the-race/engine';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { SCRIPT, escapeHtml, renderEvidenceBoard } from './render-board.js';
@@ -133,6 +133,7 @@ function viewOf(overrides: Partial<View> = {}): View {
     ],
     clues: [],
     openLinks: [],
+    openLinkKinds: [],
     insights: [],
     leads: [],
     chronicle: { activeMinutesLeft: 600, minutesToDeadline: null, deadline: null, events: [] },
@@ -1133,19 +1134,52 @@ describe('the gift and the cost of a signal on the hero tab', () => {
 describe('the links still to be made', () => {
   const links = (view: Partial<View>) => tab(renderEvidenceBoard(viewOf(view)), 'insights');
 
-  it('says how many clues each open conclusion takes, smallest first, with no clue and no id', () => {
-    const page = links({ openLinks: [2, 3, 3] });
+  it('says how many clues each open conclusion takes and what it is about, smallest first, with no clue and no id', () => {
+    const page = links({
+      openLinks: [2, 3, 3],
+      openLinkKinds: ['motive', 'alibi', 'alibi'],
+    });
 
     expect(page).toContain('aria-label="Links still to be made"');
-    expect(page).toContain('1 × a link of 2');
-    expect(page).toContain('2 × a link of 3');
+    expect(page).toContain('1 × a link of 2, about the motive');
+    expect(page).toContain('2 × a link of 3, about an alibi');
+  });
+
+  it('tells links of one size apart when they are about different things', () => {
+    const page = links({
+      openLinks: [2, 2, 2],
+      openLinkKinds: ['motive', 'alibi', 'alibi'],
+    });
+
+    expect(page).toContain('1 × a link of 2, about the motive');
+    expect(page).toContain('2 × a link of 2, about an alibi');
+  });
+
+  it('still counts the links of a view that carries no kinds, without naming what they are about', () => {
+    const page = links({ openLinks: [2, 3, 3], openLinkKinds: [] });
+
+    expect(page).toContain('1 × a link of 2</span>');
+    expect(page).toContain('2 × a link of 3</span>');
+  });
+
+  it('names every kind of link in both languages', () => {
+    for (const locale of ['en', 'ru'] as const) {
+      const kinds = LINK_KINDS.map((kind) => links({ locale, openLinks: [2], openLinkKinds: [kind] }));
+      expect(new Set(kinds).size).toBe(LINK_KINDS.length);
+    }
   });
 
   it('is told in Russian too, and also before any clue is found', () => {
-    const page = links({ locale: 'ru', openLinks: [2], clues: [], insights: [] });
+    const page = links({
+      locale: 'ru',
+      openLinks: [2],
+      openLinkKinds: ['trail'],
+      clues: [],
+      insights: [],
+    });
 
     expect(page).toContain('Связок ещё предстоит');
-    expect(page).toContain('1 × связка из 2');
+    expect(page).toContain('1 × связка из 2, о следе');
   });
 
   it('says that every conclusion is drawn once none is open', () => {

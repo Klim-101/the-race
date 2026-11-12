@@ -65,6 +65,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
       links: [{ from: 'market', to: 'stall' }],
     },
     openLinks: [],
+    openLinkKinds: [],
     chronicle: {
       activeMinutesLeft: 900,
       minutesToDeadline: null,
