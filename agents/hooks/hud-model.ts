@@ -86,7 +86,14 @@ export function applyResult(hud: Hud | null, data: Record<string, unknown>): Hud
   const status = view['status'];
   if (typeof status === 'string' && status !== 'active') return null;
 
-  const { clock, map, title } = view;
+  const { clock, title } = view;
+  // A turn that changed no place leaves the map out of its summary: the places and links the HUD already has stand,
+  // and the hero is where `location` says.
+  const location = view['location'];
+  const map =
+    isRecord(view['map']) || hud === null || !isRecord(location) || typeof location['id'] !== 'string'
+      ? view['map']
+      : { current: location['id'], places: hud.places, links: hud.links };
   if (!isRecord(clock) || !isRecord(map) || typeof title !== 'string') return hud;
   const { current } = map;
   if (typeof current !== 'string' || !Array.isArray(map['places']) || !Array.isArray(map['links']))
