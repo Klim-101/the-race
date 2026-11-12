@@ -1306,6 +1306,38 @@ describe('the chronicle and a place that is shut at this hour', () => {
   });
 });
 
+describe('how the search of a part went, in the chronicle', () => {
+  const lines = (attempt: 'found' | 'empty' | 'missed' | 'blocked', locale: 'en' | 'ru' = 'en') =>
+    tab(
+      renderEvidenceBoard(viewOf({ locale }), [
+        { turn: 2, day: 1, minute: 505, kind: 'search', found: attempt === 'found' ? 1 : 0, attempt },
+      ]),
+      'chronicle',
+    );
+
+  it('tells a part that held nothing from a hand that missed and an obstacle that held', () => {
+    expect(lines('found')).toContain('Searched the place: found 1');
+    expect(lines('empty')).toContain('Searched a part: nothing there');
+    expect(lines('missed')).toContain('Searched a part and missed: it can be tried again');
+    expect(lines('blocked')).toContain('Could not get past the obstacle: it can be tried again');
+  });
+
+  it('is told in Russian too', () => {
+    expect(lines('empty', 'ru')).toContain('Обыскали часть места: там ничего нет');
+    expect(lines('missed', 'ru')).toContain('промахнулись: можно попробовать снова');
+    expect(lines('blocked', 'ru')).toContain('Не одолели препятствие: можно попробовать снова');
+  });
+
+  it('keeps the plain line for a search that carries no attempt', () => {
+    const page = tab(
+      renderEvidenceBoard(viewOf(), [{ turn: 2, day: 1, minute: 505, kind: 'search', found: 2 }]),
+      'chronicle',
+    );
+
+    expect(page).toContain('Searched the place: found 2');
+  });
+});
+
 describe('a small thing a look or a search showed, in the chronicle', () => {
   const FLYER = 'A torn flyer, creased small, <b>lies</b> under the bench.';
   const shown: TurnView[] = [

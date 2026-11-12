@@ -291,6 +291,10 @@ export interface TabText {
       readonly move: string;
       readonly moveFailed: string;
       readonly search: string;
+      /** The search of one part that held nothing, that missed what it held, and that was stopped by an obstacle. */
+      readonly searchEmpty: string;
+      readonly searchMissed: string;
+      readonly searchBlocked: string;
       readonly rest: string;
       readonly stayUp: string;
       /** The small thing a look or a search showed, after the line of the turn: the thing is `{text}`. */

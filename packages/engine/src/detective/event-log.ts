@@ -13,7 +13,7 @@ import {
   type RunClock,
   type RunStatus,
 } from '../run.js';
-import { IntentSchema, resolveIntent, type Intent, type Resolution } from './actions.js';
+import { IntentSchema, SEARCH_ATTEMPTS, resolveIntent, type Intent, type Resolution } from './actions.js';
 import { HeroConditionSchema } from './condition.js';
 import { EntityIdSchema, ObstacleKindSchema, StockHowSchema } from './case-schema.js';
 import { GearIdSchema } from './gear.js';
@@ -91,6 +91,7 @@ const OutcomeSchema = z.union([
     minutes,
     consequences: z.array(ConsequenceSchema),
     partId: EntityIdSchema.optional(),
+    attempt: z.enum(SEARCH_ATTEMPTS).optional(),
     tool: z
       .object({
         id: GearIdSchema,

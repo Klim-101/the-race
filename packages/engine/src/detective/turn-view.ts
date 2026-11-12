@@ -6,6 +6,7 @@ import type { ConsumableId } from './consumables.js';
 import type { LogEntry, RunLog } from './event-log.js';
 import type { INTERROGATION_APPROACHES } from './interrogation.js';
 import type { DetectiveRunState } from './run-state.js';
+import type { SearchAttempt } from './actions.js';
 import type { ObstacleKind } from './case-schema.js';
 import type { Shortfall, Verdict } from './verdict.js';
 
@@ -53,7 +54,13 @@ export interface ClosedFile {
 export type TurnDetail =
   | { readonly kind: 'look'; readonly found: number; readonly trace?: string }
   | { readonly kind: 'move'; readonly to: string; readonly entered: boolean }
-  | { readonly kind: 'search'; readonly found: number; readonly trace?: string }
+  | {
+      readonly kind: 'search';
+      readonly found: number;
+      /** How the search of a part went; absent for the search of a place with no parts. */
+      readonly attempt?: SearchAttempt;
+      readonly trace?: string;
+    }
   | { readonly kind: 'rest' }
   | { readonly kind: 'stay-up' }
   | { readonly kind: 'sit'; readonly restored: number }
@@ -110,6 +117,7 @@ function detailOf(run: DetectiveRunState, entry: LogEntry): TurnDetail {
       return {
         kind: 'search',
         found: outcome.foundClueIds.length,
+        ...(outcome.attempt === undefined ? {} : { attempt: outcome.attempt }),
         ...(outcome.trace === undefined ? {} : { trace: outcome.trace }),
       };
     case 'rest':

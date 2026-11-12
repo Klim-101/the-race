@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 28;
+var RULESET_VERSION = 29;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -36543,6 +36543,7 @@ function partsOfPlace(run, locationId) {
   return run.case.locations.find(({ id }) => id === locationId)?.parts ?? [];
 }
 var TOOLS_RULESET_VERSION = 14;
+var SEARCH_ATTEMPT_RULESET_VERSION = 29;
 var WEAR_ORDER = ["lasting", "may-break", "used-up"];
 function chooseTool(run, obstacle, toolId) {
   if (obstacle === null) return { kind: "none" };
@@ -38822,6 +38823,7 @@ var PART_SEARCH_MINUTES = 20;
 var FAILED_SEARCH_MINUTES = 15;
 var FAILED_ENTRY_MINUTES = 10;
 var CRITICAL_FAILURE_REPUTATION = 1;
+var SEARCH_ATTEMPTS = ["found", "empty", "missed", "blocked"];
 function refuse3(code, message) {
   return { ok: false, refusal: { code, message } };
 }
@@ -38971,6 +38973,7 @@ function resolveSearchPart(run, rng, location, parts, partId, toolId) {
         ...settled.consequences
       ]),
       partId: part.id,
+      ...attemptOf(run, "blocked"),
       tool,
       ...detained === 0 ? {} : { detainedMinutes: detained }
     },
@@ -38978,6 +38981,9 @@ function resolveSearchPart(run, rng, location, parts, partId, toolId) {
     felt: distinctFelt([...felt, ...settled.felt]),
     revealed
   };
+}
+function attemptOf(run, attempt) {
+  return run.rulesetVersion < SEARCH_ATTEMPT_RULESET_VERSION ? {} : { attempt };
 }
 function uniqueConsequences(consequences) {
   return [...new Set(consequences)];
@@ -39033,6 +39039,7 @@ function searchPartForClue(run, rng, location, part, carried) {
       minutes: minutes2,
       consequences,
       partId: part.id,
+      ...attemptOf(run, found !== void 0 ? "found" : wasted ? "missed" : "empty"),
       ...tool === void 0 ? {} : { tool },
       ...detained === 0 ? {} : { detainedMinutes: detained },
       ...shownTrace?.trace === void 0 ? {} : { trace: shownTrace.trace }
@@ -41395,6 +41402,7 @@ var OutcomeSchema = external_exports.union([
     minutes,
     consequences: external_exports.array(ConsequenceSchema),
     partId: EntityIdSchema.optional(),
+    attempt: external_exports.enum(SEARCH_ATTEMPTS).optional(),
     tool: external_exports.object({
       id: GearIdSchema,
       cleared: external_exports.boolean(),
@@ -41948,6 +41956,7 @@ function detailOf(run, entry) {
       return {
         kind: "search",
         found: outcome.foundClueIds.length,
+        ...outcome.attempt === void 0 ? {} : { attempt: outcome.attempt },
         ...outcome.trace === void 0 ? {} : { trace: outcome.trace }
       };
     case "rest":
@@ -53867,6 +53876,9 @@ var en_default3 = {
         move: "Went to {name}",
         moveFailed: "Tried to get into {name} and could not",
         search: "Searched the place: found {n}",
+        searchEmpty: "Searched a part: nothing there",
+        searchMissed: "Searched a part and missed: it can be tried again",
+        searchBlocked: "Could not get past the obstacle: it can be tried again",
         rest: "Rested for the night",
         stayUp: "Decided to stay up through the night",
         trace: "Noticed: {text}",
@@ -54652,6 +54664,9 @@ var ru_default2 = {
         move: "\u041F\u043E\u0448\u043B\u0438 \u0432 {name}",
         moveFailed: "\u041F\u044B\u0442\u0430\u043B\u0438\u0441\u044C \u043F\u043E\u043F\u0430\u0441\u0442\u044C \u0432 {name}, \u043D\u043E \u043D\u0435 \u0432\u044B\u0448\u043B\u043E",
         search: "\u041E\u0431\u044B\u0441\u043A\u0430\u043B\u0438 \u043C\u0435\u0441\u0442\u043E: \u043D\u0430\u0439\u0434\u0435\u043D\u043E {n}",
+        searchEmpty: "\u041E\u0431\u044B\u0441\u043A\u0430\u043B\u0438 \u0447\u0430\u0441\u0442\u044C \u043C\u0435\u0441\u0442\u0430: \u0442\u0430\u043C \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435\u0442",
+        searchMissed: "\u041E\u0431\u044B\u0441\u043A\u0430\u043B\u0438 \u0447\u0430\u0441\u0442\u044C \u043C\u0435\u0441\u0442\u0430 \u0438 \u043F\u0440\u043E\u043C\u0430\u0445\u043D\u0443\u043B\u0438\u0441\u044C: \u043C\u043E\u0436\u043D\u043E \u043F\u043E\u043F\u0440\u043E\u0431\u043E\u0432\u0430\u0442\u044C \u0441\u043D\u043E\u0432\u0430",
+        searchBlocked: "\u041D\u0435 \u043E\u0434\u043E\u043B\u0435\u043B\u0438 \u043F\u0440\u0435\u043F\u044F\u0442\u0441\u0442\u0432\u0438\u0435: \u043C\u043E\u0436\u043D\u043E \u043F\u043E\u043F\u0440\u043E\u0431\u043E\u0432\u0430\u0442\u044C \u0441\u043D\u043E\u0432\u0430",
         rest: "\u0417\u0430\u0441\u043D\u0443\u043B\u0438 \u0434\u043E \u0443\u0442\u0440\u0430",
         stayUp: "\u0420\u0435\u0448\u0438\u043B\u0438 \u043D\u0435 \u0441\u043F\u0430\u0442\u044C \u0432\u0441\u044E \u043D\u043E\u0447\u044C",
         trace: "\u0417\u0430\u043C\u0435\u0442\u0438\u043B\u0438: {text}",
@@ -55199,6 +55214,22 @@ function deadlineLine(view, text) {
 function withTrace(line, trace, label) {
   return trace === void 0 ? line : `${line} \xB7 ${label.replace("{text}", trace)}`;
 }
+function searchLine(turn, t, fill2) {
+  switch (turn.attempt) {
+    case "empty":
+      return t.searchEmpty;
+    case "missed":
+      return t.searchMissed;
+    case "blocked":
+      return t.searchBlocked;
+    case "found":
+    case void 0:
+      return fill2(t.search, { n: String(turn.found) });
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever2(turn.attempt);
+  }
+}
 function turnText(turn, text) {
   const t = text.chronicle.turn;
   const fill2 = (line, values) => Object.entries(values).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, value), line);
@@ -55208,7 +55239,7 @@ function turnText(turn, text) {
     case "move":
       return fill2(turn.entered ? t.move : t.moveFailed, { name: turn.to });
     case "search":
-      return withTrace(fill2(t.search, { n: String(turn.found) }), turn.trace, t.trace);
+      return withTrace(searchLine(turn, t, fill2), turn.trace, t.trace);
     case "rest":
       return t.rest;
     case "stay-up":

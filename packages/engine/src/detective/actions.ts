@@ -63,7 +63,7 @@ import {
   witnessesHere,
 } from './witnesses.js';
 import { SIT_MINUTES, SIT_NERVES, sitRefusal, sitsLeft } from './venue.js';
-import { chooseTool, partsOfPlace } from './search-parts.js';
+import { SEARCH_ATTEMPT_RULESET_VERSION, chooseTool, partsOfPlace } from './search-parts.js';
 import { GearIdSchema, worn, type GearId } from './gear.js';
 import { buildNeighbors } from './obtainability.js';
 import { deliverMessages, type ArrivedMessage } from './messages.js';
@@ -240,6 +240,16 @@ export interface Refusal {
  * What a turn cost beyond its time: `spotted` is a hero seen using a tool that is not lawful, and `detained` one the
  * police held for hours because of it (see `risk.ts`).
  */
+/**
+ * How the search of one part went, told apart so that a failed hand is never read as an empty part:
+ * - `found`: it turned up a clue;
+ * - `empty`: the part holds nothing and is done (at most a trace);
+ * - `missed`: the hero's hand missed something that was there, the part is left to be searched again;
+ * - `blocked`: the piece of the kit did not get through the obstacle, nothing was searched and it may be tried again.
+ */
+export const SEARCH_ATTEMPTS = ['found', 'empty', 'missed', 'blocked'] as const;
+export type SearchAttempt = (typeof SEARCH_ATTEMPTS)[number];
+
 export type Consequence = 'time-lost' | 'reputation-lost' | 'mishap' | 'nerves-lost' | 'spotted' | 'detained';
 
 /**
@@ -277,6 +287,8 @@ export type Outcome = (
       readonly consequences: readonly Consequence[];
       /** The part that was searched, in a place made of parts. */
       readonly partId?: string;
+      /** How the search of that part went; see `SEARCH_ATTEMPTS`. Only with a `partId`. */
+      readonly attempt?: SearchAttempt;
       /** The tool used against the obstacle of the part: whether it got through, and how it wore. */
       readonly tool?: {
         readonly id: GearId;
@@ -557,6 +569,7 @@ function resolveSearchPart(
         ...settled.consequences,
       ]),
       partId: part.id,
+      ...attemptOf(run, 'blocked'),
       tool,
       ...(detained === 0 ? {} : { detainedMinutes: detained }),
     },
@@ -564,6 +577,11 @@ function resolveSearchPart(
     felt: distinctFelt([...felt, ...settled.felt]),
     revealed,
   };
+}
+
+/** How a part search went, for a run whose ruleset tells it; an older run's outcome has no such field. */
+function attemptOf(run: DetectiveRunState, attempt: SearchAttempt): { attempt?: SearchAttempt } {
+  return run.rulesetVersion < SEARCH_ATTEMPT_RULESET_VERSION ? {} : { attempt };
 }
 
 /** Each consequence once: a point of nerves lost to a failed attempt and to being seen is one thing to tell. */
@@ -647,6 +665,7 @@ function searchPartForClue(
       minutes,
       consequences,
       partId: part.id,
+      ...attemptOf(run, found !== undefined ? 'found' : wasted ? 'missed' : 'empty'),
       ...(tool === undefined ? {} : { tool }),
       ...(detained === 0 ? {} : { detainedMinutes: detained }),
       ...(shownTrace?.trace === undefined ? {} : { trace: shownTrace.trace }),

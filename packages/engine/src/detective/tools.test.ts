@@ -22,7 +22,7 @@ import {
   type KitItem,
 } from './gear.js';
 import { RISK_RULESET_VERSION } from './risk.js';
-import { TOOLS_RULESET_VERSION, chooseTool } from './search-parts.js';
+import { SEARCH_ATTEMPT_RULESET_VERSION, TOOLS_RULESET_VERSION, chooseTool } from './search-parts.js';
 import {
   createDetectiveRun,
   loseGear,
@@ -217,6 +217,20 @@ describe('a search against an obstacle', () => {
     expect(itemOf(failed.run, 'picks')).toEqual(owned('picks'));
     const again = ok(search(failed.run, dice(15)));
     expect(again.outcome).toMatchObject({ foundClueIds: ['cellar-key'] });
+  });
+
+  it('says the attempt was blocked, and not an empty part, from the ruleset that tells it', () => {
+    const run = runWith('locked', [owned('phone'), owned('picks')], SEARCH_ATTEMPT_RULESET_VERSION);
+
+    const failed = ok(search(run, dice(2)));
+
+    expect(failed.outcome).toMatchObject({
+      foundClueIds: [],
+      partId: 'fountain-edge',
+      attempt: 'blocked',
+      tool: { id: 'picks', cleared: false },
+    });
+    expect(failed.run.searchedParts).toEqual([]);
   });
 
   it('breaks a lockpick on a blunder, which costs reputation, and then wants another tool', () => {

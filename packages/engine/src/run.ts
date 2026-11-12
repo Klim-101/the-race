@@ -36,8 +36,10 @@ export const RUN_SCHEMA_VERSION = 2;
  * `random-events.ts`).
  * 28: a case has a form, and an abduction has a victim, a place and a deadline (see `case-schema.ts`); the rules of
  * the form are yet to come, and until they do a run plays as before.
+ * 29: the search of a part says how it went (found, empty, missed or blocked), so a failed hand is never read as an empty
+ * part (see `SEARCH_ATTEMPTS` in `actions.ts`).
  */
-export const RULESET_VERSION = 28;
+export const RULESET_VERSION = 29;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;
