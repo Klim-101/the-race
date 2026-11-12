@@ -90,6 +90,7 @@ function viewOf(map: Map, extra: Record<string, unknown> = {}): View {
     location: { id: map.current, name: 'Here', description: '', exits: [] },
     map,
     openLinks: [],
+    openLinkKinds: [],
     chronicle: { activeMinutesLeft: 900, minutesToDeadline: null, deadline: null, events: [] },
     clues: [],
     insights: [],

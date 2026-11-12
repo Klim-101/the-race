@@ -88,6 +88,7 @@ function viewOf(overrides: Record<string, unknown> = {}): View {
     },
     leads: [],
     openLinks: [],
+    openLinkKinds: [],
     chronicle: { activeMinutesLeft: 600, minutesToDeadline: null, deadline: null, events: [] },
     insights: [],
     clues: [],
@@ -420,6 +421,7 @@ describe('the conclusions tab', () => {
   const drawn = viewOf({
     ...PLAYED,
     openLinks: [2, 2, 3],
+    openLinkKinds: ['alibi', 'alibi', 'trail'],
     insights: [
       { id: 'i1', insight: 'The flour was moved.', clueIds: ['flour', 'key'], clears: null },
       { id: 'i2', insight: 'The glove was left on purpose.', clueIds: ['glove'], clears: null },
@@ -475,9 +477,11 @@ describe('the conclusions tab', () => {
     expect(last).not.toContain('class="linkbox"');
   });
 
-  it('shows the links still to be made as empty slots of their size, and never which clues', () => {
-    expect(tree).toContain('<span class="open-slot"><i></i><i></i> 2 × a link of 2</span>');
-    expect(tree).toContain('<span class="open-slot"><i></i><i></i><i></i> 1 × a link of 3</span>');
+  it('shows the links still to be made as empty slots of their size, by size and by what they are about, and never which clues', () => {
+    expect(tree).toContain('<span class="open-slot"><i></i><i></i> 2 × a link of 2, about an alibi</span>');
+    expect(tree).toContain(
+      '<span class="open-slot"><i></i><i></i><i></i> 1 × a link of 3, about the trail</span>',
+    );
   });
 
   it('says that every conclusion is drawn once none is open, and that no link was tried yet', () => {

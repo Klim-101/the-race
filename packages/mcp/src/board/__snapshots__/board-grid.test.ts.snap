@@ -104,7 +104,7 @@ exports[`the conclusions tab > matches its snapshot 1`] = `
 <div class="leads"></div>
 </div></div>
 <h2>Not yet linked</h2>
-<div class="open-slots" aria-label="Links still to be made"><span class="open-slot"><i></i><i></i> 2 × a link of 2</span><span class="open-slot"><i></i><i></i><i></i> 1 × a link of 3</span></div>
+<div class="open-slots" aria-label="Links still to be made"><span class="open-slot"><i></i><i></i> 2 × a link of 2, about an alibi</span><span class="open-slot"><i></i><i></i><i></i> 1 × a link of 3, about the trail</span></div>
 <p class="note">The empty cells only count the links left and how many clues each takes. Which ones is yours to find out.</p>
 "
 `;

@@ -1,7 +1,7 @@
 // Copyright The RACE Authors
 // SPDX-License-Identifier: Apache-2.0
 
-import type { Locale, ObstacleKind, StripKind } from '@the-race/engine';
+import type { LinkKind, Locale, ObstacleKind, StripKind } from '@the-race/engine';
 import { LOCALE_TEXT } from '../locales/index.js';
 
 /** What the tabs of the evidence board say. The case's own text is never here. */
@@ -233,6 +233,8 @@ export interface TabText {
     readonly size: string;
     /** Links of one size, grouped: {count} links of {size}. */
     readonly group: string;
+    /** What a link is about, by its kind: appended to the size, "a link of 2, about the motive". */
+    readonly kinds: Readonly<Record<LinkKind, string>>;
     readonly allDrawn: string;
   };
   readonly chronicle: {

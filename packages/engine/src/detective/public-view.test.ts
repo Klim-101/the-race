@@ -402,7 +402,9 @@ describe('what the view leaks', () => {
           expect(view.openLinks.every((size) => Number.isInteger(size) && size >= 2)).toBe(true);
           for (const deduction of open) {
             expect(JSON.stringify(view.openLinks)).not.toContain(deduction.id);
+            expect(JSON.stringify(view.openLinkKinds)).not.toContain(deduction.id);
           }
+          expect(view.openLinkKinds).toHaveLength(view.openLinks.length);
         }
       }
     });

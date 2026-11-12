@@ -94,6 +94,7 @@ const VIEW = {
     },
   ],
   openLinks: [],
+  openLinkKinds: [],
   chronicle: { activeMinutesLeft: 900, minutesToDeadline: null, deadline: null, events: [] },
   clues: [
     {

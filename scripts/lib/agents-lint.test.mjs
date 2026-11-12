@@ -519,6 +519,12 @@ describe('the size of a link', () => {
     expect(skill).toMatch(/never offer a link whose size no open conclusion has/);
   });
 
+  it('has the narrator say what each open conclusion is about, and never which clues or suspect', () => {
+    expect(skill).toContain('`openLinkKinds`');
+    expect(skill).toMatch(/never which clues and never which suspect an alibi is about/);
+    expect(outcomes).toMatch(/`openLinkKinds` \(what each of those is about, in the same order/);
+  });
+
   it('explains the field and the refusal to the narrator', () => {
     expect(outcomes).toMatch(/`openLinks` \(how many clues each conclusion still to be made takes/);
     expect(outcomes).toContain('`wrong-link-size`');

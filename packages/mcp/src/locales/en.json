@@ -201,6 +201,13 @@
       "open": "Links still to be made",
       "size": "a link of {n}",
       "group": "{count} × {size}",
+      "kinds": {
+        "motive": "about the motive",
+        "means": "about the means",
+        "whereabouts": "about where they are kept",
+        "alibi": "about an alibi",
+        "trail": "about the trail"
+      },
       "allDrawn": "Every conclusion has been drawn."
     },
     "chronicle": {

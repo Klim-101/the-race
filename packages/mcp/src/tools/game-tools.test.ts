@@ -3,7 +3,7 @@
 
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { DETECTIVE_SKILL_PRESETS, DetectiveCaseSchema } from '@the-race/engine';
+import { DETECTIVE_SKILL_PRESETS, DetectiveCaseSchema, LINK_KINDS } from '@the-race/engine';
 import { runBoardFile, runFiles, saveRun } from '@the-race/saves';
 import { describe, expect, it } from 'vitest';
 import {
@@ -871,6 +871,16 @@ describe('the size of a link', () => {
     expect(view.openLinks.length).toBeGreaterThan(0);
     expect(view.openLinks.every((size) => Number.isInteger(size) && size >= 2)).toBe(true);
     expect(view.openLinks).toEqual(view.openLinks.toSorted((a, b) => a - b));
+  });
+
+  it('has the kind of each open link beside it, in the same order, and exactly one motive among them', async () => {
+    const { context } = await withFoundClues(0);
+
+    const view = (await call(runView, {}, context)).body as { openLinks: number[]; openLinkKinds: string[] };
+
+    expect(view.openLinkKinds).toHaveLength(view.openLinks.length);
+    expect(view.openLinkKinds.every((kind) => LINK_KINDS.some((known) => known === kind))).toBe(true);
+    expect(view.openLinkKinds.filter((kind) => kind === 'motive')).toHaveLength(1);
   });
 
   it('refuses a set of another size before any time is spent, and names the sizes and no clue', async () => {
