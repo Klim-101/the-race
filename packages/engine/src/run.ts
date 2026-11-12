@@ -38,8 +38,10 @@ export const RUN_SCHEMA_VERSION = 2;
  * the form are yet to come, and until they do a run plays as before.
  * 29: the search of a part says how it went (found, empty, missed or blocked), so a failed hand is never read as an empty
  * part (see `SEARCH_ATTEMPTS` in `actions.ts`).
+ * 30: a clue or conclusion put to a suspect that did something, and has no line of theirs, carries a `manner` to play it
+ * by (see `reaction-manner.ts`).
  */
-export const RULESET_VERSION = 29;
+export const RULESET_VERSION = 30;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;

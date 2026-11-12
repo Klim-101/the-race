@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 29;
+var RULESET_VERSION = 30;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -38000,6 +38000,17 @@ function passNight(run, rng, cause, day) {
   };
 }
 
+// packages/engine/src/detective/reaction-manner.ts
+var REACTION_MANNER_RULESET_VERSION = 30;
+var MANNERS = ["deflect", "dig-in", "go-quiet"];
+function mannerOf(suspectId, shownId) {
+  let hash2 = 2166136261;
+  for (const char of `${suspectId}:${shownId}`) {
+    hash2 = Math.imul(hash2 ^ char.charCodeAt(0), 16777619) >>> 0;
+  }
+  return MANNERS[hash2 % MANNERS.length] ?? "deflect";
+}
+
 // packages/engine/src/detective/trait-reveal.ts
 var TRAIT_REVEAL_RULESET_VERSION = 7;
 var NIGHT_FROM_MINUTE = 20 * 60;
@@ -38183,16 +38194,26 @@ function resolveInterrogate(run, intent, rng) {
   const presented = shown2.map((clueId) => {
     const effect = effectOfShown("clue", clueId, isAbout(run.case, clueId, suspect.id));
     const reaction = effect === "no-effect" ? void 0 : suspect.reactions?.find((line) => line.clueId === clueId)?.text;
-    return { clueId, effect, ...reaction === void 0 ? {} : { reaction } };
+    const manner = reaction === void 0 && effect !== "no-effect" && run.rulesetVersion >= REACTION_MANNER_RULESET_VERSION ? mannerOf(suspect.id, clueId) : void 0;
+    return {
+      clueId,
+      effect,
+      ...reaction === void 0 ? {} : { reaction },
+      ...manner === void 0 ? {} : { manner }
+    };
   });
-  const presentedInsights = putInsights.map((insightId) => ({
-    insightId,
-    effect: effectOfShown(
+  const presentedInsights = putInsights.map((insightId) => {
+    const effect = effectOfShown(
       "insight",
       insightId,
       run.case.deductions.filter(({ id }) => id === insightId).some(({ clueIds }) => clueIds.some((clueId) => isAbout(run.case, clueId, suspect.id)))
-    )
-  }));
+    );
+    return {
+      insightId,
+      effect,
+      ...effect !== "no-effect" && run.rulesetVersion >= REACTION_MANNER_RULESET_VERSION ? { manner: mannerOf(suspect.id, insightId) } : {}
+    };
+  });
   const said2 = (kind, text) => ({
     suspectId: suspect.id,
     day: run.clock.day,
@@ -41455,9 +41476,20 @@ var OutcomeSchema = external_exports.union([
     stance: external_exports.enum(["holds", "gives-ground"]),
     alibi: external_exports.string(),
     presented: external_exports.array(
-      external_exports.object({ clueId: EntityIdSchema, effect: external_exports.enum(SHOWN_EFFECTS), reaction: external_exports.string().optional() })
+      external_exports.object({
+        clueId: EntityIdSchema,
+        effect: external_exports.enum(SHOWN_EFFECTS),
+        reaction: external_exports.string().optional(),
+        manner: external_exports.enum(MANNERS).optional()
+      })
     ),
-    presentedInsights: external_exports.array(external_exports.object({ insightId: EntityIdSchema, effect: external_exports.enum(SHOWN_EFFECTS) })).optional(),
+    presentedInsights: external_exports.array(
+      external_exports.object({
+        insightId: EntityIdSchema,
+        effect: external_exports.enum(SHOWN_EFFECTS),
+        manner: external_exports.enum(MANNERS).optional()
+      })
+    ).optional(),
     mood: external_exports.enum(SUSPECT_MOODS).optional(),
     closed: external_exports.literal(true).optional(),
     claimed: external_exports.array(external_exports.string()).optional(),

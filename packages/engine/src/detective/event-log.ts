@@ -24,6 +24,7 @@ import { ConsumableIdSchema, PendingEffectSchema, SuppliesSchema } from './consu
 import { NightReportSchema } from './night.js';
 import { DrawnEventSchema, SHOWN_EFFECTS, type DetectiveRunState } from './run-state.js';
 import { SUSPECT_MOODS } from './suspect-mood.js';
+import { MANNERS } from './reaction-manner.js';
 import { SHORTFALL_CLUE_STATES, VERDICTS, type Verdict } from './verdict.js';
 
 // The run log is ENGINE-SIDE ONLY. Its entries hold the full details of every check, which name the clues
@@ -148,10 +149,21 @@ const OutcomeSchema = z.union([
     stance: z.enum(['holds', 'gives-ground']),
     alibi: z.string(),
     presented: z.array(
-      z.object({ clueId: EntityIdSchema, effect: z.enum(SHOWN_EFFECTS), reaction: z.string().optional() }),
+      z.object({
+        clueId: EntityIdSchema,
+        effect: z.enum(SHOWN_EFFECTS),
+        reaction: z.string().optional(),
+        manner: z.enum(MANNERS).optional(),
+      }),
     ),
     presentedInsights: z
-      .array(z.object({ insightId: EntityIdSchema, effect: z.enum(SHOWN_EFFECTS) }))
+      .array(
+        z.object({
+          insightId: EntityIdSchema,
+          effect: z.enum(SHOWN_EFFECTS),
+          manner: z.enum(MANNERS).optional(),
+        }),
+      )
       .optional(),
     mood: z.enum(SUSPECT_MOODS).optional(),
     closed: z.literal(true).optional(),

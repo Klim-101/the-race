@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { SEARCH_BY_PART_RULESET_VERSION } from './search-parts.js';
+import { REACTION_MANNER_RULESET_VERSION, mannerOf, type Manner } from './reaction-manner.js';
 import { CLAIMS_RULESET_VERSION, followUpClaims, openingClaims } from './claims.js';
 import { findToldClue, grantLeads, recordShown, setSuspectMood, type ShownEffect } from './run-state.js';
 import {
@@ -112,9 +113,16 @@ export interface InterrogationOutcome {
     readonly effect: ClueEffect;
     /** What the suspect says about the clue, in their own voice, when the case gives them a line for it. */
     readonly reaction?: string;
+    /** How to play the moment when the case gives them no line for a clue that did something (see `mannerOf`). */
+    readonly manner?: Manner;
   }[];
   /** The conclusions put to the suspect, with what each did; absent when none was. */
-  readonly presentedInsights?: readonly { readonly insightId: string; readonly effect: ClueEffect }[];
+  readonly presentedInsights?: readonly {
+    readonly insightId: string;
+    readonly effect: ClueEffect;
+    /** How to play the moment when the conclusion did something: a conclusion has no line of its own. */
+    readonly manner?: Manner;
+  }[];
   /** How the talks have left the suspect, from the ruleset of talks on. */
   readonly mood?: SuspectMoodWord;
   /** Set when a pressure with nothing to stand on has closed the suspect for a while. */
@@ -323,18 +331,36 @@ export function resolveInterrogate(run: DetectiveRunState, intent: InterrogateIn
     const effect = effectOfShown('clue', clueId, isAbout(run.case, clueId, suspect.id));
     const reaction =
       effect === 'no-effect' ? undefined : suspect.reactions?.find((line) => line.clueId === clueId)?.text;
-    return { clueId, effect, ...(reaction === undefined ? {} : { reaction }) };
+    // A clue that did something and has no words of the suspect's still gets a way to be played, never a silence.
+    const manner =
+      reaction === undefined &&
+      effect !== 'no-effect' &&
+      run.rulesetVersion >= REACTION_MANNER_RULESET_VERSION
+        ? mannerOf(suspect.id, clueId)
+        : undefined;
+    return {
+      clueId,
+      effect,
+      ...(reaction === undefined ? {} : { reaction }),
+      ...(manner === undefined ? {} : { manner }),
+    };
   });
-  const presentedInsights = putInsights.map((insightId) => ({
-    insightId,
-    effect: effectOfShown(
+  const presentedInsights = putInsights.map((insightId) => {
+    const effect = effectOfShown(
       'insight',
       insightId,
       run.case.deductions
         .filter(({ id }) => id === insightId)
         .some(({ clueIds }) => clueIds.some((clueId) => isAbout(run.case, clueId, suspect.id))),
-    ),
-  }));
+    );
+    return {
+      insightId,
+      effect,
+      ...(effect !== 'no-effect' && run.rulesetVersion >= REACTION_MANNER_RULESET_VERSION
+        ? { manner: mannerOf(suspect.id, insightId) }
+        : {}),
+    };
+  });
 
   // What the suspect said aloud, in the order they said it: the alibi the first time, then each lie that fell,
   // then the secret. The lies that still hold are never written down.
