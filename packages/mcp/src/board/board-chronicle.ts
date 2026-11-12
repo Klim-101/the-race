@@ -52,6 +52,31 @@ function withTrace(line: string, trace: string | undefined, label: string): stri
   return trace === undefined ? line : `${line} · ${label.replace('{text}', trace)}`;
 }
 
+/**
+ * The line of a search. A part that was missed or blocked says it can be tried again, which is what the hero was
+ * told; one that was empty is done. Neither says what the part holds.
+ */
+function searchLine(
+  turn: Extract<TurnView, { kind: 'search' }>,
+  t: TabText['chronicle']['turn'],
+  fill: (line: string, values: Readonly<Record<string, string>>) => string,
+): string {
+  switch (turn.attempt) {
+    case 'empty':
+      return t.searchEmpty;
+    case 'missed':
+      return t.searchMissed;
+    case 'blocked':
+      return t.searchBlocked;
+    case 'found':
+    case undefined:
+      return fill(t.search, { n: String(turn.found) });
+    /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+    default:
+      return assertNever(turn.attempt);
+  }
+}
+
 /** One turn in the player's own terms, from the words of the language. The text of a conclusion is the player's own. */
 export function turnText(turn: TurnView, text: TabText): string {
   const t = text.chronicle.turn;
@@ -63,7 +88,7 @@ export function turnText(turn: TurnView, text: TabText): string {
     case 'move':
       return fill(turn.entered ? t.move : t.moveFailed, { name: turn.to });
     case 'search':
-      return withTrace(fill(t.search, { n: String(turn.found) }), turn.trace, t.trace);
+      return withTrace(searchLine(turn, t, fill), turn.trace, t.trace);
     case 'rest':
       return t.rest;
     case 'stay-up':

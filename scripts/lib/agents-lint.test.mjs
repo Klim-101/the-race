@@ -519,6 +519,12 @@ describe('the size of a link', () => {
     expect(skill).toMatch(/never offer a link whose size no open conclusion has/);
   });
 
+  it('has the narrator tell a missed or blocked search of a part from an empty one', () => {
+    expect(skill).toMatch(/last search was `missed` or `blocked`/);
+    expect(outcomes).toMatch(/`attempt` says how it went: `found`/);
+    expect(outcomes).toMatch(/never told as "nothing here"/);
+  });
+
   it('has the narrator say what each open conclusion is about, and never which clues or suspect', () => {
     expect(skill).toContain('`openLinkKinds`');
     expect(skill).toMatch(/never which clues and never which suspect an alibi is about/);

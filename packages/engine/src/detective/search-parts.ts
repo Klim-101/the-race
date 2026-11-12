@@ -17,6 +17,9 @@ export function partsOfPlace(run: DetectiveRunState, locationId: string): readon
 /** The first ruleset in which an obstacle is got past with a tool from the kit, and not by the phone alone. */
 export const TOOLS_RULESET_VERSION = 14;
 
+/** From this ruleset the outcome of searching a part carries `attempt`; an older run's log has none and still replays. */
+export const SEARCH_ATTEMPT_RULESET_VERSION = 29;
+
 export type ToolChoice =
   | { readonly kind: 'none' }
   | { readonly kind: 'tool'; readonly item: KitItem; readonly rules: ToolRules }

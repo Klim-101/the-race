@@ -13,7 +13,7 @@ import {
   type Resolution,
 } from './actions.js';
 import { DetectiveCaseSchema, type DetectiveCase } from './case-schema.js';
-import { SEARCH_BY_PART_RULESET_VERSION } from './search-parts.js';
+import { SEARCH_ATTEMPT_RULESET_VERSION, SEARCH_BY_PART_RULESET_VERSION } from './search-parts.js';
 import { DETECTIVE_TRAITS } from './traits.js';
 import {
   DetectiveRunStateSchema,
@@ -199,6 +199,7 @@ describe('a thorough search of one part', () => {
       minutes: PART_SEARCH_MINUTES,
       consequences: [],
       partId: 'plinth',
+      attempt: 'found',
     });
     expect(details).toMatchObject([{ subject: { kind: 'clue', id: 'flour-crumbs' } }]);
     expect(run.searchedParts).toEqual([
@@ -221,6 +222,7 @@ describe('a thorough search of one part', () => {
       foundClueIds: [],
       minutes: PART_SEARCH_MINUTES + FAILED_SEARCH_MINUTES,
       consequences: ['time-lost', 'nerves-lost'],
+      attempt: 'missed',
     });
     expect(missed.run.searchedParts).toEqual([]);
     const again = ok(resolveIntent(missed.run, { kind: 'search', partId: 'plinth' }, dice(15)));
@@ -256,6 +258,7 @@ describe('a thorough search of one part', () => {
       minutes: PART_SEARCH_MINUTES,
       consequences: [],
       partId: 'bench',
+      attempt: 'empty',
     });
     expect(run.searchedParts).toMatchObject([{ partId: 'bench', foundClueIds: [] }]);
   });
@@ -354,6 +357,38 @@ describe('the way round an obstacle: asking the person', () => {
     const run = atStall({ ruleset: SEARCH_BY_PART_RULESET_VERSION - 1 });
 
     expect(talk(run, 20).outcome).not.toHaveProperty('told');
+  });
+});
+
+describe('how the search of a part went', () => {
+  it('is told apart: found, empty, missed and, with a tool, blocked, so a failed hand is never an empty part', () => {
+    const found = ok(resolveIntent(atStall(), { kind: 'search', partId: 'plinth' }, dice(15)));
+    const missed = ok(resolveIntent(atStall(), { kind: 'search', partId: 'plinth' }, dice(2)));
+    const empty = ok(resolveIntent(looked(newRun()), { kind: 'search', partId: 'bench' }, createRng(5)));
+
+    expect(
+      [found, missed, empty].map(({ outcome }) => (outcome.kind === 'search' ? outcome.attempt : null)),
+    ).toEqual(['found', 'missed', 'empty']);
+    // Only a part that was missed is left to be searched again; an empty one is done.
+    expect(missed.run.searchedParts).toEqual([]);
+    expect(empty.run.searchedParts).toHaveLength(1);
+  });
+
+  it('is not in the outcome of the search of a whole place', () => {
+    const old = moveTo(newRun({ ruleset: SEARCH_BY_PART_RULESET_VERSION - 1 }), 'cheese-stall');
+
+    const { outcome } = ok(resolveIntent(old, { kind: 'search' }, dice(15)));
+
+    expect(outcome).not.toHaveProperty('attempt');
+  });
+
+  it('is left out for a run of the ruleset before it, so that its log still replays', () => {
+    const run = atStall({ ruleset: SEARCH_ATTEMPT_RULESET_VERSION - 1 });
+
+    const { outcome } = ok(resolveIntent(run, { kind: 'search', partId: 'plinth' }, dice(2)));
+
+    expect(outcome).toMatchObject({ partId: 'plinth', consequences: ['time-lost', 'nerves-lost'] });
+    expect(outcome).not.toHaveProperty('attempt');
   });
 });
 
