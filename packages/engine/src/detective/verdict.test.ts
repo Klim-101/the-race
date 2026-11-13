@@ -12,6 +12,7 @@ import {
   FAILED_DEDUCTION_MINUTES,
   LENIENT_LINKS_RULESET_VERSION,
   VERDICTS,
+  WARM_LINKS_RULESET_VERSION,
   accuse,
   deduce,
   type AccuseResolution,
@@ -152,12 +153,12 @@ describe('deduce', () => {
     expect(result.run.insightIds).toEqual(['motive-debt']);
   });
 
-  it('a wrong link of a size the case has costs time and reveals nothing, close or not', () => {
+  it('a wrong link of a size the case has costs time and, but for one weak sign, reveals nothing', () => {
     const run = newRun();
     const close = okDeduce(deduce(run, link('oven-receipt', 'blue-glove'), createRng(1)));
     const far = okDeduce(deduce(run, link('blue-glove', 'cart-tracks'), createRng(1)));
     for (const result of [close, far]) {
-      expect(result.outcome).toEqual({
+      expect(result.outcome).toMatchObject({
         kind: 'deduce',
         result: 'nothing',
         minutes: FAILED_DEDUCTION_MINUTES,
@@ -167,7 +168,44 @@ describe('deduce', () => {
       expect(result.run.clock.minute).toBe(DAY_START_MINUTE + FAILED_DEDUCTION_MINUTES);
       expect(result.run.turn).toBe(1);
     }
-    expect(close.outcome).toEqual(far.outcome);
+  });
+
+  describe('a link that leads nowhere', () => {
+    it('is warm when one of its clues belongs to a conclusion still to draw, and says no more', () => {
+      const result = okDeduce(deduce(newRun(), link('oven-receipt', 'blue-glove'), createRng(1)));
+
+      expect(result.outcome).toMatchObject({ result: 'nothing', warm: true });
+      expect(JSON.stringify(result.outcome)).not.toMatch(/ledger|receipt|glove|motive-debt/);
+    });
+
+    it('is not warm when none of its clues belongs to one', () => {
+      const result = okDeduce(deduce(newRun(), link('blue-glove', 'cart-tracks'), createRng(1)));
+
+      expect(result.outcome).not.toHaveProperty('warm');
+    });
+
+    it('is not warm when the conclusion its clue belongs to is already drawn', () => {
+      // A second conclusion keeps a link of two clues open once the first is drawn.
+      const raw = buildCheeseCase();
+      raw.deductions.push({
+        id: 'trail',
+        clueIds: ['cart-tracks', 'cellar-key'],
+        insight: 'A cart went down.',
+      });
+      const run = newRun(ALL_CLUES, ['motive-debt'], DetectiveCaseSchema.parse(raw));
+      const result = okDeduce(deduce(run, link('oven-receipt', 'blue-glove'), createRng(1)));
+
+      expect(result.outcome).toMatchObject({ result: 'nothing' });
+      expect(result.outcome).not.toHaveProperty('warm');
+    });
+
+    it('says nothing of warmth in a run of the ruleset before it', () => {
+      const old: DetectiveRunState = { ...newRun(), rulesetVersion: WARM_LINKS_RULESET_VERSION - 1 };
+      const result = okDeduce(deduce(old, link('oven-receipt', 'blue-glove'), createRng(1)));
+
+      expect(result.outcome).toMatchObject({ result: 'nothing' });
+      expect(result.outcome).not.toHaveProperty('warm');
+    });
   });
 
   describe('the size of a link is public', () => {
@@ -216,13 +254,17 @@ describe('deduce', () => {
     });
   });
 
-  it('gives the same answer for every wrong link, whatever the dice (property)', () => {
+  it('gives the same answer for every wrong link of the same warmth, whatever the dice (property)', () => {
     const run = newRun();
     for (let seed = 0; seed < 200; seed += 1) {
       const a = okDeduce(deduce(run, link('flour-crumbs', 'blue-glove'), createRng(seed)));
-      const b = okDeduce(deduce(run, link('oven-receipt', 'cart-tracks'), createRng(seed + 1000)));
+      const b = okDeduce(deduce(run, link('cart-tracks', 'cellar-key'), createRng(seed + 1000)));
       expect(a.outcome).toEqual(b.outcome);
-      expect(JSON.stringify(a.outcome)).not.toContain('baker');
+      const warmA = okDeduce(deduce(run, link('oven-receipt', 'cart-tracks'), createRng(seed)));
+      const warmB = okDeduce(deduce(run, link('debt-ledger', 'blue-glove'), createRng(seed + 1000)));
+      expect(warmA.outcome).toEqual(warmB.outcome);
+      expect(warmA.outcome).toMatchObject({ warm: true });
+      expect(JSON.stringify([a.outcome, warmA.outcome])).not.toContain('baker');
     }
   });
 

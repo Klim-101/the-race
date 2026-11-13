@@ -57,6 +57,8 @@ export const DEDUCE_MINUTES = 10;
 export const EXTRA_CLUES_FORGIVEN = 1;
 /** The first ruleset in which a link may hold a clue too many; before it a link was exactly a conclusion's clues. */
 export const LENIENT_LINKS_RULESET_VERSION = 20;
+/** The first ruleset in which a failed link says whether one of its clues belongs to a conclusion still to draw. */
+export const WARM_LINKS_RULESET_VERSION = 31;
 /** A link that leads nowhere is time spent staring at the wall. */
 export const FAILED_DEDUCTION_MINUTES = 20;
 
@@ -89,10 +91,12 @@ export type DeduceOutcome =
       readonly clears?: string;
       readonly minutes: number;
     }
-  // Deliberately says nothing of how close the link was.
+  // Says nothing of how close the link was but for one weak sign, `warm`: a clue of it belongs to a conclusion not yet
+  // drawn. It never says which clue or which conclusion, and a link that holds none of them is not warm.
   | {
       readonly kind: 'deduce';
       readonly result: 'nothing';
+      readonly warm?: true;
       readonly minutes: number;
       readonly consequences: readonly ('time-lost' | 'mishap' | 'nerves-lost')[];
     };
@@ -217,6 +221,11 @@ export function deduce(run: DetectiveRunState, input: unknown, rng: Rng): Deduce
       return refuse('wrong-link-size', wrongSizeMessage(sizes));
     }
     const linked = recordLink(run, [...link], 'nothing');
+    const warm =
+      run.rulesetVersion >= WARM_LINKS_RULESET_VERSION &&
+      run.case.deductions.some(
+        ({ id, clueIds }) => !run.insightIds.includes(id) && clueIds.some((clueId) => link.has(clueId)),
+      );
     // A link that leads nowhere frays the nerves, up to the day's cap.
     const frayed = strainByAction(linked);
     const strained = frayed.condition.nerves < linked.condition.nerves;
@@ -226,6 +235,7 @@ export function deduce(run: DetectiveRunState, input: unknown, rng: Rng): Deduce
       outcome: {
         kind: 'deduce',
         result: 'nothing',
+        ...(warm ? { warm: true as const } : {}),
         minutes: FAILED_DEDUCTION_MINUTES,
         consequences: strained ? ['time-lost', 'nerves-lost'] : ['time-lost'],
       },

@@ -196,6 +196,7 @@ const OutcomeSchema = z.union([
   z.object({
     kind: z.literal('deduce'),
     result: z.literal('nothing'),
+    warm: z.literal(true).optional(),
     minutes,
     consequences: z.array(ConsequenceSchema),
     ...fatigue,

@@ -32782,7 +32782,7 @@ var LocaleSchema = external_exports.enum(LOCALES);
 
 // packages/engine/src/run.ts
 var RUN_SCHEMA_VERSION = 2;
-var RULESET_VERSION = 30;
+var RULESET_VERSION = 31;
 var MAX_REPUTATION = 10;
 var MINUTES_PER_DAY = 24 * 60;
 var DAY_START_MINUTE = 8 * 60;
@@ -38597,6 +38597,7 @@ var AccuseIntentSchema = external_exports.object({
 var DEDUCE_MINUTES = 10;
 var EXTRA_CLUES_FORGIVEN = 1;
 var LENIENT_LINKS_RULESET_VERSION = 20;
+var WARM_LINKS_RULESET_VERSION = 31;
 var FAILED_DEDUCTION_MINUTES = 20;
 var VERDICTS = ["proven", "unproven", "wrong"];
 var SHORTFALL_CLUE_STATES = ["laid-out", "found", "never-found"];
@@ -38633,6 +38634,9 @@ function deduce(run, input2, rng) {
       return refuse2("wrong-link-size", wrongSizeMessage(sizes));
     }
     const linked2 = recordLink(run, [...link], "nothing");
+    const warm = run.rulesetVersion >= WARM_LINKS_RULESET_VERSION && run.case.deductions.some(
+      ({ id, clueIds }) => !run.insightIds.includes(id) && clueIds.some((clueId) => link.has(clueId))
+    );
     const frayed = strainByAction(linked2);
     const strained = frayed.condition.nerves < linked2.condition.nerves;
     return {
@@ -38641,6 +38645,7 @@ function deduce(run, input2, rng) {
       outcome: {
         kind: "deduce",
         result: "nothing",
+        ...warm ? { warm: true } : {},
         minutes: FAILED_DEDUCTION_MINUTES,
         consequences: strained ? ["time-lost", "nerves-lost"] : ["time-lost"]
       }
@@ -41521,6 +41526,7 @@ var OutcomeSchema = external_exports.union([
   external_exports.object({
     kind: external_exports.literal("deduce"),
     result: external_exports.literal("nothing"),
+    warm: external_exports.literal(true).optional(),
     minutes,
     consequences: external_exports.array(ConsequenceSchema),
     ...fatigue
