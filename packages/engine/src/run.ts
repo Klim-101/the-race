@@ -40,8 +40,10 @@ export const RUN_SCHEMA_VERSION = 2;
  * part (see `SEARCH_ATTEMPTS` in `actions.ts`).
  * 30: a clue or conclusion put to a suspect that did something, and has no line of theirs, carries a `manner` to play it
  * by (see `reaction-manner.ts`).
+ * 31: a link that leads nowhere says whether one of its clues belongs to a conclusion still to draw (`warm`, see
+ * `verdict.ts`).
  */
-export const RULESET_VERSION = 30;
+export const RULESET_VERSION = 31;
 
 export const MAX_REPUTATION = 10;
 export const MINUTES_PER_DAY = 24 * 60;
