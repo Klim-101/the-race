@@ -296,13 +296,14 @@ describe('the fairness of an abduction', () => {
       const ledBy = (
         earnedBy: object,
         change: (message: { channel: string; arrivesAtMinute: number }) => void = () => undefined,
+        alsoEarnedBy: object[] = [{ kind: 'locals', locationId: 'market-square' }],
       ): Raw =>
         abduction((c) => {
           withBoathouse(c);
           (c.locations.find(({ id }) => id === 'boathouse') as { requiresLead?: string }).requiresLead =
             'boathouse-lead';
           (c as unknown as { leads: object[] }).leads = [
-            { id: 'boathouse-lead', reason: 'The line.', earnedBy },
+            { id: 'boathouse-lead', reason: 'The line.', earnedBy, alsoEarnedBy },
           ];
           change((c.clues.find(({ id }) => id === 'ransom-text') as { message: never }).message);
         });
@@ -314,6 +315,23 @@ describe('the fairness of an abduction', () => {
         expect(codesOf(found)).not.toContain('victim-place-unled');
         expect(codesOf(studied)).not.toContain('victim-place-unled');
         expect(issuesOf(studied)).toEqual([]);
+      });
+
+      it('is shown by something besides a trace: a place led to by studying alone is refused', () => {
+        const traceOnly = ledBy({ kind: 'study', clueId: 'ransom-text' }, undefined, []);
+
+        expect(issuesOf(traceOnly)).toMatchObject([
+          { code: 'place-by-trace-only', path: 'truth.abduction.whereabouts' },
+        ]);
+        expect(issuesOf(ledBy({ kind: 'study', clueId: 'ransom-text' }))).toEqual([]);
+      });
+
+      it('may be shown by a clue found as well as by a trace, and the second deed counts as a way to the place', () => {
+        const either = ledBy({ kind: 'study', clueId: 'ransom-text' }, undefined, [
+          { kind: 'clue', clueId: 'ransom-text' },
+        ]);
+
+        expect(issuesOf(either)).toEqual([]);
       });
 
       it('does not lead when only a tool the hero may lack can study it', () => {

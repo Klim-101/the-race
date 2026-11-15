@@ -3,7 +3,7 @@
 
 import { assertNever } from '../../assert-never.js';
 import type { CaseIssue } from '../case-issue.js';
-import type { DetectiveCase } from '../case-schema.js';
+import { triggersOf, type DetectiveCase } from '../case-schema.js';
 
 interface IdentifiedEntity {
   readonly id: string;
@@ -175,31 +175,35 @@ function checkReferencesResolve(detectiveCase: DetectiveCase): CaseIssue[] {
   });
 
   (detectiveCase.leads ?? []).forEach((lead, index) => {
-    const path = `leads[${String(index)}].earnedBy`;
-    const { earnedBy } = lead;
-    switch (earnedBy.kind) {
-      case 'clue':
-        expect(clueIds, 'clue', earnedBy.clueId, `${path}.clueId`);
-        break;
-      case 'talk':
-        expect(suspectIds, 'suspect', earnedBy.suspectId, `${path}.suspectId`);
-        break;
-      case 'lie':
-        expect(lieIds, 'lie', earnedBy.lieId, `${path}.lieId`);
-        break;
-      case 'deduction':
-        expect(deductionIds, 'deduction', earnedBy.deductionId, `${path}.deductionId`);
-        break;
-      case 'locals':
-        expect(locationIds, 'location', earnedBy.locationId, `${path}.locationId`);
-        break;
-      case 'study':
-        expect(clueIds, 'clue', earnedBy.clueId, `${path}.clueId`);
-        break;
-      /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
-      default:
-        assertNever(earnedBy);
-    }
+    triggersOf(lead).forEach((earnedBy, triggerIndex) => {
+      const path =
+        triggerIndex === 0
+          ? `leads[${String(index)}].earnedBy`
+          : `leads[${String(index)}].alsoEarnedBy[${String(triggerIndex - 1)}]`;
+      switch (earnedBy.kind) {
+        case 'clue':
+          expect(clueIds, 'clue', earnedBy.clueId, `${path}.clueId`);
+          break;
+        case 'talk':
+          expect(suspectIds, 'suspect', earnedBy.suspectId, `${path}.suspectId`);
+          break;
+        case 'lie':
+          expect(lieIds, 'lie', earnedBy.lieId, `${path}.lieId`);
+          break;
+        case 'deduction':
+          expect(deductionIds, 'deduction', earnedBy.deductionId, `${path}.deductionId`);
+          break;
+        case 'locals':
+          expect(locationIds, 'location', earnedBy.locationId, `${path}.locationId`);
+          break;
+        case 'study':
+          expect(clueIds, 'clue', earnedBy.clueId, `${path}.clueId`);
+          break;
+        /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+        default:
+          assertNever(earnedBy);
+      }
+    });
   });
 
   detectiveCase.clock.worldEvents.forEach((event, index) => {

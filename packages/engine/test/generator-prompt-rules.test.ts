@@ -115,6 +115,7 @@ const RULES: Record<CaseIssueCode, Taught> = {
   'victim-place-unled': /some evidence chain must lead to `whereabouts`/,
   'place-conclusion-missing': /`solution.whereaboutsDeductionId` names a deduction/,
   'place-without-decoy': /another place or two are shown by a lead of the same kind/,
+  'place-by-trace-only': /a second deed in `alsoEarnedBy`/,
   'message-names-culprit': /a message never names the culprit/,
   'homicide-death-not-ready': /Only an attempt is written for now/,
   'homicide-without-means': /or the engine rejects the case as one without a means/,
