@@ -80,6 +80,7 @@ export const ISSUE_ORDER = [
   'random-events-miss-a-day',
   'run-length-out-of-range',
   'solution-after-culprit-flees',
+  'proof-too-quick',
   'deadline-out-of-range',
   'victim-place-unreachable',
   'deadline-too-short',

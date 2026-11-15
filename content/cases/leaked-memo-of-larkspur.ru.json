@@ -263,7 +263,7 @@
       "id": "vault-pass",
       "locationId": "larkspur-hq",
       "description": "На крючке у секретаря висит пластиковый пропуск «Архив, временный». Лист учёта рядом с ним пуст.",
-      "discovery": null,
+      "discovery": { "skill": "perception", "difficulty": 9 },
       "pointsTo": [],
       "isRedHerring": false
     },

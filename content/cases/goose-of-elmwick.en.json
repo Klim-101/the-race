@@ -474,7 +474,7 @@
   "deductions": [
     {
       "id": "motive-love-letters",
-      "clueIds": ["stand-hollow", "letters-rumour"],
+      "clueIds": ["stand-hollow", "letters-rumour", "sale-catalogue"],
       "insight": "The goose's stand hid a compartment for letters, and the postmaster's late husband mailed his love letters to the museum. She took the goose not for the bird but for what was inside it, before the auction could sell her memories to a stranger."
     },
     {

@@ -35314,6 +35314,7 @@ var ISSUE_ORDER = [
   "random-events-miss-a-day",
   "run-length-out-of-range",
   "solution-after-culprit-flees",
+  "proof-too-quick",
   "deadline-out-of-range",
   "victim-place-unreachable",
   "deadline-too-short",
@@ -35545,118 +35546,55 @@ function checkRunLength(detectiveCase, rules) {
   ];
 }
 
-// packages/engine/src/detective/case-rules.ts
-var LEGACY_RULES = Object.freeze({
-  parts: false,
-  ties: false,
-  admissions: false,
-  linkable: false,
-  clearing: false,
-  claims: false,
-  publicLife: false,
-  observations: false,
-  traces: false,
-  minRandomEvents: 0,
-  map: null,
-  days: null
-});
-var GENERATED_RULES = Object.freeze({
-  parts: true,
-  ties: true,
-  admissions: true,
-  linkable: true,
-  clearing: true,
-  claims: true,
-  publicLife: true,
-  observations: true,
-  traces: true,
-  minRandomEvents: MIN_RANDOM_EVENTS,
-  map: Object.freeze({ ...GENERATED_MAP }),
-  days: Object.freeze({ ...GENERATED_DAYS })
-});
-
-// packages/engine/src/frame.ts
-var BLANK_TEXT_PLACEHOLDER = "(to be written)";
-var isBlank = (issue3) => issue3.code === "too_small" && issue3.origin === "string";
-function fillBlanks(document, places) {
-  const copy = structuredClone(document);
-  for (const place of places) {
-    const parent = place.slice(0, -1).reduce((node2, key) => Reflect.get(node2, key), copy);
-    Reflect.set(parent, String(place.at(-1)), BLANK_TEXT_PLACEHOLDER);
-  }
-  return copy;
-}
-function readFrame(schema, document) {
-  const parsed = schema.safeParse(document);
-  if (parsed.success) return { kind: "whole", scenario: parsed.data };
-  const blanks = parsed.error.issues.filter(isBlank);
-  const pointers = blanks.map(({ path }) => jsonPointerOf(path));
-  const others = parsed.error.issues.filter((issue3) => !isBlank(issue3));
-  if (others.length > 0) return { kind: "invalid", issues: schemaIssues(others), blanks: pointers };
-  const scenario = schema.parse(
-    fillBlanks(
-      document,
-      blanks.map(({ path }) => path)
-    )
-  );
-  return { kind: "frame", scenario, blanks: pointers };
-}
-
-// packages/engine/src/detective/frame.ts
-var readCaseOrFrame = (document) => readFrame(DetectiveCaseSchema, document);
-
-// packages/engine/src/news/choose-seed.ts
-var SEED_CRIMES = {
-  shortage: ["curious-theft", "financial", "corporate-espionage"],
-  scandal: ["political-leak", "financial", "forgery", "attempted-murder"],
-  outage: ["cyber", "corporate-espionage"],
-  leak: ["political-leak", "cyber", "corporate-espionage"],
-  "market-shock": ["financial", "forgery", "cyber"],
-  dispute: ["corporate-espionage", "forgery", "missing-person", "attempted-murder"],
-  reform: ["political-leak", "financial", "forgery"],
-  curiosity: ["curious-theft", "missing-person", "forgery"]
+// packages/engine/src/detective/weather.ts
+var ROAD_RULESET_VERSION = 8;
+var WEATHER_MINUTES = {
+  mild: 0,
+  warm: 0,
+  hot: 5,
+  humid: 5,
+  windy: 5,
+  fog: 5,
+  "dry-heat": 10,
+  "cold-rain": 10,
+  snow: 10,
+  frost: 10,
+  storms: 15
 };
-var BACKGROUND_CRIMES = {
-  police: ["missing-person", "curious-theft", "forgery", "attempted-murder", "murder"],
-  journalist: ["political-leak", "corporate-espionage", "missing-person"],
-  locksmith: ["curious-theft", "forgery", "corporate-espionage"],
-  analyst: ["financial", "cyber", "forgery"],
-  "bus-driver": ["missing-person", "curious-theft"],
-  nurse: ["missing-person", "forgery", "curious-theft"],
-  schoolteacher: ["forgery", "missing-person", "political-leak"],
-  electrician: ["cyber", "corporate-espionage", "curious-theft"],
-  sommelier: ["forgery", "curious-theft", "corporate-espionage"],
-  accountant: ["financial", "forgery", "corporate-espionage"],
-  courier: ["curious-theft", "missing-person", "corporate-espionage"],
-  bailiff: ["financial", "missing-person", "curious-theft"],
-  translator: ["political-leak", "corporate-espionage", "cyber"],
-  librarian: ["forgery", "political-leak", "curious-theft"],
-  pharmacist: ["forgery", "missing-person", "financial"],
-  "radio-presenter": ["political-leak", "missing-person", "corporate-espionage"],
-  "retired-inspector": ["missing-person", "curious-theft", "forgery"],
-  "dismissed-auditor": ["financial", "corporate-espionage", "forgery"],
-  "investigative-blogger": ["political-leak", "cyber", "corporate-espionage"],
-  "street-private-eye": ["missing-person", "curious-theft", "corporate-espionage"]
+var EVENT_WEATHER_RULESET_VERSION = 23;
+var HAZARD_RULESET_VERSION = 24;
+var HAZARD_WEATHERS = {
+  blizzard: ["snow"],
+  ice: ["frost", "snow"],
+  "heavy-rain": ["cold-rain", "storms"],
+  heatwave: ["hot", "dry-heat"],
+  drought: ["dry-heat"],
+  gale: ["windy", "storms"],
+  fog: ["fog"],
+  "dust-wind": ["windy", "dry-heat"]
 };
-var FITTING_WEIGHT = 3;
-function chooseSeed(seeds, hero) {
-  const fitting = new Set(BACKGROUND_CRIMES[hero.background]);
-  const candidates = seeds.flatMap(
-    (seed) => SEED_CRIMES[seed.kind].map((crimeType) => ({
-      seed,
-      crimeType,
-      weight: fitting.has(crimeType) ? FITTING_WEIGHT : 1
-    }))
-  );
-  const total = candidates.reduce((sum, { weight }) => sum + weight, 0);
-  const point = total === 0 ? 0 : createRng(`${hero.runSeed}:seed`).roll(total);
-  let passed = 0;
-  let chosen;
-  for (const candidate2 of candidates) {
-    passed += candidate2.weight;
-    chosen ??= passed >= point ? candidate2 : void 0;
+var isActive = (run) => run.rulesetVersion >= ROAD_RULESET_VERSION;
+function at(items, index) {
+  return items[index];
+}
+function weatherOfDay(run, day) {
+  if (!isActive(run) || run.setting === null) return void 0;
+  if (run.rulesetVersion >= EVENT_WEATHER_RULESET_VERSION) {
+    const named2 = run.case.clock.worldEvents.find(
+      (event) => event.day === day && event.weather !== void 0
+    );
+    if (named2?.weather !== void 0) return named2.weather;
   }
-  return chosen && { seed: chosen.seed, crimeType: chosen.crimeType };
+  const { seasons } = run.setting.climate;
+  const index = createRng(`${run.seed}:season`).roll(seasons.length) - 1;
+  const roll2 = createRng(`${run.seed}:weather:${String(day)}`).roll(10);
+  if (roll2 <= 6) return at(seasons, index).weather;
+  if (roll2 <= 8) return "mild";
+  return at(seasons, (index + 1) % seasons.length).weather;
+}
+function hazardOfDay(run, weather) {
+  if (run.rulesetVersion < HAZARD_RULESET_VERSION || run.setting === null) return void 0;
+  return run.setting.climate.hazards.find((hazard) => HAZARD_WEATHERS[hazard].includes(weather));
 }
 
 // packages/engine/src/text/real-names.ts
@@ -35689,6 +35627,54 @@ function normalize(text) {
 }
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// packages/engine/src/news/seed.ts
+var HeadlineIdSchema = external_exports.string().regex(/^h[0-9a-f]{8}$/, "Use a headline id such as h3f2a9c1d.");
+var SEED_KINDS = [
+  "shortage",
+  "scandal",
+  "outage",
+  "leak",
+  "market-shock",
+  "dispute",
+  "reform",
+  "curiosity"
+];
+var SeedKindSchema = external_exports.enum(SEED_KINDS);
+var MAX_SEED_HEADLINES = 3;
+var MAX_SEEDS = 12;
+var NewsSeedSchema = external_exports.strictObject({
+  id: EntityIdSchema,
+  headlineIds: external_exports.array(HeadlineIdSchema).min(1).max(MAX_SEED_HEADLINES),
+  kind: SeedKindSchema,
+  tone: ToneSchema,
+  premise: external_exports.string().trim().min(20).max(240)
+});
+var NewsSeedsSchema = external_exports.array(NewsSeedSchema).min(1).max(MAX_SEEDS).refine((seeds) => new Set(seeds.map(({ id }) => id)).size === seeds.length, {
+  message: "Two seeds share an id."
+});
+function validateSeeds(seeds, context2) {
+  const known = new Set(context2.headlineIds);
+  return seeds.flatMap((seed) => {
+    const issues = [];
+    const unknown2 = seed.headlineIds.filter((id) => !known.has(id));
+    if (unknown2.length > 0) {
+      issues.push({
+        code: "unknown-headline",
+        seedId: seed.id,
+        message: `Seed "${seed.id}" refers to ${unknown2.join(", ")}, which you were not given.`
+      });
+    }
+    if (findRealName(seed.premise, context2.realNames) !== void 0) {
+      issues.push({
+        code: "real-name",
+        seedId: seed.id,
+        message: `The premise of seed "${seed.id}" names a real person, place or organisation. Say the pattern without a name.`
+      });
+    }
+    return issues;
+  });
 }
 
 // packages/engine/src/text/script.ts
@@ -35924,105 +35910,6 @@ function chooseRemembered(records, runSeed) {
   const pick5 = rng.roll(Math.max(pool.length, 1)) - 1;
   const chosen = pool[pick5];
   return remembers && chosen !== void 0 ? rememberedOf(chosen) : void 0;
-}
-
-// packages/engine/src/detective/weather.ts
-var ROAD_RULESET_VERSION = 8;
-var WEATHER_MINUTES = {
-  mild: 0,
-  warm: 0,
-  hot: 5,
-  humid: 5,
-  windy: 5,
-  fog: 5,
-  "dry-heat": 10,
-  "cold-rain": 10,
-  snow: 10,
-  frost: 10,
-  storms: 15
-};
-var EVENT_WEATHER_RULESET_VERSION = 23;
-var HAZARD_RULESET_VERSION = 24;
-var HAZARD_WEATHERS = {
-  blizzard: ["snow"],
-  ice: ["frost", "snow"],
-  "heavy-rain": ["cold-rain", "storms"],
-  heatwave: ["hot", "dry-heat"],
-  drought: ["dry-heat"],
-  gale: ["windy", "storms"],
-  fog: ["fog"],
-  "dust-wind": ["windy", "dry-heat"]
-};
-var isActive = (run) => run.rulesetVersion >= ROAD_RULESET_VERSION;
-function at(items, index) {
-  return items[index];
-}
-function weatherOfDay(run, day) {
-  if (!isActive(run) || run.setting === null) return void 0;
-  if (run.rulesetVersion >= EVENT_WEATHER_RULESET_VERSION) {
-    const named2 = run.case.clock.worldEvents.find(
-      (event) => event.day === day && event.weather !== void 0
-    );
-    if (named2?.weather !== void 0) return named2.weather;
-  }
-  const { seasons } = run.setting.climate;
-  const index = createRng(`${run.seed}:season`).roll(seasons.length) - 1;
-  const roll2 = createRng(`${run.seed}:weather:${String(day)}`).roll(10);
-  if (roll2 <= 6) return at(seasons, index).weather;
-  if (roll2 <= 8) return "mild";
-  return at(seasons, (index + 1) % seasons.length).weather;
-}
-function hazardOfDay(run, weather) {
-  if (run.rulesetVersion < HAZARD_RULESET_VERSION || run.setting === null) return void 0;
-  return run.setting.climate.hazards.find((hazard) => HAZARD_WEATHERS[hazard].includes(weather));
-}
-
-// packages/engine/src/news/seed.ts
-var HeadlineIdSchema = external_exports.string().regex(/^h[0-9a-f]{8}$/, "Use a headline id such as h3f2a9c1d.");
-var SEED_KINDS = [
-  "shortage",
-  "scandal",
-  "outage",
-  "leak",
-  "market-shock",
-  "dispute",
-  "reform",
-  "curiosity"
-];
-var SeedKindSchema = external_exports.enum(SEED_KINDS);
-var MAX_SEED_HEADLINES = 3;
-var MAX_SEEDS = 12;
-var NewsSeedSchema = external_exports.strictObject({
-  id: EntityIdSchema,
-  headlineIds: external_exports.array(HeadlineIdSchema).min(1).max(MAX_SEED_HEADLINES),
-  kind: SeedKindSchema,
-  tone: ToneSchema,
-  premise: external_exports.string().trim().min(20).max(240)
-});
-var NewsSeedsSchema = external_exports.array(NewsSeedSchema).min(1).max(MAX_SEEDS).refine((seeds) => new Set(seeds.map(({ id }) => id)).size === seeds.length, {
-  message: "Two seeds share an id."
-});
-function validateSeeds(seeds, context2) {
-  const known = new Set(context2.headlineIds);
-  return seeds.flatMap((seed) => {
-    const issues = [];
-    const unknown2 = seed.headlineIds.filter((id) => !known.has(id));
-    if (unknown2.length > 0) {
-      issues.push({
-        code: "unknown-headline",
-        seedId: seed.id,
-        message: `Seed "${seed.id}" refers to ${unknown2.join(", ")}, which you were not given.`
-      });
-    }
-    if (findRealName(seed.premise, context2.realNames) !== void 0) {
-      issues.push({
-        code: "real-name",
-        seedId: seed.id,
-        message: `The premise of seed "${seed.id}" names a real person, place or organisation. Say the pattern without a name.`
-      });
-    }
-    return issues;
-  });
 }
 
 // packages/engine/src/world/setting.ts
@@ -39519,6 +39406,147 @@ function minutesToGather(detectiveCase, targetClueIds, { canPass, closed, closur
   }
 }
 
+// packages/engine/src/detective/checks/proof-length.ts
+var MIN_PROOF_MINUTES = 240;
+function checkProofLength(detectiveCase, hero, traits, minimum) {
+  if ((detectiveCase.form ?? "whodunit") !== "whodunit") return [];
+  const { evidenceChains, motiveDeductionId } = detectiveCase.solution;
+  const motiveClueIds = detectiveCase.deductions.filter(({ id }) => id === motiveDeductionId).flatMap(({ clueIds }) => clueIds);
+  const gathered = evidenceChains.flatMap((chain) => {
+    const minutes2 = minutesToGather(detectiveCase, /* @__PURE__ */ new Set([...chain, ...motiveClueIds]), {
+      canPass: canEverPass(hero, traits),
+      closed: closedSources(traits),
+      closures: []
+    });
+    return minutes2 === null ? [] : [minutes2];
+  });
+  const cheapest = Math.min(...gathered);
+  if (gathered.length === 0 || cheapest >= minimum) return [];
+  return [
+    {
+      code: "proof-too-quick",
+      path: "solution.evidenceChains",
+      message: `The cheapest chain of proof and the motive can be gathered in about ${String(cheapest)} minutes (walking, looking and searching only), and a case needs at least ${String(minimum)}: the hero must not be able to prove it from the first rooms. Put the clues of every chain farther apart, in places several steps from the start and from each other, with the nearest places holding only red herrings and traces.`
+    }
+  ];
+}
+
+// packages/engine/src/detective/case-rules.ts
+var LEGACY_RULES = Object.freeze({
+  parts: false,
+  ties: false,
+  admissions: false,
+  linkable: false,
+  clearing: false,
+  claims: false,
+  publicLife: false,
+  observations: false,
+  traces: false,
+  minRandomEvents: 0,
+  map: null,
+  days: null,
+  minProofMinutes: null
+});
+var GENERATED_RULES = Object.freeze({
+  parts: true,
+  ties: true,
+  admissions: true,
+  linkable: true,
+  clearing: true,
+  claims: true,
+  publicLife: true,
+  observations: true,
+  traces: true,
+  minRandomEvents: MIN_RANDOM_EVENTS,
+  map: Object.freeze({ ...GENERATED_MAP }),
+  days: Object.freeze({ ...GENERATED_DAYS }),
+  minProofMinutes: MIN_PROOF_MINUTES
+});
+
+// packages/engine/src/frame.ts
+var BLANK_TEXT_PLACEHOLDER = "(to be written)";
+var isBlank = (issue3) => issue3.code === "too_small" && issue3.origin === "string";
+function fillBlanks(document, places) {
+  const copy = structuredClone(document);
+  for (const place of places) {
+    const parent = place.slice(0, -1).reduce((node2, key) => Reflect.get(node2, key), copy);
+    Reflect.set(parent, String(place.at(-1)), BLANK_TEXT_PLACEHOLDER);
+  }
+  return copy;
+}
+function readFrame(schema, document) {
+  const parsed = schema.safeParse(document);
+  if (parsed.success) return { kind: "whole", scenario: parsed.data };
+  const blanks = parsed.error.issues.filter(isBlank);
+  const pointers = blanks.map(({ path }) => jsonPointerOf(path));
+  const others = parsed.error.issues.filter((issue3) => !isBlank(issue3));
+  if (others.length > 0) return { kind: "invalid", issues: schemaIssues(others), blanks: pointers };
+  const scenario = schema.parse(
+    fillBlanks(
+      document,
+      blanks.map(({ path }) => path)
+    )
+  );
+  return { kind: "frame", scenario, blanks: pointers };
+}
+
+// packages/engine/src/detective/frame.ts
+var readCaseOrFrame = (document) => readFrame(DetectiveCaseSchema, document);
+
+// packages/engine/src/news/choose-seed.ts
+var SEED_CRIMES = {
+  shortage: ["curious-theft", "financial", "corporate-espionage"],
+  scandal: ["political-leak", "financial", "forgery", "attempted-murder"],
+  outage: ["cyber", "corporate-espionage"],
+  leak: ["political-leak", "cyber", "corporate-espionage"],
+  "market-shock": ["financial", "forgery", "cyber"],
+  dispute: ["corporate-espionage", "forgery", "missing-person", "attempted-murder"],
+  reform: ["political-leak", "financial", "forgery"],
+  curiosity: ["curious-theft", "missing-person", "forgery"]
+};
+var BACKGROUND_CRIMES = {
+  police: ["missing-person", "curious-theft", "forgery", "attempted-murder", "murder"],
+  journalist: ["political-leak", "corporate-espionage", "missing-person"],
+  locksmith: ["curious-theft", "forgery", "corporate-espionage"],
+  analyst: ["financial", "cyber", "forgery"],
+  "bus-driver": ["missing-person", "curious-theft"],
+  nurse: ["missing-person", "forgery", "curious-theft"],
+  schoolteacher: ["forgery", "missing-person", "political-leak"],
+  electrician: ["cyber", "corporate-espionage", "curious-theft"],
+  sommelier: ["forgery", "curious-theft", "corporate-espionage"],
+  accountant: ["financial", "forgery", "corporate-espionage"],
+  courier: ["curious-theft", "missing-person", "corporate-espionage"],
+  bailiff: ["financial", "missing-person", "curious-theft"],
+  translator: ["political-leak", "corporate-espionage", "cyber"],
+  librarian: ["forgery", "political-leak", "curious-theft"],
+  pharmacist: ["forgery", "missing-person", "financial"],
+  "radio-presenter": ["political-leak", "missing-person", "corporate-espionage"],
+  "retired-inspector": ["missing-person", "curious-theft", "forgery"],
+  "dismissed-auditor": ["financial", "corporate-espionage", "forgery"],
+  "investigative-blogger": ["political-leak", "cyber", "corporate-espionage"],
+  "street-private-eye": ["missing-person", "curious-theft", "corporate-espionage"]
+};
+var FITTING_WEIGHT = 3;
+function chooseSeed(seeds, hero) {
+  const fitting = new Set(BACKGROUND_CRIMES[hero.background]);
+  const candidates = seeds.flatMap(
+    (seed) => SEED_CRIMES[seed.kind].map((crimeType) => ({
+      seed,
+      crimeType,
+      weight: fitting.has(crimeType) ? FITTING_WEIGHT : 1
+    }))
+  );
+  const total = candidates.reduce((sum, { weight }) => sum + weight, 0);
+  const point = total === 0 ? 0 : createRng(`${hero.runSeed}:seed`).roll(total);
+  let passed = 0;
+  let chosen;
+  for (const candidate2 of candidates) {
+    passed += candidate2.weight;
+    chosen ??= passed >= point ? candidate2 : void 0;
+  }
+  return chosen && { seed: chosen.seed, crimeType: chosen.crimeType };
+}
+
 // packages/engine/src/detective/checks/lies.ts
 function checkLies(detectiveCase, obtainable, requireTies = false, requireAdmissions = false, requireClaims = false) {
   const unbreakable = detectiveCase.suspects.flatMap(
@@ -41337,6 +41365,7 @@ function validateCase(input2, context2) {
     ...rules.map === null ? [] : checkMapShape(detectiveCase, rules.map),
     ...rules.days === null ? [] : checkRunLength(detectiveCase, rules.days),
     ...checkFleeDeadline(detectiveCase, context2.hero, context2.traits),
+    ...rules.minProofMinutes === null ? [] : checkProofLength(detectiveCase, context2.hero, context2.traits, rules.minProofMinutes),
     ...checkAbduction(detectiveCase, context2.hero, context2.traits, obtainable, content),
     ...checkHomicide(detectiveCase, content),
     ...checkRedHerrings(detectiveCase),

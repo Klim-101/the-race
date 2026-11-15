@@ -471,7 +471,7 @@
   "deductions": [
     {
       "id": "motive-love-letters",
-      "clueIds": ["stand-hollow", "letters-rumour"],
+      "clueIds": ["stand-hollow", "letters-rumour", "sale-catalogue"],
       "insight": "В подставке гуся был тайник для писем, а покойный муж почтмейстерши отправлял свои любовные письма на хранение в музей. Ей нужен был не гусь, а то, что внутри: до аукциона, который продал бы её воспоминания незнакомцу."
     },
     {

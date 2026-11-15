@@ -51,6 +51,7 @@ Top level: `schemaVersion` 1, `locale`, `crimeType` (financial, cyber, political
 - **Lies are breakable, and say something when they fall.** Every lie has at least one existing clue in `brokenBy` and an `admission`; a lie that follows another comes later in the list than the one it follows. A lie broken by a clue in a gated place needs that place passable.
 - **The motive deduction** exists, uses obtainable clues and is in `solution.motiveDeductionId`.
 - **Nothing needs the night.** With every place that is open only after midnight shut, each evidence chain, the motive, every suspect and every lie must be as reachable as with it open: the night is a bonus for the hero who stays up.
+- **The proof is not quick.** In a whodunit the engine counts the walking, looking and searching that the cheapest chain of proof and the motive ask, and rejects a case where that is under 240 minutes, for a case that can be proven from its first rooms is won before it presses: the nearest places hold red herrings and traces, and the clues of every chain lie several steps from the start and from each other, a search or a lead behind each. An abduction and an attempt are not held to it.
 - **World events** fall within `clock.days` and must not cut the solution (a `culprit-flees` must come after the solution is reachable; a closed place must not hold the only chain).
 - **Every id is unique and every reference resolves.** One id names one thing.
 - No real names, the right script for the language, text of the stated language only.
