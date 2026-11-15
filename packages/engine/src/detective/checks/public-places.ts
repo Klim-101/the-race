@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { CaseIssue } from '../case-issue.js';
-import type { DetectiveCase } from '../case-schema.js';
+import { triggersOf, type DetectiveCase } from '../case-schema.js';
 
 /**
  * A public place, out of doors or where the hero can sit down, is somewhere the hero will stand and ask: it needs
@@ -12,8 +12,8 @@ import type { DetectiveCase } from '../case-schema.js';
 export function checkPublicPlaces(detectiveCase: DetectiveCase): CaseIssue[] {
   const witnessed = new Set((detectiveCase.witnesses ?? []).map(({ locationId }) => locationId));
   const rumoured = new Set(
-    (detectiveCase.leads ?? []).flatMap(({ earnedBy }) =>
-      earnedBy.kind === 'locals' ? [earnedBy.locationId] : [],
+    (detectiveCase.leads ?? []).flatMap((lead) =>
+      triggersOf(lead).flatMap((trigger) => (trigger.kind === 'locals' ? [trigger.locationId] : [])),
     ),
   );
   return detectiveCase.locations.flatMap((location, index) =>

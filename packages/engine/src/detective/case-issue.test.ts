@@ -83,6 +83,7 @@ const PRIORITY_BEFORE: Record<CaseIssueCode, number> = {
   'victim-place-unled': 28.5,
   'place-conclusion-missing': 28.55,
   'place-without-decoy': 28.56,
+  'place-by-trace-only': 28.57,
   'message-names-culprit': 28.6,
   'homicide-death-not-ready': 28.61,
   'homicide-without-means': 28.62,

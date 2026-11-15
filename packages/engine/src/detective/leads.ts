@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { assertNever } from '../assert-never.js';
-import type { Lead, LeadTrigger, LeadWindow, Location } from './case-schema.js';
+import { triggersOf, type Lead, type LeadTrigger, type LeadWindow, type Location } from './case-schema.js';
 import type { DetectiveRunState } from './run-state.js';
 
 /** The first ruleset in which a place can wait for a lead and a part can be shown by one. */
@@ -48,8 +48,7 @@ export function leadsEarnedBy(run: DetectiveRunState, deed: LeadTrigger): readon
   return (run.case.leads ?? []).filter(
     (lead) =>
       !isLeadEarned(run, lead.id) &&
-      deedKey(lead.earnedBy) === deedKey(deed) &&
-      toolFits(lead.earnedBy, deed),
+      triggersOf(lead).some((trigger) => deedKey(trigger) === deedKey(deed) && toolFits(trigger, deed)),
   );
 }
 

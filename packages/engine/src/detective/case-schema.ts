@@ -155,11 +155,22 @@ export const LeadSchema = z.object({
   /** One line, from the hero's own clue or talk: why the hero looks there. */
   reason: NarrativeTextSchema,
   earnedBy: LeadTriggerSchema,
+  /**
+   * Other deeds that earn the same lead: any one will do. A place has one lead, so this is how it gets a second way in
+   * (a rumour as well as a trace). Optional, so that the cases of before it keep their seal.
+   */
+  alsoEarnedBy: z.array(LeadTriggerSchema).max(2).optional(),
   window: LeadWindowSchema.optional(),
   // The generator's instructions call it optional, so a lead that leaves it out is a true one.
   isFalse: z.boolean().default(false),
 });
 export type Lead = z.infer<typeof LeadSchema>;
+
+/** Every deed that earns the lead: the first one and the others. */
+export const triggersOf = ({ earnedBy, alsoEarnedBy }: Lead): readonly LeadTrigger[] => [
+  earnedBy,
+  ...(alsoEarnedBy ?? []),
+];
 
 /**
  * Something a place keeps for the hero, a tool or a supply: `found` once the place has been searched (a crowbar on a

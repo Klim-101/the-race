@@ -87,6 +87,7 @@ export const ISSUE_ORDER = [
   'victim-place-unled',
   'place-conclusion-missing',
   'place-without-decoy',
+  'place-by-trace-only',
   'message-names-culprit',
   'homicide-death-not-ready',
   'homicide-without-means',

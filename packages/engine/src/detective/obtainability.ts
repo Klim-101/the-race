@@ -5,7 +5,15 @@ import { assertNever } from '../assert-never.js';
 import type { InformationSource, Trait, TraitTrigger } from '../traits.js';
 import { collectModifier } from '../modifiers.js';
 import type { DetectiveHero } from './archetype.js';
-import type { DetectiveCase, LeadTrigger, Lie, Location, LocationAccess, SkillCheck } from './case-schema.js';
+import {
+  triggersOf,
+  type DetectiveCase,
+  type LeadTrigger,
+  type Lie,
+  type Location,
+  type LocationAccess,
+  type SkillCheck,
+} from './case-schema.js';
 
 export const D20_MAX = 20;
 
@@ -108,7 +116,10 @@ export function computeObtainable(
       }
     }
     for (const lead of detectiveCase.leads ?? []) {
-      if (!leadIds.has(lead.id) && canEarn(detectiveCase, lead.earnedBy, locationIds, clueIds)) {
+      if (
+        !leadIds.has(lead.id) &&
+        triggersOf(lead).some((trigger) => canEarn(detectiveCase, trigger, locationIds, clueIds))
+      ) {
         leadIds.add(lead.id);
         hasChanged = true;
       }

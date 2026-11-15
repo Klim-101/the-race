@@ -34807,10 +34807,19 @@ var LeadSchema = external_exports.object({
   /** One line, from the hero's own clue or talk: why the hero looks there. */
   reason: NarrativeTextSchema,
   earnedBy: LeadTriggerSchema,
+  /**
+   * Other deeds that earn the same lead: any one will do. A place has one lead, so this is how it gets a second way in
+   * (a rumour as well as a trace). Optional, so that the cases of before it keep their seal.
+   */
+  alsoEarnedBy: external_exports.array(LeadTriggerSchema).max(2).optional(),
   window: LeadWindowSchema.optional(),
   // The generator's instructions call it optional, so a lead that leaves it out is a true one.
   isFalse: external_exports.boolean().default(false)
 });
+var triggersOf = ({ earnedBy, alsoEarnedBy }) => [
+  earnedBy,
+  ...alsoEarnedBy ?? []
+];
 var STOCK_HOWS = ["found", "sold"];
 var StockHowSchema = external_exports.enum(STOCK_HOWS);
 var StockEntrySchema = external_exports.discriminatedUnion("kind", [
@@ -35312,6 +35321,7 @@ var ISSUE_ORDER = [
   "victim-place-unled",
   "place-conclusion-missing",
   "place-without-decoy",
+  "place-by-trace-only",
   "message-names-culprit",
   "homicide-death-not-ready",
   "homicide-without-means",
@@ -35390,7 +35400,7 @@ function computeObtainable(detectiveCase, canPass, closed = /* @__PURE__ */ new 
       }
     }
     for (const lead of detectiveCase.leads ?? []) {
-      if (!leadIds.has(lead.id) && canEarn(detectiveCase, lead.earnedBy, locationIds, clueIds)) {
+      if (!leadIds.has(lead.id) && triggersOf(lead).some((trigger) => canEarn(detectiveCase, trigger, locationIds, clueIds))) {
         leadIds.add(lead.id);
         hasChanged = true;
       }
@@ -36258,7 +36268,7 @@ function isLeadOpen(run, leadId) {
 function leadsEarnedBy(run, deed) {
   if (!leadsApply(run)) return [];
   return (run.case.leads ?? []).filter(
-    (lead) => !isLeadEarned(run, lead.id) && deedKey(lead.earnedBy) === deedKey(deed) && toolFits(lead.earnedBy, deed)
+    (lead) => !isLeadEarned(run, lead.id) && triggersOf(lead).some((trigger) => deedKey(trigger) === deedKey(deed) && toolFits(trigger, deed))
   );
 }
 function toolFits(trigger, deed) {
@@ -39824,6 +39834,13 @@ function checkPlaceConclusion(detectiveCase, {
   const place = detectiveCase.locations.find(({ id }) => id === whereabouts);
   const lead = leads.find(({ id }) => id === place?.requiresLead);
   if (lead !== void 0) {
+    if (triggersOf(lead).every(({ kind }) => kind === "study")) {
+      found.push({
+        code: "place-by-trace-only",
+        path: "truth.abduction.whereabouts",
+        message: `"${whereabouts}" is shown only by studying a clue. Give its lead a second deed in "alsoEarnedBy", a rumour of the locals or a clue found, so that a hero who never studies the message can still be led there.`
+      });
+    }
     const decoys = detectiveCase.locations.filter(
       ({ id, requiresLead }) => id !== whereabouts && id !== detectiveCase.startLocationId && leads.some((other) => other.id === requiresLead && other.earnedBy.kind === lead.earnedBy.kind)
     );
@@ -39896,7 +39913,7 @@ function checkAbduction(detectiveCase, hero, traits, obtainable, content) {
   const chainClueIds = new Set(evidenceChains.flat());
   const opensTheWay = (clueId) => places.some(({ access }) => access.kind === "clue" && access.clueId === clueId);
   const earnsTheLead = (clueId) => {
-    const earned = (detectiveCase.leads ?? []).filter(({ id }) => places.some(({ requiresLead }) => requiresLead === id)).map(({ earnedBy }) => earnedBy);
+    const earned = (detectiveCase.leads ?? []).filter(({ id }) => places.some(({ requiresLead }) => requiresLead === id)).flatMap(triggersOf);
     if (earned.some((by) => by.kind === "clue" && by.clueId === clueId)) return "found";
     return earned.some((by) => by.kind === "study" && by.tool === void 0 && by.clueId === clueId) ? "studied" : null;
   };
@@ -40392,7 +40409,7 @@ function checkPublicPlaces(detectiveCase) {
   const witnessed = new Set((detectiveCase.witnesses ?? []).map(({ locationId }) => locationId));
   const rumoured = new Set(
     (detectiveCase.leads ?? []).flatMap(
-      ({ earnedBy }) => earnedBy.kind === "locals" ? [earnedBy.locationId] : []
+      (lead) => triggersOf(lead).flatMap((trigger) => trigger.kind === "locals" ? [trigger.locationId] : [])
     )
   );
   return detectiveCase.locations.flatMap(
@@ -40947,31 +40964,32 @@ function checkReferencesResolve(detectiveCase) {
     });
   });
   (detectiveCase.leads ?? []).forEach((lead, index) => {
-    const path = `leads[${String(index)}].earnedBy`;
-    const { earnedBy } = lead;
-    switch (earnedBy.kind) {
-      case "clue":
-        expect(clueIds, "clue", earnedBy.clueId, `${path}.clueId`);
-        break;
-      case "talk":
-        expect(suspectIds, "suspect", earnedBy.suspectId, `${path}.suspectId`);
-        break;
-      case "lie":
-        expect(lieIds, "lie", earnedBy.lieId, `${path}.lieId`);
-        break;
-      case "deduction":
-        expect(deductionIds, "deduction", earnedBy.deductionId, `${path}.deductionId`);
-        break;
-      case "locals":
-        expect(locationIds, "location", earnedBy.locationId, `${path}.locationId`);
-        break;
-      case "study":
-        expect(clueIds, "clue", earnedBy.clueId, `${path}.clueId`);
-        break;
-      /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
-      default:
-        assertNever2(earnedBy);
-    }
+    triggersOf(lead).forEach((earnedBy, triggerIndex) => {
+      const path = triggerIndex === 0 ? `leads[${String(index)}].earnedBy` : `leads[${String(index)}].alsoEarnedBy[${String(triggerIndex - 1)}]`;
+      switch (earnedBy.kind) {
+        case "clue":
+          expect(clueIds, "clue", earnedBy.clueId, `${path}.clueId`);
+          break;
+        case "talk":
+          expect(suspectIds, "suspect", earnedBy.suspectId, `${path}.suspectId`);
+          break;
+        case "lie":
+          expect(lieIds, "lie", earnedBy.lieId, `${path}.lieId`);
+          break;
+        case "deduction":
+          expect(deductionIds, "deduction", earnedBy.deductionId, `${path}.deductionId`);
+          break;
+        case "locals":
+          expect(locationIds, "location", earnedBy.locationId, `${path}.locationId`);
+          break;
+        case "study":
+          expect(clueIds, "clue", earnedBy.clueId, `${path}.clueId`);
+          break;
+        /* v8 ignore next 2 -- unreachable: the compiler proves the switch exhaustive */
+        default:
+          assertNever2(earnedBy);
+      }
+    });
   });
   detectiveCase.clock.worldEvents.forEach((event, index) => {
     if (event.effect?.kind === "location-closes") {

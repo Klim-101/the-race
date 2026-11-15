@@ -9,7 +9,7 @@ import { STUDY_MINUTES } from '../ask.js';
 import { DEDUCE_MINUTES } from '../verdict.js';
 import type { DetectiveHero } from '../archetype.js';
 import type { CaseIssue } from '../case-issue.js';
-import type { DetectiveCase } from '../case-schema.js';
+import { triggersOf, type DetectiveCase } from '../case-schema.js';
 import type { InformationSource } from '../../traits.js';
 import {
   canEverPass,
@@ -137,6 +137,15 @@ function checkPlaceConclusion(
   const place = detectiveCase.locations.find(({ id }) => id === whereabouts);
   const lead = leads.find(({ id }) => id === place?.requiresLead);
   if (lead !== undefined) {
+    // A trace is a way in for the hero who studies a message, and nothing tells the others to try it: the place has to
+    // be shown by something else too, a rumour or a clue.
+    if (triggersOf(lead).every(({ kind }) => kind === 'study')) {
+      found.push({
+        code: 'place-by-trace-only',
+        path: 'truth.abduction.whereabouts',
+        message: `"${whereabouts}" is shown only by studying a clue. Give its lead a second deed in "alsoEarnedBy", a rumour of the locals or a clue found, so that a hero who never studies the message can still be led there.`,
+      });
+    }
     const decoys = detectiveCase.locations.filter(
       ({ id, requiresLead }) =>
         id !== whereabouts &&
@@ -246,7 +255,7 @@ export function checkAbduction(
   const earnsTheLead = (clueId: string): 'found' | 'studied' | null => {
     const earned = (detectiveCase.leads ?? [])
       .filter(({ id }) => places.some(({ requiresLead }) => requiresLead === id))
-      .map(({ earnedBy }) => earnedBy);
+      .flatMap(triggersOf);
     if (earned.some((by) => by.kind === 'clue' && by.clueId === clueId)) return 'found';
     return earned.some((by) => by.kind === 'study' && by.tool === undefined && by.clueId === clueId)
       ? 'studied'
