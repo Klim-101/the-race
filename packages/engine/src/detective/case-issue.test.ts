@@ -76,6 +76,7 @@ const PRIORITY_BEFORE: Record<CaseIssueCode, number> = {
   'random-events-miss-a-day': 27.5,
   'run-length-out-of-range': 27.6,
   'solution-after-culprit-flees': 28,
+  'proof-too-quick': 28.05,
   'deadline-out-of-range': 28.1,
   'victim-place-unreachable': 28.2,
   'deadline-too-short': 28.3,

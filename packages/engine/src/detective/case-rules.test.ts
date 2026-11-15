@@ -8,6 +8,7 @@ import { GENERATED_RULES, LEGACY_RULES, type CaseRules } from './case-rules.js';
 import { MIN_RANDOM_EVENTS } from './case-schema.js';
 import { validateCase } from './case-validator.js';
 import { GENERATED_MAP } from './checks/map-shape.js';
+import { MIN_PROOF_MINUTES } from './checks/proof-length.js';
 import { GENERATED_DAYS } from './checks/run-length.js';
 
 /**
@@ -27,6 +28,7 @@ const CODE_OF: Record<keyof CaseRules, CaseIssueCode> = {
   minRandomEvents: 'too-few-random-events',
   map: 'map-too-small',
   days: 'run-length-out-of-range',
+  minProofMinutes: 'proof-too-quick',
 };
 const FIELDS = Object.keys(CODE_OF) as (keyof CaseRules)[];
 
@@ -97,6 +99,7 @@ describe('the rules of the cases from before the generator', () => {
       minRandomEvents: 0,
       map: null,
       days: null,
+      minProofMinutes: null,
     });
   });
 
@@ -131,6 +134,7 @@ describe('the rules of a generated case', () => {
       minRandomEvents: MIN_RANDOM_EVENTS,
       map: GENERATED_MAP,
       days: GENERATED_DAYS,
+      minProofMinutes: MIN_PROOF_MINUTES,
     });
   });
 
