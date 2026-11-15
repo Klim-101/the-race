@@ -4,6 +4,7 @@
 import { MIN_RANDOM_EVENTS } from './case-schema.js';
 import { GENERATED_MAP, type MapRules } from './checks/map-shape.js';
 import { GENERATED_DAYS, type DayRules } from './checks/run-length.js';
+import { MIN_PROOF_MINUTES } from './checks/proof-length.js';
 
 /**
  * The rules a case is judged by beyond the schema and the checks every case passes: which of the rules that came with
@@ -35,6 +36,8 @@ export interface CaseRules {
   readonly map: MapRules | null;
   /** How many days the case may give the hero; `null` accepts any length the schema allows. */
   readonly days: DayRules | null;
+  /** The fewest minutes the cheapest chain of proof of a whodunit may take (see `MIN_PROOF_MINUTES`); `null` asks for none. */
+  readonly minProofMinutes: number | null;
 }
 
 /**
@@ -55,6 +58,7 @@ export const LEGACY_RULES: CaseRules = Object.freeze({
   minRandomEvents: 0,
   map: null,
   days: null,
+  minProofMinutes: null,
 });
 
 /** The rules a case the generator writes is judged by: all of them. */
@@ -71,4 +75,5 @@ export const GENERATED_RULES: CaseRules = Object.freeze({
   minRandomEvents: MIN_RANDOM_EVENTS,
   map: Object.freeze({ ...GENERATED_MAP }),
   days: Object.freeze({ ...GENERATED_DAYS }),
+  minProofMinutes: MIN_PROOF_MINUTES,
 });

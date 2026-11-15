@@ -125,6 +125,7 @@ const RULES: Record<CaseIssueCode, Taught> = {
   'message-names-trait': /never names a trait of the hero, nor does it/,
   'weekday-named': /No text of the case names a weekday/,
   'solution-after-culprit-flees': /a `culprit-flees` must come after the solution is reachable/,
+  'proof-too-quick': /rejects a case where that is under 240 minutes/,
   'clue-draws-conclusion': /what is seen, read or measured, and never what it means/,
 };
 

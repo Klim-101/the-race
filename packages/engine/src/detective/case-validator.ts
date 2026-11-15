@@ -9,6 +9,7 @@ import type { CaseIssue } from './case-issue.js';
 import { LEGACY_RULES, type CaseRules } from './case-rules.js';
 import { DetectiveCaseSchema, formOf, type CaseForm, type DetectiveCase } from './case-schema.js';
 import { checkFleeDeadline } from './checks/flee-deadline.js';
+import { checkProofLength } from './checks/proof-length.js';
 import { checkLies } from './checks/lies.js';
 import { checkAbduction } from './checks/abduction.js';
 import { checkHomicide } from './checks/homicide.js';
@@ -132,6 +133,9 @@ export function validateCase(input: unknown, context: CaseValidationContext): Ca
     ...(rules.map === null ? [] : checkMapShape(detectiveCase, rules.map)),
     ...(rules.days === null ? [] : checkRunLength(detectiveCase, rules.days)),
     ...checkFleeDeadline(detectiveCase, context.hero, context.traits),
+    ...(rules.minProofMinutes === null
+      ? []
+      : checkProofLength(detectiveCase, context.hero, context.traits, rules.minProofMinutes)),
     ...checkAbduction(detectiveCase, context.hero, context.traits, obtainable, content),
     ...checkHomicide(detectiveCase, content),
     ...checkRedHerrings(detectiveCase),
